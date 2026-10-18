@@ -50,8 +50,8 @@ GAME_VAR = {
     "blk": (1.052, 0.065),
     "tov": (1.049, -0.020),
 }
-# Constant-CV refit (pooled over rostered player-seasons; bootstrap SE <= 0.03). Reported for the draft
-# valuation experiment (`FANTASY_GAME_CV=fitted`, fantasy.model.lines); the simulator uses GAME_VAR.
+# Constant-CV refit (pooled over rostered player-seasons; bootstrap SE <= 0.03). The draft valuation's
+# default since valuation-0.2.3 (fantasy.model.lines.GAME_CV_FITTED); the simulator uses GAME_VAR.
 GAME_CV_POOLED = {
     "fgm": 0.442, "fga": 0.316, "ftm": 0.746, "fta": 0.702, "fg3m": 0.761, "pts": 0.416,
     "reb": 0.449, "ast": 0.512, "stl": 0.972, "blk": 1.038, "tov": 0.680,

@@ -42,7 +42,7 @@ from fantasy.model.lines import (
 # 0.2.1: projections baseline-0.2.1 (playoff_mult refit on the Mar 1-21 fantasy playoff window)
 # 0.2.2: no formula change; default projections are now the 50/50 ours/ESPN blend
 #        (projections-2026-27-0.3.0, adopted 2026-10-19; docs/research/projection_quality.md)
-MODEL_VERSION = "valuation-0.2.2"
+MODEL_VERSION = "valuation-0.2.3"
 
 
 @dataclass
@@ -162,7 +162,7 @@ def run_valuation(
         created_at=now.isoformat(),
         model_version=MODEL_VERSION,
         params={**asdict(params), "categories": settings.categories,
-                **({"game_cv": GAME_CV_SOURCE} if GAME_CV_SOURCE != "prior" else {})},
+                "game_cv": GAME_CV_SOURCE},
         inputs={"projections_path": proj.path, "projections_sha256": proj.sha256, "replacement_line": replacement.round(3).to_dict()},
         values=values,
     )

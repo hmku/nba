@@ -11,7 +11,7 @@ import pytest
 import fantasy
 from fantasy.draft.order import draft_order
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.lines import GAME_CV, GAME_CV_PRIOR, STATS, load_projections
+from fantasy.model.lines import GAME_CV, GAME_CV_FITTED, STATS, load_projections
 from fantasy.sim import calibration as cal
 from fantasy.sim.context import build_context
 from fantasy.sim.engine import FACTOR_STATS, SimParams
@@ -45,18 +45,18 @@ def test_defaults_are_the_fitted_constants():
     assert set(cal.GAME_VAR) == set(STATS) == set(cal.GAME_CV_POOLED)
 
 
-def test_draft_game_cv_default_unchanged():
-    # draft-path freeze: the valuation/optimizer default stays the prior unless FANTASY_GAME_CV=fitted
-    if os.environ.get("FANTASY_GAME_CV", "").lower() != "fitted":
-        assert GAME_CV == GAME_CV_PRIOR
+def test_draft_game_cv_default_is_fitted():
+    # valuation-0.2.3: the fitted GAME_CV is the draft default unless FANTASY_GAME_CV=prior
+    if os.environ.get("FANTASY_GAME_CV", "").lower() != "prior":
+        assert GAME_CV == GAME_CV_FITTED
 
 
-def test_fitted_game_cv_is_opt_in():
-    code = "from fantasy.model.lines import GAME_CV, GAME_CV_FITTED, GAME_CV_SOURCE; print(GAME_CV_SOURCE, GAME_CV == GAME_CV_FITTED)"
+def test_prior_game_cv_is_opt_out():
+    code = "from fantasy.model.lines import GAME_CV, GAME_CV_PRIOR, GAME_CV_SOURCE; print(GAME_CV_SOURCE, GAME_CV == GAME_CV_PRIOR)"
     src = str(Path(fantasy.__file__).resolve().parents[1])
-    env = {**os.environ, "FANTASY_GAME_CV": "fitted", "PYTHONPATH": src}
+    env = {**os.environ, "FANTASY_GAME_CV": "prior", "PYTHONPATH": src}
     out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True).stdout
-    assert out.split() == ["fitted", "True"]
+    assert out.split() == ["prior", "True"]
 
 
 def test_per_stat_and_scalar_stat_sd(ctx):

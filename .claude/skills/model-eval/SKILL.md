@@ -47,7 +47,7 @@ draft for recommend experiments - never experiment on the real draft record.
 ## 3. Priors that need calibration (T-016)
 | Prior | Where | Current | Calibrate on |
 |---|---|---|---|
-| `GAME_CV` per-game coefficient of variation per stat | `src/fantasy/model/lines.py` | prior e.g. pts 0.35, stl 0.85 (draft default); fitted `GAME_CV_FITTED` opt-in via `FANTASY_GAME_CV=fitted` (pts 0.42, stl 0.97; no change to picks 1/24/36) | done for the simulator: `docs/research/sim_calibration.md` (variance ∝ mean, not constant CV) |
+| `GAME_CV` per-game coefficient of variation per stat | `src/fantasy/model/lines.py` | fitted `GAME_CV_FITTED` is the default since valuation-0.2.3 (pts 0.42, stl 0.97; no change to picks 1/24/36); old prior (pts 0.35, stl 0.85) via `FANTASY_GAME_CV=prior` | done for the simulator: `docs/research/sim_calibration.md` (variance ∝ mean, not constant CV) |
 | ADP sd = `SD_FLOOR + SD_SLOPE * adp` | `src/fantasy/draft/availability.py` | 2.5 + 0.18*adp | Yahoo draft results vs ADP (pick - ADP residuals) |
 | `USAGE` share of rostered games that count | `src/fantasy/model/catmodel.py` | 0.85 | in-season lineup data |
 | `stream_recovery` share of missed games recovered by streamers | `ValuationParams` in `src/fantasy/model/valuation.py` | 0.5 | waiver activity / replacement-level games |

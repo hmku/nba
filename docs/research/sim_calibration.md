@@ -7,8 +7,8 @@ correlation and no pace/opponent effects. This note fits each of them on histori
 that matters, with standard errors.
 
 **Outcome:** the simulator (`season-sim-0.4.0`) now uses fitted values (`src/fantasy/sim/calibration.py`). The
-draft model is **unchanged**. A refitted `GAME_CV` exists only as an opt-in (`FANTASY_GAME_CV=fitted`) and does not
-change the picks at 1, 24 or 36 (section 6).
+draft model uses the refitted `GAME_CV` since `valuation-0.2.3` (user decision 2026-10-18; revert with
+`FANTASY_GAME_CV=prior`). It does not change the picks at 1, 24 or 36 (section 6).
 
 ## Data (provenance)
 - **Box scores:** NocturneBear/NBA-Data-2010-2024,
@@ -234,7 +234,9 @@ simulated league; the variants share drafts and seeds, so the differences are pa
 **What cannot be validated yet:** the absolute calibration of P(win matchup). It needs real fantasy matchup outcomes
 (in-season, T-016). The components that feed it are each fitted above.
 
-## 6. Draft model: fitted GAME_CV as an opt-in (not adopted)
+## 6. Draft model: fitted GAME_CV (adopted 2026-10-18, valuation-0.2.3, user decision)
+_Update: after this analysis the user chose to adopt it before the draft; the default is now `GAME_CV_FITTED` and
+`FANTASY_GAME_CV=prior` reverts. The text below describes the analysis as run (opt-in at the time)._
 `GAME_CV` also sets the draft valuation's G-score week-to-week variance and the optimizer's category model. Under
 the draft-path freeze, the default is unchanged (`GAME_CV_PRIOR`). `FANTASY_GAME_CV=fitted` switches to the pooled
 rostered CVs (`GAME_CV_FITTED`; read at import, recorded in valuation params). Effect on the adopted blend
@@ -259,8 +261,8 @@ projections:
   `stat_sds`, `game_var = "fitted"`, `noise_corr = True`. To reproduce 0.3.0, set
   `vol_sd=0.08, stat_sd=0.08, fg_pct_sd=0.015, ft_pct_sd=0.03, game_var="cv", noise_corr=False`.
 - `rest_share` and `two_spell_prob` are unchanged (validated in section 4).
-- `fantasy.model.lines`: `GAME_CV_PRIOR` (default), `GAME_CV_FITTED`, and the `FANTASY_GAME_CV` switch. The draft
-  default is unchanged.
+- `fantasy.model.lines`: `GAME_CV_PRIOR`, `GAME_CV_FITTED` (draft default since valuation-0.2.3), and the
+  `FANTASY_GAME_CV=prior` switch.
 - `sim/symmetric.py` `PERTURB_DEFAULT` (opponents' private projection views) is unchanged. It models how far
   *opponents' beliefs* diverge from ours, not the truth's divergence. Opponents' errors are correlated with ours
   (same public data), so the fitted truth error would overstate it.
