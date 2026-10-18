@@ -29,6 +29,7 @@ import pandas as pd
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import (
     GAME_CV,
+    GAME_CV_SOURCE,
     GAMES_PER_WEEK,
     STATS,
     ProjectionSet,
@@ -160,7 +161,8 @@ def run_valuation(
         run_id=f"val-{now:%Y%m%d%H%M%S}-{uuid.uuid4().hex[:6]}",
         created_at=now.isoformat(),
         model_version=MODEL_VERSION,
-        params={**asdict(params), "categories": settings.categories},
+        params={**asdict(params), "categories": settings.categories,
+                **({"game_cv": GAME_CV_SOURCE} if GAME_CV_SOURCE != "prior" else {})},
         inputs={"projections_path": proj.path, "projections_sha256": proj.sha256, "replacement_line": replacement.round(3).to_dict()},
         values=values,
     )

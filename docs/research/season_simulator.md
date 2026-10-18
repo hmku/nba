@@ -15,11 +15,11 @@ streaming, standings and the playoff bracket. Code: `src/fantasy/sim/` (`engine.
 | NBA schedule | 2026-27 regular season from basketball-reference (1,200 dated games = 80/team; the 2 NBA-Cup-dependent games per team are "TBD" and are placed on the empty Dec 4-11 window, alternating days). Fallback: every team plays every other day (3.5/week) with a warning. | `schedule.py` |
 | Calendar | Mon-Sun weeks; week 1 starts on opening night (Tue 2026-10-20). The All-Star break (Feb 19-24, 2027, detected from the schedule; `ALLSTAR_BREAK_GUESS` for the synthetic fallback) merges the two weeks it touches into one long week (Yahoo practice; `--no-merge-allstar`). Week 1's length is **fitted to `settings.playoff_end_date`** (Yahoo settings page, verified: weeks 18-20 end Sun 2027-03-21): that needs a two-week week 1 (Oct 20 - Nov 1), so week 17 = Feb 15-28 (All-Star) and playoffs = Mar 1-7, 8-14, 15-21 (`fit_week1_end`; `--week1-end` overrides). Regular season = weeks before the first playoff week. JSON (`--schedule`) can give explicit week dates. | `schedule.py`, `context.py` |
 | Matchups | Circle-method round robin for weeks 1-17 (11-round cycle, repeated for weeks 12-17), or Yahoo's schedule from JSON. | `schedule.py` |
-| Season-level projection error | per player-sim: volume factor `exp(N(0, vol_sd=0.08))` on all counting stats + attempts; per-stat factor `exp(N(0, stat_sd=0.08))` on FGA, FTA, 3PM, REB, AST, STL, BLK, TO; additive FG% shift N(0, 0.015), FT% shift N(0, 0.03). Makes = attempts × shifted %; PTS = 2·FGM + 3PM + FTM rescaled to projected PTS. | `engine._player_arrays` |
+| Season-level projection error | per player-sim: volume factor `exp(N(0, vol_sd))` on all counting stats + attempts; per-stat factor `exp(N(0, stat_sds[s]))` on FGA, FTA, 3PM, REB, AST, STL, BLK, TO; additive FG% and FT% shifts. **Fitted (season-sim-0.4.0, `sim_calibration.md`):** vol_sd / FG / FT sd by projected mpg = 0.15 / 0.022 / 0.038 (30+), 0.25 / 0.027 / 0.041 (24-30), 0.33 / 0.033 / 0.049 (<24); stat sds FGA 0.15, FTA 0.28, 3PM 0.37, REB 0.05, AST 0.24, STL 0.06, BLK 0.18, TO 0.16 (0.3.0 priors: 0.08 / 0.08 / 0.015 / 0.03). Makes = attempts × shifted %; PTS = 2·FGM + 3PM + FTM rescaled to projected PTS. | `engine._player_arrays` |
 | Availability | games-played share f ~ Beta(mean gp/82, sd gp_sd/82) (projections' fitted gp / gp_sd; gp_sd ≤ 0 → 12). Missed share 1-f: 75% as injury **spells** (one spell, or with prob 0.5 two spells with a U(0.2, 0.8) split; placed uniformly, non-overlapping, on the NBA-season day axis; `out`/`out_for_season` players start the season in their spell), 25% (`rest_share`) as iid one-game rests. If projections carry `playoff_mult` < 1, playoff-week games are additionally missed with prob 1 - playoff_mult. | `engine._player_arrays` |
 | Daily lineup | each day, healthy players whose NBA team plays start in order of projected value until the 10 starting slots are full. Positions ignored (2 Util slots make it rarely binding). This is a *daily* cap; a weekly "10 × game-days" cap almost never binds (13 players × ~0.5 games/day ≈ 6.5 starters/day on average) and would miss the real loss, which happens on heavy days. | `engine.run` |
 | Streaming | each team adds `min(adds_per_week × games_per_add × stream_usage, open starting slot-days)` replacement-level games per week (6 × 2 × 0.5 = 6 by default); replacement line = valuation's replacement level. Same for every team, so it mostly compresses differences and fills injured teams' holes. | `engine.run` |
-| Weekly totals | given counted games k per player: team attempts and counting stats ~ Normal(Σk·mean, Σk·(GAME_CV·mean)²) (noise drawn at team level, stream keyed by team id); makes \| attempts ~ Normal(p_team·A, binomial + mix variance); counts rounded to integers, percentages to 3 decimals (ties happen: ~3% STL/BLK, ~1% PTS). | `engine.run` |
+| Weekly totals | given counted games k per player: team attempts and counting stats ~ Normal(Σk·mean, Σk·var(mean)) with the fitted per-game variance var = a·m + b·m² (`game_var="fitted"`; `"cv"` = (GAME_CV·mean)², the 0.3.0 prior); noise drawn at team level, stream keyed by team id, correlated across stats with the fitted within-game correlation (`noise_corr`); makes \| attempts ~ Normal(p_team·A, binomial + mix variance); counts rounded to integers, percentages to 3 decimals (ties happen: ~3% STL/BLK, ~1% PTS). | `engine.run` |
 | H2H + standings | per scheduled pair, 9 category comparisons (TO lower wins), ties = 0.5. Standings by category wins + 0.5·ties (Yahoo H2H categories), random tie-break. | `engine._score` |
 | Playoffs | top 6 (`playoff_teams`) over weeks 18/19/20, byes for the top 2^rounds - n seeds (seeds 1-2). **Re-seeded after every round** (`settings.playoff_reseed`, verified yes: the top remaining seed plays the lowest; `SimParams.reseed` overrides). Winner = more categories won; category-count ties go to the higher seed (`settings.playoff_tiebreak = "higher_seed"`, verified). | `engine._playoffs` |
 
@@ -33,6 +33,9 @@ Speed (12 teams × 13 players, 20 weeks, cloud container): 500 sims 0.5 s, 2,000
 compute (default 800 sims ≈ 3-4 s), plus ~2 s CLI start-up/valuation.
 
 ## Priors to calibrate (all in `SimParams`, `src/fantasy/sim/engine.py`)
+> **Calibrated 2026-10-18 (`season-sim-0.4.0`), see `sim_calibration.md`:** season-level error, FG%/FT% shifts, game
+> variance and within-game correlation are fitted; `rest_share`/`two_spell_prob` validated (kept). Opponent/pace effects
+> were measured and are negligible for weekly team totals (≈ 0%). The table below lists the 0.3.0 priors.
 | Prior | Value | Calibrate on |
 |---|---|---|
 | `vol_sd`, `stat_sd` (season-level projection error, log scale) | 0.08, 0.08 | backtest residuals (T-010): realised per-game rate / projected, by minutes tier |
@@ -72,8 +75,9 @@ prior and the injury-spell structure — calibrate those before trusting title o
   pickups of breakout players, no IL juggling beyond "an injured player frees a starting slot".
 - Positional eligibility ignored in daily lineups (slightly optimistic usage); lineup priority uses
   season value, not matchup needs; no hot/cold streaks beyond the season-level factor.
-- Categories correlate only through shared games/availability, the season factor and PTS =
-  f(FGM, 3PM, FTM); within-game correlations (e.g. AST-TO) are ignored.
+- Categories correlate through shared games/availability, the season factor, PTS = f(FGM, 3PM, FTM) and
+  (0.4.0) the fitted within-game noise correlation (`noise_corr`). Opponent and pace effects are not modelled:
+  they explain ≈ 0% of weekly team-total variance (`sim_calibration.md` section 3).
 - Playoff weeks (18-20) and their end date (Sun 2027-03-21) are verified from the Yahoo settings page
   (2026-10-18). The dates of the *other* weeks are derived: Yahoo's 2025-26 calendar had a short week
   1 (Oct 21-26) and a two-week All-Star week 17 (Feb 9-22, 2026; RotoWire), but for 2026-27 a short
