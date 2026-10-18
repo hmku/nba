@@ -27,7 +27,7 @@ Source: [code.claude.com/docs/en/chrome](https://code.claude.com/docs/en/chrome)
 * **Tools**: exposed as an MCP server `claude-in-chrome`, tools named `mcp__claude-in-chrome__*`
   (navigate, read page/DOM, find, click, form input, screenshot, console logs, tabs, GIF recording,
   `tabs_context_mcp`, `browser_batch`, …). List them with `/mcp` → `claude-in-chrome` → View tools.
-  The project's `browser-yahoo` / `draft-live` skills should load them with one ToolSearch call.
+  The project's `yahoo-browser` / `live-draft` skills should load them with one ToolSearch call.
 * **Permissions**: per-site permissions live in the extension; the first action on a site prompts
   "Claude in Chrome wants to …" with "allow all actions on this site for the session". **Pre-approve
   `basketball.fantasysports.yahoo.com` before the draft** so no prompt blocks a 60 s clock.

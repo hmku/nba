@@ -34,8 +34,9 @@ Full detail and design trade-offs: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `src/fantasy/data/` | ingestion into `data/raw/` with provenance; `fantasy data ...` |
 | `src/fantasy/model/` | projections, G-score valuation, category-win model |
 | `src/fantasy/draft/` | draft order (3RR), ADP availability, optimizer, Monte Carlo sim, live draft state |
+| `src/fantasy/sim/` | season simulator: P(playoffs)/P(title), weekly matchups, roster-change comparison (`fantasy sim ...`) |
 | `src/fantasy/ops/` | runs/events, locks, approvals, txn ledger, tasks, policy, `status` |
-| `src/fantasy/db/` | `schema.py` (single source of truth), engine, DDL for Supabase |
+| `src/fantasy/db/` | `schema.py` (single source of truth), engine, DDL for Supabase, REST publish |
 | `supabase/migrations/` | generated from `schema.py` plus RLS policies |
 | `web/` | Next.js dashboard (App Router, TS, Tailwind) |
 | `data/manual/` | human-edited overrides: injuries, roles, rookies, ADP, positions |
@@ -63,7 +64,7 @@ or an untracked `.env`, never commit it. If you worked on SQLite, `fantasy publi
 fantasy draft init --draft-id mock-1 --mock
 export FANTASY_DRAFT_ID=mock-1
 fantasy draft recommend          # optimizer output (about 3 s)
-fantasy draft pick <overall> <player>   # record a pick; also `draft board`, `draft undo`, `draft simulate`
+fantasy draft pick <player> --overall N   # record a pick; also `draft board`, `draft undo N`, `draft simulate`
 ```
 
 **Checks:** `pytest` (offline), `ruff check src tests`.
@@ -104,7 +105,7 @@ and need tests (see the `model-eval` skill).
 ## Agents and safety
 
 Skills in [.claude/skills/](.claude/skills/): `draft-prep`, `live-draft`, `yahoo-browser`,
-`projections-update`, `model-eval`, `agent-run`, `handoff`, and `in-season-ops` (Phase 2 placeholder; most of
+`projections-update`, `model-eval`, `season-sim`, `agent-run`, `handoff`, and `in-season-ops` (Phase 2 placeholder; most of
 what it describes does not exist yet). Read-only subagents in `.claude/agents/`: `quant-reviewer`,
 `data-auditor`, `draft-shadow`.
 
@@ -123,7 +124,8 @@ Operational safety is enforced by the ops ledger (`fantasy run|lock|approval|txn
 
 The draft is Mon 2026-10-19, 10:00 PM ET. Human runbook: [docs/runbooks/live_draft.md](docs/runbooks/live_draft.md)
 (agent protocol: `live-draft` skill; day-of checklist: `draft-prep` skill). It needs a **local** Claude Code
-session with Claude in Chrome (`claude --chrome`); cloud sessions cannot reach Yahoo or NBA sites.
+session with Claude in Chrome (`claude --chrome`); cloud sessions have no browser and cannot drive Yahoo
+(some read-only data endpoints are reachable from the cloud; see `docs/STATUS.md`, Known limitations).
 
 Yahoo's API is **application-only since 2026** (manual approval, weeks of lead time) and **read-only**; there is
 no write access. The OAuth client exists (`fantasy settings yahoo-auth`) but is untested against live Yahoo.
