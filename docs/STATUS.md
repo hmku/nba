@@ -7,7 +7,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 
 | Area | State |
 |---|---|
-| Projections | v1: 450 players, 3-season weighted per-minute rates + age + GP shrinkage + ~95 manual offseason/injury overrides + 11 rookie priors (`data/processed/projections_2026_27.csv`). ADP for only ~50 players; positions medium confidence. |
+| Projections | v1: 450 players, 3-season weighted per-minute rates + age + GP shrinkage + ~95 manual offseason/injury overrides + 11 rookie priors (`data/processed/projections_2026_27.csv`). ADP for only ~50 players; positions medium confidence. Direct-source refresh attempted 2026-10-18 but all of bbref/nba.com/Yahoo/injury/ADP hosts still 403 at the egress gateway (see `docs/handoffs/2026-10-18-data-refresh.md`). |
 | Valuation | G-scores (H2H-aware) with makes/attempts for FG%/FT%, availability blended with streaming replacement, replacement-level adjusted. |
 | Draft optimizer | Rollout optimizer over the final roster's expected category wins vs league-average opponent; ADP availability model; 3RR/custom order; positional feasibility; punt-strategy scan; Monte Carlo sim vs BPA baseline. ≈3 s/recommendation. |
 | Draft ops | `draft init/board/pick/undo/recommend/watch/simulate/queue/set-order/prepare-pick/confirm-pick`; txn ledger + locks + policy enforced for picks. |
