@@ -29,8 +29,10 @@ numbers for everyone else):
    and percentages to 3 decimals, so ties happen (ties count 0.5).
 6. H2H: per week each scheduled pair compares the 9 categories (TO: lower wins). Standings rank by
    category wins + 0.5 * ties (Yahoo H2H categories), random tie-break. Top `playoff_teams` make a
-   fixed bracket (no reseeding; top seeds get byes when the bracket is not full); a playoff matchup
-   is won by winning more categories, a tie goes to the higher seed.
+   bracket (top seeds get byes when the bracket is not full); with `settings.playoff_reseed` (league
+   44495: yes) the survivors are re-seeded after every round so the top remaining seed plays the
+   lowest. A playoff matchup is won by winning more categories; a tie goes to the higher seed
+   (`settings.playoff_tiebreak = "higher_seed"`).
 """
 
 from __future__ import annotations
@@ -76,7 +78,7 @@ class SimParams:
     # playoffs
     playoff_teams: int | None = None  # default: settings.playoff_teams
     playoff_weeks: list[int] | None = None  # default: settings.playoff_weeks
-    reseed: bool = False
+    reseed: bool | None = None  # default: settings.playoff_reseed
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -161,6 +163,9 @@ class SeasonSimulator:
         self.stream_cap = adds * self.p.games_per_add * self.p.stream_usage if self.p.streaming else 0.0
         self.playoff_weeks = list(self.p.playoff_weeks or settings.playoff_weeks)
         self.playoff_teams = int(self.p.playoff_teams or settings.playoff_teams)
+        self.reseed = settings.playoff_reseed if self.p.reseed is None else bool(self.p.reseed)
+        if settings.playoff_tiebreak != "higher_seed":
+            raise NotImplementedError(f"playoff tiebreak {settings.playoff_tiebreak!r}")
         first_po = min(self.playoff_weeks)
         self.regular_weeks = [w.week for w in calendar if w.week < first_po]
         # day axes: NBA-season timeline (for spells) and fantasy days (for lineups)
@@ -373,7 +378,7 @@ class SeasonSimulator:
         champ, runner = self._playoffs(totals, order[:, :n_po], week_pos)
         return SimResult(
             params={**self.p.to_dict(), "active": self.active, "stream_cap_games_per_week": self.stream_cap,
-                    "playoff_teams": n_po, "playoff_weeks": self.playoff_weeks},
+                    "playoff_teams": n_po, "playoff_weeks": self.playoff_weeks, "reseed": self.reseed},
             team_ids=list(team_ids), weeks=self.calendar, regular_weeks=self.regular_weeks,
             playoff_weeks=self.playoff_weeks, cats=[c.key for c in self.cats], totals=totals, games=games,
             stream_games=streams, cat_wins=wins, cat_losses=losses, rank=rank, playoff=playoff,
@@ -382,7 +387,9 @@ class SeasonSimulator:
         )
 
     def _playoffs(self, totals: np.ndarray, seeds: np.ndarray, week_pos: dict[int, int]) -> tuple[np.ndarray, np.ndarray]:
-        """seeds: (N, n) team index by seed. Fixed bracket; top seeds get byes. Returns (champion, runner-up)."""
+        """seeds: (N, n) team index by seed. Top seeds get byes; after each round the survivors are
+        re-seeded (top remaining seed vs lowest) if `self.reseed`, else the bracket is fixed. Category-count
+        ties go to the higher seed. Returns (champion, runner-up)."""
         N, n = seeds.shape
         rounds = max(1, math.ceil(math.log2(max(n, 2))))
         weeks = [w for w in sorted(self.playoff_weeks) if w in week_pos][:rounds]
@@ -409,7 +416,7 @@ class SeasonSimulator:
                 runner = np.where(a_adv[:, 0], b_t[:, 0], a_t[:, 0])
             team = np.where(a_adv, a_t, b_t)
             seed = np.where(a_adv, a_s, b_s)
-            if self.p.reseed and team.shape[1] > 1:
+            if self.reseed and team.shape[1] > 1:
                 srt_t = np.take_along_axis(team, np.argsort(seed, axis=1), 1)
                 srt_s = np.take_along_axis(seed, np.argsort(seed, axis=1), 1)
                 p = np.array(bracket_positions(team.shape[1])) - 1

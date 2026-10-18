@@ -4,4 +4,5 @@ per week, availability spells, weekly scoring with a daily lineup cap, standings
 See docs/research/season_simulator.md for the model and its priors.
 """
 
-SIM_VERSION = "season-sim-0.1.0"
+# 0.2.0: playoff reseeding + higher-seed tiebreak from settings; week calendar fitted to settings.playoff_end_date
+SIM_VERSION = "season-sim-0.2.0"

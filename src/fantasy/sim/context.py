@@ -13,11 +13,13 @@ from fantasy.model.lines import ProjectionSet
 from fantasy.model.valuation import ValuationParams, compute_values, market_order
 from fantasy.sim.engine import SeasonSimulator, SimParams
 from fantasy.sim.schedule import (
+    ALLSTAR_BREAK_GUESS,
     FantasyWeek,
     MatchupSchedule,
     NBASchedule,
     allstar_break,
     build_calendar,
+    fit_week1_end,
     load_schedule_json,
     round_robin,
     season_schedule,
@@ -72,8 +74,19 @@ def build_context(
         if max(w.week for w in calendar) < last_week:
             raise ValueError(f"schedule file calendar ends at week {max(w.week for w in calendar)} < {last_week}")
     else:
-        merge = allstar_break(nba) if merge_allstar and not nba.is_uniform else None
+        merge = None
+        if merge_allstar:
+            merge = ALLSTAR_BREAK_GUESS if nba.is_uniform else allstar_break(nba)
+        basis = f"week 1 ends {week1_end} (given)" if week1_end else "short week 1"
+        po_end = date.fromisoformat(settings.playoff_end_date) if settings.playoff_end_date else None
+        if week1_end is None and po_end is not None and last_week == max(settings.playoff_weeks):
+            # Yahoo settings page gives the end of the last playoff week; fit week 1's length to it
+            week1_end = fit_week1_end(last_week, po_end, start=nba.first_day, merge=merge)
+            basis = (f"week 1 = {nba.first_day}..{week1_end} fitted so week {last_week} ends {po_end} "
+                     f"(settings.playoff_end_date), All-Star break merge "
+                     + (f"{merge[0]}..{merge[1]}" if merge else "off"))
         calendar = build_calendar(last_week, start=nba.first_day, week1_end=week1_end, merge=merge)
+        warnings.append(f"Week dates derived (assumption until Yahoo's schedule is loaded with --schedule): {basis}.")
     first_po = min(playoff_weeks or settings.playoff_weeks)
     regular = [w.week for w in calendar if w.week < first_po]
     if matchups is None or not matchups.weeks:
@@ -85,7 +98,7 @@ def build_context(
         errs.append(f"no matchups for regular-season weeks {missing}")
     if errs:
         raise ValueError("invalid matchup schedule: " + "; ".join(errs))
-    if not settings.verified.get("playoff_weeks"):
+    if not (settings.verified.get("playoff_weeks") and settings.verified.get("playoff_end_date")):
         warnings.append(
             f"Playoff weeks {list(playoff_weeks or settings.playoff_weeks)} and the week calendar are unverified "
             f"(weeks {calendar[0].start}..{calendar[-1].end}); load Yahoo's schedule with --schedule after the draft.")

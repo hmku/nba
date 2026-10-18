@@ -15,6 +15,7 @@ from fantasy.sim.schedule import (
     allstar_break,
     build_calendar,
     fill_tbd_games,
+    fit_week1_end,
     load_schedule_json,
     parse_bbref_month,
     round_robin,
@@ -71,6 +72,33 @@ def test_calendar_week1_and_allstar_merge():
     assert merged[-1].week == 20
     longw1 = build_calendar(3, start=date(2026, 10, 20), week1_end=date(2026, 11, 1))
     assert longw1[1].start == date(2026, 11, 2)
+
+
+def test_calendar_fitted_to_playoff_end_date():
+    """Yahoo settings: weeks 18-20 end Sun 2027-03-21. With Mon-Sun weeks and the All-Star merge that
+    requires a two-week week 1 (Oct 20 - Nov 1) and puts the playoffs on Mar 1-7, 8-14, 15-21."""
+    asb = (date(2027, 2, 19), date(2027, 2, 24))
+    w1 = fit_week1_end(20, date(2027, 3, 21), start=date(2026, 10, 20), merge=asb)
+    assert w1 == date(2026, 11, 1)
+    cal = build_calendar(20, start=date(2026, 10, 20), week1_end=w1, merge=asb)
+    assert [(w.start, w.end) for w in cal[17:]] == [
+        (date(2027, 3, 1), date(2027, 3, 7)), (date(2027, 3, 8), date(2027, 3, 14)),
+        (date(2027, 3, 15), date(2027, 3, 21))]
+    assert cal[16].start == date(2027, 2, 15) and cal[16].end == date(2027, 2, 28)  # All-Star week 17
+    # without the All-Star merge week 1 would have to absorb three weeks
+    assert fit_week1_end(20, date(2027, 3, 21), start=date(2026, 10, 20)) == date(2026, 11, 8)
+    with pytest.raises(ValueError):
+        fit_week1_end(20, date(2027, 3, 20), start=date(2026, 10, 20), merge=asb)  # not a Sunday
+    with pytest.raises(ValueError):
+        fit_week1_end(20, date(2027, 2, 28), start=date(2026, 10, 20), merge=asb)  # too early
+
+
+def test_context_calendar_follows_settings(ctx):
+    assert ctx.calendar[-1].end == date(2027, 3, 21) and ctx.calendar[-1].week == 20
+    assert ctx.calendar[17].start == date(2027, 3, 1)
+    s = LeagueSettings(playoff_end_date="2027-03-28")
+    c2 = build_context(ctx.proj, s, TEAMS, nba=ctx.nba)
+    assert c2.calendar[-1].end == date(2027, 3, 28) and c2.calendar[0].end == date(2026, 11, 8)
 
 
 def test_uniform_schedule_is_3_5_games_per_week():
@@ -269,6 +297,35 @@ def test_bracket_and_playoffs(ctx):
     flat = np.zeros_like(totals)
     champ3, runner3 = sim._playoffs(flat, seeds, week_pos)
     assert (champ3 == 0).all() and (runner3 == 1).all()
+
+
+def test_playoff_reseeding(ctx):
+    """Seeds 1..6 = teams 0..5. Week 18: 4 beats 5, 6 beats 3. Week 19 strengths: seed 1 beats seed 6
+    but loses to seed 4. Re-seeded (league setting): 1 v 6 and 2 v 4 -> seed 1 survives; fixed
+    bracket: 1 v 4 -> seed 1 is out."""
+    W, T = len(ctx.calendar), 12
+    week_pos = {w.week: i for i, w in enumerate(ctx.calendar)}
+    seeds = np.tile(np.arange(6), (2, 1))
+    sim = ctx.simulator(_params(n_sims=2))
+    tov = [c.key for c in sim.cats].index("tov")
+    totals = np.zeros((2, W, T, len(sim.cats)), dtype=np.float32)
+
+    def set_week(week, strength):  # strength by team index; higher = better in every category
+        st = np.asarray(strength, dtype=np.float32)
+        full = np.zeros(T, dtype=np.float32)
+        full[: len(st)] = st
+        totals[:, week_pos[week]] = full[None, :, None]
+        totals[:, week_pos[week], :, tov] = -full[None, :]
+
+    set_week(18, [9, 9, 1, 5, 2, 8])  # 4 (idx 3) beats 5; 6 (idx 5) beats 3
+    set_week(19, [5, 1, 0, 9, 0, 2])  # seed 1 > seed 6, seed 1 < seed 4, seed 4 > seed 2
+    set_week(20, [5, 1, 0, 3, 0, 2])
+    assert sim.reseed is True  # LeagueSettings default (verified: reseeding yes)
+    champ, runner = sim._playoffs(totals, seeds, week_pos)
+    assert (champ == 0).all() and (runner == 3).all()  # final: seed 1 v seed 4 in week 20
+    fixed = ctx.simulator(_params(n_sims=2, reseed=False))
+    champ_f, _ = fixed._playoffs(totals, seeds, week_pos)
+    assert (champ_f == 3).all()  # seed 1 eliminated by seed 4 in week 19
 
 
 def test_report_outputs(ctx):

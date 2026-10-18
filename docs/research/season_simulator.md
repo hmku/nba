@@ -1,4 +1,4 @@
-# Season simulator (`fantasy sim`, `season-sim-0.1.0`)
+# Season simulator (`fantasy sim`, `season-sim-0.2.0`)
 
 League-aware Monte Carlo of the whole Yahoo H2H 9-cat season: every team's actual roster, the H2H
 matchup schedule, NBA games per team per day, injuries as absence spells, a daily lineup cap,
@@ -13,7 +13,7 @@ streaming, standings and the playoff bracket. Code: `src/fantasy/sim/` (`engine.
 |---|---|---|
 | Rosters | team id → player ids, from `draft_picks.team_slot` (works mid-draft) or a JSON file (Yahoo sync). Mid-draft: `--complete-rosters` fills remaining picks with *expected* picks (others: noisy market/ADP order, sd = `availability.adp_sd`, keeping the starting lineup fillable; mine: market or the optimizer's plan). Labelled `projected_players`. | `league.py` |
 | NBA schedule | 2026-27 regular season from basketball-reference (1,200 dated games = 80/team; the 2 NBA-Cup-dependent games per team are "TBD" and are placed on the empty Dec 4-11 window, alternating days). Fallback: every team plays every other day (3.5/week) with a warning. | `schedule.py` |
-| Calendar | Week 1 = opening night (Tue 2026-10-20) .. first Sunday (or `--week1-end`); then Mon-Sun. The All-Star break (Feb 19-24, 2027, detected from the schedule) merges the two weeks it touches into one long week (Yahoo practice; `--no-merge-allstar`). Regular season = weeks before the first playoff week. JSON (`--schedule`) can give explicit week dates. | `schedule.py` |
+| Calendar | Mon-Sun weeks; week 1 starts on opening night (Tue 2026-10-20). The All-Star break (Feb 19-24, 2027, detected from the schedule; `ALLSTAR_BREAK_GUESS` for the synthetic fallback) merges the two weeks it touches into one long week (Yahoo practice; `--no-merge-allstar`). Week 1's length is **fitted to `settings.playoff_end_date`** (Yahoo settings page, verified: weeks 18-20 end Sun 2027-03-21): that needs a two-week week 1 (Oct 20 - Nov 1), so week 17 = Feb 15-28 (All-Star) and playoffs = Mar 1-7, 8-14, 15-21 (`fit_week1_end`; `--week1-end` overrides). Regular season = weeks before the first playoff week. JSON (`--schedule`) can give explicit week dates. | `schedule.py`, `context.py` |
 | Matchups | Circle-method round robin for weeks 1-17 (11-round cycle, repeated for weeks 12-17), or Yahoo's schedule from JSON. | `schedule.py` |
 | Season-level projection error | per player-sim: volume factor `exp(N(0, vol_sd=0.08))` on all counting stats + attempts; per-stat factor `exp(N(0, stat_sd=0.08))` on FGA, FTA, 3PM, REB, AST, STL, BLK, TO; additive FG% shift N(0, 0.015), FT% shift N(0, 0.03). Makes = attempts × shifted %; PTS = 2·FGM + 3PM + FTM rescaled to projected PTS. | `engine._player_arrays` |
 | Availability | games-played share f ~ Beta(mean gp/82, sd gp_sd/82) (projections' fitted gp / gp_sd; gp_sd ≤ 0 → 12). Missed share 1-f: 75% as injury **spells** (one spell, or with prob 0.5 two spells with a U(0.2, 0.8) split; placed uniformly, non-overlapping, on the NBA-season day axis; `out`/`out_for_season` players start the season in their spell), 25% (`rest_share`) as iid one-game rests. If projections carry `playoff_mult` < 1, playoff-week games are additionally missed with prob 1 - playoff_mult. | `engine._player_arrays` |
@@ -21,7 +21,7 @@ streaming, standings and the playoff bracket. Code: `src/fantasy/sim/` (`engine.
 | Streaming | each team adds `min(adds_per_week × games_per_add × stream_usage, open starting slot-days)` replacement-level games per week (6 × 2 × 0.5 = 6 by default); replacement line = valuation's replacement level. Same for every team, so it mostly compresses differences and fills injured teams' holes. | `engine.run` |
 | Weekly totals | given counted games k per player: team attempts and counting stats ~ Normal(Σk·mean, Σk·(GAME_CV·mean)²) (noise drawn at team level, stream keyed by team id); makes \| attempts ~ Normal(p_team·A, binomial + mix variance); counts rounded to integers, percentages to 3 decimals (ties happen: ~3% STL/BLK, ~1% PTS). | `engine.run` |
 | H2H + standings | per scheduled pair, 9 category comparisons (TO lower wins), ties = 0.5. Standings by category wins + 0.5·ties (Yahoo H2H categories), random tie-break. | `engine._score` |
-| Playoffs | top 6 (`playoff_teams`), fixed bracket without reseeding (`reseed` param exists), byes for the top 2^rounds - n seeds (6 teams over weeks 18/19/20 → seeds 1-2 bye). Winner = more categories won; category-count ties go to the higher seed. | `engine._playoffs` |
+| Playoffs | top 6 (`playoff_teams`) over weeks 18/19/20, byes for the top 2^rounds - n seeds (seeds 1-2). **Re-seeded after every round** (`settings.playoff_reseed`, verified yes: the top remaining seed plays the lowest; `SimParams.reseed` overrides). Winner = more categories won; category-count ties go to the higher seed (`settings.playoff_tiebreak = "higher_seed"`, verified). | `engine._playoffs` |
 
 Determinism: all randomness comes from `np.random.default_rng([seed, key])` with `key` = hash(player
 id) for player draws and team id for weekly noise, so a run is reproducible given the seed and a roster
@@ -72,9 +72,14 @@ prior and the injury-spell structure — calibrate those before trusting title o
   season value, not matchup needs; no hot/cold streaks beyond the season-level factor.
 - Categories correlate only through shared games/availability, the season factor and PTS =
   f(FGM, 3PM, FTM); within-game correlations (e.g. AST-TO) are ignored.
-- Calendar and playoff weeks are **unverified**: default weeks put playoffs (18-20) at
-  Feb 15-Mar 14, 2027, whereas `model/availability.py` assumes they end a week before the NBA season
-  (≈ Mar 15-Apr 4). Load Yahoo's actual week dates + matchups with `--schedule` after the draft.
+- Playoff weeks (18-20) and their end date (Sun 2027-03-21) are verified from the Yahoo settings page
+  (2026-10-18). The dates of the *other* weeks are derived: Yahoo's 2025-26 calendar had a short week
+  1 (Oct 21-26) and a two-week All-Star week 17 (Feb 9-22, 2026; RotoWire), but for 2026-27 a short
+  week 1 plus the All-Star merge would end week 20 on Mar 14, so the verified Mar 21 implies one more
+  merged week; we assume it is week 1 (Oct 20 - Nov 1). Only the week-1 length and the regular-season
+  week boundaries depend on that assumption; weeks 18-20 = Mar 1-7, 8-14, 15-21 do not (provided the
+  extra merge is before March). Load Yahoo's actual week dates + matchups with `--schedule` after the
+  draft. NBA games after Mar 21 (Mar 22 - Apr 11) do not count in this league.
 - Team ids are draft slots; Yahoo team ids differ — the league/schedule JSON must use one consistent id set.
 - Mid-draft completion uses a single noisy market order per completion; `draft-check` averages 4
   completions (one completion produced a spurious +5.8 pp "edge" in testing that vanished with 4).

@@ -5,7 +5,10 @@
   sidecar. If no cache exists the simulator falls back to a synthetic schedule in which every team
   plays every other day (3.5 games per 7 days; teams alternate offsets) and says so.
 * Fantasy calendar: Yahoo weeks run Monday-Sunday; week 1 starts on the NBA opening day and ends on
-  the first Sunday (or `week1_end` for a long week 1). Week dates can be overridden from JSON.
+  the first Sunday (or `week1_end` for a long week 1); the All-Star break weeks merge into one long
+  week. `fit_week1_end` picks the week-1 length so that the last playoff week ends on the league's
+  playoff end date (Yahoo settings page: weeks 18-20 end Sun 2027-03-21, which with the All-Star merge
+  implies a two-week week 1, Oct 20 - Nov 1). Week dates can be overridden from JSON.
 * Matchup schedule: circle-method round robin over the regular-season weeks (each team plays exactly
   once per week; with 12 teams and 17 weeks the 11-round cycle repeats for weeks 12-17), or Yahoo's
   actual schedule from JSON.
@@ -35,6 +38,8 @@ from fantasy.data.provenance import RAW_DIR, read_provenance, sha256_file, write
 SEASON_END_YEAR = 2027
 NBA_OPENING_DAY = date(2026, 10, 20)
 NBA_LAST_DAY_GUESS = date(2027, 4, 11)  # used only by the synthetic fallback
+# All-Star break of the 2026-27 bbref schedule (zero-game days); used when the schedule is synthetic
+ALLSTAR_BREAK_GUESS = (date(2027, 2, 19), date(2027, 2, 24))
 BBREF_MONTHS = ["october", "november", "december", "january", "february", "march", "april"]
 CACHE_DIR = RAW_DIR / "bbref_schedule"
 UA = "Mozilla/5.0 (fantasy-nba research; low-volume schedule fetch)"
@@ -255,6 +260,24 @@ def build_calendar(
         if len(hit) > 1:
             spans = spans[: hit[0]] + [(spans[hit[0]][0], spans[hit[-1]][1])] + spans[hit[-1] + 1 :]
     return [FantasyWeek(w + 1, a, b) for w, (a, b) in enumerate(spans[:n_weeks])]
+
+
+def fit_week1_end(
+    n_weeks: int, last_end: date, start: date = NBA_OPENING_DAY, merge: tuple[date, date] | None = None,
+) -> date:
+    """Last day of week 1 such that week `n_weeks` ends on `last_end` (a Sunday).
+
+    Yahoo absorbs whole extra weeks into week 1 when the season starts mid-week (e.g. 2026-27: weeks
+    18-20 end Sun 2027-03-21; with Mon-Sun weeks and the All-Star merge this needs week 1 =
+    Oct 20 - Nov 1). Raises if no Monday-Sunday calendar can end on `last_end`."""
+    if last_end.weekday() != 6:
+        raise ValueError(f"playoff end date {last_end} is not a Sunday")
+    short_end = start + timedelta(days=(6 - start.weekday()) % 7)
+    end = build_calendar(n_weeks, start=start, week1_end=short_end, merge=merge)[-1].end
+    gap = (last_end - end).days
+    if gap < 0:
+        raise ValueError(f"week {n_weeks} cannot end on {last_end}: even a short week 1 ends it on {end}")
+    return short_end + timedelta(days=gap)
 
 
 # ---------------------------------------------------------------- H2H matchups
