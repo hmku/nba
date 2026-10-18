@@ -65,15 +65,19 @@ Note: players can also be unmatched because they fell outside the 450-row cut (e
 Commit the manual CSVs + `data/processed/*` (handoff skill) so the dashboard and others see them.
 
 ## 3. Verify league settings (T-001)
-In the browser open the league Settings page and compare with `fantasy settings show --json`
-(`categories`, `roster_slots`, `num_teams`, `scoring_type`, `draft_order_type`, `my_slot`,
-`seconds_per_pick`, `draft_datetime`). Log the observed values as an `observation` event.
-- All match: `fantasy settings verify categories roster_slots num_teams scoring_type draft_order_type my_slot --source browser --json`
-  (writes `data/manual/league_settings.json`; `unverified` should become `[]`; commit that file).
-- Something differs: create the file if needed
-  `python -c "from fantasy.league.settings import load_settings, save_settings; print(save_settings(load_settings()))"`,
-  edit the values in `data/manual/league_settings.json`, then `verify` the fields, rebuild values
-  (step 5) and **tell the user** (it changes the model). Drafted rounds = non-IL roster slots (13 expected).
+**Mostly done (2026-10-18):** the Yahoo league Settings page (user's screenshots) is recorded in
+`data/manual/league_settings.json` (source `yahoo_settings_screenshot`): 12 teams, H2H categories,
+the 9 categories, roster PG/SG/G/SF/PF/F/C/C/Util/Util + 3 BN + **3 IL** (13 drafted rounds), live
+standard draft Mon 2026-10-19 22:00 ET with a 60 s clock, 6 adds/week (no season cap), trades until
+2027-03-04 (commissioner review, no draft-pick trades), waivers 2 days continual rolling, daily
+lineups (today), playoffs 6 teams weeks 18-20 ending Sun 2027-03-21, re-seeded, ties to the higher seed.
+`fantasy settings show --json` → `unverified` should be exactly `["draft_order_type", "my_slot"]`.
+Remaining: the **draft order / 3RR and my slot** are not on the settings page — confirm them on the
+Draft Order page / draft room (step 4), then
+`fantasy settings verify draft_order_type my_slot --source browser --json` and commit the file.
+If anything on the Settings page differs from the file: edit the values in
+`data/manual/league_settings.json`, `verify` the fields, rebuild values (step 5) and **tell the user**
+(it changes the model). Drafted rounds = non-IL roster slots (13 expected).
 - Do this **before** `fantasy draft init` for the real draft: a draft record snapshots num_teams/slot/order.
 
 ## 4. Record the ACTUAL draft order (T-015)
