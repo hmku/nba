@@ -27,6 +27,7 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 | 5 | duplicate txn (JSON has `existing`) | inspect `existing.status`; never re-plan to dodge it |
 | 6 | not found | check ids |
 | 7 | invalid state transition / run not running / approval already decided | re-read state (`txn show`, `run show`) |
+| 8 | still pending: `approval show --wait N` timed out with the approval still `pending` | keep waiting or stop; do NOT act |
 
 ## 1. Orient
 ```bash
@@ -57,9 +58,9 @@ fantasy lock renew <resource> --ttl <s>       # before the TTL runs out
 fantasy lock show --json                      # all held locks (+ --all for expired)
 fantasy lock release <resource> --json        # holder only (uses FANTASY_RUN_ID)
 ```
-- **`fantasy run end` does NOT release locks** (verified 2026-10-18). Release every lock you hold
-  *before* ending the run, otherwise it blocks others until the TTL expires. The holder can still
-  release after ending: `fantasy lock release <res> --run-id <ended_run_id>`.
+- **`fantasy run end` releases every lock the run still holds** (any end status, expired leases too)
+  and lists them in `released_locks`. Releasing explicitly as soon as you no longer need a lock is
+  still good practice (e.g. `yahoo:browser` after the browser work, before a long analysis).
 - `lock release --force` is a HUMAN override. Only use it when the user tells you to, or when the
   holder is provably your own dead run (same machine, `run show` says ended/abandoned) - and log a note.
 
@@ -85,8 +86,9 @@ fantasy approval request <drop|add_drop|trade|other> "summary" --payload '{...}'
 fantasy approval list [--status pending|approved|rejected|expired|all] --json
 fantasy approval show <apr_id> --wait 300 --json
 ```
-- `approval show --wait N` returns **exit 0 even if still pending** after N seconds: read
-  `approval.status` (`pending|approved|rejected|expired`). Default expiry 6 h.
+- `approval show --wait N` exits **8** (`"error": "still_pending"`, approval included) if it is still
+  pending after N seconds; exit 0 once decided - then read `approval.status`
+  (`approved|rejected|expired`). Without `--wait` it always exits 0. Default expiry 6 h.
 - `fantasy txn plan` files the approval for you when policy requires it - don't request twice.
 - **Never run `fantasy approval decide` yourself** - that is the human's action (dashboard
   `/approvals` or they type it). `.claude/settings.json` makes it prompt.
@@ -133,13 +135,14 @@ fantasy run event verification "..."
 4. `txns_awaiting_approval` from the dead run: if still wanted, keep waiting (any run may submit it);
    otherwise `txn mark <id> cancelled`.
 5. Locks held by the dead run: wait for `expires_at`, or ask the user to approve a `--force` release.
+   If the dead run is provably yours, `fantasy run end --run-id <dead_run> --status failed` releases its locks.
 6. `fantasy run reap --stale-minutes 15 --json` marks silent runs `abandoned` (does not release locks).
 7. Log what you found and did (`run event note`), then continue normally.
 
 ## 8. End the run
 ```bash
-fantasy lock release <each resource you hold> --json
 fantasy run end --status succeeded|failed|abandoned --summary "<1-3 sentences>" --json
+#   -> {"run": {...}, "released_locks": ["draft:...", "yahoo:browser"]}  (all locks it held)
 unset FANTASY_RUN_ID
 ```
 Then the `handoff` skill (note, STATUS.md, tasks, commit+push).

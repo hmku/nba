@@ -87,4 +87,4 @@ Commissioner-only pages (Edit Draft Order etc.) are not ours to change.
   report to the user with what you saw; switch to manual mode for time-critical tasks (draft).
 - Something changed that you didn't intend: stop all writes, record an `error` event with what you
   observed, tell the user immediately, mark the txn `failed` (with evidence) if one was involved.
-- At the end: `fantasy lock release yahoo:browser --json` (run end does not release locks).
+- At the end: `fantasy lock release yahoo:browser --json` (`run end` also releases it, but free the browser as soon as you are done).

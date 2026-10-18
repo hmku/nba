@@ -43,7 +43,7 @@ skill or runbook should replace this placeholder; update this file.
   export FANTASY_RUN_ID=$(fantasy run start --agent season-ops --task "..." --mode live)  # only if user authorised live
   fantasy lock acquire yahoo:roster --ttl 300 --purpose "add X drop Y" --json
   fantasy txn plan add_drop --payload '{"add":"<player_id>","drop":"<player_id>","faab":null}' --summary "Add X / drop Y: <why, numbers>" --json
-  fantasy approval show <approval_id> --wait 600 --json    # exit 0 even if still pending: read approval.status
+  fantasy approval show <approval_id> --wait 600 --json    # exit 8 if still pending; exit 0 -> read approval.status
   ```
   Then the txn recipe in the `agent-run` skill (mark submitted -> act -> verify on the transactions
   page -> mark verified). The approval summary must state the expected category impact and the

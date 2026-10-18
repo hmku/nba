@@ -32,7 +32,7 @@ fantasy run event observation "pick 14 taken: X" --payload '{"pick":14}'
 fantasy run decision draft_pick --model '[{"player_id":"a"},{"player_id":"b"}]' \
     --choice '{"player_id":"b"}' --rationale "need blocks"     # agrees_with_model computed
 fantasy run heartbeat        # at least every ~5 min; runs silent > 15 min are "stale"
-fantasy run end --status succeeded --summary "..."
+fantasy run end --status succeeded --summary "..."   # also releases all locks the run holds (released_locks)
 ```
 - Event kinds: observation, command, model_output, decision, browser_action, verification, error, note.
 - `mode=dry_run` (default) can never submit a transaction. Use `--mode live` only when the human
@@ -69,7 +69,7 @@ Policy (`fantasy.ops.policy.check_action_allowed(kind, run_mode, approval_status
 
 ```bash
 fantasy approval list [--status pending|approved|rejected|expired|all]
-fantasy approval show <id> [--wait 300]        # poll while pending
+fantasy approval show <id> [--wait 300]        # poll while pending; exit 8 if still pending
 fantasy approval decide <id> --approve|--reject --by harry [--note ...]   # exit 7 if not pending
 fantasy approval request other "summary" --payload '{...}' [--expires-in 3600]
 ```
