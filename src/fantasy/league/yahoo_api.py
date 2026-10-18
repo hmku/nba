@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2"
 AUTH_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
-DEFAULT_REDIRECT_URI = "oob"
+DEFAULT_REDIRECT_URI = "https://localhost:8080"  # Yahoo dropped `oob` for new apps (2026)
 DEFAULT_TOKEN_PATH = Path("~/.config/fantasy/yahoo_oauth.json")
 
 # Yahoo NBA stat_id -> our internal category code (projection CSV column names).

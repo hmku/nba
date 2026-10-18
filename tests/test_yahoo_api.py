@@ -291,7 +291,7 @@ def test_run_interactive_auth_saves_tokens(tmp_path):
         assert body == {
             "grant_type": "authorization_code",
             "code": "thecode",
-            "redirect_uri": "oob",
+            "redirect_uri": "https%3A%2F%2Flocalhost%3A8080",  # new default (oob dropped by Yahoo)
         }
         return httpx.Response(200, json=load("token_response.json"))
 

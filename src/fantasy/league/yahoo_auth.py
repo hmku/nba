@@ -6,9 +6,10 @@ Usage:  ``fantasy settings yahoo-auth``  (or ``python -m fantasy.league.yahoo_au
    Redirect URI ``https://localhost:8080`` (Yahoo requires an https URI to register), API
    permissions "Fantasy Sports" -> Read (Read/Write only if write ops are ever enabled).
 2. Run this command; paste Client ID / Secret (or export YAHOO_CLIENT_ID / YAHOO_CLIENT_SECRET).
-3. Approve in the browser. With redirect ``oob`` Yahoo shows a code on the page; with
-   ``https://localhost:8080`` the browser lands on a dead page whose URL contains ``?code=...``.
-   Paste either the code or the full URL.
+3. Approve in the browser. With the default redirect ``https://localhost:8080`` the browser lands
+   on a dead page whose URL contains ``?code=...``; paste the full URL (or just the code). Legacy
+   apps registered with ``oob`` can pass ``--redirect-uri oob`` (Yahoo then shows the code on the page;
+   ``oob`` no longer works for new apps).
 
 Tokens are written to ``~/.config/fantasy/yahoo_oauth.json`` (mode 0600) and never printed.
 """
