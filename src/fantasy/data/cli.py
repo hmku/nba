@@ -44,6 +44,24 @@ def fetch_bbref(as_json: bool = typer.Option(False, "--json")) -> None:
     _emit({"fetched": fetch()}, as_json)
 
 
+@app.command("fetch-yahoo")
+def fetch_yahoo(
+    n: int = typer.Option(300, help="players to fetch, in Yahoo ADP order"),
+    apply: bool = typer.Option(False, "--apply", help="rewrite ADP + positions manual files"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Fetch Yahoo's public draft analysis (ADP, eligibility, injury status) into data/raw/."""
+    from fantasy.data.yahoo_public import fetch, parse, update_manual
+
+    prov = fetch(n=n)
+    out: dict = {"fetched": prov}
+    if apply:
+        from fantasy.data.provenance import REPO_ROOT
+
+        out["applied"] = update_manual(parse(REPO_ROOT / prov["path"]), prov["fetched_at"])
+    _emit(out, as_json)
+
+
 @app.command("fetch-nba-api")
 def fetch_nba_api(
     seasons: str = typer.Option("2025-26,2024-25,2023-24", help="comma-separated NBA seasons"),

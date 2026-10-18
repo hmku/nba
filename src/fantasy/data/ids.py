@@ -24,6 +24,8 @@ _TRANSLIT = str.maketrans(
         "œ": "oe",
         "Œ": "OE",
         "ı": "i",
+        "ё": "e",  # Cyrillic (bbref spells Egor Dёmin with U+0451)
+        "е": "e",
     }
 )
 
@@ -65,6 +67,8 @@ ALIASES: dict[str, str] = {
     "jimmy-butler-iii": "jimmy-butler",
     "moe-wagner": "moritz-wagner",
     "pj-washington-jr": "pj-washington",
+    "bobby-portis-jr": "bobby-portis",
+    "robert-williams-iii": "robert-williams",
 }
 
 

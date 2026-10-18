@@ -1,53 +1,307 @@
-# Yahoo ADP observations gathered 2026-10-18 via WebSearch snippets (NOT a full Yahoo ADP export).
-# Values come from different dates (Oct 4-17) and outlets; medium confidence. Blank ADP = unknown.
-name,adp,source,as_of
-Nikola Jokić,1.4,slamdex.com/tools/adp (Yahoo column),2026-10
-Victor Wembanyama,1.9,slamdex.com/tools/adp (Yahoo column),2026-10
-Luka Dončić,3.4,slamdex.com/tools/adp (Yahoo column),2026-10
-Shai Gilgeous-Alexander,4.1,slamdex.com/tools/adp (Yahoo column),2026-10
-Cade Cunningham,5.9,slamdex.com/tools/adp (Yahoo column),2026-10
-Giannis Antetokounmpo,6.4,slamdex.com/tools/adp (Yahoo column),2026-10
-Anthony Edwards,7.7,slamdex.com/tools/adp (Yahoo column),2026-10
-Jayson Tatum,8.4,slamdex.com/tools/adp (Yahoo column),2026-10
-Jalen Johnson,12.3,slamdex.com/tools/adp (Yahoo column),2026-10
-Tyrese Haliburton,14.9,Yahoo Sports ADP risers/fallers (Sep 20-Oct 4),2026-10-04
-Jalen Brunson,21.4,fantasysixpack ADP values (Oct 7),2026-10-07
-Austin Reaves,22.6,fantasysixpack ADP values (Oct 7),2026-10-07
-Josh Giddey,23.0,Yahoo Sports ADP risers/fallers (Sep 20-Oct 4),2026-10-04
-Chet Holmgren,28.3,fantasysixpack ADP values (Oct 7),2026-10-07
-Jaylen Brown,30.0,RotoWire Yahoo ADP note,2026-10
-Lauri Markkanen,37.9,fantasysixpack ADP values (Oct 7),2026-10-07
-Walker Kessler,38.8,fantasysixpack ADP values (Oct 7),2026-10-07
-Jalen Williams,41.0,Yahoo Sports ADP risers/fallers (Sep 20-Oct 4),2026-10-04
-Anthony Davis,41.4,Yahoo Sports 9-cat mock article,2026-10
-Donovan Clingan,42.2,fantasysixpack ADP values (Oct 7),2026-10-07
-Brandon Miller,46.1,fantasysixpack ADP values (Oct 7),2026-10-07
-Cameron Boozer,57.8,NBA.com fantasy rookies piece (Yahoo ADP),2026-10
-Darius Garland,62.0,RotoWire Yahoo ADP,2026-10
-AJ Dybantsa,77.9,Yahoo Sports article,2026-10
-Andrew Wiggins,99.1,Yahoo Sports ADP risers/fallers (Sep 20-Oct 4),2026-10-04
-Darryn Peterson,100.5,NBA.com 99.3 / Yahoo Sports 101.7 averaged,2026-10
-Collin Murray-Boyles,115.0,RotoWire Yahoo ADP,2026-10
-Ajay Mitchell,118.0,RotoWire Yahoo ADP,2026-10
-Cooper Flagg,11.1,CBS Sports ADP (platform unspecified),2026-10
-Tyrese Maxey,11.6,CBS Sports ADP (platform unspecified),2026-10
-Alperen Şengün,13.9,CBS Sports ADP (platform unspecified),2026-10
-Kevin Durant,18.1,slamdex cross-platform average (proxy),2026-10
-Jamal Murray,20.5,fantasygoats.guru Yahoo ADP,2026-10
-Devin Booker,25.3,slamdex cross-platform average (proxy),2026-10
-LaMelo Ball,26.2,slamdex Yahoo column,2026-10
-Bam Adebayo,30.1,slamdex cross-platform average (proxy),2026-10
-Evan Mobley,32.0,slamdex cross-platform average (proxy),2026-10
-Kawhi Leonard,32.3,slamdex cross-platform average (proxy),2026-10
-James Harden,35.1,fantasygoats.guru Yahoo ADP,2026-10
-Jalen Duren,36.0,slamdex cross-platform average (proxy),2026-10
-Kon Knueppel,40.4,Yahoo Sports article ADP,2026-10
-Joel Embiid,50.4,RotoWire/Yahoo ADP (50.4/51),2026-10
-Kyrie Irving,52.6,slamdex cross-platform average (proxy),2026-10
-Dyson Daniels,59.0,slamdex cross-platform average (proxy),2026-10
-Stephon Castle,60.3,FantasyAlarm ADP fallers,2026-10
-Naz Reid,65.6,slamdex cross-platform average (proxy),2026-10
-Tyler Herro,66.2,slamdex cross-platform average (proxy),2026-10
-VJ Edgecombe,74.6,Yahoo Sports article ADP,2026-10
-De'Aaron Fox,79.6,Yahoo Sports article ADP,2026-10
-Ja Morant,83.7,slamdex cross-platform average (proxy),2026-10
+# Yahoo ADP for 2026-27 from Yahoo's public draft analysis API (no login), fetched 2026-10-18T14:13:58Z.
+# Raw: data/raw/yahoo_public/draft_analysis_478.json (+ .provenance.json). Rebuild with
+# `fantasy data fetch-yahoo --apply`. `adp` is the EFFECTIVE (unconditional) mean slot used by the
+# draft availability model: adp = pct_drafted*yahoo_adp + (1-pct_drafted)*168 (Yahoo's
+# average pick only counts drafts where the player was taken); yahoo_adp is Yahoo's raw value.
+# Players Yahoo lists in its top 300 but nobody drafts get adp=168.
+name,adp,source,as_of,yahoo_adp,pct_drafted
+Nikola Jokić,1.4,yahoo public draftanalysis API (game 478),2026-10-18,1.4,1.0
+Victor Wembanyama,2.0,yahoo public draftanalysis API (game 478),2026-10-18,2.0,1.0
+Luka Dončić,3.4,yahoo public draftanalysis API (game 478),2026-10-18,3.4,1.0
+Shai Gilgeous-Alexander,3.9,yahoo public draftanalysis API (game 478),2026-10-18,3.9,1.0
+Cade Cunningham,6.0,yahoo public draftanalysis API (game 478),2026-10-18,6.0,1.0
+Giannis Antetokounmpo,6.2,yahoo public draftanalysis API (game 478),2026-10-18,6.2,1.0
+Anthony Edwards,7.8,yahoo public draftanalysis API (game 478),2026-10-18,7.8,1.0
+Jayson Tatum,8.2,yahoo public draftanalysis API (game 478),2026-10-18,8.2,1.0
+Tyrese Maxey,9.8,yahoo public draftanalysis API (game 478),2026-10-18,9.8,1.0
+Cooper Flagg,10.0,yahoo public draftanalysis API (game 478),2026-10-18,10.0,1.0
+Jalen Johnson,12.4,yahoo public draftanalysis API (game 478),2026-10-18,12.4,1.0
+Tyrese Haliburton,12.9,yahoo public draftanalysis API (game 478),2026-10-18,12.9,1.0
+Donovan Mitchell,13.9,yahoo public draftanalysis API (game 478),2026-10-18,13.9,1.0
+Scottie Barnes,15.1,yahoo public draftanalysis API (game 478),2026-10-18,15.1,1.0
+Karl-Anthony Towns,15.6,yahoo public draftanalysis API (game 478),2026-10-18,15.6,1.0
+Kevin Durant,15.9,yahoo public draftanalysis API (game 478),2026-10-18,15.9,1.0
+Alperen Şengün,18.4,yahoo public draftanalysis API (game 478),2026-10-18,18.4,1.0
+Jamal Murray,20.8,yahoo public draftanalysis API (game 478),2026-10-18,20.8,1.0
+Jalen Brunson,21.6,yahoo public draftanalysis API (game 478),2026-10-18,21.6,1.0
+Josh Giddey,22.9,yahoo public draftanalysis API (game 478),2026-10-18,22.9,1.0
+Amen Thompson,22.9,yahoo public draftanalysis API (game 478),2026-10-18,22.9,1.0
+Stephen Curry,23.0,yahoo public draftanalysis API (game 478),2026-10-18,23.0,1.0
+Austin Reaves,23.4,yahoo public draftanalysis API (game 478),2026-10-18,23.4,1.0
+Trae Young,23.8,yahoo public draftanalysis API (game 478),2026-10-18,23.8,1.0
+LaMelo Ball,25.3,yahoo public draftanalysis API (game 478),2026-10-18,25.3,1.0
+Devin Booker,25.5,yahoo public draftanalysis API (game 478),2026-10-18,25.5,1.0
+Bam Adebayo,26.4,yahoo public draftanalysis API (game 478),2026-10-18,26.4,1.0
+Evan Mobley,29.2,yahoo public draftanalysis API (game 478),2026-10-18,29.2,1.0
+Domantas Sabonis,29.3,yahoo public draftanalysis API (game 478),2026-10-18,29.3,1.0
+Chet Holmgren,31.6,yahoo public draftanalysis API (game 478),2026-10-18,31.6,1.0
+Jaylen Brown,31.9,yahoo public draftanalysis API (game 478),2026-10-18,31.9,1.0
+Kawhi Leonard,34.1,yahoo public draftanalysis API (game 478),2026-10-18,34.1,1.0
+Jalen Duren,34.9,yahoo public draftanalysis API (game 478),2026-10-18,34.9,1.0
+James Harden,35.6,yahoo public draftanalysis API (game 478),2026-10-18,35.6,1.0
+Trey Murphy III,35.7,yahoo public draftanalysis API (game 478),2026-10-18,35.7,1.0
+Paolo Banchero,35.8,yahoo public draftanalysis API (game 478),2026-10-18,35.8,1.0
+Lauri Markkanen,35.9,yahoo public draftanalysis API (game 478),2026-10-18,35.9,1.0
+LeBron James,38.5,yahoo public draftanalysis API (game 478),2026-10-18,38.5,1.0
+Deni Avdija,39.7,yahoo public draftanalysis API (game 478),2026-10-18,39.7,1.0
+Jalen Williams,40.5,yahoo public draftanalysis API (game 478),2026-10-18,40.5,1.0
+Walker Kessler,41.6,yahoo public draftanalysis API (game 478),2026-10-18,41.6,1.0
+Brandon Miller,42.6,yahoo public draftanalysis API (game 478),2026-10-18,42.6,1.0
+Anthony Davis,42.9,yahoo public draftanalysis API (game 478),2026-10-18,42.9,1.0
+Donovan Clingan,44.6,yahoo public draftanalysis API (game 478),2026-10-18,44.6,1.0
+Derrick White,45.2,yahoo public draftanalysis API (game 478),2026-10-18,45.2,1.0
+Jaren Jackson Jr.,47.0,yahoo public draftanalysis API (game 478),2026-10-18,47.0,1.0
+Kyrie Irving,48.1,yahoo public draftanalysis API (game 478),2026-10-18,48.1,1.0
+Pascal Siakam,50.4,yahoo public draftanalysis API (game 478),2026-10-18,50.4,1.0
+Joel Embiid,50.5,yahoo public draftanalysis API (game 478),2026-10-18,50.5,1.0
+Franz Wagner,52.1,yahoo public draftanalysis API (game 478),2026-10-18,52.1,1.0
+Keyonte George,52.7,yahoo public draftanalysis API (game 478),2026-10-18,52.7,1.0
+Kon Knueppel,53.1,yahoo public draftanalysis API (game 478),2026-10-18,53.1,1.0
+Desmond Bane,53.2,yahoo public draftanalysis API (game 478),2026-10-18,53.2,1.0
+Stephon Castle,54.9,yahoo public draftanalysis API (game 478),2026-10-18,54.9,1.0
+Onyeka Okongwu,55.2,yahoo public draftanalysis API (game 478),2026-10-18,55.2,1.0
+Cameron Boozer,55.3,yahoo public draftanalysis API (game 478),2026-10-18,55.3,1.0
+Ivica Zubac,60.0,yahoo public draftanalysis API (game 478),2026-10-18,60.0,1.0
+Darius Garland,60.3,yahoo public draftanalysis API (game 478),2026-10-18,60.3,1.0
+Nickeil Alexander-Walker,61.9,yahoo public draftanalysis API (game 478),2026-10-18,61.9,1.0
+Michael Porter Jr.,62.5,yahoo public draftanalysis API (game 478),2026-10-18,62.5,1.0
+Matas Buzelis,63.5,yahoo public draftanalysis API (game 478),2026-10-18,63.5,1.0
+Naz Reid,65.8,yahoo public draftanalysis API (game 478),2026-10-18,65.8,1.0
+Dyson Daniels,66.3,yahoo public draftanalysis API (game 478),2026-10-18,66.3,1.0
+Alex Sarr,66.4,yahoo public draftanalysis API (game 478),2026-10-18,66.4,1.0
+Dejounte Murray,67.5,yahoo public draftanalysis API (game 478),2026-10-18,67.5,1.0
+OG Anunoby,67.5,yahoo public draftanalysis API (game 478),2026-10-18,67.5,1.0
+Tyler Herro,68.0,yahoo public draftanalysis API (game 478),2026-10-18,68.0,1.0
+Zion Williamson,68.0,yahoo public draftanalysis API (game 478),2026-10-18,68.0,1.0
+Julius Randle,68.4,yahoo public draftanalysis API (game 478),2026-10-18,68.4,1.0
+Damian Lillard,69.1,yahoo public draftanalysis API (game 478),2026-10-18,69.1,1.0
+Jarrett Allen,72.3,yahoo public draftanalysis API (game 478),2026-10-18,72.3,1.0
+Ryan Rollins,73.3,yahoo public draftanalysis API (game 478),2026-10-18,73.3,1.0
+Rudy Gobert,74.1,yahoo public draftanalysis API (game 478),2026-10-18,74.1,1.0
+Zach Edey,74.8,yahoo public draftanalysis API (game 478),2026-10-18,74.8,1.0
+Kel'el Ware,76.6,yahoo public draftanalysis API (game 478),2026-10-18,76.6,1.0
+VJ Edgecombe,76.9,yahoo public draftanalysis API (game 478),2026-10-18,76.9,1.0
+Ausar Thompson,77.9,yahoo public draftanalysis API (game 478),2026-10-18,77.9,1.0
+Brandon Ingram,78.1,yahoo public draftanalysis API (game 478),2026-10-18,78.1,1.0
+Caleb Wilson,78.6,yahoo public draftanalysis API (game 478),2026-10-18,78.6,1.0
+AJ Dybantsa,78.9,yahoo public draftanalysis API (game 478),2026-10-18,78.9,1.0
+De'Aaron Fox,79.3,yahoo public draftanalysis API (game 478),2026-10-18,79.3,1.0
+Paul George,80.0,yahoo public draftanalysis API (game 478),2026-10-18,80.0,1.0
+Dylan Harper,80.6,yahoo public draftanalysis API (game 478),2026-10-18,80.6,1.0
+Mikal Bridges,81.6,yahoo public draftanalysis API (game 478),2026-10-18,81.6,1.0
+Payton Pritchard,82.0,yahoo public draftanalysis API (game 478),2026-10-18,82.0,1.0
+Cedric Coward,85.3,yahoo public draftanalysis API (game 478),2026-10-18,85.3,1.0
+Derik Queen,86.4,yahoo public draftanalysis API (game 478),2026-10-18,86.4,1.0
+Ja Morant,88.9,yahoo public draftanalysis API (game 478),2026-10-18,88.9,1.0
+Coby White,90.8,yahoo public draftanalysis API (game 478),2026-10-18,90.8,1.0
+Jaden McDaniels,91.1,yahoo public draftanalysis API (game 478),2026-10-18,91.1,1.0
+Jabari Smith Jr.,92.7,yahoo public draftanalysis API (game 478),2026-10-18,92.7,1.0
+Day'Ron Sharpe,93.0,yahoo public draftanalysis API (game 478),2026-10-18,93.0,1.0
+Norman Powell,93.7,yahoo public draftanalysis API (game 478),2026-10-18,93.7,1.0
+Immanuel Quickley,95.9,yahoo public draftanalysis API (game 478),2026-10-18,95.9,1.0
+Josh Hart,97.1,yahoo public draftanalysis API (game 478),2026-10-18,97.1,1.0
+Andrew Wiggins,97.7,yahoo public draftanalysis API (game 478),2026-10-18,97.7,1.0
+Nic Claxton,100.1,yahoo public draftanalysis API (game 478),2026-10-18,99.4,0.99
+Miles Bridges,101.2,yahoo public draftanalysis API (game 478),2026-10-18,101.2,1.0
+Jalen Green,103.5,yahoo public draftanalysis API (game 478),2026-10-18,102.2,0.98
+Zach LaVine,103.7,yahoo public draftanalysis API (game 478),2026-10-18,103.0,0.99
+Darryn Peterson,104.4,yahoo public draftanalysis API (game 478),2026-10-18,103.8,0.99
+Isaiah Hartenstein,104.7,yahoo public draftanalysis API (game 478),2026-10-18,104.7,1.0
+Ty Jerome,111.8,yahoo public draftanalysis API (game 478),2026-10-18,104.8,0.89
+Kristaps Porziņģis,141.3,yahoo public draftanalysis API (game 478),2026-10-18,105.9,0.43
+Jalen Suggs,106.9,yahoo public draftanalysis API (game 478),2026-10-18,106.3,0.99
+John Collins,109.1,yahoo public draftanalysis API (game 478),2026-10-18,106.6,0.96
+Myles Turner,111.8,yahoo public draftanalysis API (game 478),2026-10-18,106.9,0.92
+Bronny James,166.2,yahoo public draftanalysis API (game 478),2026-10-18,106.9,0.03
+Al Horford,166.8,yahoo public draftanalysis API (game 478),2026-10-18,107.1,0.02
+Draymond Green,158.3,yahoo public draftanalysis API (game 478),2026-10-18,107.2,0.16
+Andre Drummond,166.2,yahoo public draftanalysis API (game 478),2026-10-18,108.0,0.03
+Darius Acuff Jr.,115.9,yahoo public draftanalysis API (game 478),2026-10-18,108.1,0.87
+Tim Hardaway Jr.,166.2,yahoo public draftanalysis API (game 478),2026-10-18,108.2,0.03
+Brook Lopez,166.8,yahoo public draftanalysis API (game 478),2026-10-18,108.3,0.02
+Klay Thompson,164.4,yahoo public draftanalysis API (game 478),2026-10-18,108.4,0.06
+Collin Murray-Boyles,111.1,yahoo public draftanalysis API (game 478),2026-10-18,108.7,0.96
+Mitchell Robinson,162.7,yahoo public draftanalysis API (game 478),2026-10-18,108.7,0.09
+Alex Caruso,165.0,yahoo public draftanalysis API (game 478),2026-10-18,109.0,0.05
+CJ McCollum,109.7,yahoo public draftanalysis API (game 478),2026-10-18,109.1,0.99
+Mark Williams,166.3,yahoo public draftanalysis API (game 478),2026-10-18,109.8,0.03
+Aday Mara,163.9,yahoo public draftanalysis API (game 478),2026-10-18,110.1,0.07
+DeMar DeRozan,135.2,yahoo public draftanalysis API (game 478),2026-10-18,110.4,0.57
+Bobby Portis Jr.,164.5,yahoo public draftanalysis API (game 478),2026-10-18,110.5,0.06
+Jordan Poole,166.8,yahoo public draftanalysis API (game 478),2026-10-18,110.5,0.02
+Deandre Ayton,166.9,yahoo public draftanalysis API (game 478),2026-10-18,110.7,0.02
+Aaron Nesmith,166.3,yahoo public draftanalysis API (game 478),2026-10-18,110.8,0.03
+Julian Champagnie,165.1,yahoo public draftanalysis API (game 478),2026-10-18,110.8,0.05
+Aaron Gordon,124.7,yahoo public draftanalysis API (game 478),2026-10-18,111.0,0.76
+Jared McCain,165.2,yahoo public draftanalysis API (game 478),2026-10-18,111.2,0.05
+Kelly Oubre Jr.,166.3,yahoo public draftanalysis API (game 478),2026-10-18,111.4,0.03
+Brandin Podziemski,115.8,yahoo public draftanalysis API (game 478),2026-10-18,111.9,0.93
+Tobias Harris,166.9,yahoo public draftanalysis API (game 478),2026-10-18,111.9,0.02
+Paul Reed,166.9,yahoo public draftanalysis API (game 478),2026-10-18,112.0,0.02
+Keegan Murray,122.4,yahoo public draftanalysis API (game 478),2026-10-18,112.4,0.82
+Scotty Pippen Jr.,166.9,yahoo public draftanalysis API (game 478),2026-10-18,112.4,0.02
+Isaiah Stewart,166.9,yahoo public draftanalysis API (game 478),2026-10-18,112.5,0.02
+RJ Barrett,123.8,yahoo public draftanalysis API (game 478),2026-10-18,112.7,0.8
+Nikola Vučević,163.0,yahoo public draftanalysis API (game 478),2026-10-18,112.9,0.09
+Yaxel Lendeborg,137.2,yahoo public draftanalysis API (game 478),2026-10-18,113.0,0.56
+Devin Vassell,157.7,yahoo public draftanalysis API (game 478),2026-10-18,113.6,0.19
+Neemias Queta,120.3,yahoo public draftanalysis API (game 478),2026-10-18,113.8,0.88
+Ayo Dosunmu,116.0,yahoo public draftanalysis API (game 478),2026-10-18,113.8,0.96
+Jaime Jaquez Jr.,125.2,yahoo public draftanalysis API (game 478),2026-10-18,113.8,0.79
+Dillon Brooks,155.6,yahoo public draftanalysis API (game 478),2026-10-18,114.0,0.23
+Toumani Camara,115.7,yahoo public draftanalysis API (game 478),2026-10-18,114.1,0.97
+Ben Simmons,165.9,yahoo public draftanalysis API (game 478),2026-10-18,114.3,0.04
+Grayson Allen,166.9,yahoo public draftanalysis API (game 478),2026-10-18,114.3,0.02
+Cameron Johnson,166.9,yahoo public draftanalysis API (game 478),2026-10-18,114.5,0.02
+Kyle Filipowski,166.4,yahoo public draftanalysis API (game 478),2026-10-18,114.6,0.03
+Jusuf Nurkić,130.3,yahoo public draftanalysis API (game 478),2026-10-18,114.9,0.71
+Jrue Holiday,162.7,yahoo public draftanalysis API (game 478),2026-10-18,115.0,0.1
+Moussa Diabaté,165.9,yahoo public draftanalysis API (game 478),2026-10-18,115.0,0.04
+Tari Eason,166.4,yahoo public draftanalysis API (game 478),2026-10-18,115.5,0.03
+Jonathan Kuminga,159.1,yahoo public draftanalysis API (game 478),2026-10-18,115.8,0.17
+Jimmy Butler III,149.8,yahoo public draftanalysis API (game 478),2026-10-18,115.9,0.35
+Keaton Wagler,165.4,yahoo public draftanalysis API (game 478),2026-10-18,116.1,0.05
+Andrew Nembhard,120.5,yahoo public draftanalysis API (game 478),2026-10-18,116.4,0.92
+Bennedict Mathurin,166.5,yahoo public draftanalysis API (game 478),2026-10-18,116.4,0.03
+Jerami Grant,167.0,yahoo public draftanalysis API (game 478),2026-10-18,116.4,0.02
+Kyle Kuzma,166.5,yahoo public draftanalysis API (game 478),2026-10-18,116.4,0.03
+Rui Hachimura,138.6,yahoo public draftanalysis API (game 478),2026-10-18,116.5,0.57
+Fred VanVleet,151.1,yahoo public draftanalysis API (game 478),2026-10-18,116.7,0.33
+Collin Sexton,165.9,yahoo public draftanalysis API (game 478),2026-10-18,116.7,0.04
+Yves Missi,166.5,yahoo public draftanalysis API (game 478),2026-10-18,116.8,0.03
+P.J. Washington,162.4,yahoo public draftanalysis API (game 478),2026-10-18,116.8,0.11
+Peyton Watson,130.7,yahoo public draftanalysis API (game 478),2026-10-18,116.9,0.73
+Ace Bailey,159.8,yahoo public draftanalysis API (game 478),2026-10-18,117.0,0.16
+Mikel Brown Jr.,166.5,yahoo public draftanalysis API (game 478),2026-10-18,117.4,0.03
+Maxime Raynaud,163.5,yahoo public draftanalysis API (game 478),2026-10-18,117.7,0.09
+Khaman Maluach,127.1,yahoo public draftanalysis API (game 478),2026-10-18,118.1,0.82
+Sandro Mamukelashvili,154.1,yahoo public draftanalysis API (game 478),2026-10-18,118.5,0.28
+Egor Dëmin,163.1,yahoo public draftanalysis API (game 478),2026-10-18,118.7,0.1
+Davion Mitchell,125.7,yahoo public draftanalysis API (game 478),2026-10-18,118.8,0.86
+Kevin Porter Jr.,156.2,yahoo public draftanalysis API (game 478),2026-10-18,118.9,0.24
+Cason Wallace,146.4,yahoo public draftanalysis API (game 478),2026-10-18,119.0,0.44
+Ajay Mitchell,161.2,yahoo public draftanalysis API (game 478),2026-10-18,119.2,0.14
+Christian Braun,161.7,yahoo public draftanalysis API (game 478),2026-10-18,119.2,0.13
+Kyshawn George,134.7,yahoo public draftanalysis API (game 478),2026-10-18,119.7,0.69
+Anthony Black,155.9,yahoo public draftanalysis API (game 478),2026-10-18,119.8,0.25
+Jeremiah Fears,151.6,yahoo public draftanalysis API (game 478),2026-10-18,119.8,0.34
+Saddiq Bey,160.3,yahoo public draftanalysis API (game 478),2026-10-18,120.0,0.16
+Reed Sheppard,157.0,yahoo public draftanalysis API (game 478),2026-10-18,120.2,0.23
+Wendell Carter Jr.,155.8,yahoo public draftanalysis API (game 478),2026-10-18,120.9,0.26
+Quentin Grimes,158.1,yahoo public draftanalysis API (game 478),2026-10-18,120.9,0.21
+Jakob Poeltl,143.2,yahoo public draftanalysis API (game 478),2026-10-18,122.0,0.54
+Daniel Gafford,161.1,yahoo public draftanalysis API (game 478),2026-10-18,122.0,0.15
+Collin Gillespie,151.5,yahoo public draftanalysis API (game 478),2026-10-18,123.5,0.37
+Gui Santos,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Tre Jones,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Pelle Larsson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jalen Smith,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Isaiah Jackson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jake LaRavia,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Herbert Jones,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Oso Ighodaro,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jaylen Wells,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Joan Beringer,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Isaiah Collier,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Scoot Henderson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Anfernee Simons,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dennis Schröder,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Baylor Scheierman,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Robert Williams III,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Daniss Jenkins,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+De'Andre Hunter,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dylan Cardwell,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Miles McBride,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Terrence Shannon Jr.,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Kris Dunn,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Precious Achiuwa,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Sam Hauser,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Naji Marshall,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Nique Clifford,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jamal Shead,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Hugo González,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jay Huff,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Bilal Coulibaly,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dereck Lively II,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Derrick Jones Jr.,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Royce O'Neale,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Kevin Huerter,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Keldon Johnson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Morez Johnson Jr.,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Malik Monk,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Duncan Robinson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Marcus Smart,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+GG Jackson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Tre Johnson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Will Riley,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Shaedon Sharpe,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Cam Spencer,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Max Strus,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jaylin Williams,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Luguentz Dort,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jaylon Tyson,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Noah Clowney,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+T.J. McConnell,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Nikola Jović,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jarace Walker,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Brice Sensabaugh,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Tristan da Silva,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Gradey Dick,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Allen Graves,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Khris Middleton,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Aaron Wiggins,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+De'Anthony Melton,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Zaccharie Risacher,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Zach Collins,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Bradley Beal,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Marvin Bagley III,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Kingston Flemings,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Bones Hyland,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Brayden Burries,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Bub Carrington,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Santi Aldama,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Donte DiVincenzo,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Max Christie,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Luke Kornet,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Isaiah Joe,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Justin Champagnie,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Keon Ellis,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Javonte Green,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Luke Kennard,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Harrison Barnes,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Moses Moody,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+AJ Green,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jordan Goodwin,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Russell Westbrook,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Goga Bitadze,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Ryan Kalkbrenner,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Gary Payton II,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Bruce Brown,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Ronald Holland II,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Sam Merrill,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Ziaire Williams,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Ja'Kobe Walter,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dominick Barlow,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+John Konchar,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jose Alvarado,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jonas Valančiūnas,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dru Smith,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Vít Krejčí,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jaxson Hayes,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jock Landale,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Dean Wade,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Karlo Matković,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Adem Bona,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Isaac Okoro,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Ryan Dunn,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Brandon Williams,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Nicolas Batum,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Simone Fontecchio,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Mouhamed Gueye,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Kentavious Caldwell-Pope,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Quinten Post,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Terance Mann,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Will Richard,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Clint Capela,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Luka Garza,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
+Jordan Walsh,168.0,yahoo public draftanalysis API (game 478),2026-10-18,,
