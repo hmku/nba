@@ -10,6 +10,7 @@ import pytest
 from synthetic import make_projections
 
 from fantasy.data import external
+from fantasy.model import blend as BL
 from fantasy.model import proj_backtest as B
 from fantasy.model.blend import BlendSpec, blend, impute_attempts
 
@@ -190,3 +191,40 @@ def test_bootstrap_se_and_spearman():
     groups = {s: g.assign(y=g["x"] + rng.normal(size=200)) for s, g in groups.items()}
     est, se = B.bootstrap(groups, lambda d: {"r": B.spearman(d["x"], d["y"])}, n_boot=100)
     assert 0.6 < est["r"] < 0.8 and 0.005 < se["r"] < 0.05
+
+
+def test_load_config(tmp_path):
+    cfg = tmp_path / "projection_blend.json"
+    assert BL.load_config(cfg) is None  # absent -> unblended
+    cfg.write_text(json.dumps({"weights": {"ours": 0.5, "espn": 0.5}, "gp_weights": None}))
+    spec = BL.load_config(cfg)
+    assert spec == BlendSpec({"ours": 0.5, "espn": 0.5}, None)
+    cfg.write_text(json.dumps({"weights": {"ours": 1.0}}))
+    assert BL.load_config(cfg) is None  # all weight on ours -> unblended
+    cfg.write_text(json.dumps({"weights": {"ours": 1, "espn": 0}, "gp_weights": {"espn": 1}}))
+    assert BL.load_config(cfg).gp_weights == {"espn": 1.0}
+
+
+def test_committed_default_is_the_configured_blend():
+    """data/processed/projections_2026_27.csv is the blend of the committed base file per the
+    committed config (adopted 2026-10-19), and its meta records weights and input shas."""
+    import hashlib
+
+    spec = BL.load_config()
+    assert spec == BlendSpec({"ours": 0.5, "espn": 0.5}, None)
+    from fantasy.model.projections import OUTPUT_PATH
+
+    meta = json.loads(OUTPUT_PATH.with_name(OUTPUT_PATH.stem + ".meta.json").read_text())
+    assert meta["weights"] == spec.weights and meta["projections_version"] == BL.PROJECTIONS_VERSION
+    assert meta["sha256"] == hashlib.sha256(OUTPUT_PATH.read_bytes()).hexdigest()
+    base = {i["path"]: i["sha256"] for i in meta["inputs"]}["data/processed/projections_2026_27.base.csv"]
+    assert base == hashlib.sha256(BL.BASE_OUTPUT.read_bytes()).hexdigest()
+
+
+def test_write_default_none_copies_base(tmp_path):
+    base = tmp_path / "p.base.csv"
+    _ours().to_csv(base, index=False)
+    out = tmp_path / "p.csv"
+    meta = BL.write_default(None, {"sha256": "x", "model_version": "m"}, out, base)
+    assert out.read_bytes() == base.read_bytes()
+    assert meta["blend"].startswith("none") and json.loads((tmp_path / "p.meta.json").read_text())["output"]

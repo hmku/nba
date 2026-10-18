@@ -1,0 +1,432 @@
+{
+  "model_version": "baseline-0.2.1",
+  "gp_model": {
+    "version": "gp-ols-0.1",
+    "data": "sumitrodatta bbref mirror (Player Totals, Team Summaries), full history",
+    "train_targets": "2014-2026 (bbref season labels), players with >= 500 min in T-1",
+    "n": 4366,
+    "oos": "fit T<=2024: RMSE 2025 21.00->19.06 (gain 1.94 +- 0.31), 2026 21.87->20.05 (1.82 +- 0.32)"
+  },
+  "playoff_mult": {
+    "version": "playoff-mult-0.2",
+    "window": "3 weeks ending 21 days before the NBA regular season's last day",
+    "data": "NocturneBear/NBA-Data-2010-2024 box scores, 82-game seasons 2011-2024, single-team players, prior mp>=1000",
+    "n": 2339,
+    "full_model": "const 0.982 +- 0.006, tank -0.023 +- 0.034, injury +0.018 +- 0.014 (season-cluster bootstrap)",
+    "chosen": "const+tank: const 0.984 +- 0.005, tank -0.019 +- 0.034; injury dropped",
+    "previous": "playoff-mult-0.1 (window ending 7 days before season end): 0.958, tank -0.077 +- 0.045, injury -0.035 +- 0.015"
+  },
+  "season": "2026-27",
+  "output": "data/processed/projections_2026_27.base.csv",
+  "rows": 456,
+  "sha256": "25ef6ca42a101c0bb348b3ada237ac5e33278c7fb57cf362598e7b81aa1dbb8b",
+  "sources": [
+    "bbref_baseline",
+    "bbref_baseline+manual",
+    "manual_rookie_prior",
+    "manual_rookie_prior+manual"
+  ],
+  "source_counts": {
+    "bbref_baseline": 301,
+    "bbref_baseline+manual": 144,
+    "manual_rookie_prior": 9,
+    "manual_rookie_prior+manual": 2
+  },
+  "params": {
+    "season_weights": {
+      "2026": 5.0,
+      "2025": 3.0,
+      "2024": 2.0
+    },
+    "prior_min": 400.0,
+    "gp_model": "fitted",
+    "manual_gp_scale": 0.9,
+    "gp_prior": 68.0,
+    "gp_prior_weight": 1.0,
+    "gp_min": 0.0,
+    "gp_max": 80.0,
+    "gp_sd_base": 7.0,
+    "mpg_max": 37.5,
+    "mpg_prior": 16.0,
+    "mpg_prior_games": 25.0,
+    "min_total_minutes": 150.0,
+    "max_rows": 450
+  },
+  "inputs": [
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_career_info.csv",
+      "sha256": "08b91bb0cb4d6f67bfb41197159f8bac318c3c9a8e3eda49f48f1e945af56cac",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Career%20Info.csv",
+      "fetched_at": "2026-10-18T13:36:21Z"
+    },
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_play_by_play.csv",
+      "sha256": "347fbb86f8622714498686ff2bafb2caba16f7143273f0b0acb99aee2e51944f",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Play%20By%20Play.csv",
+      "fetched_at": "2026-10-18T13:36:21Z"
+    },
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_totals.csv",
+      "sha256": "6a683ea0ecb6b61a751577d835c3fcb6c36c5373089e73416662d31d16afd977",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Totals.csv",
+      "fetched_at": "2026-10-18T13:36:20Z"
+    },
+    {
+      "path": "data/manual/adp_yahoo_2026_27.csv",
+      "sha256": "0add63e6e3ee277a5d4965d51209a1284ea723a960bcacd108e0a25f25f3e763",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/inactive_2026_27.csv",
+      "sha256": "3d901043ce3c6fe0893b3f61cb55f1286c101746cd1d71a3026fadf8da53afdf",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/player_overrides_2026_27.csv",
+      "sha256": "c7ef69638e9d5d12ea4b253c2625bd63bf5113e13bdbbf6194fbc0a259b61835",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/positions_overrides.csv",
+      "sha256": "8407c13360dbd9f3d3a5e7e2620c404f27aece8e911e3191ed89de6ec0c15abe",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/rookies_2026_27.csv",
+      "sha256": "645ac31193ed58060a1849e5d5e91952eac741e5c9a1178bb22ce57d9fd6b199",
+      "url": "manual",
+      "fetched_at": null
+    }
+  ],
+  "notes": {
+    "aaron-wiggins": [
+      "traded OKC->ATL"
+    ],
+    "aday-mara": [
+      "ADP row for unknown player ignored"
+    ],
+    "aj-dybantsa": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "allen-graves": [
+      "ADP row for unknown player ignored"
+    ],
+    "andre-drummond": [
+      "added by NYK"
+    ],
+    "anfernee-simons": [
+      "added by PHI"
+    ],
+    "anthony-davis": [
+      "acquired by WAS at 2025-26 deadline"
+    ],
+    "ben-simmons": [
+      "ADP row for unknown player ignored"
+    ],
+    "bennedict-mathurin": [
+      "added by NOP"
+    ],
+    "bobby-portis": [
+      "traded MIL->MIA in Giannis deal"
+    ],
+    "bogdan-bogdanovic": [
+      "added by HOU"
+    ],
+    "brandon-ingram": [
+      "traded TOR->LAC"
+    ],
+    "brayden-burries": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "caleb-wilson": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "cameron-boozer": [
+      "manual gp 72 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "caris-levert": [
+      "six-team deal"
+    ],
+    "collin-sexton": [
+      "FA signing"
+    ],
+    "damian-lillard": [
+      "manual gp 58 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "missed 2025-26; age 36"
+    ],
+    "dangelo-russell": [
+      "six-team deal"
+    ],
+    "darius-acuff-jr": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "darryn-peterson": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "deandre-ayton": [
+      "added by WAS"
+    ],
+    "demar-derozan": [
+      "waived by SAC; signed DEN"
+    ],
+    "dennis-schroder": [
+      "added by CHO"
+    ],
+    "donte-divincenzo": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "dorian-finney-smith": [
+      "added by CHO"
+    ],
+    "fred-vanvleet": [
+      "manual gp 64 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "missed 2025-26"
+    ],
+    "gary-harris": [
+      "six-team deal"
+    ],
+    "georges-niang": [
+      "added by GSW"
+    ],
+    "giannis-antetokounmpo": [
+      "traded MIL->MIA (June 2026)"
+    ],
+    "gradey-dick": [
+      "traded TOR->LAC"
+    ],
+    "grayson-allen": [
+      "traded PHO->CHO"
+    ],
+    "isaiah-joe": [
+      "traded OKC->DET"
+    ],
+    "isaiah-stewart": [
+      "six-team deal"
+    ],
+    "ja-morant": [
+      "traded MEM->POR"
+    ],
+    "jaime-jaquez-jr": [
+      "traded MIA->MIL; projected starter"
+    ],
+    "jalen-duren": [
+      "re-signed DET 5yr/$200M (Oct 1)"
+    ],
+    "jamir-watkins": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "jaxson-hayes": [
+      "added by UTA"
+    ],
+    "jaylen-brown": [
+      "on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron"
+    ],
+    "jayson-tatum": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "full season after Achilles return (16 games in 2025-26)"
+    ],
+    "jerami-grant": [
+      "traded POR->MEM"
+    ],
+    "jeremy-sochan": [
+      "added by POR"
+    ],
+    "john-collins": [
+      "six-team deal"
+    ],
+    "johnny-furphy": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "jonathan-kuminga": [
+      "signed MIN (2yr)"
+    ],
+    "jordan-miller": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "josh-green": [
+      "traded CHO->MIN"
+    ],
+    "josh-okogie": [
+      "added by UTA"
+    ],
+    "julius-randle": [
+      "traded MIN->BRK (4-team deal)"
+    ],
+    "kasparas-jakucionis": [
+      "traded MIA->MIL"
+    ],
+    "kawhi-leonard": [
+      "traded LAC->TOR for Brandon Ingram"
+    ],
+    "keaton-wagler": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "kelel-ware": [
+      "traded MIA->MIL"
+    ],
+    "kelly-oubre-jr": [
+      "left PHI; destination not confirmed"
+    ],
+    "kentavious-caldwell-pope": [
+      "added by PHI"
+    ],
+    "keon-ellis": [
+      "added by BRK"
+    ],
+    "kevon-looney": [
+      "added by LAL"
+    ],
+    "khris-middleton": [
+      "six-team deal"
+    ],
+    "kingston-flemings": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "klay-thompson": [
+      "FA signing"
+    ],
+    "kris-murray": [
+      "traded POR->MEM"
+    ],
+    "kyle-anderson": [
+      "added by TOR"
+    ],
+    "kyrie-irving": [
+      "manual gp 58 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "missed 2025-26; age 34"
+    ],
+    "lamelo-ball": [
+      "traded CHO->MIN; shares ball with Edwards"
+    ],
+    "lebron-james": [
+      "signed with PHI (2yr/$8M) at age 41"
+    ],
+    "luguentz-dort": [
+      "traded OKC->ATL (3-team)"
+    ],
+    "luke-kennard": [
+      "added by PHO"
+    ],
+    "marcus-sasser": [
+      "six-team deal"
+    ],
+    "marcus-smart": [
+      "added by HOU"
+    ],
+    "mark-williams": [
+      "re-signed PHO",
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "marvin-bagley-iii": [
+      "added by DEN"
+    ],
+    "mike-conley": [
+      "FA addition"
+    ],
+    "mikel-brown-jr": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "miles-bridges": [
+      "traded CHO->PHO"
+    ],
+    "mitchell-robinson": [
+      "FA signing"
+    ],
+    "morez-johnson-jr": [
+      "ADP row for unknown player ignored"
+    ],
+    "nate-ament": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "naz-reid": [
+      "traded MIN->CHO; larger role"
+    ],
+    "nic-claxton": [
+      "traded BRK->CHI"
+    ],
+    "nick-richards": [
+      "addition"
+    ],
+    "nikola-vucevic": [
+      "added by ORL"
+    ],
+    "norman-powell": [
+      "FA signing"
+    ],
+    "paul-george": [
+      "traded PHI->BOS for Jaylen Brown"
+    ],
+    "peyton-watson": [
+      "sign-and-trade DEN->CLE"
+    ],
+    "quentin-grimes": [
+      "FA signing"
+    ],
+    "quinten-post": [
+      "added by MEM"
+    ],
+    "royce-oneale": [
+      "traded PHO->CHO"
+    ],
+    "rui-hachimura": [
+      "FA signing"
+    ],
+    "russell-westbrook": [
+      "ADP row for unknown player ignored"
+    ],
+    "sandro-mamukelashvili": [
+      "FA signing"
+    ],
+    "santi-aldama": [
+      "six-team deal"
+    ],
+    "taurean-prince": [
+      "six-team deal"
+    ],
+    "tim-hardaway-jr": [
+      "FA signing"
+    ],
+    "tobias-harris": [
+      "added by SAS"
+    ],
+    "tre-mann": [
+      "added by WAS"
+    ],
+    "tyler-herro": [
+      "traded MIA->MIL; bigger role"
+    ],
+    "tyrese-haliburton": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "missed 2025-26; projected from 2023-25"
+    ],
+    "walker-kessler": [
+      "traded UTA->LAL; jammed pinkie not expected to cost games",
+      "manual gp 64 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "2025-26 games lost to one-off shoulder surgery; healthy now"
+    ],
+    "yanic-konan-niederhauser": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
+    "yaxel-lendeborg": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "zaccharie-risacher": [
+      "traded ATL->DAL (3-team)"
+    ]
+  }
+}

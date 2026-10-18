@@ -30,9 +30,16 @@ import pandas as pd
 from fantasy.data import external
 from fantasy.data.provenance import PROCESSED_DIR, REPO_ROOT
 
-BLEND_VERSION = "blend-0.1.0"
+# 0.2.0: the blend is the default draft projections (adopted 2026-10-19): `build-projections`
+#        writes the unblended model to projections_2026_27.base.csv and the blend configured in
+#        data/manual/projection_blend.json to projections_2026_27.csv.
+BLEND_VERSION = "blend-0.2.0"
+# Version of the default projections file (data/processed/projections_2026_27.csv) as a whole.
+PROJECTIONS_VERSION = "projections-2026-27-0.3.0"
 BLEND_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov", "mpg"]
 BLEND_OUTPUT = PROCESSED_DIR / "projections_2026_27.blend.csv"
+BASE_OUTPUT = PROCESSED_DIR / "projections_2026_27.base.csv"
+CONFIG_PATH = REPO_ROOT / "data" / "manual" / "projection_blend.json"
 # Prior default (see projection_quality.md): equal weight on ours and ESPN. The ESPN backtest
 # (2019, 2021-22, 2024-26) puts the optimum for value-rank Spearman anywhere in 0.4-0.6.
 DEFAULT_WEIGHTS = "ours=0.5,espn=0.5"
@@ -46,6 +53,22 @@ class BlendSpec:
     @classmethod
     def parse(cls, text: str, gp_text: str | None = None) -> BlendSpec:
         return cls(_parse_weights(text), _parse_weights(gp_text) if gp_text else None)
+
+
+def load_config(path: Path = CONFIG_PATH) -> BlendSpec | None:
+    """The default blend (data/manual/projection_blend.json); None if absent or all weight on ours.
+
+    Format: {"weights": {"ours": 0.5, "espn": 0.5}, "gp_weights": null | {...}, ...}; extra keys
+    (adopted, rationale) are documentation."""
+    if not path.exists():
+        return None
+    cfg = json.loads(path.read_text())
+    w = ",".join(f"{k}={v}" for k, v in cfg["weights"].items())
+    gw = cfg.get("gp_weights")
+    spec = BlendSpec.parse(w, ",".join(f"{k}={v}" for k, v in gw.items()) if gw else None)
+    if set(k for k, v in spec.weights.items() if v > 0) == {"ours"} and not spec.gp_weights:
+        return None
+    return spec
 
 
 def _parse_weights(text: str) -> dict[str, float]:
@@ -152,6 +175,7 @@ def write_blend(
     base_path: Path | None = None,
     out_path: Path = BLEND_OUTPUT,
     season: int = 2027,
+    extra_meta: dict | None = None,
 ) -> dict:
     """Blend the processed projections file with cached external sources; write CSV + meta."""
     from fantasy.model.projections import OUTPUT_PATH
@@ -181,6 +205,33 @@ def write_blend(
             {"path": _rel(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in inputs
         ],
         **{k: v for k, v in report.items() if k != "weights"},
+        **(extra_meta or {}),
+    }
+    out_path.with_name(out_path.stem + ".meta.json").write_text(
+        json.dumps(meta, indent=2, default=str) + "\n"
+    )
+    return meta
+
+
+def write_default(spec: BlendSpec | None, base_meta: dict, out_path: Path, base_path: Path) -> dict:
+    """Write the default projections file: the blend of `base_path` per `spec`, or (spec None)
+    a copy of the unblended base. The meta records the blend weights and input shas."""
+    from fantasy.model.projections import MODEL_VERSION
+
+    common = {
+        "model_version": f"{MODEL_VERSION}+{BLEND_VERSION}" if spec else MODEL_VERSION,
+        "projections_version": PROJECTIONS_VERSION,
+        "base_model_version": MODEL_VERSION,
+        "base_meta": _rel(base_path.with_name(base_path.stem + ".meta.json")),
+        "config": _rel(CONFIG_PATH) if CONFIG_PATH.exists() else None,
+    }
+    if spec is not None:
+        return write_blend(spec, base_path=base_path, out_path=out_path, extra_meta=common)
+    out_path.write_bytes(base_path.read_bytes())
+    meta = base_meta | common | {
+        "output": _rel(out_path),
+        "blend": "none (unblended baseline)",
+        "inputs_base": {"path": _rel(base_path), "sha256": base_meta["sha256"]},
     }
     out_path.with_name(out_path.stem + ".meta.json").write_text(
         json.dumps(meta, indent=2, default=str) + "\n"

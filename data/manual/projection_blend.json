@@ -1,0 +1,7 @@
+{
+  "weights": {"ours": 0.5, "espn": 0.5},
+  "gp_weights": null,
+  "adopted": "2026-10-19",
+  "rationale": "ESPN-history backtest: 50/50 ours/ESPN improves top-150 value-rank Spearman by +0.020 (SE 0.007) and points RMSE by -0.20 (0.03), better in all 6 usable seasons; GP stays ours (ESPN GP ~+11 games optimistic). See docs/research/projection_quality.md.",
+  "override": "fantasy data build-projections --blend none (unblended baseline) or --blend 'ours=..,espn=..'"
+}

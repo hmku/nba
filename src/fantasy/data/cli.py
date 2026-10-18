@@ -28,34 +28,59 @@ def build_projections(
     blend: str = typer.Option(
         "",
         "--blend",
-        help="also write a blend with cached external projections, e.g. 'ours=0.5,espn=0.5' "
-        "(sources: ours, espn, fantasypros; 'default' = ours=0.5,espn=0.5)",
+        help="override the default blend (data/manual/projection_blend.json): 'none' = unblended "
+        "baseline, 'default' = ours=0.5,espn=0.5, or e.g. 'ours=0.5,espn=0.3,fantasypros=0.2'",
     ),
     blend_gp: str = typer.Option("", "--blend-gp", help="blend games too, e.g. 'ours=1' (default: ours only)"),
-    blend_output: str = typer.Option("", "--blend-output", help="blend CSV path (default data/processed/projections_2026_27.blend.csv)"),
+    blend_output: str = typer.Option(
+        "",
+        "--blend-output",
+        help="write the blend to this path instead (the default projections file is then the unblended baseline)",
+    ),
 ) -> None:
-    """Regenerate data/processed/projections_2026_27.csv from cached raw + manual data (no network).
+    """Regenerate the projections from cached raw + manual data (no network).
 
-    With --blend, additionally writes the blended file (the default projections file is unchanged)."""
-    from fantasy.model.projections import write
+    Writes the unblended model to data/processed/projections_2026_27.base.csv and the default
+    projections (what the draft uses) to data/processed/projections_2026_27.csv: the blend
+    configured in data/manual/projection_blend.json, or the baseline with --blend none."""
+    from pathlib import Path
 
-    meta = write()
-    summary = {"ok": True} | {
+    from fantasy.model.blend import (
+        BASE_OUTPUT,
+        DEFAULT_WEIGHTS,
+        BlendSpec,
+        load_config,
+        write_blend,
+        write_default,
+    )
+    from fantasy.model.projections import OUTPUT_PATH, write
+
+    meta = write(BASE_OUTPUT)
+    base = {
         k: meta[k]
-        for k in ("model_version", "season", "output", "rows", "sha256", "sources", "source_counts")
+        for k in ("model_version", "season", "rows", "sha256", "sources", "source_counts")
     }
-    summary["inputs"] = meta["inputs"]
-    if blend:
-        from pathlib import Path
-
-        from fantasy.model.blend import BLEND_OUTPUT, DEFAULT_WEIGHTS, BlendSpec, write_blend
-
+    summary: dict = {"ok": True, "base": base | {"output": meta["output"]}, "inputs": meta["inputs"]}
+    if blend == "none":
+        spec = None
+    elif blend:
         spec = BlendSpec.parse(DEFAULT_WEIGHTS if blend == "default" else blend, blend_gp or None)
-        bmeta = write_blend(spec, out_path=Path(blend_output) if blend_output else BLEND_OUTPUT)
-        summary["blend"] = {k: v for k, v in bmeta.items() if k != "ignored_external"}
-        summary["blend"]["ignored_external"] = {
-            k: len(v) for k, v in bmeta.get("ignored_external", {}).items()
-        }
+    else:
+        spec = load_config()
+        if spec is not None and blend_gp:
+            spec = BlendSpec(spec.weights, BlendSpec.parse("ours=1", blend_gp).gp_weights)
+    if blend_output and spec is not None:
+        bmeta = write_blend(spec, base_path=BASE_OUTPUT, out_path=Path(blend_output))
+        summary["blend_output"] = {"output": bmeta["output"], "sha256": bmeta["sha256"]}
+        spec = None
+    dmeta = write_default(spec, meta, OUTPUT_PATH, BASE_OUTPUT)
+    summary["default"] = {
+        k: dmeta.get(k)
+        for k in ("output", "projections_version", "model_version", "rows", "sha256", "weights", "gp_weights")
+    }
+    summary["default"]["inputs"] = dmeta.get("inputs", dmeta.get("inputs_base"))
+    if "ignored_external" in dmeta:
+        summary["default"]["ignored_external"] = {k: len(v) for k, v in dmeta["ignored_external"].items()}
     _emit(summary, as_json)
 
 
