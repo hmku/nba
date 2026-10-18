@@ -2,10 +2,15 @@
 
 For each candidate at the current pick we run a lookahead rollout:
   1. add the candidate to my roster;
-  2. for each of my later picks p, consider only players likely still available at p
-     (P(available) >= `avail_threshold`, from fantasy.draft.availability), and greedily add the
-     one that maximizes the objective of (roster + player + expected filler for remaining picks);
-  3. score the completed roster with the category-win model (fantasy.model.catmodel).
+  2. for each of my later picks p, rank the players by the objective of
+     (roster + player + expected filler for remaining picks) and add the *expected* pick
+     (rollout_mode="expected", default): the best-ranked player still on the board, i.e. player i
+     with probability q_i = pa_i * prod_{j ranked above i} (1 - pa_j), pa = P(available at p) from
+     fantasy.draft.availability (independence approximation; leftover mass gets the filler line).
+     Players' later availability is discounted by the chance I already took them.
+     rollout_mode="greedy" (legacy, optimizer-0.1) instead assumes I get the single best player with
+     P(available) >= `avail_threshold`, which treats a 51% player as certain and a 49% one as gone;
+  3. score the completed (expected) roster with the category-win model (fantasy.model.catmodel).
 "Filler" for an unfilled future pick is the average line of players the market takes around
 that pick, so partial rosters are always compared at full size.
 
@@ -33,6 +38,8 @@ from fantasy.model.lines import ProjectionSet
 from fantasy.model.valuation import ValuationParams, compute_values, market_order
 
 NO_ADP_SD_MULT = 1.6
+# v0.2.0: expected-value rollouts (see docs/handoffs/2026-10-18-optimizer-diagnosis.md)
+OPTIMIZER_VERSION = "optimizer-0.2.0"
 
 DEFAULT_STRATEGIES: dict[str, list[str]] = {
     "balanced": [],
@@ -50,7 +57,9 @@ DEFAULT_STRATEGIES: dict[str, list[str]] = {
 class OptimizerParams:
     n_candidates: int = 14
     rollout_pool: int = 45  # players considered at each rollout step
-    avail_threshold: float = 0.5
+    avail_threshold: float = 0.5  # greedy rollouts only
+    rollout_mode: str = "expected"  # expected | greedy (legacy)
+    min_avail: float = 0.02  # expected rollouts: ignore players less likely than this to be there
     objective: str = "cat_wins"  # cat_wins | matchup
     strategies: dict[str, list[str]] = field(default_factory=lambda: dict(DEFAULT_STRATEGIES))
     strategy: str | None = None  # force a strategy; None = scan
@@ -174,6 +183,51 @@ class DraftOptimizer:
 
     # ------------------------------------------------------------------ rollout
     def rollout(
+        self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray
+    ) -> tuple[list[int], float, np.ndarray]:
+        if self.params.rollout_mode == "greedy":
+            return self.rollout_greedy(roster, available, future_picks, current_pick, w)
+        return self.rollout_expected(roster, available, future_picks, current_pick, w)
+
+    def rollout_expected(
+        self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray
+    ) -> tuple[list[int], float, np.ndarray]:
+        """Expected completion of `roster`: at each future pick, mix the ranked candidates by the
+        probability each is the best one left. Returns (most likely pick per future pick, objective, P)."""
+        ctx, a = self.ctx, self.ctx.arrays
+        roster = list(roster)
+        not_mine = available.astype(float)  # P(player not already taken by me in this rollout)
+        S, V, R = self._sums(roster)
+        added: list[int] = []
+        for j, p in enumerate(future_picks):
+            remaining = future_picks[j + 1 :]
+            pa = prob_available(p, current_pick, ctx.market_rank, ctx.sd_mult) * not_mine
+            cand = np.flatnonzero(pa >= self.params.min_avail)
+            if len(cand) == 0:
+                break
+            cand = cand[np.argsort(-ctx.value[cand])][: self.params.rollout_pool]
+            ok = self._feasible_rows(roster, cand, len(remaining))
+            if ok.any():
+                cand = cand[ok]
+            fill = ctx.filler_sums(remaining)
+            obj, _ = self._score_batch((S + fill[0], V + fill[1], R + fill[2]), cand, w)
+            ranked = cand[np.argsort(-obj, kind="stable")]
+            pr = pa[ranked]
+            q = pr * np.concatenate([[1.0], np.cumprod(1.0 - pr)[:-1]])
+            resid = max(0.0, 1.0 - float(q.sum()))
+            fs, fv, fr = ctx._filler[p]
+            S = S + q @ a.S[ranked] + resid * fs
+            V = V + q @ a.V[ranked] + resid * fv
+            R = R + q @ a.R[ranked] + resid * fr
+            not_mine[ranked] *= 1.0 - q
+            q_rep = np.where(np.isin(ranked, added), -1.0, q)
+            likely = int(ranked[int(np.argmax(q_rep))])
+            roster.append(likely)  # representative pick: positional feasibility and the plan
+            added.append(likely)
+        P = ctx.model.win_probs(S[None], V[None], R[None])[0]
+        return added, float(self._objective(P[None], w)[0]), P
+
+    def rollout_greedy(
         self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray
     ) -> tuple[list[int], float, np.ndarray]:
         """Greedy completion of `roster` over `future_picks`. Returns (rows added, objective, P)."""
@@ -329,6 +383,8 @@ class DraftOptimizer:
             "model_run_id": model_run_id,
             "generated_at": _now(),
             "objective": prm.objective,
+            "optimizer_version": OPTIMIZER_VERSION,
+            "rollout_mode": prm.rollout_mode,
             "recommendations": recs,
             "strategy": {"name": chosen, "punt": strategies[chosen],
                          "notes": _strategy_note(chosen, strat_results), "scan": strat_results},
@@ -339,7 +395,7 @@ class DraftOptimizer:
                 "punts": strategies[chosen],
                 "expected_category_wins": round(team_eval["expected_category_wins"], 3),
                 "matchup_win_prob": round(team_eval["matchup_win_prob"], 3),
-                "basis": "projected final roster if the top recommendation and its planned picks are taken",
+                "basis": "projected final roster if the top recommendation and its planned (most likely) picks are taken",
                 "current_roster_cat_win_probs": current_eval["cat_win_probs"] if current_eval else None,
             },
             "planned_picks": [{"pick": p, "player_id": pid, "name": str(ctx.values.loc[pid, "name"])}
