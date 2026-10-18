@@ -71,10 +71,14 @@ export default async function MatchupPage({ searchParams }: { searchParams: Prom
   const req = wq ? sorted.find((w) => w.week === Number(wq)) : null;
   const cur = currentWeek(sorted, today);
   const w = req ?? cur ?? sorted[0];
+  const when = w.start && w.end ? (w.start <= today && today <= w.end ? "this week" : w.start > today ? (cur?.week === w.week ? "next up" : "upcoming") : "past") : "";
+  // Team names: drafts.config.team_names of the draft the simulation used (else the sim's own names)
+  const simDraft = drafts.find((d) => d.draft_id === sim.draftId) ?? draft;
+  const names = (simDraft?.config?.team_names ?? {}) as Record<string, string>;
   return (
     <div className="space-y-3">
       <WeekStrip weeks={sorted} selected={w.week} current={cur?.week ?? null} />
-      <MatchupView sim={sim} w={w} isCurrent={cur?.week === w.week} />
+      <MatchupView sim={sim} w={w} when={when} names={names} />
     </div>
   );
 }
@@ -117,12 +121,13 @@ function advice(w: WeekMatchup) {
   return { chase, concede, safe };
 }
 
-function MatchupView({ sim, w, isCurrent }: { sim: SeasonSim; w: WeekMatchup; isCurrent: boolean }) {
+function MatchupView({ sim, w, when, names }: { sim: SeasonSim; w: WeekMatchup; when: string; names: Record<string, string> }) {
   const opp = w.opponent != null ? sim.profiles[String(w.opponent)] : undefined;
   const me = sim.myTeamId != null ? sim.profiles[String(sim.myTeamId)] : undefined;
   const hasWeekTotals = CATS.some((c) => w.cats[c]?.me != null);
-  const myName = str(sim.myTeam?.name) ?? "Me";
-  const oppName = w.opponentName ?? (w.opponent != null ? `Team ${w.opponent}` : "Opponent");
+  const myName = (sim.myTeamId != null ? names[String(sim.myTeamId)] : undefined) ?? "Me";
+  const oppName =
+    (w.opponent != null ? names[String(w.opponent)] : undefined) ?? w.opponentName ?? (w.opponent != null ? `Team ${w.opponent}` : "Opponent");
   const { chase, concede, safe } = advice(w);
   const recs = arr(w.raw.recommendations ?? w.raw.actions).map((x) => (typeof x === "string" ? x : str((x as Record<string, unknown>)?.text))).filter(Boolean) as string[];
   const myRow = sim.table.find((r) => r.team === sim.myTeamId);
@@ -135,7 +140,7 @@ function MatchupView({ sim, w, isCurrent }: { sim: SeasonSim; w: WeekMatchup; is
         <div className="px-4 pt-3 pb-3">
           <div className="text-xs text-muted">
             Week {w.week} · {fmtDate(w.start)} – {fmtDate(w.end)}
-            {isCurrent ? " · this week" : ""}
+            {when ? ` · ${when}` : ""}
           </div>
           <div className="mt-1 flex items-baseline gap-2 text-lg leading-tight font-semibold">
             <span className="truncate">{myName}</span>

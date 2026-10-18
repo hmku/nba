@@ -8,6 +8,7 @@ import {
   CatStrip,
   EmptyState,
   Explain,
+  ExplainMore,
   Hero,
   MiniHist,
   Panel,
@@ -133,10 +134,16 @@ function DraftSimSection({ d }: { d: DraftSim }) {
           </tbody>
         </table>
         <div className="mt-2 space-y-1.5">
-          <Explain text={explanationText(ex, "edge", "overview")} />
-          <p className="text-xs text-muted">
-            BPA = take the highest-valued player available. Both are scored vs a league-average opponent, in-sample.
-          </p>
+          <Explain text={explanationText(ex, "overview")} />
+          <ExplainMore
+            items={[
+              ["Edge and SE", explanationText(ex, "edge")],
+              ["Expected category wins", explanationText(ex, "expected_category_wins")],
+              ["P(win a week)", explanationText(ex, "matchup_win_prob")],
+              ["Simulated opponents", explanationText(ex, "opponents")],
+              ["BPA", "Best player available: take the highest-valued player left. Both strategies face identical simulated rooms."],
+            ]}
+          />
         </div>
       </Panel>
     </>
@@ -186,6 +193,13 @@ function SeasonOutlook({ s }: { s: SeasonSim }) {
         )}
         <div className="mt-3 space-y-1.5">
           <Explain text={explanationText(ex, "overview")} />
+          <ExplainMore
+            items={[
+              ["What is simulated", explanationText(ex, "what_is_simulated")],
+              ["Opponents", explanationText(ex, "opponents")],
+              ["Priors", explanationText(ex, "priors")],
+            ]}
+          />
           <Link href="/league" className="inline-block text-sm text-accent">
             League table & all teams →
           </Link>

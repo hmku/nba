@@ -22,7 +22,11 @@ export default async function LeaguePage() {
   const sim =
     post && (!pre || (post.run.created_at ?? "") >= (pre.run.created_at ?? "")) ? post : (pre ?? post);
   const draftId = defaultDraftId(drafts);
-  const draft = drafts.find((d) => d.draft_id === draftId) ?? null;
+  // After the draft, follow the draft the simulation used (names + rosters); else the default draft.
+  const draft =
+    (sim && !sim.isPreseason ? drafts.find((d) => d.draft_id === sim.draftId) : undefined) ??
+    drafts.find((d) => d.draft_id === draftId) ??
+    null;
   const { data: pickData } = draft
     ? await db.from("draft_picks").select("*").eq("draft_id", draft.draft_id).order("overall_pick").limit(1000)
     : { data: [] };

@@ -201,3 +201,25 @@ export function CatStrip({
     </div>
   );
 }
+
+/** Collapsed "what do these numbers mean" block built from the data's own `explanations`. */
+export function ExplainMore({ items, label = "What these numbers mean" }: { items: [string, string | null | undefined][]; label?: string }) {
+  const rows = items.filter((x): x is [string, string] => !!x[1]);
+  if (!rows.length) return null;
+  return (
+    <details className="group">
+      <summary className="cursor-pointer list-none text-[13px] text-accent select-none [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">{label} ▸</span>
+        <span className="hidden group-open:inline">{label} ▾</span>
+      </summary>
+      <dl className="mt-2 space-y-2">
+        {rows.map(([t, txt]) => (
+          <div key={t}>
+            <dt className="text-[12px] font-semibold">{t}</dt>
+            <dd className="text-[13px] leading-snug text-muted">{txt}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}

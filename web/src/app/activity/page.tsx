@@ -4,7 +4,8 @@ import type { AgentEvent, AgentRun, Approval, Decision, Lock, Transaction } from
 import { Badge, Disclosure, Empty, ErrorNote, JsonView, statusTone } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
-import { shortTime } from "@/lib/format";
+import { ageSeconds, shortTime } from "@/lib/format";
+import Link from "next/link";
 import { DecideButtons } from "../approvals/DecideButtons";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ export default async function ActivityPage() {
     db.from("locks").select("*").order("acquired_at", { ascending: false }),
     db.from("approvals").select("*").order("requested_at", { ascending: false }).limit(100),
   ]);
+  const { data: mrData } = await db.from("model_runs").select("run_id,kind,created_at").order("created_at", { ascending: false }).limit(60);
   const runs = (runsR.data as AgentRun[]) ?? [];
   const ids = runs.map((r) => r.run_id);
   const evR = ids.length
@@ -85,6 +87,19 @@ export default async function ActivityPage() {
   const runIds = new Set(ids);
   const orphanDecisions = decisions.filter((d) => !d.run_id || !runIds.has(d.run_id));
   const orphanTxns = txns.filter((t) => !t.run_id || !runIds.has(t.run_id));
+  // health strip (moved from the old Team page): model freshness, stuck runs, expired locks
+  const now = Date.now();
+  const latestByKind = new Map<string, string | null>();
+  for (const r of (mrData as { kind: string; created_at: string | null }[]) ?? [])
+    if (!latestByKind.has(r.kind)) latestByKind.set(r.kind, r.created_at);
+  const FRESH: [string, string, number][] = [
+    ["projections", "projections", 36 * 3600],
+    ["valuation", "values", 36 * 3600],
+    ["draft_sim", "draft sim", 72 * 3600],
+    ["season_sim", "season sim", 72 * 3600],
+  ];
+  const stuck = runs.filter((r) => r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
+  const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
   const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, evR.error].filter(Boolean).map((e) => e!.message);
 
   return (
@@ -94,6 +109,35 @@ export default async function ActivityPage() {
       {errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
       ))}
+
+      <Link href="/history" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-xs text-muted hover:border-accent/50">
+        {FRESH.map(([k, label, limit]) => {
+          const ts = latestByKind.get(k);
+          const age = ageSeconds(ts, now);
+          const stale = age == null ? k === "projections" || k === "valuation" : age > limit;
+          return (
+            <span key={k} className={stale ? "text-warn" : ""}>
+              {stale ? "⚠ " : ""}
+              {label} {ts ? <Ago ts={ts} /> : "none"}
+            </span>
+          );
+        })}
+        <span className="ml-auto text-muted">›</span>
+      </Link>
+      {(stuck.length > 0 || expiredLocks.length > 0) && (
+        <div className="space-y-1 rounded-xl border border-warn/40 bg-warn/10 px-4 py-2.5 text-[13px] text-warn">
+          {stuck.map((r) => (
+            <div key={r.run_id}>
+              ⚠ {r.agent} is &quot;running&quot; but its heartbeat is <Ago ts={r.heartbeat_at ?? r.started_at} /> — it may have died.
+            </div>
+          ))}
+          {expiredLocks.length > 0 && (
+            <div>
+              ⚠ {expiredLocks.length} expired lock{expiredLocks.length === 1 ? "" : "s"} not released: {expiredLocks.map((l) => l.resource).join(", ")}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* pending approvals pinned */}
       {pending.length > 0 && (
