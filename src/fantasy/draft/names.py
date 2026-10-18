@@ -4,20 +4,15 @@ from __future__ import annotations
 
 import difflib
 import re
-import unicodedata
 
 import pandas as pd
 
+from fantasy.data.ids import slugify
+
 
 def slug(name: str) -> str:
-    try:
-        from fantasy.data.ids import slugify
-
-        return slugify(name)
-    except ImportError:
-        s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
-        s = re.sub(r"[^a-z0-9\s-]", "", s)
-        return re.sub(r"[\s-]+", "-", s).strip("-")
+    """Canonical player-id slug (same as `fantasy.data.ids.slugify`, the projections' id scheme)."""
+    return slugify(name)
 
 
 class NameResolutionError(ValueError):

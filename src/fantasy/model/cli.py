@@ -32,12 +32,14 @@ def _parse_punt(punt: str, categories: list[str], as_json: bool) -> list[str]:
 @app.command()
 def build(
     projections: Annotated[Path | None, typer.Option("--projections")] = None,
-    kappa: Annotated[float, typer.Option("--kappa", help="0=z-scores, 1=G-scores")] = 1.0,
+    kappa: Annotated[float, typer.Option("--kappa", help="0=z-scores, 1=G-scores")] = ValuationParams.kappa,
     punt: Annotated[str, typer.Option("--punt", help="Comma-separated categories to zero-weight")] = "",
-    gp_risk_lambda: Annotated[float, typer.Option("--gp-risk-lambda", help="value gp - lambda*gp_sd")] = 0.0,
+    gp_risk_lambda: Annotated[
+        float, typer.Option("--gp-risk-lambda", help="value gp - lambda*gp_sd")
+    ] = ValuationParams.gp_risk_lambda,
     playoff_weight: Annotated[
         float, typer.Option("--playoff-weight", help="weight of playoff weeks in availability (0.15 = neutral)")
-    ] = 0.30,
+    ] = ValuationParams.playoff_weight,
     save: Annotated[bool, typer.Option("--save/--no-save")] = True,
     top: Annotated[int, typer.Option("--top")] = 40,
     as_json: Annotated[bool, typer.Option("--json")] = False,

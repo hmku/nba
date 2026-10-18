@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 import numpy as np
 import pandas as pd
 
-from fantasy.league.settings import CATEGORIES, LeagueSettings
+from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import (
     GAME_CV,
     GAMES_PER_WEEK,
@@ -163,6 +163,3 @@ def run_valuation(
         values=values,
     )
 
-
-def cat_labels(keys: list[str]) -> list[str]:
-    return [CATEGORIES[k].label for k in keys]

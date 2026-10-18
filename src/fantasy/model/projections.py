@@ -574,9 +574,6 @@ def write(path: Path = OUTPUT_PATH, params: Params | None = None) -> dict:
 
 # ---------------------------------------------------------------- sanity check helper
 
-NINE_CATS = ["fg_pct", "ft_pct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
-
-
 def zscores(df: pd.DataFrame, top_n: int = 156) -> pd.DataFrame:
     """Simple per-game 9-cat z-scores (volume-weighted % impact), iterated twice on the top pool."""
     d = df.copy()

@@ -24,9 +24,6 @@ from fantasy.ops.common import EXIT_ERROR, EXIT_STILL_PENDING, EXIT_USAGE, OpsEr
 RunId = Annotated[
     str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
 ]
-RequiredRunId = Annotated[
-    str, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
-]
 JsonOut = Annotated[bool, typer.Option("--json", help="Machine-readable JSON output")]
 
 
