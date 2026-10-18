@@ -2,69 +2,116 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { ThemeToggle, WriteAccess } from "./client";
 
-const LINKS = [
-  { href: "/", label: "Overview" },
-  { href: "/draft", label: "Draft" },
-  { href: "/agents", label: "Agents" },
-  { href: "/approvals", label: "Approvals" },
+const TABS = [
+  { href: "/draft", label: "Draft", icon: "◎" },
+  { href: "/", label: "Team", icon: "▤" },
+  { href: "/activity", label: "Activity", icon: "≋" },
+];
+
+const MORE = [
   { href: "/players", label: "Players" },
   { href: "/history", label: "History" },
 ];
 
-export function Nav() {
+function isActive(path: string, href: string) {
+  if (href === "/") return path === "/";
+  if (href === "/activity") return path.startsWith("/activity") || path.startsWith("/agents") || path.startsWith("/approvals");
+  return path.startsWith(href);
+}
+
+function MoreMenu({ up = false }: { up?: boolean }) {
   const path = usePathname();
-  const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+  const active = MORE.some((m) => path.startsWith(m.href));
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  }, [open]);
   return (
-    <>
-      {/* desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-48 shrink-0 flex-col border-r border-line bg-panel md:flex">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <span className="grid h-6 w-6 place-items-center rounded bg-accent text-[11px] font-bold text-accent-fg">FB</span>
-          <span className="text-sm font-semibold tracking-tight">Fantasy Desk</span>
-        </div>
-        <nav className="flex flex-col gap-0.5 px-2">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`rounded px-2.5 py-1.5 text-sm ${
-                active(l.href) ? "bg-panel-2 font-medium text-fg" : "text-muted hover:bg-panel-2 hover:text-fg"
-              }`}
-            >
-              {l.label}
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className={
+          up
+            ? `flex w-full flex-col items-center gap-0.5 py-2 text-[11px] ${active ? "text-fg" : "text-muted"}`
+            : `rounded-md px-3 py-1.5 text-sm ${active ? "bg-panel-2 text-fg" : "text-muted hover:text-fg"}`
+        }
+      >
+        {up && <span className="text-lg leading-none">⋯</span>}
+        More
+      </button>
+      {open && (
+        <div
+          className={`absolute z-50 w-44 rounded-lg border border-line bg-panel p-1 shadow-xl ${
+            up ? "right-1 bottom-full mb-2" : "right-0 mt-2"
+          }`}
+        >
+          {MORE.map((m) => (
+            <Link key={m.href} href={m.href} className="block rounded px-3 py-2.5 text-sm hover:bg-panel-2">
+              {m.label}
             </Link>
           ))}
-        </nav>
-        <div className="mt-auto flex items-center justify-between border-t border-line px-3 py-3">
-          <WriteAccess compact />
-          <ThemeToggle />
-        </div>
-      </aside>
-      {/* mobile top bar */}
-      <div className="sticky top-0 z-40 border-b border-line bg-panel/95 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between px-3 pt-2">
-          <span className="text-sm font-semibold tracking-tight">Fantasy Desk</span>
-          <div className="flex items-center gap-3">
-            <WriteAccess compact />
-            <ThemeToggle />
+          <div className="mt-1 flex items-center justify-between border-t border-line px-3 pt-2 pb-1 text-xs text-muted">
+            Theme <ThemeToggle />
           </div>
         </div>
-        <nav className="scroll-thin flex gap-1 overflow-x-auto px-2 py-1.5">
-          {LINKS.map((l) => (
+      )}
+    </div>
+  );
+}
+
+export function Nav() {
+  const path = usePathname();
+  return (
+    <>
+      <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
+        <div className="mx-auto flex h-12 max-w-5xl items-center gap-4 px-4">
+          <Link href="/draft" className="text-[15px] font-semibold tracking-tight">
+            Fantasy Desk
+          </Link>
+          <nav className="hidden items-center gap-1 md:flex">
+            {TABS.map((t) => (
+              <Link
+                key={t.href}
+                href={t.href}
+                className={`rounded-md px-3 py-1.5 text-sm ${isActive(path, t.href) ? "bg-panel-2 text-fg" : "text-muted hover:text-fg"}`}
+              >
+                {t.label}
+              </Link>
+            ))}
+            <MoreMenu />
+          </nav>
+          <div className="ml-auto">
+            <WriteAccess compact />
+          </div>
+        </div>
+      </header>
+      {/* phone: bottom tab bar */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+        <div className="grid grid-cols-4">
+          {TABS.map((t) => (
             <Link
-              key={l.href}
-              href={l.href}
-              className={`shrink-0 rounded px-2.5 py-1 text-sm ${
-                active(l.href) ? "bg-panel-2 font-medium text-fg" : "text-muted"
-              }`}
+              key={t.href}
+              href={t.href}
+              className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${isActive(path, t.href) ? "font-medium text-accent" : "text-muted"}`}
             >
-              {l.label}
+              <span className="text-lg leading-none">{t.icon}</span>
+              {t.label}
             </Link>
           ))}
-        </nav>
-      </div>
+          <MoreMenu up />
+        </div>
+      </nav>
     </>
   );
 }

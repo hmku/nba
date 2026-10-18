@@ -40,20 +40,20 @@ export function DecideButtons({ id }: { id: string }) {
         <button
           onClick={() => decide("approved")}
           disabled={!can || busy}
-          className="rounded bg-good px-3 py-1.5 text-sm font-semibold text-bg disabled:opacity-40"
+          className="rounded-lg bg-good px-4 py-2 text-sm font-semibold text-bg disabled:opacity-40"
         >
           Approve
         </button>
         <button
           onClick={() => decide("rejected")}
           disabled={!can || busy}
-          className="rounded border border-bad px-3 py-1.5 text-sm font-semibold text-bad disabled:opacity-40"
+          className="rounded-lg border border-bad px-4 py-2 text-sm font-semibold text-bad disabled:opacity-40"
         >
           Reject
         </button>
       </div>
       {ws.loaded && !ws.writesEnabled && <div className="mt-1 text-xs text-warn">Writes disabled: {ws.reason}</div>}
-      {ws.loaded && ws.writesEnabled && !ws.authed && <div className="mt-1 text-xs text-muted">Unlock with the passphrase (top right) to decide.</div>}
+      {ws.loaded && ws.writesEnabled && !ws.authed && <div className="mt-1 text-xs text-muted">Tap “unlock” (top right) and enter the passphrase to decide.</div>}
       {err && <div className="mt-1 text-xs text-bad">{err}</div>}
     </div>
   );
