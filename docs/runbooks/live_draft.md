@@ -42,7 +42,7 @@ The agent protocol itself is `.claude/skills/live-draft/SKILL.md`. This page is 
 | Dashboard writes disabled | Needs `SUPABASE_SERVICE_ROLE_KEY` + `DASHBOARD_PASSPHRASE` env vars in Vercel. Use the CLI instead. |
 | Wrong pick recorded | `fantasy draft undo N` then re-record. |
 | Clock expiring | Yahoo autopicks from your Pre-Draft Rankings (set in setup step 4). |
-| Recommendations live-updating from dashboard entries | Run `fantasy draft watch` in a terminal: it recomputes whenever a pick is recorded anywhere. |
+| Recommendations live-updating from dashboard entries | Run `fantasy draft watch` in a terminal: it recomputes whenever a pick is recorded anywhere. DB errors are logged to stderr (`warning: ... DB error ... still watching`) and retried with backoff (≤30 s); it does not exit. |
 
 ## How to read a recommendation
 - `score`: projected expected categories won per week (of 9) for the **final roster** if you take this player

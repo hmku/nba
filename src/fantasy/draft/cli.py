@@ -371,33 +371,86 @@ def _attach_value_search(rec: dict, ctx: DraftContext, state: DraftState, mode: 
     rec["value_search"] = res
 
 
+WATCH_MAX_BACKOFF = 30.0  # seconds between retries while the DB keeps failing
+
+
+def _watch_warn(msg: str) -> None:
+    print(f"warning: [{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
+
+
+def _short(e: BaseException) -> str:
+    """One-line, length-capped error text for logs (DB driver messages can span many lines)."""
+    return f"{type(e).__name__}: {' '.join(str(e).split())[:200]}"
+
+
 @app.command()
 def watch(
     draft_id: DraftOpt = None,
     projections: ProjOpt = None,
     interval: Annotated[float, typer.Option("--interval")] = 3.0,
+    max_iterations: Annotated[int, typer.Option("--max-iterations", help="Stop after N polls (0 = run until "
+                                                "my last pick; for tests)")] = 0,
 ) -> None:
-    """Poll for new picks (e.g. entered on the dashboard) and publish a fresh recommendation each time."""
+    """Poll for new picks (e.g. entered on the dashboard) and publish a fresh recommendation each time.
+
+    Survives transient DB errors: a failed read or save is logged to stderr and retried with exponential
+    backoff (capped at 30 s) without exiting; a recommendation that could not be saved is re-saved on the
+    next successful poll. An optimizer error is logged and the board change is skipped (the loop keeps
+    polling; run `fantasy draft recommend` by hand)."""
+    from sqlalchemy.exc import SQLAlchemyError
+
+    db_errors = (SQLAlchemyError, OSError)
     d = _load_draft(draft_id, False)
     s = _settings_for(d)
     ctx, run_id = _context(s, projections, d)
     opt = DraftOptimizer(ctx)
     last: tuple | None = None
+    unsaved: dict | None = None  # computed recommendation whose save failed
+    failures = 0
+    polls = 0
     typer.echo(f"watching {d['draft_id']} every {interval}s (Ctrl-C to stop)")
     while True:
-        picks = store.get_picks(d["draft_id"])
-        key = tuple((p["overall_pick"], p["player_id"]) for p in picks)
-        if key != last:
-            state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
-            rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
-            store.save_recommendation(rec)
-            top = rec["recommendations"][0]["name"] if rec["recommendations"] else "-"
-            typer.echo(f"[{time.strftime('%H:%M:%S')}] {len(picks)} picks → for #{rec.get('for_pick')}: {top}")
-            last = key
-            if rec.get("for_pick") is None:
-                typer.echo("draft complete for my slot")
-                return
-        time.sleep(interval)
+        polls += 1
+        try:
+            picks = store.get_picks(d["draft_id"])
+            key = tuple((p["overall_pick"], p["player_id"]) for p in picks)
+            if key != last:
+                unsaved = None
+                state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
+                try:
+                    rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+                except db_errors:
+                    raise
+                except Exception as e:  # noqa: BLE001 — keep watching; the agent can still run `draft recommend`
+                    _watch_warn(f"recommendation failed for {len(picks)} picks ({_short(e)}); waiting for the next "
+                                "board change")
+                    last = key
+                    rec = None
+                if rec is not None:
+                    last = key
+                    unsaved = rec
+                    top = rec["recommendations"][0]["name"] if rec["recommendations"] else "-"
+                    typer.echo(f"[{time.strftime('%H:%M:%S')}] {len(picks)} picks → for #{rec.get('for_pick')}: {top}")
+            if unsaved is not None:
+                store.save_recommendation(unsaved)
+                done = unsaved.get("for_pick") is None
+                unsaved = None
+                if done:
+                    typer.echo("draft complete for my slot")
+                    return
+            if failures:
+                _watch_warn(f"DB recovered after {failures} failed poll(s)")
+            failures = 0
+            wait = interval
+        except db_errors as e:
+            failures += 1
+            wait = min(max(interval, 1.0) * 2 ** (failures - 1), WATCH_MAX_BACKOFF)
+            what = "saving the recommendation" if unsaved is not None else "reading picks"
+            _watch_warn(f"DB error {what} ({_short(e)}); retry {failures} in {wait:.0f}s — still watching")
+        if max_iterations and polls >= max_iterations:
+            typer.echo(f"stopping after {polls} polls (--max-iterations)")
+            return
+        time.sleep(wait)
 
 
 @app.command()
