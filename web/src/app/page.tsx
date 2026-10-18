@@ -45,10 +45,9 @@ export default async function Overview() {
 
   const picked = new Set(((picksR.data as { overall_pick: number }[]) ?? []).map((p) => p.overall_pick));
   const picksMade = picksR.count ?? picked.size;
-  let currentPick = 1;
-  if (draft) while (currentPick <= draft.num_teams * draft.num_rounds && picked.has(currentPick)) currentPick++;
+  const currentPick = picked.size ? Math.max(...picked) + 1 : 1;
   const myNext = draft
-    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type).find((p) => p >= currentPick && !picked.has(p))
+    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type).find((p) => p >= currentPick)
     : undefined;
   const rec = ((recR.data as DraftRecommendation[]) ?? [])[0];
   const runs = (agentR.data as AgentRun[]) ?? [];

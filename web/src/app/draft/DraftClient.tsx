@@ -153,12 +153,15 @@ function DraftView({
   const teamNames = (draft.config?.team_names ?? {}) as Record<string, string>;
   const teamName = (slot: number) => teamNames[String(slot)] ?? `Team ${slot}`;
 
-  let currentPick = 1;
-  while (currentPick <= total && pickMap.has(currentPick)) currentPick++;
+  // On the clock = one after the highest recorded pick (sync gaps must not rewind the clock).
+  const maxPick = picks.reduce((m, p) => Math.max(m, p.overall_pick), 0);
+  const currentPick = maxPick + 1;
+  const gaps: number[] = [];
+  for (let i = 1; i < maxPick; i++) if (!pickMap.has(i)) gaps.push(i);
   const complete = currentPick > total;
   const cur = complete ? null : pickInfo(currentPick, N, orderType);
   const myAll = picksForSlot(draft.my_slot, N, R, orderType);
-  const myUpcoming = myAll.filter((p) => p >= currentPick && !pickMap.has(p));
+  const myUpcoming = myAll.filter((p) => p >= currentPick);
   const nextMine = myUpcoming[0] ?? null;
   const picksUntil = nextMine != null ? nextMine - currentPick : null;
   const onClock = picksUntil === 0;
@@ -203,6 +206,12 @@ function DraftView({
         lastOk={lastOk}
         pollError={pollError}
       />
+      {gaps.length > 0 && (
+        <div className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2 text-xs text-warn">
+          Missing picks below #{maxPick}: {gaps.slice(0, 20).join(", ")}
+          {gaps.length > 20 ? ` (+${gaps.length - 20} more)` : ""}. Re-sync from Yahoo or enter them manually (set Overall #).
+        </div>
+      )}
       {onClock && (
         <div className="rounded-lg border border-accent bg-accent/15 px-4 py-3 text-center text-base font-semibold text-accent animate-pulse">
           YOU ARE ON THE CLOCK — pick #{currentPick}
