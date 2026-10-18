@@ -32,7 +32,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+pythonpath = ["src"]  # test this checkout even when the editable install points at another worktree
+addopts = "-q -m 'not slow'"
+markers = ["slow: end-to-end tests taking more than ~20 s (run with `pytest -m slow`)"]
 
 [tool.ruff]
 line-length = 100
