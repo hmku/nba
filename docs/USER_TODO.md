@@ -6,7 +6,8 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 ## Can do from your phone now
 - [x] **League settings screenshots** — received and recorded 2026-10-18 (`data/manual/league_settings.json`):
       categories, roster (3 IL, not 4), trades, waivers, playoffs (weeks 18-20, ending Sun Mar 21, 2027).
-  - [ ] **Draft order still unverified** — screenshot the Draft Order page if available (Yahoo → League →
+  - [ ] **Draft order: user believes 1, 24, 36, 37, … is right (2026-10-18)** — laptop session still confirms on Yahoo before pick 1.
+        Previously: — screenshot the Draft Order page if available (Yahoo → League →
         Draft Order / draft room), else it gets checked in the laptop session (draft-prep step 4). Confirm
         your picks are 1, 24, 36, 37, 60, 61, … (3rd-round reversal) and that you pick #1.
 - [ ] **Clean demo rows in Supabase** — Supabase → SQL Editor → paste the "Delete with:" block from
