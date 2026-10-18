@@ -1,0 +1,229 @@
+{
+  "model_version": "baseline-0.1",
+  "season": "2026-27",
+  "output": "data/processed/projections_2026_27.csv",
+  "rows": 450,
+  "sha256": "99211979634ab3b15f5d4ee501ff8594c7da94cfd2807b1814cfad7d0c827f04",
+  "sources": [
+    "bbref_baseline",
+    "bbref_baseline+manual",
+    "manual_rookie_prior"
+  ],
+  "source_counts": {
+    "bbref_baseline": 390,
+    "bbref_baseline+manual": 49,
+    "manual_rookie_prior": 11
+  },
+  "params": {
+    "season_weights": {
+      "2026": 5.0,
+      "2025": 3.0,
+      "2024": 2.0
+    },
+    "prior_min": 400.0,
+    "gp_prior": 68.0,
+    "gp_prior_weight": 1.0,
+    "gp_min": 0.0,
+    "gp_max": 80.0,
+    "gp_sd_base": 7.0,
+    "mpg_max": 37.5,
+    "min_total_minutes": 150.0,
+    "max_rows": 450
+  },
+  "inputs": [
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_career_info.csv",
+      "sha256": "08b91bb0cb4d6f67bfb41197159f8bac318c3c9a8e3eda49f48f1e945af56cac",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Career%20Info.csv",
+      "fetched_at": "2026-10-18T13:36:21Z"
+    },
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_play_by_play.csv",
+      "sha256": "347fbb86f8622714498686ff2bafb2caba16f7143273f0b0acb99aee2e51944f",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Play%20By%20Play.csv",
+      "fetched_at": "2026-10-18T13:36:21Z"
+    },
+    {
+      "path": "data/raw/bbref_sumitrodatta/player_totals.csv",
+      "sha256": "6a683ea0ecb6b61a751577d835c3fcb6c36c5373089e73416662d31d16afd977",
+      "url": "https://raw.githubusercontent.com/sumitrodatta/bball-reference-datasets/master/Data/Player%20Totals.csv",
+      "fetched_at": "2026-10-18T13:36:20Z"
+    },
+    {
+      "path": "data/manual/inactive_2026_27.csv",
+      "sha256": "a5ad60c98d1c6a1e170a8fb68661e0ad8f71f96bb31038b94cb7c3d3b1cc2fd2",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/player_overrides_2026_27.csv",
+      "sha256": "3329c278a51deec9419d157a52562e986396fcb0d0fc3b522857cd8c68b64165",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/rookies_2026_27.csv",
+      "sha256": "645ac31193ed58060a1849e5d5e91952eac741e5c9a1178bb22ce57d9fd6b199",
+      "url": "manual",
+      "fetched_at": null
+    }
+  ],
+  "notes": {
+    "aj-dybantsa": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "bobby-portis": [
+      "traded MIL->MIA in Giannis deal"
+    ],
+    "brayden-burries": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "caleb-wilson": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "cameron-boozer": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "caris-levert": [
+      "six-team deal"
+    ],
+    "collin-sexton": [
+      "FA signing"
+    ],
+    "damian-lillard": [
+      "missed 2025-26; age 36"
+    ],
+    "dangelo-russell": [
+      "six-team deal"
+    ],
+    "darius-acuff-jr": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "darryn-peterson": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "fred-vanvleet": [
+      "missed 2025-26"
+    ],
+    "gary-harris": [
+      "six-team deal"
+    ],
+    "giannis-antetokounmpo": [
+      "traded MIL->MIA (June 2026)"
+    ],
+    "grayson-allen": [
+      "traded PHO->CHO"
+    ],
+    "isaiah-stewart": [
+      "six-team deal"
+    ],
+    "ja-morant": [
+      "traded MEM->POR"
+    ],
+    "jaime-jaquez-jr": [
+      "traded MIA->MIL; projected starter"
+    ],
+    "jaylen-brown": [
+      "on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron"
+    ],
+    "jerami-grant": [
+      "traded POR->MEM"
+    ],
+    "john-collins": [
+      "six-team deal"
+    ],
+    "josh-green": [
+      "traded CHO->MIN"
+    ],
+    "julius-randle": [
+      "traded MIN->BRK (4-team deal)"
+    ],
+    "kasparas-jakucionis": [
+      "traded MIA->MIL"
+    ],
+    "keaton-wagler": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "kelel-ware": [
+      "traded MIA->MIL"
+    ],
+    "khris-middleton": [
+      "six-team deal"
+    ],
+    "kingston-flemings": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "kris-murray": [
+      "traded POR->MEM"
+    ],
+    "kyrie-irving": [
+      "missed 2025-26; age 34"
+    ],
+    "lamelo-ball": [
+      "traded CHO->MIN; shares ball with Edwards"
+    ],
+    "lebron-james": [
+      "signed with PHI (2yr/$8M) at age 41"
+    ],
+    "luguentz-dort": [
+      "traded OKC->ATL (3-team)"
+    ],
+    "marcus-sasser": [
+      "six-team deal"
+    ],
+    "mikel-brown-jr": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "miles-bridges": [
+      "traded CHO->PHO"
+    ],
+    "mitchell-robinson": [
+      "FA signing"
+    ],
+    "nate-ament": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "naz-reid": [
+      "traded MIN->CHO; larger role"
+    ],
+    "nic-claxton": [
+      "traded BRK->CHI"
+    ],
+    "norman-powell": [
+      "FA signing"
+    ],
+    "quentin-grimes": [
+      "FA signing"
+    ],
+    "royce-oneale": [
+      "traded PHO->CHO"
+    ],
+    "rui-hachimura": [
+      "FA signing"
+    ],
+    "sandro-mamukelashvili": [
+      "FA signing"
+    ],
+    "santi-aldama": [
+      "six-team deal"
+    ],
+    "taurean-prince": [
+      "six-team deal"
+    ],
+    "tyler-herro": [
+      "traded MIA->MIL; bigger role"
+    ],
+    "tyrese-haliburton": [
+      "missed 2025-26; projected from 2023-25"
+    ],
+    "walker-kessler": [
+      "traded UTA->LAL; jammed pinkie not expected to cost games"
+    ],
+    "yaxel-lendeborg": [
+      "rookie/no NBA history: manual conservative prior"
+    ],
+    "zaccharie-risacher": [
+      "traded ATL->DAL (3-team)"
+    ]
+  }
+}
