@@ -38,7 +38,8 @@ EXPLANATIONS = {
     "opponents": (
         "Opponents draft by consensus ADP (average draft position on Yahoo) plus random noise: each player's "
         "draft slot is drawn from Normal(ADP, sd) with sd = 2.5 + 0.18 x ADP picks (wider for players with no "
-        "Yahoo ADP). Opponents never react to my picks or to category needs."),
+        "Yahoo ADP; ADP order = market rank, with a model-based slot for players without Yahoo ADP), "
+        "scaled by a noise multiplier of {noise}. Opponents never react to my picks or to category needs."),
     "expected_category_wins": (
         "For a finished 13-man roster: the expected number of the 9 categories it wins in a typical week "
         "against a league-average opponent (sum of the 9 per-category win probabilities). 4.5 = coin flip; "
@@ -49,14 +50,16 @@ EXPLANATIONS = {
     "edge": (
         "Optimizer minus BPA on the same simulated draft rooms (paired). SE = standard error of the mean "
         "difference over sims; an edge smaller than ~2 SE is not distinguishable from zero. "
-        "p_optimizer_better = share of sims where the optimizer's roster scored higher."),
+        "p_optimizer_better = share of sims where the optimizer's roster scored higher, p_tie = share where "
+        "both rules produced equally scored (usually identical) rosters."),
     "picks_distribution": (
         "Who I took at each of my picks across the simulations (top 5). Early picks are nearly deterministic; "
         "later picks spread out because the board differs from draft to draft."),
     "availability": (
-        "Model probability that each key player is still on the board at my first six picks, from the ADP "
-        "availability model the optimizer itself uses (computed analytically from pick 1, not simulated). "
-        "sim_taken_by_me_freq is how often I actually drafted him in the simulations."),
+        "Model probability that the other teams have not yet taken each key player by my first six picks, "
+        "from the ADP availability model the optimizer itself uses (computed analytically from pick 1, not "
+        "simulated; it ignores that I may have taken him myself earlier). sim_taken_by_me_freq is how often "
+        "I actually drafted him in the simulations."),
     "category_win_probs": (
         "Distribution across simulations of my final roster's weekly win probability in each category vs a "
         "league-average team: mean and 10th/90th percentiles. Low values in a category mean the roster "
@@ -115,7 +118,7 @@ def _paired(a: np.ndarray, b: np.ndarray) -> dict:
     d = a - b
     n = len(d)
     return {"mean": float(d.mean()), "se": float(d.std(ddof=1) / np.sqrt(n)) if n > 1 else None,
-            "p_optimizer_better": float((d > 0).mean())}
+            "p_optimizer_better": float((d > 1e-12).mean()), "p_tie": float((np.abs(d) <= 1e-12).mean())}
 
 
 def _name(ctx: DraftContext, pid: str) -> str:
@@ -134,6 +137,7 @@ def _cat_dist(ctx: DraftContext, probs: list[dict]) -> dict:
 def availability_table(
     ctx: DraftContext, my_picks: list[int], taken_counts: Counter[str] | None = None, n_sims: int = 1,
     n_players: int = N_AVAIL_PLAYERS, n_picks: int = N_AVAIL_PICKS, early_counts: Counter[str] | None = None,
+    noise: float = 1.0,
 ) -> dict:
     """P(available at each of my first `n_picks` picks | draft start) for ~`n_players` key targets: the
     first-pick candidates, the players I drafted in the sims, and players whose availability at one of my
@@ -144,7 +148,8 @@ def availability_table(
 
     def pav(pids: list[str]) -> np.ndarray:
         rows = [ctx.pos[p] for p in pids]
-        return np.stack([prob_available(p, 1, ctx.market_rank[rows], ctx.sd_mult[rows]) for p in picks], axis=1)
+        return np.stack([prob_available(p, 1, ctx.market_rank[rows], ctx.sd_mult[rows] * noise) for p in picks],
+                        axis=1)
 
     # 1) the first-pick candidates, 2) players I drafted at one of these picks in the sims (most often first),
     # 3) players whose availability at one of my later picks is genuinely uncertain, best value first
@@ -252,6 +257,7 @@ def simulate_drafts(
 
     expl = dict(EXPLANATIONS)
     expl["example_rosters"] += f"{my_slot}."
+    expl["opponents"] = expl["opponents"].format(noise=noise)
     warnings = []
     if n_sims < 30:
         warnings.append(f"Only {n_sims} simulations: frequencies and percentiles are noisy.")
@@ -279,7 +285,7 @@ def simulate_drafts(
         "strategy_counts": dict(strategies),
         "picks_distribution": picks_distribution,
         "availability": availability_table(ctx, my_picks, taken_by_me, n_sims,
-                                           early_counts=sum(by_pick[:N_AVAIL_PICKS], Counter())),
+                                           early_counts=sum(by_pick[:N_AVAIL_PICKS], Counter()), noise=noise),
         "category_win_probs": {"optimizer": _cat_dist(ctx, [s["cat_win_probs"] for s in sims]),
                                "baseline_bpa": _cat_dist(ctx, [s["baseline_bpa_cat_win_probs"] for s in sims])},
         "example_rosters": examples,

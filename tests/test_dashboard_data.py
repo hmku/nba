@@ -124,3 +124,25 @@ def test_cli_save_and_no_save(proj_path, db_url, tmp_path):
     assert row["summary"]["scenario"] == "pre-draft projection"
     out = r.invoke(app, ["sim", "preseason", "--strategy", "bogus", *P])
     assert out.exit_code == 2
+
+
+def test_cluster_se_exceeds_binomial_when_leagues_differ():
+    from fantasy.sim.preseason import _cluster_se
+
+    x = np.concatenate([np.ones(100), np.zeros(100)])  # league 1 always wins, league 2 never
+    naive = np.sqrt(0.25 / 200)
+    assert _cluster_se(x, 2) > 5 * naive
+    rng = np.random.default_rng(0)
+    y = (rng.random(4000) < 0.3).astype(float)  # no league effect -> close to binomial SE
+    assert _cluster_se(y, 20) == pytest.approx(np.sqrt(0.21 / 4000), rel=0.35)
+
+
+def test_edge_reports_ties(sim_res):
+    e = sim_res["summary"]["edge"]["expected_category_wins"]
+    assert 0 <= e["p_optimizer_better"] + e["p_tie"] <= 1
+
+
+def test_preseason_refuses_yahoo_schedule(proj_path, db_url, tmp_path):
+    out = CliRunner().invoke(app, ["sim", "preseason", "--schedule", str(tmp_path / "s.json"),
+                                   "--projections", str(proj_path), "--json"])
+    assert out.exit_code == 2

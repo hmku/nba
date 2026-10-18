@@ -369,6 +369,9 @@ def preseason(
         _fail(f"unknown --strategy {strategy}", as_json, code=2, valid=list(DEFAULT_STRATEGIES))
     if leagues < 1:
         _fail("--leagues must be >= 1", as_json, code=2)
+    if schedule:  # Yahoo schedules are keyed by Yahoo team id; simulated leagues are keyed by draft slot
+        _fail("--schedule is not supported pre-draft (team ids = draft slots); use sim season after the draft",
+              as_json, code=2)
     settings = load_settings()
     if slot:
         settings = settings.model_copy(update={"my_slot": slot})

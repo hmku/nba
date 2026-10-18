@@ -27,35 +27,43 @@ EXPLANATIONS = {
         "(my picks by the optimizer from slot {slot}, the other 11 teams by ADP with noise), then play out "
         "each resulting league's whole season many times and pool the results."),
     "what_is_simulated": (
-        "Each season simulation draws every player's games (NBA schedule per fantasy week, random "
-        "injury/rest spells) and per-game stat lines, applies the daily lineup cap and streaming adds, "
-        "scores the 9 head-to-head categories every week against the scheduled opponent, builds the "
-        "standings (17 regular-season weeks x 9 categories), then plays the 6-team playoffs in weeks "
-        "18-20 (top 2 seeds get a bye, re-seeded each round)."),
+        "Each season simulation draws every player's games per fantasy week (NBA schedule, random "
+        "injury/rest spells), caps the games that count by the daily lineup limit (positions ignored), adds "
+        "streamed replacement-level games, and draws each team's weekly category totals from a normal "
+        "approximation. The 9 head-to-head categories are scored every week against the scheduled opponent, "
+        "standings are built over {n_reg} regular-season weeks x 9 categories, then the top {n_po} play "
+        "the playoffs in weeks {po_weeks} ({byes}{reseed})."),
     "opponents": (
-        "The other 11 rosters come from the simulated drafts: they pick by consensus ADP with noise and "
-        "never trade, stream smartly or react to injuries. Team N = draft slot N; real team names arrive "
-        "after the draft."),
+        "The other rosters come from the simulated drafts: they pick by consensus ADP with noise. In the "
+        "season itself every team, mine included, is treated the same: a fixed budget of streamed "
+        "replacement-level games per week and no trades or waiver gems. Team N = draft slot N (pooled over "
+        "different simulated rosters); real team names arrive after the draft."),
     "priors": (
-        "Projections are our 2026-27 per-game projections; game-to-game variability, injury spell lengths, "
-        "streaming effectiveness and the week calendar (week 1 assumed Oct 20 - Nov 1 until Yahoo's "
-        "schedule is loaded) are uncalibrated priors. Matchups use a round-robin schedule until Yahoo's "
-        "real one is loaded."),
+        "Projections are our 2026-27 per-game projections; game-to-game variability, injury spell lengths "
+        "and streaming effectiveness are uncalibrated priors. Week calendar: {calendar}. Matchups: {matchups}."),
     "league_table": (
         "Pooled over all simulated leagues and seasons, by draft slot: chance of making the playoffs, a "
         "top-2 seed (bye), reaching the final, winning the title, expected regular-season category wins "
         "and expected final rank (1 = best)."),
     "caveats": (
-        "Optimistic for my team: the same projections drive both my draft and the simulated season, and "
-        "opponents are passive ADP drafters who never manage their rosters; real leaguemates will do better. "
-        "Treat the absolute P(playoffs)/P(title) as an upper-end scenario and use the numbers relatively. "
-        "SEs only cover simulation noise, not model error (title odds move about +/-5 points across "
-        "reasonable priors). This is a pre-draft projection; rerun on the real rosters after the draft."),
+        "Optimistic for my team: my roster is drafted by an optimizer that uses the same projections the "
+        "season is simulated with (in-sample), while opponents draft passively by ADP; real leaguemates "
+        "draft and manage better. Treat the absolute P(playoffs)/P(title) as an upper-end scenario and use "
+        "the numbers relatively. SEs cover simulation noise only (including which rosters the simulated "
+        "drafts produced: clustered by league), not model error - title odds plausibly move several points "
+        "across reasonable priors. This is a pre-draft projection; rerun on the real rosters after the draft."),
 }
 
 
-def _se(p: float, n: int) -> float:
-    return float(np.sqrt(max(p * (1 - p), 1e-12) / n))
+def _cluster_se(x: np.ndarray, k: int) -> float:
+    """SE of the pooled mean of `x` over k equal-size consecutive clusters (simulated leagues):
+    sd(league means) / sqrt(k). Seasons within a league share rosters, so a plain binomial SE over all
+    N seasons would understate the noise; the variance of league means already includes the within-league
+    noise. With k = 1 this falls back to the iid SE."""
+    if k <= 1:
+        return float(x.std(ddof=1) / np.sqrt(x.size)) if x.size > 1 else 0.0
+    means = x.reshape(k, -1).mean(axis=1)
+    return float(means.std(ddof=1) / np.sqrt(k))
 
 
 def preseason(
@@ -70,17 +78,26 @@ def preseason(
     drafts = simulate_drafts(dctx, n_sims=n_leagues, seed=draft_seed, noise=noise, strategy=strategy,
                              keep_leagues=True)
     per = max(1, params.n_sims // n_leagues)
+    if per * n_leagues != params.n_sims:
+        warnings_split = [f"{params.n_sims} season sims split as {per} per league x {n_leagues} leagues = "
+                          f"{per * n_leagues}."]
+    else:
+        warnings_split = []
     names = sctx.values["name"]
     pooled: dict[str, list[np.ndarray]] = {k: [] for k in ("playoff", "champ", "final", "rank", "cw", "cl")}
     leagues_out, profiles = [], []
-    warnings: list[str] = []
+    warnings: list[str] = list(warnings_split) + list(drafts["summary"]["warnings"])
+    if n_leagues < 10:
+        warnings.append(f"Only {n_leagues} simulated leagues: the SEs (clustered by league) are themselves rough.")
     n_po = None
+    reseed = None
     for k, sim in enumerate(drafts["sims"]):
         league = LeagueState(rosters={t: list(sim["league"][t]) for t in team_ids}, my_team=my,
                              source=f"simulated draft {k} (seed {draft_seed}, noise {noise})",
                              names={t: (f"Me (slot {t})" if t == my else f"Team {t}") for t in team_ids})
         res = sctx.simulator(SimParams(**{**params.to_dict(), "n_sims": per, "seed": params.seed + k})).run(league)
         n_po = int(res.params["playoff_teams"])
+        reseed = bool(res.params.get("reseed"))
         idx = [res.tindex(t) for t in team_ids]
         champ = np.zeros((res.n, T))
         champ[np.arange(res.n), res.champion] = 1
@@ -129,11 +146,11 @@ def preseason(
     labels = {c.key: c.label for c in dctx.model.cats}
     my_outlook = {
         "team": my,
-        "p_playoffs": round(p_po, 4), "p_playoffs_se": round(_se(p_po, N), 4),
+        "p_playoffs": round(p_po, 4), "p_playoffs_se": round(_cluster_se(P["playoff"][:, j], n_leagues), 4),
         "p_bye": next(r["p_bye"] for r in table if r["is_me"]),
         "p_final": round(float(P["final"][:, j].mean()), 4),
-        "p_title": round(p_ti, 4), "p_title_se": round(_se(p_ti, N), 4),
-        "exp_rank": round(float(ranks.mean()), 2),
+        "p_title": round(p_ti, 4), "p_title_se": round(_cluster_se(P["champ"][:, j], n_leagues), 4),
+        "exp_rank": round(float(ranks.mean()), 2), "exp_rank_se": round(_cluster_se(P["rank"][:, j], n_leagues), 3),
         "exp_cat_wins": round(float(P["cw"][:, j].mean()), 2), "exp_cat_losses": round(float(P["cl"][:, j].mean()), 2),
         "final_standing_dist": {str(k): round(float(v), 4)
                                 for k, v in enumerate(np.bincount(ranks, minlength=T + 1)[1:] / N, start=1)},
@@ -149,6 +166,15 @@ def preseason(
     }
     expl = dict(EXPLANATIONS)
     expl["overview"] = expl["overview"].format(slot=my)
+    po_weeks = list(sctx.settings.playoff_weeks)
+    n_reg = len([w for w in sctx.calendar if w.week < min(po_weeks)])
+    expl["what_is_simulated"] = expl["what_is_simulated"].format(
+        n_reg=n_reg, n_po=n_po, po_weeks=f"{po_weeks[0]}-{po_weeks[-1]}",
+        byes=f"top {byes} seeds get a bye" if byes else "no byes",
+        reseed=", re-seeded each round" if reseed else ", fixed bracket")
+    expl["priors"] = expl["priors"].format(
+        calendar=f"week 1 = {sctx.calendar[0].start}..{sctx.calendar[0].end}, last week ends {sctx.calendar[-1].end}",
+        matchups=sctx.matchups.source)
     return {
         "schema": SUMMARY_SCHEMA, "scenario": SCENARIO,
         "n_sims": N, "n_leagues": n_leagues, "sims_per_league": per, "my_team": my, "num_teams": T,
