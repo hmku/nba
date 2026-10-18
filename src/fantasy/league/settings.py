@@ -76,7 +76,7 @@ class LeagueSettings(BaseModel):
             "PG": 1, "SG": 1, "G": 1, "SF": 1, "PF": 1, "F": 1, "C": 2, "Util": 2, "BN": 3, "IL": 4,
         }
     )
-    draft_order_type: Literal["snake", "snake_3rr"] = "snake_3rr"
+    draft_order_type: Literal["snake", "snake_3rr", "custom"] = "snake_3rr"
     draft_datetime: str = "2026-10-19T22:00:00-04:00"
     seconds_per_pick: int = 60
     my_slot: int = 1

@@ -37,3 +37,16 @@ def test_pick_info():
     assert (p.round, p.slot, p.pick_in_round) == (3, 1, 12)
     with pytest.raises(ValueError):
         pick_info(157, 12, 13)
+
+
+def test_custom_order_matches_formula_and_validates():
+    formula = draft_order(12, 13, "snake_3rr")
+    rounds = [[p.slot for p in formula if p.round == r] for r in range(1, 14)]
+    custom = draft_order(12, 13, "custom", rounds)
+    assert [p.slot for p in custom] == [p.slot for p in formula]
+    # commissioner flipped only round 3: slot 1 then picks 1, 24, 36, 48, 49, ...
+    only_r3 = [[p.slot for p in draft_order(12, 13, "snake") if p.round == r] for r in range(1, 14)]
+    only_r3[2] = list(range(12, 0, -1))
+    assert picks_for_slot(1, 12, 13, "custom", only_r3)[:5] == [1, 24, 36, 48, 49]
+    with pytest.raises(ValueError):
+        draft_order(12, 13, "custom", rounds[:-1])

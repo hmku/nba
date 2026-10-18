@@ -87,6 +87,17 @@ def get_draft(draft_id: str | None = None, engine: Engine | None = None) -> dict
     return dict(row) if row else None
 
 
+def set_draft_order(draft_id: str, custom_rounds: list[list[int]], engine: Engine | None = None) -> None:
+    eng = engine or get_engine()
+    with eng.begin() as conn:
+        row = conn.execute(select(drafts).where(drafts.c.draft_id == draft_id)).mappings().first()
+        if row is None:
+            raise KeyError(draft_id)
+        config = {**(row["config"] or {}), "custom_rounds": custom_rounds}
+        conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(
+            order_type="custom", config=config, updated_at=_now()))
+
+
 def set_draft_status(draft_id: str, status: str, engine: Engine | None = None) -> None:
     eng = engine or get_engine()
     with eng.begin() as conn:
@@ -112,7 +123,8 @@ def record_pick(
 ) -> dict:
     """Idempotent: re-recording the same player at the same pick is a no-op."""
     eng = engine or get_engine()
-    info = pick_info(overall, draft["num_teams"], draft["num_rounds"], draft["order_type"])
+    info = pick_info(overall, draft["num_teams"], draft["num_rounds"], draft["order_type"],
+                     (draft.get("config") or {}).get("custom_rounds"))
     with eng.begin() as conn:
         existing = conn.execute(
             select(draft_picks).where(draft_picks.c.draft_id == draft["draft_id"], draft_picks.c.overall_pick == overall)

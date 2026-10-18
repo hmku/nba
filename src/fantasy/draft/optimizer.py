@@ -64,6 +64,7 @@ class DraftContext:
         settings: LeagueSettings,
         val_params: ValuationParams | None = None,
         values: pd.DataFrame | None = None,
+        custom_rounds: list[list[int]] | None = None,
     ) -> None:
         self.settings = settings
         if values is None:
@@ -81,7 +82,7 @@ class DraftContext:
         self.market_rank = np.array([mrank[p] for p in self.ids], dtype=float)
         self.positions = [list(p) for p in values["positions"]]
         self.value = values["value"].to_numpy(dtype=float)
-        self.order: list[Pick] = draft_order(settings.num_teams, settings.num_rounds, settings.draft_order_type)
+        self.order: list[Pick] = draft_order(settings.num_teams, settings.num_rounds, settings.draft_order_type, custom_rounds)
         self._filler = self._build_filler()
 
     def _build_filler(self) -> dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]]:

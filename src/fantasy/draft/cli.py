@@ -13,7 +13,7 @@ import typer
 from fantasy.draft import store
 from fantasy.draft.names import NameResolutionError, resolve_player
 from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, OptimizerParams
-from fantasy.draft.order import draft_order, picks_for_slot
+from fantasy.draft.order import draft_order, order_for_draft, picks_for_slot
 from fantasy.league.settings import LeagueSettings, load_settings
 from fantasy.model.lines import load_projections
 from fantasy.model.valuation import ValuationParams, run_valuation
@@ -56,7 +56,10 @@ def _load_draft(draft_id: str | None, as_json: bool) -> dict:
     return d
 
 
-def _context(settings: LeagueSettings, projections: Path | None) -> tuple[DraftContext, str]:
+def _context(
+    settings: LeagueSettings, projections: Path | None, draft: dict | None = None
+) -> tuple[DraftContext, str]:
+    custom = ((draft or {}).get("config") or {}).get("custom_rounds")
     proj = load_projections(projections)
     vp = ValuationParams()
     run_id = None
@@ -68,11 +71,11 @@ def _context(settings: LeagueSettings, projections: Path | None) -> tuple[DraftC
         if run_id is None:
             run = run_valuation(proj, settings, vp)
             run_id = store.save_valuation(run, proj.df)
-            ctx = DraftContext(proj, settings, vp, values=run.values)
+            ctx = DraftContext(proj, settings, vp, values=run.values, custom_rounds=custom)
             return ctx, run_id
     except Exception as e:  # DB trouble must never block a live pick
         print(f"warning: could not record valuation run: {e}", file=sys.stderr)
-    return DraftContext(proj, settings, vp), run_id or "unsaved"
+    return DraftContext(proj, settings, vp, custom_rounds=custom), run_id or "unsaved"
 
 
 @app.command()
@@ -85,7 +88,7 @@ def init(
     """Create a draft record (idempotent)."""
     s = load_settings()
     row = store.create_draft(draft_id, s, is_mock=mock, my_slot=slot)
-    picks = picks_for_slot(row["my_slot"], row["num_teams"], row["num_rounds"], row["order_type"])
+    picks = [p.overall for p in order_for_draft(row) if p.slot == row["my_slot"]]
     _emit({"ok": True, "draft": row, "my_picks": picks}, as_json,
           f"draft {draft_id} ({row['order_type']}, {row['num_teams']} teams × {row['num_rounds']} rounds); my picks: {picks}")
 
@@ -101,6 +104,52 @@ def order(
     """Show pick numbers for a slot under an order type (snake | snake_3rr)."""
     picks = picks_for_slot(slot, teams, rounds, order_type)
     _emit({"slot": slot, "order_type": order_type, "picks": picks}, as_json, f"slot {slot} ({order_type}): {picks}")
+
+
+@app.command("set-order")
+def set_order(
+    rounds: Annotated[str, typer.Option("--rounds", help="Slot order per round as read on Yahoo: '1,2,..,12;12,..,1;...' "
+                                        "or @file.json with [[...], ...]")],
+    draft_id: DraftOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Store the exact draft order from Yahoo's draft-order page (overrides the 3RR formula)."""
+    d = _load_draft(draft_id, as_json)
+    if rounds.startswith("@"):
+        custom = json.loads(Path(rounds[1:]).read_text())
+    else:
+        custom = [[int(x) for x in r.split(",") if x.strip()] for r in rounds.split(";") if r.strip()]
+    try:
+        draft_order(d["num_teams"], d["num_rounds"], "custom", custom)
+    except ValueError as e:
+        _fail(str(e), as_json)
+    store.set_draft_order(d["draft_id"], custom)
+    d = store.get_draft(d["draft_id"])
+    mine = [p.overall for p in order_for_draft(d) if p.slot == d["my_slot"]]
+    formula = picks_for_slot(d["my_slot"], d["num_teams"], d["num_rounds"], "snake_3rr")
+    _emit({"ok": True, "my_picks": mine, "matches_3rr_formula": mine == formula}, as_json,
+          f"order saved; my picks: {mine} ({'matches' if mine == formula else 'DIFFERS FROM'} 3RR formula)")
+
+
+@app.command()
+def queue(
+    top: Annotated[int, typer.Option("--top")] = 60,
+    draft_id: DraftOpt = None,
+    projections: ProjOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Ranked list of available players for Yahoo's Pre-Draft Rankings / draft queue (autopick safety net)."""
+    d = store.get_draft(draft_id)
+    s = _settings_for(d)
+    proj = load_projections(projections)
+    from fantasy.model.valuation import compute_values
+
+    values, _, _ = compute_values(proj, s)
+    taken = {p["player_id"] for p in store.get_picks(d["draft_id"])} if d else set()
+    v = values[~values.index.isin(taken)].head(top)
+    rows = [{"rank": i, "player_id": pid, "name": r["name"], "team": r["team"], "positions": list(r["positions"])}
+            for i, (pid, r) in enumerate(v.iterrows(), 1)]
+    _emit({"queue": rows}, as_json, "\n".join(f"{r['rank']:>3}. {r['name']} ({r['team']})" for r in rows))
 
 
 @app.command()
@@ -149,7 +198,7 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
     """Current draft state: picks made, on the clock, my roster and upcoming picks."""
     d = _load_draft(draft_id, as_json)
     picks = store.get_picks(d["draft_id"])
-    order_ = draft_order(d["num_teams"], d["num_rounds"], d["order_type"])
+    order_ = order_for_draft(d)
     taken = {p["overall_pick"]: p for p in picks}
     current = next((p.overall for p in order_ if p.overall not in taken), None)
     mine = [p.overall for p in order_ if p.slot == d["my_slot"]]
@@ -189,7 +238,7 @@ def recommend(
     d = _load_draft(draft_id, as_json)
     s = _settings_for(d)
     t0 = time.time()
-    ctx, run_id = _context(s, projections)
+    ctx, run_id = _context(s, projections, d)
     picks = store.get_picks(d["draft_id"])
     state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
     opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective))
@@ -224,7 +273,7 @@ def watch(
     """Poll for new picks (e.g. entered on the dashboard) and publish a fresh recommendation each time."""
     d = _load_draft(draft_id, False)
     s = _settings_for(d)
-    ctx, run_id = _context(s, projections)
+    ctx, run_id = _context(s, projections, d)
     opt = DraftOptimizer(ctx)
     last: tuple | None = None
     typer.echo(f"watching {d['draft_id']} every {interval}s (Ctrl-C to stop)")

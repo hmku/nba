@@ -43,3 +43,11 @@ def verify(
     path = save_settings(s)
     out = {"ok": True, "path": str(path), "verified": s.verified, "unverified": s.unverified_fields()}
     typer.echo(json.dumps(out, indent=2) if as_json else f"saved {path}; still unverified: {out['unverified']}")
+
+
+try:  # one-time interactive Yahoo OAuth (run locally)
+    from fantasy.league import yahoo_auth
+
+    app.command("yahoo-auth")(yahoo_auth.cli_command)
+except (ImportError, AttributeError):
+    pass
