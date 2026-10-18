@@ -42,6 +42,12 @@ treat as medium confidence and re-verify key players on Yahoo before/during the 
 - ADP: https://slamdex.com/tools/adp/ (Yahoo/ESPN/Fantrax ADP table), https://fantasysixpack.net/2026-27-fantasy-basketball-adp-values/,
   https://sports.yahoo.com/articles/2026-27-fantasy-basketball-adp-074600811.html
 
+## ADP coverage
+50 players have an ADP value (`data/manual/adp_yahoo_2026_27.csv`). Most are Yahoo-specific; some are
+slamdex cross-platform averages or CBS (platform unspecified) and are labelled as such in `source`.
+Additional pages seen: https://fantasygoats.guru/guides/top-150, https://www.cbssports.com/fantasy/basketball/news/fantasy-basketball-rankings-2026-27-sleepers-breakouts-and-busts-from-proven-nba-computer-model/,
+https://www.nba.com/news/nba-fantasy-expectations-for-top-rookies, https://www.fantasyalarm.com/articles/nba/fantasy-basketball-draft-advice/2026-27-fantasy-baseball-adp-fallers/197132
+
 ## Not obtained
 - Full-table external 2026-27 projections (Hashtag Basketball, FantasyPros, ESPN): pages unreachable
   from both the container and WebFetch, so no external projection blend in v1.
