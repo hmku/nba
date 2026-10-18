@@ -2,7 +2,16 @@
 
 Last updated: 2026-10-18 (UTC). Owner: data & projections agent.
 
-## Reachability from the agent container (2026-10-18)
+## Update 2026-10-18 (v2): direct sources now reachable
+- **Yahoo public draft analysis API** (no login): `https://pub-api-rw.fantasysports.yahoo.com/fantasy/v2/league/478.l.public/players;start=N;count=25;sort=DA_AP;out=draft_analysis?format=json`
+  -> ADP, % drafted, eligible positions, injury status. `fantasy data fetch-yahoo --apply`; raw in `data/raw/yahoo_public/`.
+- **ESPN injuries API**: `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries` (status, comment, est. return date);
+  **CBS** `https://www.cbssports.com/nba/injuries/` as cross-check. `fantasy data fetch-injuries`; raw in `data/raw/espn/`, `data/raw/cbs/`.
+- basketball-reference.com reachable; the sumitrodatta mirror matched bbref.com exactly for 2025-26 totals (top 200), so it stays primary.
+- stats.nba.com: CONNECT ok but origin never responds (timeout); cdn.nba.com: origin 403. Rotowire injury JSON truncated to 5 rows for non-subscribers.
+- Details: `docs/handoffs/2026-10-18-data-refresh-v2.md`. The reachability table below is historical.
+
+## Reachability from the agent container (2026-10-18, first session — superseded)
 | Source | curl/python in container | WebFetch tool | Notes |
 |---|---|---|---|
 | basketball-reference.com | blocked | DNS failure (ENOTFOUND) | |
