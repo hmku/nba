@@ -208,7 +208,7 @@ export default async function Overview() {
                   <code className="text-accent">{l.resource}</code>
                   <span className="truncate text-muted">{l.holder_run_id}</span>
                   <span className="ml-auto text-muted">
-                    exp <Ago ts={l.expires_at} />
+                    expires <Ago ts={l.expires_at} />
                   </span>
                 </div>
               ))}

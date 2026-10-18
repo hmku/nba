@@ -18,11 +18,19 @@ export function ageSeconds(ts: string | null | undefined, now = Date.now()): num
   if (!ts) return null;
   const t = Date.parse(ts);
   if (Number.isNaN(t)) return null;
-  return Math.max(0, (now - t) / 1000);
+  return (now - t) / 1000; // negative = in the future
 }
 
 export function humanAge(sec: number | null): string {
   if (sec == null) return "never";
+  if (sec < -1) {
+    const f = -sec;
+    if (f < 60) return `in ${Math.floor(f)}s`;
+    if (f < 3600) return `in ${Math.floor(f / 60)}m`;
+    if (f < 86400) return `in ${Math.floor(f / 3600)}h`;
+    return `in ${Math.floor(f / 86400)}d`;
+  }
+  if (sec < 0) sec = 0;
   if (sec < 60) return `${Math.floor(sec)}s ago`;
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
