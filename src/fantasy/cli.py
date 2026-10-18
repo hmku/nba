@@ -19,6 +19,7 @@ _SUBAPPS: list[tuple[str, str, str]] = [
     ("fantasy.ops.cli", "approval_app", "approval"),
     ("fantasy.ops.cli", "txn_app", "txn"),
     ("fantasy.ops.cli", "task_app", "task"),
+    ("fantasy.sim.cli", "app", "sim"),
 ]
 
 for _mod, _attr, _name in _SUBAPPS:
