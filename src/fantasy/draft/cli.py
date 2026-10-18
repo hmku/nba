@@ -291,15 +291,16 @@ def recommend(
     from fantasy.valuesearch.search import DEFAULT_SEARCH, OPPONENT_MODELS, SEARCH_MODES
 
     _check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
-    _check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES, "--objective", as_json)
     _check_choice(search, SEARCH_MODES, "--search", as_json)
+    # value-search objectives are only valid with an explicit --search value|advise; the default path keeps
+    # the optimizer's objectives (cat_wins | matchup)
+    _check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES if search in ("value", "advise") else OBJECTIVES,
+                  "--objective", as_json)
     _check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
     search = search or DEFAULT_SEARCH
     value_objective = objective if objective in VALUE_OBJECTIVES else "blend"
     rollouts = rollouts or (24 if opponents == "ours" else 48)
     if objective in VALUE_OBJECTIVES:
-        if search == "none":
-            _fail(f"--objective {objective} is a value-search objective; use it with --search value|advise", as_json, code=2)
         objective = "cat_wins"
     d = _load_draft(draft_id, as_json)
     s = _settings_for(d)

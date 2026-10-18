@@ -155,6 +155,10 @@ def test_cli_search_flag(setup, proj_path, db_url, tmp_path, monkeypatch):
     assert code == 0 and "value_search" not in none
     assert _cli("draft", "recommend", *P, "--search", "bogus", "--json")[0] == 2
     assert _cli("draft", "recommend", *P, "--search", "none", "--objective", "title", "--json")[0] == 2
+    # without an explicit --search the valid objectives are the optimizer's, as before
+    code, out = _cli("draft", "recommend", *P, "--objective", "bogus", "--json")
+    assert code == 2 and out["valid"] == ["cat_wins", "matchup"]
     # a broken artifact never blocks a recommendation
-    code, bad = _cli("draft", "recommend", *[x if x != mp else tmp_path / "missing.npz" for x in P], "--json")
+    code, bad = _cli("draft", "recommend", *[x if x != mp else tmp_path / "missing.npz" for x in P],
+                     "--search", "advise", "--json")
     assert code == 0 and "value_search" not in bad and any("value search failed" in w for w in bad["warnings"])
