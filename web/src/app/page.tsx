@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { anonClient } from "@/lib/supabase";
 import { defaultDraftId, loadDrafts } from "@/lib/data";
-import { picksForSlot, pickInfo } from "@/lib/draftOrder";
+import { customRoundsOf, picksForSlot, pickInfo } from "@/lib/draftOrder";
 import type { AgentRun, Approval, DataSnapshot, DraftRecommendation, Lock, ModelRun, Task } from "@/lib/types";
 import { Badge, Card, Empty, ErrorNote, Stat, statusTone } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
@@ -45,9 +45,10 @@ export default async function Overview() {
 
   const picked = new Set(((picksR.data as { overall_pick: number }[]) ?? []).map((p) => p.overall_pick));
   const picksMade = picksR.count ?? picked.size;
+  const custom = draft ? customRoundsOf(draft.config, draft.num_teams, draft.num_rounds) : null;
   const currentPick = picked.size ? Math.max(...picked) + 1 : 1;
   const myNext = draft
-    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type).find((p) => p >= currentPick)
+    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type, custom).find((p) => p >= currentPick)
     : undefined;
   const rec = ((recR.data as DraftRecommendation[]) ?? [])[0];
   const runs = (agentR.data as AgentRun[]) ?? [];
@@ -108,7 +109,7 @@ export default async function Overview() {
                 <Stat
                   label="On the clock"
                   value={currentPick <= draft.num_teams * draft.num_rounds ? `#${currentPick}` : "done"}
-                  sub={currentPick <= draft.num_teams * draft.num_rounds ? `slot ${pickInfo(currentPick, draft.num_teams, draft.order_type).slot}` : undefined}
+                  sub={currentPick <= draft.num_teams * draft.num_rounds ? `slot ${pickInfo(currentPick, draft.num_teams, draft.order_type, custom, draft.num_rounds).slot}` : undefined}
                 />
                 <Stat label="My next pick" value={myNext ? `#${myNext}` : "—"} sub={myNext ? `in ${myNext - currentPick} picks` : undefined} />
                 <Stat

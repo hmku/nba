@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { anonClient } from "@/lib/supabase";
 import { loadDraftLive, loadDrafts, loadValues, latestRun, slimValues, type DraftLive, type ValuesBundle } from "@/lib/data";
 import type { Draft, DraftPick, RecItem, RecPayload, AgentEvent } from "@/lib/types";
-import { pickInfo, picksForSlot } from "@/lib/draftOrder";
+import { customRoundsOf, draftOrder, pickInfo, picksForSlot } from "@/lib/draftOrder";
 import { CATS, CAT_LABEL, POSITIONS, heatStyle } from "@/lib/categories";
 import { fmt, pct, signed, asStringArray } from "@/lib/format";
 import { matchesPos, normName, toRows, type PlayerRow } from "@/lib/players";
@@ -159,8 +159,9 @@ function DraftView({
   const gaps: number[] = [];
   for (let i = 1; i < maxPick; i++) if (!pickMap.has(i)) gaps.push(i);
   const complete = currentPick > total;
-  const cur = complete ? null : pickInfo(currentPick, N, orderType);
-  const myAll = picksForSlot(draft.my_slot, N, R, orderType);
+  const custom = customRoundsOf(draft.config, N, R);
+  const cur = complete ? null : pickInfo(currentPick, N, orderType, custom, R);
+  const myAll = picksForSlot(draft.my_slot, N, R, orderType, custom);
   const myUpcoming = myAll.filter((p) => p >= currentPick);
   const nextMine = myUpcoming[0] ?? null;
   const picksUntil = nextMine != null ? nextMine - currentPick : null;
@@ -324,6 +325,11 @@ function DraftHeader(props: {
         <Badge tone={statusTone(draft.status)}>{draft.status}</Badge>
         {draft.is_mock && <Badge tone="warn">mock</Badge>}
         <Badge>{draft.order_type === "snake_3rr" ? "snake · 3RR" : draft.order_type}</Badge>
+        {customRoundsOf(draft.config, draft.num_teams, draft.num_rounds) ? (
+          <Badge tone="accent" title="drafts.config.custom_rounds">custom rounds</Badge>
+        ) : draft.order_type === "custom" ? (
+          <Badge tone="bad" title="order_type custom but config.custom_rounds missing/invalid; using snake">custom_rounds invalid</Badge>
+        ) : null}
         <span className="text-xs text-muted">
           {draft.num_teams} teams · {draft.num_rounds} rds · my slot {draft.my_slot}
         </span>
@@ -713,7 +719,7 @@ function ManualPickCard({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const effectiveOverall = overall === "" ? currentPick : Number(overall);
-  const info = effectiveOverall ? pickInfo(effectiveOverall, draft.num_teams, draft.order_type) : null;
+  const info = effectiveOverall ? pickInfo(effectiveOverall, draft.num_teams, draft.order_type, customRoundsOf(draft.config, draft.num_teams, draft.num_rounds), draft.num_rounds) : null;
   const canWrite = ws.writesEnabled && ws.authed;
 
   const matches = useMemo(() => {
@@ -1121,6 +1127,8 @@ function DraftBoard({
   const N = draft.num_teams;
   const slots = Array.from({ length: N }, (_, i) => i + 1);
   const rounds = Array.from({ length: draft.num_rounds }, (_, i) => i + 1);
+  const custom = customRoundsOf(draft.config, N, draft.num_rounds);
+  const order = draftOrder(N, draft.num_rounds, draft.order_type, custom);
   const ref = useRef<HTMLTableCellElement | null>(null);
   return (
     <Card title="Draft board" bodyClassName="p-0" right={<span>rounds × slots · my column highlighted</span>}>
@@ -1141,15 +1149,17 @@ function DraftBoard({
           </thead>
           <tbody>
             {rounds.map((r) => {
-              const rev = pickInfo((r - 1) * N + 1, N, draft.order_type).slot !== 1;
+              const inRound = order.filter((p) => p.round === r);
+              const bySlot = new Map(inRound.map((p) => [p.slot, p.overall]));
+              const rev = custom ? false : inRound[0]?.slot !== 1;
               return (
                 <tr key={r} className="border-t border-line">
                   <td className="sticky left-0 z-10 bg-panel px-1 py-1 text-center text-[10.5px] text-muted">
                     <span className="num">{r}</span>
-                    <span className="ml-0.5">{rev ? "←" : "→"}</span>
+                    <span className="ml-0.5">{custom ? "*" : rev ? "←" : "→"}</span>
                   </td>
                   {slots.map((s) => {
-                    const overall = rev ? (r - 1) * N + (N - s) + 1 : (r - 1) * N + s;
+                    const overall = bySlot.get(s) ?? 0;
                     const p = pickMap.get(overall);
                     const isCur = overall === currentPick;
                     const mine = s === draft.my_slot;

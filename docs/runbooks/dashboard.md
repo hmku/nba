@@ -39,8 +39,9 @@ only apply to new deployments).
   Supabase from the browser every 4s (pauses when tab hidden; refreshes on focus); checks for a new
   valuation run every 30s.
   - Header: on the clock, my next pick + picks until, upcoming pick chips, sync status dot.
-  - Draft order computed client-side (`src/lib/draftOrder.ts`): `snake` and `snake_3rr`
-    (R1 1→N, R2 N→1, R3 N→1, R4 1→N, then alternating).
+  - Draft order computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`):
+    `snake`, `snake_3rr` (R1 1→N, R2 N→1, R3 N→1, R4 1→N, then alternating) and `custom`
+    (`drafts.config.custom_rounds`, set by `fantasy draft set-order`; honoured whenever valid).
   - Model recommendations = latest `draft_recommendations` row (highest `as_of_pick`, newest);
     marked **stale** when `as_of_pick` < picks made. Players drafted since are struck through.
   - **Fallback (client-side)** card appears whenever the rec is missing/stale: best available by
