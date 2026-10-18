@@ -2,8 +2,11 @@
 
 Cloud Claude Code sessions reach the internet only through an HTTPS proxy, so the SQLAlchemy/psycopg
 path (`fantasy publish --target postgresql://...`) only works on the user's laptop. This module does
-the same upsert through `POST {SUPABASE_URL}/rest/v1/<table>?on_conflict=<pk>` with
-`Prefer: resolution=merge-duplicates`, in FK-safe order, skipping ephemeral tables.
+the same through `POST {SUPABASE_URL}/rest/v1/<table>?on_conflict=<pk>`, in FK-safe order, skipping
+ephemeral tables, with a per-table policy (`publish_policy`): `resolution=merge-duplicates` (upsert)
+for reference/model-output tables, `resolution=ignore-duplicates` (insert missing rows only) for
+ledger/state tables, so a stale local copy can never overwrite newer online state. Single-row ledger
+writes (CAS on status) live in `fantasy.ops.rest_ledger`.
 
 Auth: SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) is sent as the `apikey` header (plus
 `Authorization: Bearer` when it is a legacy JWT). With no key in the environment no auth header
@@ -34,6 +37,36 @@ RETRIES = 2  # extra attempts on 5xx / network errors (upserts are idempotent)
 
 # Ephemeral state that must not be copied (an offline lease means nothing online).
 PUBLISH_SKIP = frozenset({"locks"})
+# Per-table publish policy (docs/runbooks/agent_ops.md section 5b):
+#   merge  -> upsert, `resolution=merge-duplicates`: the publishing copy owns these rows (reference
+#             data, model outputs, the draft board), so republishing refreshes them.
+#   insert -> `resolution=ignore-duplicates`: only rows missing online are inserted, an existing row
+#             is NEVER overwritten. For ledger/state tables whose rows change after creation online
+#             (the user approves on the dashboard, another session marks a txn, a run ends), and for
+#             immutable logs. Change these rows one at a time with `fantasy ... --rest`.
+#   Any table not listed in PUBLISH_MERGE (incl. tables added later) defaults to insert.
+PUBLISH_MERGE = frozenset({
+    "players", "league_settings", "data_snapshots",  # reference data, refreshed by rebuilds
+    "model_runs", "projections", "player_values",  # model outputs (versioned by run_id)
+    "draft_picks", "draft_recommendations",  # draft board as recorded by the drafting session
+})
+# Documentation of the insert-only set (the default); kept explicit so reviews see each choice.
+PUBLISH_INSERT_ONLY = frozenset({
+    "agent_runs",  # status/heartbeat/ended_at change after creation
+    "approvals",  # pending -> approved/rejected/expired (dashboard)
+    "transactions",  # state machine
+    "tasks",  # claim/update/done
+    "drafts",  # status pending -> live -> complete, config (order) updates
+    "agent_events", "decisions",  # immutable logs
+    "league_snapshots",  # written server-side by the Muse API (last_seen_at bumps)
+})
+
+
+def publish_policy(table: str) -> str:
+    """'skip' | 'merge' | 'insert' (see PUBLISH_MERGE)."""
+    if table in PUBLISH_SKIP:
+        return "skip"
+    return "merge" if table in PUBLISH_MERGE else "insert"
 # Natural unique keys besides the PK: rows that would collide with a *different* target row
 # are skipped (reported), never overwritten -- e.g. offline task T-013 vs. online T-013.
 PUBLISH_UNIQUE = {"tasks": "title", "transactions": "idempotency_key"}
@@ -197,6 +230,26 @@ class RestClient:
         )
         self.check(resp, f"upsert {table}")
 
+    def insert_missing(self, table: str, rows: list[dict[str, Any]], pk: list[str]) -> int | None:
+        """INSERT ... ON CONFLICT (pk) DO NOTHING. Returns how many rows were new (PostgREST
+        returns only inserted rows with return=representation), or None if the server sent no body."""
+        resp = self.request(
+            "POST",
+            table,
+            params={"on_conflict": ",".join(pk), "select": ",".join(pk)},
+            headers={
+                "Prefer": "resolution=ignore-duplicates,return=representation",
+                "Content-Type": "application/json",
+            },
+            content=json.dumps(rows, allow_nan=False).encode(),
+        )
+        self.check(resp, f"insert {table}")
+        try:
+            body = resp.json() if resp.content else None
+        except ValueError:
+            return None
+        return len(body) if isinstance(body, list) else None
+
 
 def resolve_tables(names: Iterable[str] | None) -> list[Table]:
     """FK-safe order (metadata.sorted_tables), minus PUBLISH_SKIP, optionally filtered."""
@@ -233,7 +286,8 @@ def publish_rest(
     client: RestClient | None = None,
     batch: int = BATCH,
 ) -> dict[str, Any]:
-    """Upsert local rows into Supabase via PostgREST. Returns counts, skips and per-table errors."""
+    """Publish local rows to Supabase via PostgREST: upsert `merge` tables, insert only missing rows
+    of `insert` tables (never overwriting online state). Returns counts, skips, policy, errors."""
     tbls = resolve_tables(tables)
     data = read_rows(source_url, tbls)
     key, key_env = api_key()
@@ -247,6 +301,8 @@ def publish_rest(
         "batches": {},
         "skipped": {},
         "errors": {},
+        "policy": {t.name: publish_policy(t.name) for t in tbls},
+        "inserted": {},  # insert-only tables: rows that were new online (None = not reported)
     }
     try:
         for t in tbls:
@@ -265,9 +321,17 @@ def publish_rest(
             res["batches"][t.name] = nb
             if dry_run:
                 continue
+            merge = publish_policy(t.name) == "merge"
+            new_rows: int | None = 0
             try:
                 for i in range(0, len(payload), batch):
-                    cl.upsert(t.name, payload[i : i + batch], pk)
+                    if merge:
+                        cl.upsert(t.name, payload[i : i + batch], pk)
+                        continue
+                    n = cl.insert_missing(t.name, payload[i : i + batch], pk)
+                    new_rows = None if n is None or new_rows is None else new_rows + n
+                if not merge:
+                    res["inserted"][t.name] = new_rows
             except (RestAuthError, RestUnreachableError):
                 raise
             except RestError as exc:  # e.g. 409 unique violation: report, carry on

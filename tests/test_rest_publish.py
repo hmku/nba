@@ -236,7 +236,7 @@ def test_cli_publish_rest_dry_run_and_live(mock_http, monkeypatch):
     assert d["ok"] and d["dry_run"] and d["auth"] == "SUPABASE_SECRET_KEY"
     assert mock_http["rec"].requests == []
     code, out = run("publish", "--rest", "--tables", "drafts", "--source", db_url())
-    assert code == 0 and "drafts: upserted 1 rows" in out and SECRET not in out
+    assert code == 0 and "drafts: insert-if-missing sent 1 rows" in out and SECRET not in out
     assert mock_http["rec"].posts()[0].headers["apikey"] == SECRET
 
 
@@ -279,3 +279,61 @@ def test_proxy_denial_not_retried():
     with pytest.raises(rest.RestUnreachableError):
         rest.publish_rest(db_url(), client=client(rec), tables=["drafts"])
     assert len(rec.requests) == 1
+
+
+# ------------------------------------------------------------------ per-table publish policy
+
+
+def _fake_client(tmp_path):
+    from fake_postgrest import FakePostgrest
+
+    fake = FakePostgrest(f"sqlite:///{tmp_path / 'remote.db'}")
+    return fake, rest.RestClient(base_url="https://example.supabase.co",
+                                 transport=httpx.MockTransport(fake), sleep=lambda s: None)
+
+
+def test_stale_local_pending_approval_never_overwrites_remote_approved(tmp_path):
+    """The user approved on the dashboard; a cloud job republishes its stale 'pending' copy."""
+    from fantasy.db.schema import approvals, transactions
+
+    fake, cl = _fake_client(tmp_path)
+    row = {"approval_id": "apr-1", "run_id": None, "action_type": "add_drop", "summary": "s",
+           "status": "pending", "requested_at": T0}
+    txn = {"txn_id": "txn-1", "idempotency_key": "k1", "kind": "add_drop", "status": "awaiting_approval",
+           "approval_id": "apr-1", "created_at": T0}
+    with fake.engine.begin() as c:  # remote: already decided / advanced
+        c.execute(approvals.insert().values(**{**row, "status": "approved", "decided_by": "harry"}))
+        c.execute(transactions.insert().values(**{**txn, "status": "submitted"}))
+    with engine().begin() as c:  # local: stale copy + one row that is new
+        c.execute(approvals.insert().values(**row))
+        c.execute(approvals.insert().values(**{**row, "approval_id": "apr-2"}))
+        c.execute(transactions.insert().values(**txn))
+    res = rest.publish_rest(db_url(), client=cl, tables=["approvals", "transactions"])
+    assert res["errors"] == {} and res["policy"] == {"approvals": "insert", "transactions": "insert"}
+    remote = {r["approval_id"]: r for r in fake.rows("approvals")}
+    assert remote["apr-1"]["status"] == "approved" and remote["apr-1"]["decided_by"] == "harry"
+    assert remote["apr-2"]["status"] == "pending"  # missing row inserted
+    assert fake.rows("transactions")[0]["status"] == "submitted"
+    assert res["inserted"] == {"approvals": 1, "transactions": 0}
+    req = [r for r in fake.requests if r.method == "POST" and r.url.path.endswith("/approvals")][0]
+    assert req.headers["prefer"] == "resolution=ignore-duplicates,return=representation"
+
+
+def test_merge_tables_still_upsert_through_fake(tmp_path):
+    fake, cl = _fake_client(tmp_path)
+    with fake.engine.begin() as c:
+        c.execute(players.insert().values(player_id="p1", name="Old", updated_at=T0))
+    with engine().begin() as c:
+        c.execute(players.insert().values(player_id="p1", name="New", updated_at=T0))
+    res = rest.publish_rest(db_url(), client=cl, tables=["players"])
+    assert res["policy"] == {"players": "merge"} and fake.rows("players")[0]["name"] == "New"
+
+
+def test_publish_policy_covers_every_table():
+    for t in metadata.tables:
+        assert rest.publish_policy(t) in {"skip", "merge", "insert"}
+    state = {"agent_runs", "approvals", "transactions", "tasks", "drafts", "agent_events", "decisions"}
+    assert {t for t in state if rest.publish_policy(t) != "insert"} == set()
+    assert rest.publish_policy("locks") == "skip"
+    assert rest.publish_policy("some_future_table") == "insert"  # safe default
+    assert not (rest.PUBLISH_MERGE & rest.PUBLISH_INSERT_ONLY)

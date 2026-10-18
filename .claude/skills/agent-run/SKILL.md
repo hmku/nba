@@ -14,10 +14,17 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 - `fantasy` on PATH (`pip install -e ".[dev]"`). DB: `FANTASY_DB_URL` = Supabase pooler URL in
   production (secret, from the user; never echo it), unset = local SQLite `var/fantasy.db`.
   If you worked on SQLite, the dashboard sees nothing until `fantasy publish` (asks the user).
-- **Cloud sessions** cannot reach Postgres (HTTPS proxy only): work on SQLite, then
-  `fantasy db ping --rest --json` and `fantasy publish --rest [--dry-run] --json` (PostgREST upsert,
-  same skip rules; runbook section 5b). `rest_unreachable` = host not allowed in the environment's
-  network settings, `rest_auth` = key missing: point the user to docs/USER_TODO.md, never ask for keys in chat.
+- **Cloud sessions** cannot reach Postgres (HTTPS proxy only). For ledger work add **`--rest`** to every
+  `run|lock|approval|txn|task` command: it reads/writes the Supabase rows directly over PostgREST, one
+  row per call, state changes as compare-and-set (a concurrent change -> same exit code as locally,
+  usually 7; never a silent overwrite). No local DB, no publish needed. Check first with
+  `fantasy db ping --rest --json`. Not available with `--rest` (by design): `approval decide`,
+  `lock release --force`, `run reap`, `task seed`; `fantasy status` has no `--rest` (use
+  `txn reconcile|list --rest`, `approval list --rest`, `lock show --rest`, `run list --rest`).
+  Bulk data (values, projections, sims) still goes SQLite -> `fantasy publish --rest`; publish never
+  overwrites ledger/state rows (insert-if-missing; runbook 5b). `rest_unreachable` = host not allowed in
+  the environment's network settings, `rest_auth` = key missing: point the user to docs/USER_TODO.md,
+  never ask for keys in chat.
 - For Yahoo writes: a **local** session with Claude in Chrome (see `yahoo-browser` skill).
 - Always pass `--json` and branch on the **exit code**, then read the JSON. Every failure has `ok: false`,
   a machine `code` (e.g. `lock_held`, `not_allowed`, `usage`, `not_found`) and a human `message`; prefer `code`

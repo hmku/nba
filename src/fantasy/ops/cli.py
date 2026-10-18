@@ -5,6 +5,8 @@ Exit codes (see fantasy.ops.common): 0 ok, 1 error, 2 usage, 3 conflict (lock he
 claimed), 4 not allowed (approval required, dry_run), 5 duplicate txn, 6 not found,
 7 invalid state transition, 8 still pending (`approval show --wait` timed out).
 Run ids come from `--run-id` or the FANTASY_RUN_ID environment variable.
+`--rest` (run/lock/approval/txn/task, except `run reap`, `lock release --force`, `approval decide`
+and `task seed`) talks to Supabase over PostgREST instead of FANTASY_DB_URL (fantasy.ops.rest_ledger).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, Any
 
 import typer
@@ -25,6 +28,23 @@ RunId = Annotated[
     str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
 ]
 JsonOut = Annotated[bool, typer.Option("--json", help="Machine-readable JSON output")]
+UseRest = Annotated[bool, typer.Option(
+    "--rest", help="Read/write Supabase directly over HTTPS (PostgREST), one row per call, "
+    "with compare-and-set state transitions (cloud sessions; no local DB involved)")]
+
+# Storage backend for the commands below: the SQLAlchemy ops modules (default, unchanged) or their
+# PostgREST mirror in fantasy.ops.rest_ledger (`--rest`). Same method names, same errors/exit codes.
+_LOCAL = SimpleNamespace(
+    ledger=ledger, locks=locks, approvals=approvals, transactions=transactions, tasks=tasks
+)
+
+
+def _backend(use_rest: bool) -> SimpleNamespace:
+    if not use_rest:
+        return _LOCAL
+    from fantasy.ops import rest_ledger  # local import: keeps httpx off the default path
+
+    return rest_ledger.backend()
 
 
 # ------------------------------------------------------------------ helpers
@@ -112,11 +132,13 @@ def run_start(
     task: Annotated[str | None, typer.Option(help="What this run is doing")] = None,
     mode: Annotated[str, typer.Option(help="dry_run | live")] = "dry_run",
     session_ref: Annotated[str | None, typer.Option(help="Claude Code session URL/id")] = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Start a run. Prints the run id (export it as FANTASY_RUN_ID)."""
-    rid = ledger.start_run(agent, task, mode, session_ref)
-    emit({"run_id": rid, "run": ledger.get_run(rid)}, json_out, rid)
+    b = _backend(use_rest)
+    rid = b.ledger.start_run(agent, task, mode, session_ref)
+    emit({"run_id": rid, "run": b.ledger.get_run(rid)}, json_out, rid)
 
 
 @run_app.command("event")
@@ -126,10 +148,12 @@ def run_event(
     message: Annotated[str, typer.Argument()] = "",
     payload: Annotated[str | None, typer.Option(help="JSON, @file or -")] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Log an event on a run."""
-    eid = ledger.log_event(_need_run(run_id), kind, message or None, parse_json_arg(payload))
+    b = _backend(use_rest)
+    eid = b.ledger.log_event(_need_run(run_id), kind, message or None, parse_json_arg(payload))
     emit({"event_id": eid}, json_out, eid)
 
 
@@ -141,10 +165,12 @@ def run_decision(
     model: Annotated[str | None, typer.Option(help="JSON of the model recommendation")] = None,
     rationale: Annotated[str | None, typer.Option()] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Record a decision; agrees_with_model is computed."""
-    res = ledger.record_decision(
+    b = _backend(use_rest)
+    res = b.ledger.record_decision(
         _need_run(run_id), kind, parse_json_arg(model), parse_json_arg(choice), rationale
     )
     emit(res, json_out, f"{res['decision_id']} agrees_with_model={res['agrees_with_model']}")
@@ -152,9 +178,12 @@ def run_decision(
 
 @run_app.command("heartbeat")
 @handled
-def run_heartbeat(run_id: RunId = None, json_out: JsonOut = False) -> None:
+def run_heartbeat(
+    run_id: RunId = None, use_rest: UseRest = False, json_out: JsonOut = False
+) -> None:
     """Refresh the run's heartbeat (do this at least every few minutes)."""
-    run = ledger.heartbeat(_need_run(run_id))
+    b = _backend(use_rest)
+    run = b.ledger.heartbeat(_need_run(run_id))
     emit({"run": run}, json_out, f"{run['run_id']} heartbeat {run['heartbeat_at'].isoformat()}")
 
 
@@ -164,10 +193,12 @@ def run_end(
     status: Annotated[str, typer.Option(help="succeeded | failed | abandoned")] = "succeeded",
     summary: Annotated[str | None, typer.Option()] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """End a run and release every lock it still holds (listed as `released_locks`)."""
-    run = ledger.end_run(_need_run(run_id), status, summary)
+    b = _backend(use_rest)
+    run = b.ledger.end_run(_need_run(run_id), status, summary)
     released = run.pop("released_locks", [])
     emit({"run": run, "released_locks": released}, json_out,
          f"{run['run_id']} {run['status']}" + (f"; released {', '.join(released)}" if released else ""))
@@ -179,10 +210,12 @@ def run_list(
     status: Annotated[str | None, typer.Option()] = None,
     agent: Annotated[str | None, typer.Option()] = None,
     limit: Annotated[int, typer.Option()] = 20,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """List recent runs."""
-    runs = ledger.list_runs(status, agent, limit)
+    b = _backend(use_rest)
+    runs = b.ledger.list_runs(status, agent, limit)
     keys = ["run_id", "agent", "status", "mode", "started_at", "heartbeat_at"]
     emit({"runs": runs}, json_out, "\n".join(_fmt_row(r, keys) for r in runs) or "(no runs)")
 
@@ -192,14 +225,16 @@ def run_list(
 def run_show(
     run_id_arg: Annotated[str | None, typer.Argument(metavar="RUN_ID")] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Show a run with its events and decisions."""
+    b = _backend(use_rest)
     rid = _need_run(run_id_arg or run_id)
     data = {
-        "run": ledger.get_run(rid),
-        "events": ledger.list_events(rid),
-        "decisions": ledger.list_decisions(rid),
+        "run": b.ledger.get_run(rid),
+        "events": b.ledger.list_events(rid),
+        "decisions": b.ledger.list_decisions(rid),
     }
     emit(data, json_out)
 
@@ -228,10 +263,12 @@ def lock_acquire(
     ttl: Annotated[float, typer.Option(help="Lease seconds")] = locks.DEFAULT_TTL,
     purpose: Annotated[str | None, typer.Option()] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Acquire (or renew, if already ours) a lock. Exit 3 if held by another run."""
-    info = locks.acquire(resource, _need_run(run_id), ttl, purpose)
+    b = _backend(use_rest)
+    info = b.locks.acquire(resource, _need_run(run_id), ttl, purpose)
     emit({"lock": info}, json_out, f"acquired {resource} until {info['expires_at'].isoformat()}")
 
 
@@ -241,10 +278,12 @@ def lock_renew(
     resource: Annotated[str, typer.Argument()],
     ttl: Annotated[float, typer.Option()] = locks.DEFAULT_TTL,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Extend a lock we hold."""
-    info = locks.renew(resource, _need_run(run_id), ttl)
+    b = _backend(use_rest)
+    info = b.locks.renew(resource, _need_run(run_id), ttl)
     emit({"lock": info}, json_out, f"renewed {resource} until {info['expires_at'].isoformat()}")
 
 
@@ -254,11 +293,15 @@ def lock_release(
     resource: Annotated[str, typer.Argument()],
     force: Annotated[bool, typer.Option(help="Operator override: ignore holder")] = False,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Release a lock (holder only, unless --force). Exit 3 if held by another run."""
+    if force and use_rest:
+        raise ValueError("--force is a human override and is not available with --rest")
+    b = _backend(use_rest)
     released = (
-        locks.force_release(resource) if force else locks.release(resource, _need_run(run_id))
+        b.locks.force_release(resource) if force else b.locks.release(resource, _need_run(run_id))
     )
     emit({"resource": resource, "released": released}, json_out,
          f"{'released' if released else 'was not locked'}: {resource}")
@@ -269,14 +312,16 @@ def lock_release(
 def lock_show(
     resource: Annotated[str | None, typer.Argument()] = None,
     all_: Annotated[bool, typer.Option("--all", help="Include expired leases")] = False,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Show one lock or all held locks."""
+    b = _backend(use_rest)
     if resource:
-        lk = locks.get_lock(resource)
+        lk = b.locks.get_lock(resource)
         emit({"lock": lk}, json_out, json.dumps(jsonable(lk), indent=2) if lk else "(unlocked)")
         return
-    lks = locks.list_locks(include_expired=all_)
+    lks = b.locks.list_locks(include_expired=all_)
     keys = ["resource", "holder_run_id", "expires_at", "expired", "purpose"]
     emit({"locks": lks}, json_out, "\n".join(_fmt_row(r, keys) for r in lks) or "(no locks)")
 
@@ -295,23 +340,27 @@ def approval_request(
     payload: Annotated[str | None, typer.Option(help="JSON, @file or -")] = None,
     expires_in: Annotated[float, typer.Option(help="Seconds")] = approvals.DEFAULT_EXPIRES_IN,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Request a human approval. Prints the approval id."""
-    aid = approvals.request_approval(
+    b = _backend(use_rest)
+    aid = b.approvals.request_approval(
         run_id, action_type, summary, parse_json_arg(payload), expires_in
     )
-    emit({"approval_id": aid, "approval": approvals.get_approval(aid)}, json_out, aid)
+    emit({"approval_id": aid, "approval": b.approvals.get_approval(aid)}, json_out, aid)
 
 
 @approval_app.command("list")
 @handled
 def approval_list(
     status: Annotated[str, typer.Option(help="pending|approved|rejected|expired|all")] = "pending",
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """List approvals (default: pending)."""
-    rows = approvals.list_approvals(None if status == "all" else status)
+    b = _backend(use_rest)
+    rows = b.approvals.list_approvals(None if status == "all" else status)
     keys = ["approval_id", "status", "action_type", "summary", "expires_at"]
     emit({"approvals": rows}, json_out, "\n".join(_fmt_row(r, keys) for r in rows) or "(none)")
 
@@ -321,14 +370,16 @@ def approval_list(
 def approval_show(
     approval_id: Annotated[str, typer.Argument()],
     wait: Annotated[float, typer.Option(help="Poll up to N seconds while pending")] = 0,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Show an approval (optionally waiting for a decision).
 
     With --wait N: exit 8 (`still_pending`) if the approval is still pending after N seconds."""
+    b = _backend(use_rest)
     if wait > 0:
-        approvals.wait(approval_id, timeout=wait, poll=min(5.0, wait))
-    a = approvals.get_approval(approval_id)
+        b.approvals.wait(approval_id, timeout=wait, poll=min(5.0, wait))
+    a = b.approvals.get_approval(approval_id)
     if wait > 0 and a["status"] == "pending":
         if json_out:
             typer.echo(json.dumps(jsonable({"ok": False, "error": "still_pending", "code": "still_pending",
@@ -370,10 +421,12 @@ def txn_plan(
     attempt: Annotated[int, typer.Option(help="Bump to deliberately retry a failed txn")] = 1,
     summary: Annotated[str | None, typer.Option(help="Text shown on the approval")] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Plan a transaction. Exit 5 (with the existing record) if already planned."""
-    txn = transactions.plan(kind, parse_json_arg(payload), run_id, scope, attempt, summary)
+    b = _backend(use_rest)
+    txn = b.transactions.plan(kind, parse_json_arg(payload), run_id, scope, attempt, summary)
     emit({"txn": txn}, json_out, f"{txn['txn_id']} {txn['status']}"
          + (f" approval={txn['approval_id']}" if txn["approval_id"] else ""))
 
@@ -386,11 +439,13 @@ def txn_mark(
     evidence: Annotated[str | None, typer.Option(help="JSON verification evidence")] = None,
     error: Annotated[str | None, typer.Option(help="Failure / cancel reason")] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Advance a transaction. `submitted` needs a live run, policy clearance and the lock
     (exit 4 otherwise); invalid transitions exit 7."""
-    txn = transactions.mark(txn_id, status, run_id, parse_json_arg(evidence), error)
+    b = _backend(use_rest)
+    txn = b.transactions.mark(txn_id, status, run_id, parse_json_arg(evidence), error)
     emit({"txn": txn}, json_out, f"{txn['txn_id']} {txn['status']}")
 
 
@@ -399,10 +454,12 @@ def txn_mark(
 def txn_check(
     txn_id: Annotated[str, typer.Argument()],
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Would `mark submitted` succeed right now? (no state change)"""
-    txn = transactions.check_submit(txn_id, _need_run(run_id))
+    b = _backend(use_rest)
+    txn = b.transactions.check_submit(txn_id, _need_run(run_id))
     emit({"txn": txn, "allowed": True}, json_out, "allowed")
 
 
@@ -411,27 +468,33 @@ def txn_check(
 def txn_list(
     status: Annotated[str | None, typer.Option()] = None,
     kind: Annotated[str | None, typer.Option()] = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """List transactions."""
-    rows = transactions.list_txns(status, kind)
+    b = _backend(use_rest)
+    rows = b.transactions.list_txns(status, kind)
     keys = ["txn_id", "kind", "status", "approval_id", "updated_at"]
     emit({"txns": rows}, json_out, "\n".join(_fmt_row(r, keys) for r in rows) or "(none)")
 
 
 @txn_app.command("show")
 @handled
-def txn_show(txn_id: Annotated[str, typer.Argument()], json_out: JsonOut = False) -> None:
+def txn_show(
+    txn_id: Annotated[str, typer.Argument()], use_rest: UseRest = False, json_out: JsonOut = False
+) -> None:
     """Show one transaction."""
-    emit({"txn": transactions.get_txn(txn_id)}, json_out)
+    b = _backend(use_rest)
+    emit({"txn": b.transactions.get_txn(txn_id)}, json_out)
 
 
 @txn_app.command("reconcile")
 @handled
-def txn_reconcile(json_out: JsonOut = False) -> None:
+def txn_reconcile(use_rest: UseRest = False, json_out: JsonOut = False) -> None:
     """List transactions stuck in `submitted`. Check Yahoo, then mark verified or failed.
     NEVER re-submit them blindly."""
-    rows = transactions.needs_reconciliation()
+    b = _backend(use_rest)
+    rows = b.transactions.needs_reconciliation()
     keys = ["txn_id", "kind", "updated_at", "payload"]
     emit({"txns": rows}, json_out,
          "\n".join(_fmt_row(r, keys) for r in rows) or "(nothing to reconcile)")
@@ -450,10 +513,12 @@ def task_add(
     description: Annotated[str | None, typer.Option()] = None,
     area: Annotated[str | None, typer.Option(help="|".join(tasks.TASK_AREAS))] = None,
     priority: Annotated[int, typer.Option(help="0 urgent .. 3 someday")] = 2,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Add a task (exit 5 if the title exists)."""
-    t = tasks.add(title, description, area, priority)
+    b = _backend(use_rest)
+    t = b.tasks.add(title, description, area, priority)
     emit({"task": t}, json_out, t["task_id"])
 
 
@@ -463,24 +528,29 @@ def task_list(
     status: Annotated[str | None, typer.Option(help="todo|in_progress|blocked|done|open|all")]
     = "open",
     area: Annotated[str | None, typer.Option()] = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """List tasks by priority (default: not done)."""
+    b = _backend(use_rest)
     if status in (None, "all"):
-        rows = tasks.list_tasks(area=area)
+        rows = b.tasks.list_tasks(area=area)
     elif status == "open":
-        rows = tasks.list_tasks(area=area, open_only=True)
+        rows = b.tasks.list_tasks(area=area, open_only=True)
     else:
-        rows = tasks.list_tasks(status, area)
+        rows = b.tasks.list_tasks(status, area)
     keys = ["task_id", "priority", "status", "area", "owner", "title"]
     emit({"tasks": rows}, json_out, "\n".join(_fmt_row(r, keys) for r in rows) or "(none)")
 
 
 @task_app.command("show")
 @handled
-def task_show(task_id: Annotated[str, typer.Argument()], json_out: JsonOut = False) -> None:
+def task_show(
+    task_id: Annotated[str, typer.Argument()], use_rest: UseRest = False, json_out: JsonOut = False
+) -> None:
     """Show a task."""
-    emit({"task": tasks.get_task(task_id)}, json_out)
+    b = _backend(use_rest)
+    emit({"task": b.tasks.get_task(task_id)}, json_out)
 
 
 @task_app.command("claim")
@@ -489,10 +559,12 @@ def task_claim(
     task_id: Annotated[str, typer.Argument()],
     owner: Annotated[str | None, typer.Option(help="Defaults to the run id")] = None,
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Claim a task (exit 3 if another owner has it in progress)."""
-    t = tasks.claim(task_id, owner or _need_run(run_id))
+    b = _backend(use_rest)
+    t = b.tasks.claim(task_id, owner or _need_run(run_id))
     emit({"task": t}, json_out, f"{task_id} claimed by {t['owner']}")
 
 
@@ -505,10 +577,12 @@ def task_update(
     description: Annotated[str | None, typer.Option()] = None,
     owner: Annotated[str | None, typer.Option()] = None,
     release: Annotated[bool, typer.Option(help="Clear the owner")] = False,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Update status/priority/description/owner."""
-    t = tasks.update_task(task_id, status, owner, priority, description, release=release)
+    b = _backend(use_rest)
+    t = b.tasks.update_task(task_id, status, owner, priority, description, release=release)
     emit({"task": t}, json_out, f"{task_id} {t['status']}")
 
 
@@ -517,10 +591,12 @@ def task_update(
 def task_done(
     task_id: Annotated[str, typer.Argument()],
     run_id: RunId = None,
+    use_rest: UseRest = False,
     json_out: JsonOut = False,
 ) -> None:
     """Mark a task done (exit 3 if another owner has it in progress)."""
-    t = tasks.done(task_id, run_id)
+    b = _backend(use_rest)
+    t = b.tasks.done(task_id, run_id)
     emit({"task": t}, json_out, f"{task_id} done")
 
 

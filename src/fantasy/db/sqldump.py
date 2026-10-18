@@ -4,9 +4,11 @@
 Used to publish to Supabase when only SQL access (e.g. the Supabase MCP) is available:
   python -m fantasy.db.sqldump --source sqlite:///var/fantasy.db --tables players model_runs ... --out dir/
 
-Same semantics as `fantasy publish` / `publish --rest` (upsert by primary key, `locks` never published),
-except that unique-key clashes with *different* target rows cannot be pre-checked offline: such a
-statement fails in the target instead of being skipped.
+Same semantics as the SQL `fantasy publish` (upsert by primary key, `locks` never published), except
+that unique-key clashes with *different* target rows cannot be pre-checked offline: such a statement
+fails in the target instead of being skipped. NOTE: unlike `publish --rest` it does not apply
+`fantasy.db.rest.publish_policy`, so it overwrites ledger/state rows (approvals, transactions, ...):
+only dump those tables from a DB that is newer than the target.
 """
 
 from __future__ import annotations

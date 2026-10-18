@@ -39,7 +39,7 @@ already talks to our API (`/api/agent/*`). So the loop splits the work by capabi
                               |                             ^
                               v                             |
           Supabase Postgres: league_snapshots, agent_events, transactions, approvals, agent_runs
-                 |  fantasy intel latest --rest            ^  fantasy txn plan (+approval)
+                 |  fantasy intel latest --rest            ^  fantasy txn plan --rest (+approval)
                  v                                         |  fantasy txn mark verified
           +----------------------------------+      +-------------------------------+
           | THINK: cloud scheduled task      |----->| dashboard /approvals: USER    |
@@ -56,7 +56,11 @@ Pieces and status:
   (`src/fantasy/ops/intel.py` and the schema table already exist on main).
 - `POST /api/agent/report` (chat digests, injury news, trades as reports): **BUILT** (`docs/integrations/muse.md`).
 - Txn ledger + approvals + dashboard approve/reject (`web/src/app/api/approvals/route.ts`): **BUILT**.
-- Action queue (`/api/agent/actions*`), REST ledger writes from cloud, snapshot-to-rosters converter,
+- REST ledger writes from cloud (`fantasy run|lock|approval|txn|task ... --rest`, single rows, CAS on
+  state; `publish --rest` no longer overwrites ledger/state rows): **BUILT** 2026-10-18
+  (`src/fantasy/ops/rest_ledger.py`, runbook `docs/runbooks/agent_ops.md` 5b/5c,
+  handoff `docs/handoffs/2026-10-18-rest-ledger.md`).
+- Action queue (`/api/agent/actions*`), snapshot-to-rosters converter,
   lineup/streaming/trade tools: **PLANNED** (section 6).
 
 ## 3. Trust boundaries
@@ -185,7 +189,7 @@ built, THINK writes a note event and tells the user.
 | 1 | Land muse-intel (snapshot API, `league_snapshots`, `fantasy intel`, dashboard section); have Muse post `rosters` + `my_team` daily | in flight | handoff 2026-10-18-muse-intel |
 | 2 | `fantasy intel export-league`: snapshots -> `rosters.json` / `schedule.json` for `fantasy sim` (name -> player_id resolution, unresolved list) + tests on synthetic snapshots | S (½ day) | 1 |
 | 3 | THINK job, report-only: cloud scheduled task running the `league-loop` skill daily 10:00 ET, output = text recommendations, no txns | S | 2 |
-| 4 | REST ledger: `fantasy txn plan|mark|show --rest`, `fantasy approval list --rest` (PostgREST, CAS on status via `PATCH ... ?status=eq.X`), so cloud runs stop round-tripping through SQLite/publish | M (1 day) | — |
+| 4 | **DONE 2026-10-18.** REST ledger: `fantasy run|lock|approval|txn|task ... --rest` (PostgREST, CAS on status via `PATCH ...?status=in.(...)`), and `publish --rest` is insert-if-missing for ledger/state tables, so cloud runs no longer round-trip through SQLite/publish and a stale copy cannot clobber a decision | M | — |
 | 5 | Txn payload schema + `--approval-expires-in`; dashboard approval card shows evidence, expected deltas, expiry | S–M | 4 |
 | 6 | Action queue: `GET /actions`, `POST /actions/{id}/claim`, `POST /actions/{id}/result` (+ `ready_actions` view, executor run + lock server-side, tests mirroring `test_transactions`) | M (1–1.5 days) | 4, 5 |
 | 7 | VERIFY automation: diff each `my_team`/`transactions` snapshot against verified/submitted txns; flag unplanned changes on the dashboard | S–M | 1, 6 |

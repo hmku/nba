@@ -254,7 +254,9 @@ def register(app: typer.Typer) -> None:
     ) -> None:
         """Copy all rows from the local sqlite DB to Supabase (upsert by PK; skips `locks`).
 
-        Default: SQL to FANTASY_PUBLISH_URL (laptop). --rest: HTTPS/PostgREST (cloud sessions).
+        Default: SQL to FANTASY_PUBLISH_URL (laptop). --rest: HTTPS/PostgREST (cloud sessions);
+        ledger/state tables (runs, approvals, transactions, tasks, drafts, events, decisions) are
+        insert-if-missing there, never overwritten (fantasy.db.rest.publish_policy).
         """
         if source:
             src = source
@@ -262,10 +264,15 @@ def register(app: typer.Typer) -> None:
             src = db_url() if db_url().startswith("sqlite") else f"sqlite:///{DEFAULT_SQLITE}"
         if use_rest:
             res = rest.publish_rest(src, tables=tables, dry_run=dry_run)
-            verb = "would upsert" if dry_run else "upserted"
+            def verb(k: str) -> str:
+                if res["policy"].get(k) == "merge":
+                    return "would upsert" if dry_run else "upserted"
+                return "would insert-if-missing" if dry_run else "insert-if-missing sent"
+
             lines = [f"{'DRY RUN ' if dry_run else ''}{_redact(src)} -> {res['target']}"
                      f" (auth: {res['auth']})"]
-            lines += [f"{k}: {verb} {v} rows in {res['batches'][k]} batch(es)"
+            lines += [f"{k}: {verb(k)} {v} rows in {res['batches'][k]} batch(es)"
+                      + (f", {res['inserted'][k]} new" if res["inserted"].get(k) is not None else "")
                       for k, v in res["rows"].items()]
             if res["skipped"]:
                 lines.append(f"SKIPPED (unique-key clash with different target row): "

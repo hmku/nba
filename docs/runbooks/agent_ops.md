@@ -115,9 +115,11 @@ Execution recipe for any Yahoo write:
 - **Approval never answered**: it expires; the txn stays `awaiting_approval` — cancel it.
 - **Offline work** (no Supabase): run with the local SQLite DB, then
   `FANTASY_PUBLISH_URL=postgresql://... fantasy publish` (laptop) or `fantasy publish --rest`
-  (cloud session, section 5b). Upserts every table by primary key
-  except `locks` (ephemeral). Tasks/transactions whose title/idempotency key collide with a
-  *different* row online are skipped and reported, never overwritten.
+  (cloud session, section 5b). The SQL publish upserts every table by primary key except `locks`
+  (ephemeral) -- including ledger rows, so only run it from a DB that is newer than Supabase.
+  `publish --rest` applies the per-table policy of section 5b (ledger/state rows never overwritten).
+  Tasks/transactions whose title/idempotency key collide with a *different* row online are skipped
+  and reported, never overwritten.
 
 ## 5b. Publishing from cloud sessions (HTTPS / PostgREST)
 
@@ -134,10 +136,21 @@ fantasy publish --rest [--source sqlite:///...] [--tables players,model_runs ...
 ```
 - Source defaults to `FANTASY_DB_URL` if it is SQLite, else `var/fantasy.db`. Target `SUPABASE_URL`
   (default `https://bdzpkdkhlzjzddkptjex.supabase.co`).
-- `POST /rest/v1/<table>?on_conflict=<pk cols>` with `Prefer: resolution=merge-duplicates`, 500
-  rows per request, FK-safe order (`metadata.sorted_tables`), `locks` never. Datetimes as ISO
-  UTC, JSON columns as JSON, NaN as null. 5xx/network errors are retried twice (it is an upsert,
-  so idempotent); proxy denials are not retried.
+- `POST /rest/v1/<table>?on_conflict=<pk cols>`, 500 rows per request, FK-safe order
+  (`metadata.sorted_tables`), `locks` never. Datetimes as ISO UTC, JSON columns as JSON, NaN as
+  null. 5xx/network errors are retried twice (both modes are idempotent); proxy denials are not retried.
+- **Per-table policy** (`fantasy.db.rest.publish_policy`, JSON key `policy`):
+
+  | policy | PostgREST | tables | why |
+  |---|---|---|---|
+  | merge | `Prefer: resolution=merge-duplicates` (upsert) | players, league_settings, data_snapshots, model_runs, projections, player_values, draft_picks, draft_recommendations | the publishing copy owns them (reference data, versioned model outputs, the draft board) |
+  | insert | `Prefer: resolution=ignore-duplicates` (insert missing rows only; `inserted` = how many were new) | agent_runs, approvals, transactions, tasks, drafts, agent_events, decisions, league_snapshots, **and any table not listed** | rows change state online after creation (dashboard approvals, txn state machine, run end, task claims, draft status/order) or are immutable logs; a stale local copy must never overwrite them |
+  | skip | - | locks | ephemeral leases |
+
+  Consequence: a status change made locally (e.g. a txn marked verified in SQLite) does **not** reach
+  Supabase via `publish --rest`. Make such changes online with the `--rest` commands (section 5c).
+  A draft created in the cloud publishes once; later `drafts` status/order changes need the laptop
+  (`FANTASY_DB_URL` = Supabase) during the draft.
 - Same safety rule as SQL publish: tasks/transactions whose title/idempotency key belongs to a
   different PK online (checked with a GET first) are skipped and listed under `skipped`. Other
   per-table failures (e.g. 409) land in `errors` and the command exits 1.
@@ -145,6 +158,34 @@ fantasy publish --rest [--source sqlite:///...] [--tables players,model_runs ...
   `Authorization: Bearer` for legacy `eyJ...` JWT keys); with neither set no auth header is sent and
   the environment's network secret is expected to inject `apikey`. The key is never printed.
 - Python: `fantasy.db.rest.publish_rest(source_url, tables=..., dry_run=...)`, `rest.ping()`.
+
+## 5c. Ledger commands over HTTPS (`--rest`)
+
+Cloud sessions run the ledger directly against Supabase, one row per request, no local DB:
+```bash
+export FANTASY_RUN_ID=$(fantasy run start --agent league-loop --task "..." --mode dry_run --rest)
+fantasy run event|decision|heartbeat|end|list|show ... --rest
+fantasy lock acquire|renew|release|show ... --rest        # no --force over REST
+fantasy approval request|list|show [--wait N] ... --rest   # no `decide` over REST (human-only)
+fantasy txn plan|mark|check|list|show|reconcile ... --rest
+fantasy task add|list|show|claim|update|done ... --rest
+```
+- Same rules, JSON keys and exit codes as the local commands; the business logic (kinds, state machine
+  `TRANSITIONS`, idempotency keys, policy, required locks, `agrees_with_model`) is imported from the
+  ops modules, only storage differs (`src/fantasy/ops/rest_ledger.py`).
+- Every state change is a conditional PATCH carrying the expected current state, with
+  `Prefer: return=representation`; an empty result means someone changed the row first, and the command
+  fails exactly like the local compare-and-set: txn `PATCH transactions?txn_id=eq.X&status=in.(...)`
+  -> exit 7; run end/heartbeat `status=in.(running,abandoned)` / `eq.running` -> 7; lock takeover
+  `or=(expires_at.lt.<now>,holder_run_id.eq.<me>)` -> 3; task claim -> 3/7; `task done` also CASes on
+  the status/owner it read (3 if it changed). Inserts are plain POSTs: a 409 on `idempotency_key` -> exit 5
+  with `existing`, on a lock -> takeover path.
+- `approval show/list --rest` lazily expires overdue approvals with
+  `PATCH approvals?status=eq.pending&expires_at=lt.<now>`: it can never touch a decided approval.
+- Not available with `--rest`: `approval decide` (human-only), `lock release --force` (human override),
+  `run reap`, `task seed`, `fantasy status` (use the list/reconcile commands above).
+- Auth: same as publish (network secret injects an `sb_secret_` key = Supabase `service_role`, which
+  bypasses RLS; the anon/publishable key has SELECT-only policies and could not write).
 
 ## 6. Tasks (backlog)
 
