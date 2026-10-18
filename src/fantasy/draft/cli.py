@@ -205,6 +205,10 @@ def pick(
 ) -> None:
     """Record an observed pick. Idempotent; refuses conflicts unless --force (exit 2)."""
     d = _load_draft(draft_id, as_json)
+    n_total = d["num_teams"] * d["num_rounds"]
+    if overall is not None and not 1 <= overall <= n_total:
+        _fail(f"invalid --overall {overall}; valid: 1..{n_total}", as_json, code=2, draft_id=d["draft_id"],
+              valid_range=[1, n_total])
     proj = load_projections(projections)
     values = proj.df
     try:
@@ -215,8 +219,7 @@ def pick(
             _fail(str(e), as_json, code=2, candidates=e.candidates)
         pid, name = f"unknown:{player.strip().lower().replace(' ', '-')}", player.strip()
     taken = {p["overall_pick"] for p in store.get_picks(d["draft_id"])}
-    n_total = d["num_teams"] * d["num_rounds"]
-    ov = overall or next((k for k in range(1, n_total + 1) if k not in taken), None)
+    ov = overall if overall is not None else next((k for k in range(1, n_total + 1) if k not in taken), None)
     if ov is None:
         _fail("draft is complete", as_json)
     try:

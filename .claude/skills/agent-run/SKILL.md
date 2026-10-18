@@ -37,8 +37,10 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 ```bash
 fantasy status --json
 ```
-Keys: `runs.active`, `runs.stale`, `locks`, `approvals_pending`, `txns_needing_reconciliation`,
-`txns_awaiting_approval`, `tasks_open`, `model_freshness`, `active_draft`.
+Output is `{"ok": true, "status": {...}}` — every key below is nested under `status`
+(e.g. `jq '.status.txns_needing_reconciliation'`): `runs.active`, `runs.stale`, `locks`, `approvals_pending`,
+`txns_needing_reconciliation`, `txns_awaiting_approval`, `tasks_open`, `model_freshness`, `active_draft`
+(a `pending`/`live` draft; a finished draft is `complete` and no longer listed here).
 **If `txns_needing_reconciliation` is non-empty, do section 7 (recovery) before anything else.**
 
 ## 2. Start the run

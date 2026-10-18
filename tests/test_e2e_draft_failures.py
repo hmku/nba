@@ -203,16 +203,12 @@ def test_out_of_order_recording(P):
     assert rec["for_pick"] == 24 and not any("not recorded" in w for w in rec["warnings"])
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: `draft pick --overall 0` is treated as 'no --overall' "
-                   "(`overall or next_open_pick`) and silently records the next open pick instead of exit 2")
 def test_pick_overall_zero_rejected(P):
     code, out = cli("draft", "pick", "Player 003", "--overall", 0, "--json", *P)
     assert code == 2 and out["ok"] is False
     assert board()["picks_made"] == 0
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: `draft pick --overall N` out of range (157 / -1) crashes with an "
-                   "uncaught ValueError traceback (exit 1, no JSON) instead of a JSON usage error (exit 2)")
 @pytest.mark.parametrize("ov", [157, -1])
 def test_pick_overall_out_of_range_is_json_usage_error(P, ov):
     code, out = cli("draft", "pick", "Player 003", "--overall", ov, "--json", *P)

@@ -169,9 +169,6 @@ def test_live_draft_rehearsal(env, monkeypatch, last_pick):
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(strict=True, reason="BUG: drafts.status never becomes 'complete' after the last pick "
-                   "(store.set_draft_status has no caller; status stays 'live'), so the dashboard/agents "
-                   "cannot tell a finished draft from one in progress")
 def test_draft_status_complete_after_last_pick(env):
     P = env["P"]
     assert cli("draft", "init", "--draft-id", "mock-done", "--mock", "--json")[0] == 0
