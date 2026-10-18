@@ -9,7 +9,7 @@ from typing import Annotated
 
 import typer
 
-from fantasy.cli_common import check_choice, dumps, emit, parse_punt
+from fantasy.cli_common import EXIT_USAGE, check_choice, dumps, emit, fail, parse_punt
 from fantasy.draft import store
 from fantasy.draft.cli import (
     OBJECTIVES,
@@ -27,6 +27,14 @@ from fantasy.draft.optimizer import (
     DraftOptimizer,
     DraftState,
     OptimizerParams,
+)
+from fantasy.draft.policy import (
+    DEFAULT_EPS,
+    DEFAULT_MARGIN,
+    DEFAULT_POLICY,
+    POLICIES,
+    PolicyParams,
+    apply_policy,
 )
 from fantasy.model.lines import load_projections
 from fantasy.model.valuation import ValuationParams
@@ -51,6 +59,13 @@ def recommend(
     search_candidates: Annotated[int, typer.Option("--search-candidates", help="Value search: top-N optimizer candidates")] = 6,
     opponents: Annotated[str, typer.Option("--opponents", help="Value search opponent model: adp | ours")] = "adp",
     value_model: Annotated[Path | None, typer.Option("--value-model", help="Value model artifact (.npz)")] = None,
+    policy: Annotated[str, typer.Option("--policy", help="Decision rule for the top pick: optimizer (default) | bpa | "
+                                        "hybrid | bpa_need | opt_valavail | opt_sd50 (docs/research/draft_policy.md)")]
+    = DEFAULT_POLICY,
+    policy_margin: Annotated[float, typer.Option("--policy-margin", help="hybrid: expected category wins the "
+                                                 "optimizer #1 must gain over BPA")] = DEFAULT_MARGIN,
+    policy_eps: Annotated[float, typer.Option("--policy-eps", help="bpa_need: value window for the need tiebreak")]
+    = DEFAULT_EPS,
     as_json: JsonOpt = False,
 ) -> None:
     """Recommend my next pick given all recorded picks. Deterministic for a given state."""
@@ -64,6 +79,10 @@ def recommend(
     check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES if search in ("value", "advise") else OBJECTIVES,
                   "--objective", as_json)
     check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
+    check_choice(policy, POLICIES, "--policy", as_json)
+    if search == "value" and policy != "optimizer":
+        fail("--search value re-ranks the optimizer's candidates; use it with --policy optimizer", as_json,
+             EXIT_USAGE, valid=["optimizer"])
     search = search or DEFAULT_SEARCH
     value_objective = objective if objective in VALUE_OBJECTIVES else "blend"
     rollouts = rollouts or (24 if opponents == "ours" else 48)
@@ -78,6 +97,9 @@ def recommend(
     state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
     opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective))
     rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+    # the policy decides the top pick (and records BPA / optimizer #1 side by side); value search, if any, then
+    # advises relative to that order
+    apply_policy(ctx, rec, state, PolicyParams(name=policy, margin=policy_margin, eps=policy_eps), opt.params)
     if search != "none" and rec.get("recommendations"):
         _attach_value_search(rec, ctx, state, search, value_objective, rollouts, search_candidates, opponents,
                              value_model, projections)
@@ -97,7 +119,14 @@ def recommend(
         return
     typer.echo(f"Pick #{rec['for_pick']} (on the clock: #{rec.get('on_the_clock', {}).get('overall')}); "
                f"strategy {rec['strategy']['name']} — {rec['strategy']['notes']}")
+    pol = rec.get("policy") or {}
+    if pol.get("top_pick"):
+        typer.echo(f"policy {pol['name']}: {pol['top_pick_name']} — {pol['rule']} "
+                   f"[BPA: {pol['bpa_top']['name']}; optimizer #1: {pol['optimizer_top']['name']}]")
     for i, r in enumerate(rec["recommendations"][:top], 1):
+        if r.get("score") is None:  # policy pick outside the optimizer's scored candidates
+            typer.echo(f"{i:>2}. {r['name']:<26} {'/'.join(r['positions']):<9} (not scored)  — {r['reason']}")
+            continue
         typer.echo(f"{i:>2}. {r['name']:<26} {'/'.join(r['positions']):<9} score {r['score']:.3f} "
                    f"({r['marginal_value']:+.3f})  avail@next {r['prob_available_next']:.0%}  — {r['reason']}")
     vsb = rec.get("value_search")
@@ -232,12 +261,17 @@ def simulate(
         help="Use this draft's teams/slot and custom order (set-order); default: settings + formula order")] = None,
     save: Annotated[bool, typer.Option("--save/--no-save", help="Record a model_runs row (kind draft_sim)")] = True,
     projections: ProjOpt = None,
+    policy: Annotated[str, typer.Option("--policy", help="My decision rule (as `draft recommend --policy`); "
+                                        "the BPA baseline is always replayed")] = DEFAULT_POLICY,
+    policy_margin: Annotated[float, typer.Option("--policy-margin")] = DEFAULT_MARGIN,
+    policy_eps: Annotated[float, typer.Option("--policy-eps")] = DEFAULT_EPS,
     as_json: JsonOpt = False,
 ) -> None:
-    """Monte Carlo mock drafts: opponents draft by noisy ADP, I draft with the optimizer."""
+    """Monte Carlo mock drafts: opponents draft by noisy ADP, I draft with the optimizer (or --policy)."""
     from fantasy.draft.simulate import save_draft_sim, simulate_drafts
 
     check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
+    check_choice(policy, POLICIES, "--policy", as_json)
     d = _load_draft(draft_id, as_json) if draft_id else None
     s = _settings_for(d)
     if slot:
@@ -245,13 +279,15 @@ def simulate(
     custom = ((d or {}).get("config") or {}).get("custom_rounds")
     proj = load_projections(projections)
     ctx = DraftContext(proj, s, custom_rounds=custom)
-    res = simulate_drafts(ctx, n_sims=sims, seed=seed, noise=noise, strategy=strategy)
+    res = simulate_drafts(ctx, n_sims=sims, seed=seed, noise=noise, strategy=strategy,
+                          policy=PolicyParams(name=policy, margin=policy_margin, eps=policy_eps))
     run_id = None
     if save:
         try:
             run_id = save_draft_sim(
                 res,
-                {"n_sims": sims, "seed": seed, "noise": noise, "strategy": strategy, "my_slot": s.my_slot},
+                {"n_sims": sims, "seed": seed, "noise": noise, "strategy": strategy, "my_slot": s.my_slot,
+                 "policy": policy},
                 {"projections_path": proj.path, "projections_sha256": proj.sha256,
                  "draft_id": d["draft_id"] if d else None, "order_type": s.draft_order_type,
                  "custom_rounds": custom, "num_teams": s.num_teams, "my_picks": res["summary"]["my_picks"]})

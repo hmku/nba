@@ -24,6 +24,7 @@ from fantasy.draft.optimizer import (
     DraftState,
     OptimizerParams,
 )
+from fantasy.draft.policy import PolicyParams, apply_policy
 from fantasy.draft.roster import max_starting_matching
 
 SUMMARY_SCHEMA = "draft_sim/1"
@@ -77,9 +78,10 @@ EXPLANATIONS = {
 
 
 def _run_one(
-    ctx: DraftContext, opt: DraftOptimizer | None, sampled_pos: np.ndarray
+    ctx: DraftContext, opt: DraftOptimizer | None, sampled_pos: np.ndarray, policy: PolicyParams | None = None
 ) -> tuple[list[int], str | None, dict[int, str]]:
-    """Run one draft; opt=None → BPA-by-value policy. Returns my roster rows, first-pick strategy and
+    """Run one draft; opt=None → BPA-by-value policy; `policy` (fantasy.draft.policy) decides the top pick
+    from the optimizer's payload (None = optimizer #1). Returns my roster rows, first-pick strategy and
     the full board (overall pick -> player id)."""
     my_slot = ctx.settings.my_slot
     available = np.ones(len(ctx.ids), dtype=bool)
@@ -92,7 +94,10 @@ def _run_one(
     for pk in ctx.order:
         if pk.slot == my_slot:
             if opt is not None:
-                rec = opt.recommend(DraftState(taken=dict(taken), my_slot=my_slot))
+                state = DraftState(taken=dict(taken), my_slot=my_slot)
+                rec = opt.recommend(state)
+                if policy is not None and policy.name != "optimizer":
+                    apply_policy(ctx, rec, state, policy, opt.params)
                 row = ctx.pos[rec["recommendations"][0]["player_id"]]
                 strategy = strategy or rec["strategy"]["name"]
             else:
@@ -187,7 +192,7 @@ def availability_table(
 
 def simulate_drafts(
     ctx: DraftContext, n_sims: int = 5, seed: int = 0, noise: float = 1.0, strategy: str | None = None,
-    keep_leagues: bool = False,
+    keep_leagues: bool = False, policy: PolicyParams | None = None,
 ) -> dict:
     t0 = time.perf_counter()
     rng = np.random.default_rng(seed)
@@ -202,7 +207,7 @@ def simulate_drafts(
     taken_by_me: Counter[str] = Counter()
     for k in range(n_sims):
         sampled = sample_market_positions(ctx.market_rank, rng, ctx.sd_mult, noise)
-        mine, strat, board = _run_one(ctx, opt, sampled)
+        mine, strat, board = _run_one(ctx, opt, sampled, policy)
         base, _, _ = _run_one(ctx, None, sampled)
         ev, evb = ctx.model.evaluate_team(mine), ctx.model.evaluate_team(base)
         first_picks[ctx.ids[mine[0]]] += 1
@@ -269,6 +274,7 @@ def simulate_drafts(
         "num_rounds": len(my_picks),
         "my_picks": my_picks,
         "optimizer_version": OPTIMIZER_VERSION,
+        "policy": (policy or PolicyParams()).name,
         "noise": noise,
         "seed": seed,
         "strategy_forced": strategy,
