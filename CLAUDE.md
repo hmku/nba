@@ -12,7 +12,7 @@ Never re-derive valuations in your head — run the tools and interpret their JS
 ## Start of every session (mandatory)
 The SessionStart hook prints `fantasy status` and the newest handoffs. Use the `handoff` skill at the
 start/end of each session and the `agent-run` skill for any run/lock/txn work.
-1. Read `docs/STATUS.md` (current state + next priorities) and the newest notes in `docs/handoffs/`.
+1. Read `docs/STATUS.md` (current state + next priorities), `docs/USER_TODO.md` (actions only the user can do — add to it, don't ask in chat only) and the newest notes in `docs/handoffs/`.
 2. `pip install -e ".[dev]"` if `fantasy` is not on PATH; then `fantasy status` (runs, locks, approvals,
    transactions needing reconciliation, data freshness, active draft).
 3. `fantasy task list` → claim what you work on: `fantasy task claim T-00N --owner <you>`.
