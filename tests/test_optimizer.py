@@ -69,3 +69,52 @@ def test_sync_gap_does_not_rewind_clock(proj_path):
     assert gap["on_the_clock"]["overall"] == 24 and gap["on_the_clock"]["is_me"]
     assert gap["recommendations"][0]["player_id"] in {r["player_id"] for r in full["recommendations"][:3]} | {ctx.market[4]}
     assert any("not recorded" in w for w in gap["warnings"])
+
+
+def test_payload_carries_optimizer_version(proj_path):
+    from fantasy.draft.optimizer import OPTIMIZER_VERSION
+
+    rec = DraftOptimizer(_ctx(proj_path), OptimizerParams(strategy="balanced")).recommend(DraftState(taken={}, my_slot=1))
+    assert rec["optimizer_version"] == OPTIMIZER_VERSION
+    assert rec["rollout_mode"] == "expected"
+
+
+def test_expected_rollout_plan_is_distinct_and_available(proj_path):
+    ctx = _ctx(proj_path)
+    opt = DraftOptimizer(ctx, OptimizerParams(strategy="balanced"))
+    taken = {i + 1: pid for i, pid in enumerate(ctx.market[:23])}
+    rec = opt.recommend(DraftState(taken=taken, my_slot=1))
+    for r in rec["recommendations"]:
+        plan = [r["player_id"], *r["plan"]]
+        assert len(plan) == len(set(plan)) == 12  # 13 picks, pick 1 already on the board
+        assert not set(plan) & set(taken.values()) - {taken[1]}
+
+
+def test_expected_rollout_equals_greedy_when_everyone_is_available(proj_path, monkeypatch):
+    """With P(available)=1 the best-ranked candidate is taken with probability 1, so the expected
+    rollout reduces to the greedy one."""
+    import fantasy.draft.optimizer as om
+
+    monkeypatch.setattr(om, "prob_available", lambda at, cur, adp, sd=1.0: np.ones(len(np.atleast_1d(adp))))
+    ctx = _ctx(proj_path)
+    w = ctx.weights([])
+    roster = [ctx.pos[ctx.market[0]]]
+    av = np.ones(len(ctx.ids), dtype=bool)
+    av[roster[0]] = False
+    future = [24, 36, 37, 60]
+    exp = DraftOptimizer(ctx, OptimizerParams(rollout_mode="expected")).rollout(roster, av, future, 2, w)
+    gre = DraftOptimizer(ctx, OptimizerParams(rollout_mode="greedy")).rollout(roster, av, future, 2, w)
+    assert exp[0] == gre[0]
+    assert np.isclose(exp[1], gre[1])
+
+
+def test_expected_rollout_completes_plan(proj_path):
+    ctx = _ctx(proj_path)
+    w = ctx.weights([])
+    roster = [ctx.pos[ctx.market[0]]]
+    av = np.ones(len(ctx.ids), dtype=bool)
+    av[roster[0]] = False
+    future = [24, 36, 37, 60, 61, 84, 85]
+    plan, obj, P = DraftOptimizer(ctx).rollout(roster, av, future, 2, w)
+    assert len(plan) == len(set(plan)) == len(future) and roster[0] not in plan
+    assert np.isfinite(obj) and np.all((P >= 0) & (P <= 1))

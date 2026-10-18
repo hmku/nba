@@ -12,7 +12,13 @@ from collections import Counter
 import numpy as np
 
 from fantasy.draft.availability import adp_sd
-from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, OptimizerParams
+from fantasy.draft.optimizer import (
+    OPTIMIZER_VERSION,
+    DraftContext,
+    DraftOptimizer,
+    DraftState,
+    OptimizerParams,
+)
 from fantasy.draft.roster import max_starting_matching
 
 
@@ -86,7 +92,10 @@ def simulate_drafts(
         "optimizer": {"expected_category_wins_mean": float(ecw.mean()), "expected_category_wins_sd": float(ecw.std()),
                       "matchup_win_prob_mean": float(mwp.mean())},
         "baseline_bpa": {"expected_category_wins_mean": float(bcw.mean()), "matchup_win_prob_mean": float(bmw.mean())},
+        "optimizer_version": OPTIMIZER_VERSION,
         "edge_category_wins": float((ecw - bcw).mean()),
+        # paired standard error of the edge; |edge| < 2 SE is noise (4 sims give SE ~0.03-0.04)
+        "edge_category_wins_se": float((ecw - bcw).std(ddof=1) / np.sqrt(n_sims)) if n_sims > 1 else None,
         "first_pick_counts": {ctx.values.loc[k, "name"]: v for k, v in first_picks.most_common()},
         "strategy_counts": dict(strategies),
     }
