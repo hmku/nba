@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { anonClient } from "@/lib/supabase";
-import type { DraftRecommendation, ModelRun } from "@/lib/types";
+import type { DataSnapshot, DraftRecommendation, ModelRun } from "@/lib/types";
 import { Badge, Card, Empty, ErrorNote, JsonView } from "@/components/ui";
 import { fmt, shortTime } from "@/lib/format";
+import { Ago } from "@/components/client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "History" };
@@ -13,14 +14,21 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const db = anonClient();
   let q = db.from("model_runs").select("*").order("created_at", { ascending: false }).limit(100);
   if (kind) q = q.eq("kind", kind);
-  const [runsR, recsR] = await Promise.all([
+  const [runsR, recsR, snapsR, kindsR] = await Promise.all([
     q,
     db
       .from("draft_recommendations")
       .select("rec_id,draft_id,as_of_pick,for_pick,model_run_id,created_at,payload->recommendations,payload->strategy")
       .order("created_at", { ascending: false })
       .limit(100),
+    db.from("data_snapshots").select("snapshot_id,source,rows,fetched_at").order("fetched_at", { ascending: false }).limit(200),
+    db.from("model_runs").select("run_id,kind,model_version,created_at").order("created_at", { ascending: false }).limit(200),
   ]);
+  const latestByKind = new Map<string, ModelRun>();
+  for (const r of (kindsR.data as ModelRun[]) ?? []) if (!latestByKind.has(r.kind)) latestByKind.set(r.kind, r);
+  const latestBySource = new Map<string, DataSnapshot>();
+  for (const s of (snapsR.data as DataSnapshot[]) ?? []) if (!latestBySource.has(s.source)) latestBySource.set(s.source, s);
+  const FRESH: Record<string, number> = { projections: 36 * 3600, valuation: 36 * 3600, draft_rec: 3600 };
   const runs = (runsR.data as ModelRun[]) ?? [];
   type RecLite = Omit<DraftRecommendation, "payload"> & {
     recommendations?: { name?: string; player_id?: string; score?: number }[] | null;
@@ -34,6 +42,49 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       <h1 className="text-lg font-semibold tracking-tight">History</h1>
       <ErrorNote error={runsR.error?.message} />
       <ErrorNote error={recsR.error?.message} />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card title="Latest model run by kind" bodyClassName="p-0">
+          {latestByKind.size === 0 ? (
+            <Empty>No model runs.</Empty>
+          ) : (
+            <table className="dense w-full text-sm">
+              <tbody>
+                {[...latestByKind.values()].map((r) => (
+                  <tr key={r.kind}>
+                    <td className="font-medium">{r.kind}</td>
+                    <td className="truncate text-xs text-muted">{r.model_version}</td>
+                    <td className="text-right">
+                      <Ago ts={r.created_at} staleAfter={FRESH[r.kind] ?? 86400} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+        <Card title="Data snapshots (latest by source)" bodyClassName="p-0">
+          {latestBySource.size === 0 ? (
+            <Empty>No snapshots.</Empty>
+          ) : (
+            <table className="dense w-full text-sm">
+              <tbody>
+                {[...latestBySource.values()].map((s) => (
+                  <tr key={s.source}>
+                    <td className="max-w-[12rem] truncate font-medium" title={s.source}>
+                      {s.source}
+                    </td>
+                    <td className="num text-right text-xs text-muted">{s.rows ?? "—"} rows</td>
+                    <td className="text-right">
+                      <Ago ts={s.fetched_at} staleAfter={3 * 86400} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
 
       <Card
         title="Model runs"

@@ -1,258 +1,189 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
 import { defaultDraftId, loadDrafts } from "@/lib/data";
 import { customRoundsOf, picksForSlot, pickInfo } from "@/lib/draftOrder";
-import type { AgentRun, Approval, DataSnapshot, DraftRecommendation, Lock, ModelRun, Task } from "@/lib/types";
-import { Badge, Card, Empty, ErrorNote, Stat, statusTone } from "@/components/ui";
+import type { AgentRun, DataSnapshot, Lock, ModelRun } from "@/lib/types";
+import { ErrorNote } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
 import { ageSeconds } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Team" };
 
 const FRESH_LIMIT: Record<string, number> = {
   projections: 36 * 3600,
   valuation: 36 * 3600,
-  draft_rec: 3600,
 };
+const SNAPSHOT_LIMIT = 3 * 86400;
 
-export default async function Overview() {
+function Row({ href, children, tone }: { href?: string; children: React.ReactNode; tone?: "warn" | "accent" }) {
+  const cls = `flex items-center gap-3 px-4 py-3.5 ${tone === "warn" ? "text-warn" : ""}`;
+  return (
+    <li className="border-t border-line first:border-t-0">
+      {href ? (
+        <Link href={href} className={`${cls} hover:bg-panel-2`}>
+          {children}
+          <span className="ml-auto text-muted">›</span>
+        </Link>
+      ) : (
+        <div className={cls}>{children}</div>
+      )}
+    </li>
+  );
+}
+
+export default async function TeamPage() {
   const db = anonClient();
   const { drafts, error: dErr } = await loadDrafts(db);
   const draftId = defaultDraftId(drafts);
   const draft = drafts.find((d) => d.draft_id === draftId) ?? null;
 
-  const [picksR, recR, runsR, snapsR, agentR, locksR, apprR, tasksR] = await Promise.all([
+  const [picksR, runsR, snapsR, agentR, locksR, apprR] = await Promise.all([
     draft
-      ? db.from("draft_picks").select("overall_pick", { count: "exact" }).eq("draft_id", draft.draft_id)
-      : Promise.resolve({ data: [], count: 0, error: null }),
-    draft
-      ? db.from("draft_recommendations").select("rec_id,as_of_pick,for_pick,created_at,payload").eq("draft_id", draft.draft_id).order("as_of_pick", { ascending: false }).order("created_at", { ascending: false }).limit(1)
+      ? db.from("draft_picks").select("overall_pick").eq("draft_id", draft.draft_id)
       : Promise.resolve({ data: [], error: null }),
-    db.from("model_runs").select("run_id,kind,model_version,created_at,git_sha").order("created_at", { ascending: false }).limit(200),
-    db.from("data_snapshots").select("snapshot_id,source,rows,fetched_at").order("fetched_at", { ascending: false }).limit(200),
-    db.from("agent_runs").select("*").order("started_at", { ascending: false }).limit(8),
+    db.from("model_runs").select("run_id,kind,created_at").order("created_at", { ascending: false }).limit(50),
+    db.from("data_snapshots").select("snapshot_id,source,fetched_at").order("fetched_at", { ascending: false }).limit(200),
+    db.from("agent_runs").select("*").order("started_at", { ascending: false }).limit(5),
     db.from("locks").select("*"),
-    db.from("approvals").select("*").eq("status", "pending").order("requested_at", { ascending: false }).limit(10),
-    db.from("tasks").select("*").neq("status", "done").order("priority", { ascending: true }).order("updated_at", { ascending: false }).limit(40),
+    db.from("approvals").select("approval_id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
-  const errors = [dErr, picksR.error?.message, runsR.error?.message, snapsR.error?.message, agentR.error?.message].filter(Boolean) as string[];
+  const errors = [dErr, picksR.error?.message, runsR.error?.message, agentR.error?.message, apprR.error?.message].filter(Boolean) as string[];
+  const now = Date.now();
 
-  // freshness: latest run per kind
+  // active draft
+  const picked = ((picksR.data as { overall_pick: number }[]) ?? []).map((p) => p.overall_pick);
+  const currentPick = picked.length ? Math.max(...picked) + 1 : 1;
+  const total = draft ? draft.num_teams * draft.num_rounds : 0;
+  const custom = draft ? customRoundsOf(draft.config, draft.num_teams, draft.num_rounds) : null;
+  const myNext = draft
+    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type, custom).find((p) => p >= currentPick)
+    : undefined;
+  const cur = draft && currentPick <= total ? pickInfo(currentPick, draft.num_teams, draft.order_type, custom, draft.num_rounds) : null;
+  const notStarted = !!draft && picked.length === 0 && draft.status === "pending";
+  const teamNames = (draft?.config?.team_names ?? {}) as Record<string, string>;
+
+  // approvals
+  const pending = apprR.count ?? 0;
+
+  // agents
+  const runs = (agentR.data as AgentRun[]) ?? [];
+  const last = runs[0];
+  const stuck = runs.filter((r) => r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
+  const locks = (locksR.data as Lock[]) ?? [];
+  const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
+
+  // freshness
   const latestByKind = new Map<string, ModelRun>();
   for (const r of (runsR.data as ModelRun[]) ?? []) if (!latestByKind.has(r.kind)) latestByKind.set(r.kind, r);
   const latestBySource = new Map<string, DataSnapshot>();
   for (const s of (snapsR.data as DataSnapshot[]) ?? []) if (!latestBySource.has(s.source)) latestBySource.set(s.source, s);
-
-  const picked = new Set(((picksR.data as { overall_pick: number }[]) ?? []).map((p) => p.overall_pick));
-  const picksMade = picksR.count ?? picked.size;
-  const custom = draft ? customRoundsOf(draft.config, draft.num_teams, draft.num_rounds) : null;
-  const currentPick = picked.size ? Math.max(...picked) + 1 : 1;
-  const myNext = draft
-    ? picksForSlot(draft.my_slot, draft.num_teams, draft.num_rounds, draft.order_type, custom).find((p) => p >= currentPick)
-    : undefined;
-  const rec = ((recR.data as DraftRecommendation[]) ?? [])[0];
-  const runs = (agentR.data as AgentRun[]) ?? [];
-  const locks = (locksR.data as Lock[]) ?? [];
-  const approvals = (apprR.data as Approval[]) ?? [];
-  const tasks = (tasksR.data as Task[]) ?? [];
-
-  // warnings
-  const warnings: string[] = [];
-  const now = Date.now();
+  const staleItems: string[] = [];
   for (const k of ["projections", "valuation"]) {
     const r = latestByKind.get(k);
-    if (!r) warnings.push(`No ${k} model run yet.`);
-    else if ((ageSeconds(r.created_at, now) ?? 0) > FRESH_LIMIT[k]) warnings.push(`Latest ${k} run is older than ${FRESH_LIMIT[k] / 3600}h.`);
+    if (!r) staleItems.push(`no ${k} run`);
+    else if ((ageSeconds(r.created_at, now) ?? 0) > FRESH_LIMIT[k]) staleItems.push(`${k} >${FRESH_LIMIT[k] / 3600}h old`);
   }
-  if (draft && draft.status === "live" && rec && rec.as_of_pick < picksMade)
-    warnings.push(`Draft recommendation is stale (as of pick ${rec.as_of_pick}, ${picksMade} picks made).`);
-  if (draft && !rec) warnings.push("No draft recommendation for the active draft yet.");
-  for (const r of runs)
-    if (r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600)
-      warnings.push(`Agent run ${r.run_id} (${r.agent}) is running but heartbeat is >10m old.`);
-  for (const l of locks)
-    if (l.expires_at && Date.parse(l.expires_at) < now) warnings.push(`Lock ${l.resource} expired but not released (holder ${l.holder_run_id}).`);
-  if (!drafts.some((d) => !d.is_mock)) warnings.push("No real (non-mock) draft row yet.");
+  for (const s of latestBySource.values())
+    if ((ageSeconds(s.fetched_at, now) ?? Infinity) > SNAPSHOT_LIMIT) staleItems.push(`${s.source} >3d old`);
+  const valuation = latestByKind.get("valuation");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <AutoRefresh seconds={20} />
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">Overview</h1>
-        <span className="text-xs text-muted">auto-refresh 20s</span>
-      </div>
+      <h1 className="text-xl font-semibold tracking-tight">Team</h1>
       {errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
       ))}
 
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card
-          title="Active draft"
-          className="lg:col-span-2"
-          right={draft ? <Link href={`/draft?id=${encodeURIComponent(draft.draft_id)}`} className="text-accent">open draft room →</Link> : null}
-        >
-          {!draft ? (
-            <Empty>No drafts yet.</Empty>
+      {/* active draft */}
+      <Link
+        href={draft ? `/draft?id=${encodeURIComponent(draft.draft_id)}` : "/draft"}
+        className="block rounded-xl border border-line bg-panel px-4 py-4 hover:border-accent/50"
+      >
+        <div className="text-xs text-muted">
+          {draft ? (
+            <>
+              {draft.is_mock ? "Mock draft" : "Draft"} · {draft.status}
+            </>
           ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{draft.draft_id}</span>
-                <Badge tone={statusTone(draft.status)}>{draft.status}</Badge>
-                {draft.is_mock && <Badge tone="warn">mock</Badge>}
-                <Badge>{draft.order_type}</Badge>
-                <span className="text-xs text-muted">
-                  {draft.num_teams} teams · slot {draft.my_slot}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Stat label="Picks made" value={`${picksMade}/${draft.num_teams * draft.num_rounds}`} />
-                <Stat
-                  label="On the clock"
-                  value={currentPick <= draft.num_teams * draft.num_rounds ? `#${currentPick}` : "done"}
-                  sub={currentPick <= draft.num_teams * draft.num_rounds ? `slot ${pickInfo(currentPick, draft.num_teams, draft.order_type, custom, draft.num_rounds).slot}` : undefined}
-                />
-                <Stat label="My next pick" value={myNext ? `#${myNext}` : "—"} sub={myNext ? `in ${myNext - currentPick} picks` : undefined} />
-                <Stat
-                  label="Latest rec"
-                  value={rec ? `as of ${rec.as_of_pick}` : "none"}
-                  sub={rec ? <Ago ts={rec.created_at} /> : undefined}
-                />
-              </div>
-              {rec?.payload?.recommendations?.[0] && (
-                <div className="text-sm">
-                  <span className="text-muted">Top rec: </span>
-                  <span className="font-medium">{rec.payload.recommendations[0].name}</span>
-                  {rec.payload.recommendations[0].reason && <span className="text-muted"> — {rec.payload.recommendations[0].reason}</span>}
-                </div>
+            "Draft"
+          )}
+        </div>
+        {!draft ? (
+          <div className="mt-1 text-lg">No draft yet</div>
+        ) : cur ? (
+          <>
+            <div className="mt-1 text-lg font-semibold">
+              {notStarted ? (
+                "Not started"
+              ) : (
+                <>
+                  Pick #{currentPick} on the clock
+                  <span className="font-normal text-muted"> · {teamNames[String(cur.slot)] ?? `Team ${cur.slot}`}</span>
+                </>
               )}
             </div>
-          )}
-        </Card>
-
-        <Card title="Warnings" right={<Badge tone={warnings.length ? "warn" : "good"}>{warnings.length}</Badge>}>
-          {warnings.length === 0 ? (
-            <Empty>All clear.</Empty>
-          ) : (
-            <ul className="space-y-1.5 text-sm">
-              {warnings.map((w, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-warn">⚠</span>
-                  <span>{w}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Card title="Model runs (latest by kind)" bodyClassName="p-0">
-          {latestByKind.size === 0 ? (
-            <Empty>No model runs.</Empty>
-          ) : (
-            <table className="dense w-full text-sm">
-              <tbody>
-                {[...latestByKind.values()].map((r) => (
-                  <tr key={r.kind}>
-                    <td className="font-medium">{r.kind}</td>
-                    <td className="truncate text-xs text-muted">{r.model_version}</td>
-                    <td className="text-right">
-                      <Ago ts={r.created_at} staleAfter={FRESH_LIMIT[r.kind] ?? 86400} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-        <Card title="Data snapshots (latest by source)" bodyClassName="p-0">
-          {latestBySource.size === 0 ? (
-            <Empty>No snapshots.</Empty>
-          ) : (
-            <table className="dense w-full text-sm">
-              <tbody>
-                {[...latestBySource.values()].slice(0, 12).map((s) => (
-                  <tr key={s.source}>
-                    <td className="max-w-[12rem] truncate font-medium" title={s.source}>
-                      {s.source}
-                    </td>
-                    <td className="num text-right text-xs text-muted">{s.rows ?? "—"} rows</td>
-                    <td className="text-right">
-                      <Ago ts={s.fetched_at} staleAfter={3 * 86400} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-        <Card title="Agents" right={<Link href="/agents" className="text-accent">all →</Link>} bodyClassName="p-0">
-          {runs.length === 0 ? (
-            <Empty>No agent runs.</Empty>
-          ) : (
-            <ul>
-              {runs.map((r) => (
-                <li key={r.run_id} className="flex items-center gap-2 border-t border-line px-3 py-1.5 text-sm first:border-t-0">
-                  <Badge tone={statusTone(r.status)}>{r.status}</Badge>
-                  <span className="truncate font-medium">{r.agent}</span>
-                  <span className="truncate text-xs text-muted">{r.task}</span>
-                  <Ago ts={r.heartbeat_at ?? r.started_at} className="ml-auto shrink-0 text-xs text-muted" />
-                </li>
-              ))}
-            </ul>
-          )}
-          {locks.length > 0 && (
-            <div className="border-t border-line px-3 py-2">
-              <div className="mb-1 text-[10.5px] uppercase tracking-wider text-muted">Held locks</div>
-              {locks.map((l) => (
-                <div key={l.resource} className="flex items-center gap-2 text-xs">
-                  <code className="text-accent">{l.resource}</code>
-                  <span className="truncate text-muted">{l.holder_run_id}</span>
-                  <span className="ml-auto text-muted">
-                    expires <Ago ts={l.expires_at} />
-                  </span>
-                </div>
-              ))}
+            <div className="mt-0.5 text-[15px] text-muted">
+              {myNext ? (
+                <>
+                  Your {notStarted ? "first" : "next"} pick <span className="font-medium text-accent">#{myNext}</span>
+                  {notStarted ? "" : myNext === currentPick ? " — now" : ` in ${myNext - currentPick}`}
+                </>
+              ) : (
+                "No picks left"
+              )}
             </div>
-          )}
-        </Card>
-      </div>
+          </>
+        ) : (
+          <div className="mt-1 text-lg font-semibold text-good">Draft complete</div>
+        )}
+        <div className="mt-2 text-sm text-accent">Open draft room →</div>
+      </Link>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Card title="Pending approvals" right={<Link href="/approvals" className="text-accent">review →</Link>} bodyClassName="p-0">
-          {approvals.length === 0 ? (
-            <Empty>Nothing pending.</Empty>
-          ) : (
-            <ul>
-              {approvals.map((a) => (
-                <li key={a.approval_id} className="flex items-center gap-2 border-t border-line px-3 py-2 text-sm first:border-t-0">
-                  <Badge tone="accent">{a.action_type}</Badge>
-                  <span className="truncate">{a.summary}</span>
-                  <Ago ts={a.requested_at} className="ml-auto shrink-0 text-xs text-muted" />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        <Card title="Open tasks" right={<span>{tasks.length}</span>} bodyClassName="p-0">
-          {tasks.length === 0 ? (
-            <Empty>No open tasks.</Empty>
-          ) : (
-            <ul className="scroll-thin max-h-80 overflow-auto">
-              {tasks.map((t) => (
-                <li key={t.task_id} className="flex items-center gap-2 border-t border-line px-3 py-1.5 text-sm first:border-t-0">
-                  <Badge tone={t.priority === 0 ? "bad" : t.priority === 1 ? "warn" : "neutral"}>P{t.priority ?? "?"}</Badge>
-                  <span className="truncate">{t.title}</span>
-                  <span className="ml-auto flex shrink-0 items-center gap-1">
-                    {t.area && <span className="text-xs text-muted">{t.area}</span>}
-                    <Badge tone={statusTone(t.status)}>{t.status}</Badge>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+      <ul className="rounded-xl border border-line bg-panel text-[15px]">
+        <Row href="/activity" tone={pending ? "accent" : undefined}>
+          <span className={`grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-semibold ${pending ? "bg-accent text-accent-fg" : "bg-panel-2 text-muted"}`}>
+            {pending}
+          </span>
+          <span>{pending ? `Approval${pending === 1 ? "" : "s"} waiting for you` : "No approvals pending"}</span>
+        </Row>
+        <Row href="/activity" tone={stuck.length ? "warn" : undefined}>
+          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${!last ? "bg-line" : last.status === "running" ? "bg-accent" : last.status === "failed" ? "bg-bad" : "bg-good"}`} />
+          <span className="min-w-0 truncate">
+            {last ? (
+              <>
+                {stuck.length ? "⚠ " : ""}
+                <span className="font-medium">{last.agent}</span> <span className="text-muted">{last.status} · </span>
+                <Ago ts={last.heartbeat_at ?? last.started_at} className="text-muted" />
+              </>
+            ) : (
+              <span className="text-muted">No agent runs yet</span>
+            )}
+          </span>
+        </Row>
+        <Row href="/history" tone={staleItems.length ? "warn" : undefined}>
+          <span className="w-2.5 shrink-0 text-center">{staleItems.length ? "⚠" : ""}</span>
+          <span className="min-w-0 truncate">
+            {staleItems.length ? (
+              <>Stale data: {staleItems.join(", ")}</>
+            ) : (
+              <span className="text-muted">
+                Data fresh · values <Ago ts={valuation?.created_at} />
+              </span>
+            )}
+          </span>
+        </Row>
+        {expiredLocks.length > 0 && (
+          <Row href="/activity" tone="warn">
+            <span className="w-2.5 shrink-0 text-center">⚠</span>
+            <span className="min-w-0 truncate">
+              {expiredLocks.length} expired lock{expiredLocks.length === 1 ? "" : "s"} not released ({expiredLocks.map((l) => l.resource).join(", ")})
+            </span>
+          </Row>
+        )}
+      </ul>
     </div>
   );
 }

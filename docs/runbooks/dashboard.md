@@ -33,38 +33,52 @@ buttons are disabled; reads keep working. After adding them in Vercel, **redeplo
 only apply to new deployments).
 
 ## Pages
-- `/` Overview: active draft (default = most recent non-mock), picks made / on the clock / my next,
-  latest model runs by kind + data snapshots (stale ages in amber), agent runs, held locks, pending
-  approvals, open tasks by priority, derived warnings. Auto-refresh 20s.
-- `/draft` **Draft room** (`?id=<draft_id>` to pick a draft; selector includes mocks). Polls
-  Supabase from the browser every 4s (pauses when tab hidden; refreshes on focus); checks for a new
-  valuation run every 30s.
-  - Header: on the clock, my next pick + picks until, upcoming pick chips, sync status dot.
+Navigation: 3 primary tabs — **Draft**, **Team** (`/`), **Activity** — as a bottom tab bar on phones
+and a top bar on desktop; **More** holds Players, History and the theme toggle. Write unlock
+("unlock" / "read-only" / "● unlocked") sits top right. `/agents` and `/approvals` redirect to `/activity`.
+
+- `/draft` **Draft room**, mobile-first (`?id=<draft_id>`; small selector at the top includes mocks).
+  Polls Supabase from the browser every 4s (pauses when tab hidden; refreshes on focus); checks for a
+  new valuation run every 30s. Top to bottom:
+  - One-line sync status (green/red dot + age); poll errors as one red line; sync gaps as one amber line.
+  - **Primary card**: "On the clock: #N (Team) · your next pick #M in K picks" (or "You're on the clock",
+    "Draft not started", "Draft complete"); the ONE top pick large (name, team, positions, reason,
+    "X% chance he's still there at your pick #P"); the next 2 alternatives as compact rows; one subtle
+    line saying where it came from (model as of pick X / stale → client-side fallback / no rec).
+    "Why / all options" expands to the full list with category-impact strips, score/value/marginal/ADP,
+    strategy, payload warnings, rec/run ids; in fallback mode it shows the fallback formula + list
+    (with "pick" buttons) and the last (stale) model rec underneath.
+  - Model rec = latest `draft_recommendations` row; **fresh** iff `as_of_pick >= picks made` and
+    `for_pick >= on-the-clock`. Otherwise (or if every rec'd player is taken) the **fallback
+    (client-side)** ranking is primary: value + 0.25 × value in my 3 weakest categories + 0.4 if the
+    player fills an empty G/F/C group; P(avail) is a rough ADP normal approximation. For model recs the %
+    is the payload's `prob_available_next` (my pick *after* `for_pick`); for fallback it is P(available
+    at my next pick).
+  - **✎ Enter a pick** button opens a bottom sheet (manual pick: overall # defaults to the pick on the
+    clock, search available or free text, 409 → confirm overwrite, undo latest manual pick). "+" in the
+    available table / "pick" in the fallback list open the sheet preselected.
+  - Agent one-liner (only when an agent run's `task` contains the draft_id) → expands to latest
+    decision event, latest `decisions` row (disagreement highlighted amber), recent events.
+  - **Your roster**: compact list + 9 category chips (green = strength, red = weakness; model weekly win%
+    ≥60%/≤40% when the rec payload has `team_profile`, else top/bottom 3 of Σ cat values).
+  - **Draft board** (collapsed): your upcoming picks, the last 8 picks, and "Full board grid" (rounds ×
+    slots, my column highlighted, current pick outlined, non-yahoo sources tagged).
+  - **Available players** (collapsed, lazily rendered): search + position filter, sortable, cat heatmap.
   - Draft order computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`):
-    `snake`, `snake_3rr` (R1 1→N, R2 N→1, R3 N→1, R4 1→N, then alternating) and `custom`
-    (`drafts.config.custom_rounds`, set by `fantasy draft set-order`; honoured whenever valid).
-  - Model recommendations = latest `draft_recommendations` row (highest `as_of_pick`, newest);
-    marked **stale** when `as_of_pick` < picks made. Players drafted since are struck through.
-  - **Fallback (client-side)** card appears whenever the rec is missing/stale: best available by
-    `player_values.value` + 0.25 × value in my 3 weakest categories + 0.4 if the player fills an empty
-    G/F/C group; P(avail) is a rough ADP normal approximation.
-  - Agent next action: agent_runs whose `task` contains the draft_id → latest `decision` event,
-    latest `decisions` row (disagreement highlighted), recent events.
-  - Manual pick entry: overall # defaults to the pick on the clock; search available players (or
-    "+" in the table / "select" in fallback list); free-text name allowed. POST `/api/draft/pick`
-    writes `draft_picks` with `source='manual'` (409 on conflict → confirm overwrite). Undo removes
-    the latest pick only if it is manual.
-  - My roster with category profile (Σ cat_values, win% from rec payload if present), strengths /
-    weaknesses, position counts.
-  - Available players from the latest valuation run that has rows (excludes drafted by player_id or
-    normalized name), search + position filter (PG/SG/G/SF/PF/F/C), sortable, cat heatmap.
-  - Draft board: rounds × slots, my column highlighted, current pick outlined, non-yahoo sources tagged.
-- `/agents` run timeline (expandable events with kind icons), locks, decisions (agent ≠ model
-  highlighted), transactions. Auto-refresh 15s.
-- `/approvals` pending (approve/reject with note → POST `/api/approvals`) and decided.
-- `/players` latest valuation + projections joined; toggle category values / per-game projections;
-  sortable; row click opens detail drawer.
-- `/history` model runs with params/inputs/summary JSON, recommendations over time, phase-3 placeholders.
+    `snake`, `snake_3rr` and `custom` (`drafts.config.custom_rounds`, honoured whenever valid).
+- `/` **Team**: only what needs attention — active draft card (status / on the clock / my next pick →
+  draft room), pending approvals count (→ Activity), latest agent run in one line (⚠ if a running run's
+  heartbeat is >10m old), data freshness in one line (⚠ only if projections/valuation >36h or a snapshot
+  >3d old; → History), expired locks if any. Auto-refresh 20s.
+- `/activity`: pending approvals pinned at top (approve/reject with note → POST `/api/approvals`),
+  then the agent run timeline, one line per run (status dot, agent, task, status, age; "≠ model" and
+  error counts flagged; runs with a disagreement tinted amber). Tap to expand: summary, decisions,
+  events (kind icons, payloads), transactions, ids. Held locks as one line; past approvals and
+  decisions/transactions not tied to a listed run under a collapsed expander. Auto-refresh 15s.
+- `/players` (More): latest valuation + projections joined; toggle category values / per-game
+  projections; sortable; row click opens detail drawer.
+- `/history` (More): latest model run per kind + data snapshots per source (freshness, moved from the
+  overview), model runs with params/inputs/summary JSON, recommendations over time, phase-3 placeholders.
 
 ## API routes (server-only, service key)
 - `GET /api/auth` → `{writesEnabled, authed, reason}`; `POST {passphrase}` sets cookie; `DELETE` logs out.
@@ -94,7 +108,7 @@ delete from data_snapshots where snapshot_id like 'mock-%';
 ```
 
 ## Troubleshooting
-- Red "sync error" dot on /draft: Supabase unreachable or RLS error; message shown under the header.
+- Red "sync error" dot on /draft: Supabase unreachable or RLS error; message shown as one red line at the top.
   The page keeps the last good state. Use the CLI as a fallback.
 - Realtime is not used (tables are not in the `supabase_realtime` publication); polling is 4s.
 - Manual pick says "Writes disabled": set the two server-only env vars in Vercel and redeploy.

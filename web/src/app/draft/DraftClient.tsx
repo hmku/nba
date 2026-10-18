@@ -1,16 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { anonClient } from "@/lib/supabase";
 import { loadDraftLive, loadDrafts, loadValues, latestRun, slimValues, type DraftLive, type ValuesBundle } from "@/lib/data";
 import type { Draft, DraftPick, RecItem, RecPayload, AgentEvent } from "@/lib/types";
 import { customRoundsOf, draftOrder, pickInfo, picksForSlot } from "@/lib/draftOrder";
-import { CATS, CAT_LABEL, POSITIONS, heatStyle } from "@/lib/categories";
+import { CATS, CAT_LABEL, heatStyle } from "@/lib/categories";
 import { fmt, pct, signed, asStringArray } from "@/lib/format";
 import { matchesPos, normName, toRows, type PlayerRow } from "@/lib/players";
 import { fallbackRanking, probAvailableFromAdp } from "@/lib/fallback";
-import { Badge, Card, Empty, JsonView, statusTone } from "@/components/ui";
+import { Badge, Card, Empty, JsonView } from "@/components/ui";
 import { Ago, WriteAccess, useNow, useWriteStatus } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 
@@ -121,6 +121,79 @@ export default function DraftClient({ initialDrafts, initialDraftId, initialLive
   );
 }
 
+/* ------------------------------------------------------------------ candidates */
+
+/** One row in the "what should I pick" list: either a model recommendation or a client-side fallback item. */
+interface Candidate {
+  key: string;
+  name: string;
+  team: string;
+  positions: string[];
+  reason: string | null;
+  prob: number | null;
+  probAt: number | null; // the pick number prob refers to
+  taken: boolean;
+  row: PlayerRow | null;
+  rec?: RecItem;
+}
+
+function CatStrip({ impact, scale = 0.6 }: { impact?: Record<string, number | undefined> | null; scale?: number }) {
+  return (
+    <div className="grid grid-cols-9 gap-px overflow-hidden rounded border border-line text-center">
+      {CATS.map((c) => {
+        const v = impact?.[c];
+        return (
+          <div key={c} className="min-w-0 overflow-hidden bg-panel-2 py-0.5" style={heatStyle(v, scale)}>
+            <div className="text-[9px] leading-3 text-muted">{CAT_LABEL[c]}</div>
+            <div className="num text-[9.5px] leading-4 tracking-tighter">{v == null ? "·" : signed(v, 1)}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function probTone(p: number | null | undefined) {
+  if (p == null) return "text-muted";
+  return p >= 0.6 ? "text-good" : p >= 0.3 ? "text-warn" : "text-bad";
+}
+
+function Pos({ positions }: { positions: string[] }) {
+  return <span className="text-muted">{positions.join(" / ")}</span>;
+}
+
+/** Lazily rendered expander (children mount only once opened, keeps the phone DOM light). */
+function Expander({
+  summary,
+  right,
+  children,
+  bare = false,
+}: {
+  summary: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+  bare?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className={bare ? "" : "rounded-xl border border-line bg-panel"}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className={`flex w-full items-center gap-2 text-left ${bare ? "py-2 text-sm text-accent" : "px-4 py-3"}`}
+      >
+        <span className={`text-[10px] text-muted transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+        <span className={`min-w-0 flex-1 ${bare ? "" : "text-[15px] font-medium"}`}>{summary}</span>
+        {right != null && <span className="shrink-0 text-xs text-muted">{right}</span>}
+      </button>
+      {open && <div className={bare ? "" : "border-t border-line"}>{children}</div>}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ view */
+
 function DraftView({
   draft,
   drafts,
@@ -144,6 +217,8 @@ function DraftView({
   selected: PlayerRow | null;
   setSelected: (p: PlayerRow | null) => void;
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
   const N = draft.num_teams;
   const R = draft.num_rounds;
   const total = N * R;
@@ -190,130 +265,263 @@ function DraftView({
   const payload = rec?.payload ?? null;
   const recFresh = !!rec && rec.as_of_pick >= picks.length && (rec.for_pick == null || rec.for_pick >= currentPick);
 
+  const fallback = useMemo(
+    () => fallbackRanking(available, myRoster, picksUntil ?? 0, currentPick, 10),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [available, myRoster.map((r) => r.player_id).join(","), picksUntil, currentPick],
+  );
+
+  // model rec items -> candidates. prob_available_next refers to my pick after the one the rec is for.
+  const recFor = rec?.for_pick ?? payload?.for_pick ?? null;
+  const recNextAfter = payload?.my_next_picks?.find((p) => recFor != null && p > recFor) ?? null;
+  const recCands: Candidate[] = (payload?.recommendations ?? []).slice(0, 10).map((r, i) => ({
+    key: r.player_id ?? String(i),
+    name: r.name ?? r.player_id,
+    team: r.team ?? "",
+    positions: asStringArray(r.positions),
+    reason: r.reason ?? null,
+    prob: r.prob_available_next ?? null,
+    probAt: recNextAfter,
+    taken: !!r.player_id && draftedIds.has(r.player_id),
+    row: (r.player_id && rowById.get(r.player_id)) || null,
+    rec: r,
+  }));
+  const fbCands: Candidate[] = fallback.items.map((it) => ({
+    key: it.row.player_id,
+    name: it.row.name,
+    team: it.row.team,
+    positions: it.row.positions,
+    reason: it.reason,
+    prob: picksUntil ? it.probAvail : null,
+    probAt: picksUntil ? nextMine : null,
+    taken: false,
+    row: it.row,
+  }));
+  const usingModel = recFresh && recCands.some((c) => !c.taken);
+  const cands = usingModel ? recCands.filter((c) => !c.taken) : fbCands;
+  const top = cands[0] ?? null;
+  const alts = cands.slice(1, 3);
+
+  const openSheet = (p: PlayerRow | null) => {
+    setSelected(p);
+    setFlash(null);
+    setSheetOpen(true);
+  };
+  const lastPick = picks.length ? picks.reduce((a, b) => (b.overall_pick > a.overall_pick ? b : a)) : null;
+
   return (
     <div className="space-y-3">
-      <DraftHeader
-        draft={draft}
-        drafts={drafts}
-        onSwitch={onSwitch}
-        currentPick={complete ? null : currentPick}
-        cur={cur}
-        teamName={teamName}
-        total={total}
-        picksMade={picks.length}
-        nextMine={nextMine}
-        picksUntil={picksUntil}
-        myUpcoming={myUpcoming}
-        lastOk={lastOk}
-        pollError={pollError}
-      />
+      <TopBar draft={draft} drafts={drafts} onSwitch={onSwitch} lastOk={lastOk} pollError={pollError} />
+
       {gaps.length > 0 && (
-        <div className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2 text-xs text-warn">
-          Missing picks below #{maxPick}: {gaps.slice(0, 20).join(", ")}
-          {gaps.length > 20 ? ` (+${gaps.length - 20} more)` : ""}. Re-sync from Yahoo or enter them manually (set Overall #).
-        </div>
-      )}
-      {draft.status === "pending" && picks.length === 0 && (
-        <div className="rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs text-muted">
-          Draft not started (status <b>pending</b>). My first pick is #{nextMine ?? "—"}; the board starts updating as soon as picks are synced.
-        </div>
-      )}
-      {onClock && (
-        <div className="rounded-lg border border-accent bg-accent/15 px-4 py-3 text-center text-base font-semibold text-accent animate-pulse">
-          YOU ARE ON THE CLOCK — pick #{currentPick}
-        </div>
+        <p className="px-1 text-xs text-warn">
+          ⚠ Missing picks {gaps.slice(0, 12).join(", ")}
+          {gaps.length > 12 ? ` (+${gaps.length - 12})` : ""} — re-sync from Yahoo or enter them manually.
+        </p>
       )}
 
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start">
-        <div className="flex flex-col gap-3 max-lg:contents">
-          <div className="order-1">
-            <RecommendationsCard
-              rec={rec}
-              fresh={recFresh}
-              draftedIds={draftedIds}
-              picksMade={picks.length}
-              nextMine={nextMine}
-              recCount={live?.recCount ?? 0}
-            />
-          </div>
-          {!recFresh && (
-            <div className="order-2">
-              <FallbackCard
-                available={available}
-                myRoster={myRoster}
-                picksUntil={picksUntil ?? 0}
-                currentPick={currentPick}
-                nextMine={nextMine}
-                onSelect={setSelected}
-              />
-            </div>
+      {/* ---------------- primary card */}
+      <section className={`overflow-hidden rounded-2xl border bg-panel ${onClock ? "border-accent shadow-[0_0_0_1px_var(--accent)]" : "border-line"}`}>
+        <div className={`px-4 pt-4 pb-3 ${onClock ? "bg-accent/10" : ""}`}>
+          {complete ? (
+            <div className="text-xl font-semibold text-good">Draft complete</div>
+          ) : onClock ? (
+            <div className="text-xl font-semibold text-accent">You&apos;re on the clock · #{currentPick}</div>
+          ) : draft.status === "pending" && picks.length === 0 ? (
+            <>
+              <div className="text-lg font-semibold">Draft not started</div>
+              <div className="text-[15px] text-muted">
+                Your first pick: <span className="font-medium text-fg">#{nextMine ?? "—"}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-lg font-semibold leading-snug">
+                On the clock: #{currentPick} <span className="font-normal text-muted">({cur ? teamName(cur.slot) : "—"})</span>
+              </div>
+              <div className="text-[15px] text-muted">
+                {nextMine ? (
+                  <>
+                    Your next pick <span className="font-semibold text-accent">#{nextMine}</span> in {picksUntil} pick
+                    {picksUntil === 1 ? "" : "s"}
+                  </>
+                ) : (
+                  "No picks left for you"
+                )}
+              </div>
+            </>
           )}
-          <div className="order-6">
-            <AvailableTable
-              rows={available}
-              runId={values.run?.run_id ?? null}
-              runAt={values.run?.created_at ?? null}
-              picksUntil={picksUntil ?? 0}
-              currentPick={currentPick}
-              onSelect={setSelected}
-              errors={values.errors}
-            />
-          </div>
         </div>
-        <div className="flex flex-col gap-3 max-lg:contents">
-          <div className="order-3">
-            <AgentActionCard live={live} />
+
+        {!complete && (
+          <div className="border-t border-line px-4 pt-3 pb-4">
+            <div className="text-[11px] font-medium tracking-wider text-muted uppercase">
+              {usingModel ? "Take" : "Best available (fallback)"}
+            </div>
+            {!top ? (
+              <div className="py-3 text-sm text-muted">No player values loaded yet.</div>
+            ) : (
+              <>
+                <div className="mt-1 text-2xl leading-tight font-semibold">{top.name}</div>
+                <div className="mt-0.5 text-[15px]">
+                  <span className="text-muted">{top.team}</span> · <Pos positions={top.positions} />
+                </div>
+                {top.reason && <p className="mt-2 text-[15px] leading-snug">{top.reason}</p>}
+                <p className="mt-2 text-sm">
+                  {top.prob != null && top.probAt != null ? (
+                    <>
+                      <span className={`font-semibold ${probTone(top.prob)}`}>{pct(top.prob)}</span>
+                      <span className="text-muted"> chance he&apos;s still there at your pick #{top.probAt}</span>
+                    </>
+                  ) : picksUntil === 0 ? (
+                    <span className="text-muted">Your pick — take him now.</span>
+                  ) : null}
+                </p>
+              </>
+            )}
+            {alts.length > 0 && (
+              <ul className="mt-3 divide-y divide-line rounded-lg border border-line">
+                {alts.map((c, i) => (
+                  <li key={c.key} className="flex items-center gap-3 px-3 py-2.5">
+                    <span className="num w-4 text-sm text-muted">{i + 2}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium">{c.name}</span>
+                      <span className="block truncate text-xs text-muted">
+                        {c.team} · {c.positions.join("/")}
+                      </span>
+                    </span>
+                    {c.prob != null && c.probAt != null && (
+                      <span className={`num shrink-0 text-sm ${probTone(c.prob)}`} title={`chance he's still there at #${c.probAt}`}>
+                        {pct(c.prob)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-xs text-muted">
+              {usingModel ? (
+                <>
+                  Model · as of pick {rec!.as_of_pick} · <Ago ts={payload?.generated_at ?? rec!.created_at} />
+                </>
+              ) : rec && recFresh ? (
+                <span className="text-warn">All model picks are taken · showing client-side fallback</span>
+              ) : rec ? (
+                <span className="text-warn">
+                  Model rec is stale (as of pick {rec.as_of_pick}, now {picks.length}) · showing client-side fallback
+                </span>
+              ) : (
+                <span className="text-warn">No model rec yet · showing client-side fallback</span>
+              )}
+            </p>
           </div>
-          <div className="order-4">
-            <ManualPickCard
-              draft={draft}
-              currentPick={complete ? null : currentPick}
-              available={available}
-              selected={selected}
-              setSelected={setSelected}
-              teamName={teamName}
-              lastPick={picks.length ? picks.reduce((a, b) => (b.overall_pick > a.overall_pick ? b : a)) : null}
-              onDone={onRefresh}
-            />
+        )}
+        {!complete && (
+          <div className="border-t border-line px-4">
+            <Expander summary="Why / all options" bare>
+              <WhyPanel
+                usingModel={usingModel}
+                rec={rec}
+                recCands={recCands}
+                fbCands={fbCands}
+                weakest={fallback.weakest}
+                recCount={live?.recCount ?? 0}
+                onSelect={openSheet}
+              />
+            </Expander>
           </div>
-          <div className="order-5">
-            <RosterCard myPicks={myPicks} rowById={rowById} rowByName={rowByName} myRoster={myRoster} payload={payload} />
-          </div>
-        </div>
+        )}
+      </section>
+
+      {/* ---------------- manual pick entry */}
+      <div>
+        <button
+          type="button"
+          onClick={() => openSheet(null)}
+          className="w-full rounded-xl border border-line bg-panel px-4 py-3 text-[15px] font-medium hover:border-accent/50"
+        >
+          ✎ Enter a pick{complete ? "" : ` (#${currentPick})`}
+        </button>
+        {flash && <p className={`mt-1 px-1 text-xs ${flash.ok ? "text-good" : "text-bad"}`}>{flash.text}</p>}
       </div>
 
-      <DraftBoard draft={draft} pickMap={pickMap} currentPick={complete ? null : currentPick} teamName={teamName} />
+      <AgentLine live={live} />
+
+      <RosterCard myPicks={myPicks} rowById={rowById} rowByName={rowByName} myRoster={myRoster} payload={payload} />
+
+      <Expander
+        summary="Draft board"
+        right={lastPick ? `last: #${lastPick.overall_pick} ${lastPick.player_name ?? ""}` : `${picks.length}/${total}`}
+      >
+        <BoardPanel
+          draft={draft}
+          picks={picks}
+          pickMap={pickMap}
+          currentPick={complete ? null : currentPick}
+          teamName={teamName}
+          myUpcoming={myUpcoming}
+          total={total}
+        />
+      </Expander>
+
+      <Expander summary="Available players" right={`${available.length}`}>
+        <AvailableTable
+          rows={available}
+          runId={values.run?.run_id ?? null}
+          runAt={values.run?.created_at ?? null}
+          picksUntil={picksUntil ?? 0}
+          currentPick={currentPick}
+          onSelect={openSheet}
+          errors={values.errors}
+        />
+      </Expander>
+
+      {sheetOpen && (
+        <ManualPickSheet
+          draft={draft}
+          currentPick={complete ? null : currentPick}
+          available={available}
+          selected={selected}
+          setSelected={setSelected}
+          teamName={teamName}
+          lastPick={lastPick}
+          onClose={() => setSheetOpen(false)}
+          onDone={(m) => {
+            setFlash(m);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ header */
+/* ------------------------------------------------------------------ top bar */
 
-function DraftHeader(props: {
+function TopBar({
+  draft,
+  drafts,
+  onSwitch,
+  lastOk,
+  pollError,
+}: {
   draft: Draft;
   drafts: Draft[];
   onSwitch: (id: string) => void;
-  currentPick: number | null;
-  cur: { round: number; slot: number; pickInRound: number } | null;
-  teamName: (s: number) => string;
-  total: number;
-  picksMade: number;
-  nextMine: number | null;
-  picksUntil: number | null;
-  myUpcoming: number[];
   lastOk: string | null;
   pollError: string | null;
 }) {
-  const { draft, drafts, cur } = props;
   const now = useNow(2000);
-  const lagging = !props.lastOk || now - Date.parse(props.lastOk) > 20000;
+  const lagging = !lastOk || now - Date.parse(lastOk) > 20000;
+  const customOk = !!customRoundsOf(draft.config, draft.num_teams, draft.num_rounds);
   return (
-    <div className="rounded-lg border border-line bg-panel">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 text-xs text-muted">
         <select
           value={draft.draft_id}
-          onChange={(e) => props.onSwitch(e.target.value)}
-          className="max-w-[60vw] rounded border border-line bg-panel-2 px-2 py-1 text-sm font-medium outline-none focus:border-accent"
+          onChange={(e) => onSwitch(e.target.value)}
+          aria-label="Draft"
+          className="max-w-[55vw] truncate rounded-md border border-line bg-panel px-2 py-1 text-xs outline-none focus:border-accent"
         >
           {drafts.map((d) => (
             <option key={d.draft_id} value={d.draft_id}>
@@ -322,355 +530,214 @@ function DraftHeader(props: {
             </option>
           ))}
         </select>
-        <Badge tone={statusTone(draft.status)}>{draft.status}</Badge>
-        {draft.is_mock && <Badge tone="warn">mock</Badge>}
-        <Badge>{draft.order_type === "snake_3rr" ? "snake · 3RR" : draft.order_type}</Badge>
-        {customRoundsOf(draft.config, draft.num_teams, draft.num_rounds) ? (
-          <Badge tone="accent" title="drafts.config.custom_rounds">custom rounds</Badge>
-        ) : draft.order_type === "custom" ? (
-          <Badge tone="bad" title="order_type custom but config.custom_rounds missing/invalid; using snake">custom_rounds invalid</Badge>
-        ) : null}
-        <span className="text-xs text-muted">
-          {draft.num_teams} teams · {draft.num_rounds} rds · my slot {draft.my_slot}
-        </span>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">
-          <span className={`inline-block h-2 w-2 rounded-full ${props.pollError || lagging ? "bg-bad" : "bg-good"}`} />
-          {props.pollError ? "sync error" : "live"} · <Ago ts={props.lastOk} />
+        {draft.is_mock && <span className="text-warn">mock</span>}
+        {draft.order_type === "custom" && !customOk && (
+          <span className="text-bad" title="order_type custom but config.custom_rounds missing/invalid; using snake">
+            order invalid
+          </span>
+        )}
+        <span className="ml-auto flex items-center gap-1.5" title={`${draft.num_teams} teams · ${draft.num_rounds} rounds · slot ${draft.my_slot} · ${draft.order_type}${customOk ? " (custom rounds)" : ""}`}>
+          <span className={`inline-block h-2 w-2 rounded-full ${pollError || lagging ? "bg-bad" : "bg-good"}`} />
+          {pollError ? "sync error" : "live"} · <Ago ts={lastOk} />
         </span>
       </div>
-      {props.pollError && <div className="border-b border-line px-3 py-1.5 text-xs text-bad">{props.pollError}</div>}
-      <div className="grid grid-cols-2 gap-3 px-3 py-3 sm:grid-cols-4">
-        <div>
-          <div className="text-[10.5px] uppercase tracking-wider text-muted">On the clock</div>
-          {props.currentPick && cur ? (
-            <>
-              <div className="num text-xl font-semibold">#{props.currentPick}</div>
-              <div className="truncate text-xs text-muted">
-                R{cur.round}.{cur.pickInRound} · {props.teamName(cur.slot)}
-              </div>
-            </>
-          ) : (
-            <div className="text-xl font-semibold text-good">Complete</div>
-          )}
-        </div>
-        <div>
-          <div className="text-[10.5px] uppercase tracking-wider text-muted">My next pick</div>
-          <div className="num text-xl font-semibold text-accent">{props.nextMine ? `#${props.nextMine}` : "—"}</div>
-          <div className="text-xs text-muted">
-            {props.picksUntil == null ? "no picks left" : props.picksUntil === 0 ? "now!" : `in ${props.picksUntil} pick${props.picksUntil === 1 ? "" : "s"}`}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10.5px] uppercase tracking-wider text-muted">Picks made</div>
-          <div className="num text-xl font-semibold">
-            {props.picksMade}
-            <span className="text-sm text-muted">/{props.total}</span>
-          </div>
-          <div className="mt-1 h-1 rounded bg-panel-2">
-            <div className="h-1 rounded bg-accent" style={{ width: `${(props.picksMade / props.total) * 100}%` }} />
-          </div>
-        </div>
-        <div className="min-w-0">
-          <div className="text-[10.5px] uppercase tracking-wider text-muted">My upcoming</div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {props.myUpcoming.slice(0, 6).map((p, i) => (
-              <span
-                key={p}
-                className={`num rounded border px-1.5 text-xs ${i === 0 ? "border-accent text-accent" : "border-line text-muted"}`}
-              >
-                {p}
-              </span>
-            ))}
-            {props.myUpcoming.length > 6 && <span className="text-xs text-muted">+{props.myUpcoming.length - 6}</span>}
-          </div>
-        </div>
-      </div>
+      {pollError && <p className="px-1 text-xs text-bad">{pollError}</p>}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ recommendations */
+/* ------------------------------------------------------------------ why / all options */
 
-function CatStrip({ impact, scale = 0.6 }: { impact?: Record<string, number | undefined> | null; scale?: number }) {
-  return (
-    <div className="grid grid-cols-9 gap-px overflow-hidden rounded border border-line text-center">
-      {CATS.map((c) => {
-        const v = impact?.[c];
-        return (
-          <div key={c} className="bg-panel-2 px-0.5 py-0.5" style={heatStyle(v, scale)}>
-            <div className="text-[9px] leading-3 text-muted">{CAT_LABEL[c]}</div>
-            <div className="num text-[10.5px] leading-4">{v == null ? "·" : signed(v, 1)}</div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ProbBar({ p, label }: { p: number | null | undefined; label?: string }) {
-  if (p == null) return <span className="text-xs text-muted">—</span>;
-  const tone = p >= 0.6 ? "bg-good" : p >= 0.3 ? "bg-warn" : "bg-bad";
-  return (
-    <div className="flex items-center gap-1.5" title={label}>
-      <div className="h-1.5 w-12 rounded bg-panel-2">
-        <div className={`h-1.5 rounded ${tone}`} style={{ width: `${Math.max(3, p * 100)}%` }} />
-      </div>
-      <span className="num text-xs">{pct(p)}</span>
-    </div>
-  );
-}
-
-function RecRow({ r, i, taken }: { r: RecItem; i: number; taken: boolean }) {
-  const pos = asStringArray(r.positions);
-  return (
-    <li className={`border-t border-line px-3 py-2.5 first:border-t-0 ${taken ? "opacity-40" : ""} ${i === 0 && !taken ? "bg-accent/5" : ""}`}>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="num w-5 text-sm text-muted">{i + 1}</span>
-        <span className={`text-[15px] font-semibold ${taken ? "line-through" : ""}`}>{r.name ?? r.player_id}</span>
-        <span className="text-xs text-muted">{r.team}</span>
-        {pos.map((p) => (
-          <Badge key={p}>{p}</Badge>
-        ))}
-        {taken && <Badge tone="bad">taken</Badge>}
-        <span className="ml-auto flex items-center gap-3 text-xs">
-          <span title="optimizer score">
-            <span className="text-muted">score </span>
-            <span className="num font-semibold">{fmt(r.score)}</span>
-          </span>
-          <span title="value">
-            <span className="text-muted">val </span>
-            <span className="num">{fmt(r.value)}</span>
-          </span>
-          <span title="marginal value to my roster">
-            <span className="text-muted">mv </span>
-            <span className="num">{fmt(r.marginal_value)}</span>
-          </span>
-          <span title="ADP">
-            <span className="text-muted">adp </span>
-            <span className="num">{fmt(r.adp, 1)}</span>
-          </span>
-        </span>
-      </div>
-      <div className="mt-1.5 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-        <CatStrip impact={r.cat_impact} />
-        <div className="flex items-center gap-1 text-xs text-muted">
-          <span>avail@next</span>
-          <ProbBar p={r.prob_available_next} label="probability still available at my next pick" />
-        </div>
-      </div>
-      {r.reason && <p className="mt-1 text-xs leading-snug text-muted">{r.reason}</p>}
-    </li>
-  );
-}
-
-function RecommendationsCard({
+function WhyPanel({
+  usingModel,
   rec,
-  fresh,
-  draftedIds,
-  picksMade,
-  nextMine,
+  recCands,
+  fbCands,
+  weakest,
   recCount,
-}: {
-  rec: DraftLive["rec"];
-  fresh: boolean;
-  draftedIds: Set<string>;
-  picksMade: number;
-  nextMine: number | null;
-  recCount: number;
-}) {
-  const p = rec?.payload;
-  const items = p?.recommendations ?? [];
-  return (
-    <Card
-      title="Model recommendations"
-      bodyClassName="p-0"
-      right={
-        rec ? (
-          <>
-            {fresh ? <Badge tone="good">fresh</Badge> : <Badge tone="warn">stale</Badge>}
-            <span className="num">
-              as of {rec.as_of_pick} → for #{rec.for_pick ?? p?.for_pick ?? "?"}
-            </span>
-            <Ago ts={p?.generated_at ?? rec.created_at} />
-          </>
-        ) : null
-      }
-    >
-      {!rec ? (
-        <Empty>No recommendation rows for this draft yet. Fallback ranking below.</Empty>
-      ) : (
-        <>
-          {!fresh && (
-            <div className="border-b border-line bg-warn/10 px-3 py-1.5 text-xs text-warn">
-              Recommendation is for an older board state ({rec.as_of_pick} picks made, now {picksMade}
-              {nextMine ? `, my next #${nextMine}` : ""}). Use the client-side fallback below until the optimizer catches up.
-            </div>
-          )}
-          {(p?.strategy?.name || p?.team_profile) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-3 py-2 text-xs">
-              {p?.strategy?.name && (
-                <span>
-                  <span className="text-muted">strategy </span>
-                  <span className="font-medium">{p.strategy.name}</span>
-                </span>
-              )}
-              {p?.team_profile?.expected_category_wins != null && (
-                <span>
-                  <span className="text-muted">exp cat wins </span>
-                  <span className="num font-medium">{fmt(p.team_profile.expected_category_wins, 1)}</span>
-                </span>
-              )}
-              {!!p?.team_profile?.punts?.length && (
-                <span>
-                  <span className="text-muted">punts </span>
-                  {p.team_profile.punts.map((x) => (
-                    <Badge key={x} tone="warn">
-                      {CAT_LABEL[x as keyof typeof CAT_LABEL] ?? x}
-                    </Badge>
-                  ))}
-                </span>
-              )}
-              {p?.strategy?.notes && <span className="w-full text-muted">{p.strategy.notes}</span>}
-            </div>
-          )}
-          {!!p?.warnings?.length && (
-            <ul className="border-b border-line px-3 py-1.5 text-xs text-warn">
-              {p.warnings.map((w, i) => (
-                <li key={i}>⚠ {w}</li>
-              ))}
-            </ul>
-          )}
-          {items.length ? (
-            <ol>
-              {items.slice(0, 10).map((r, i) => (
-                <RecRow key={r.player_id ?? i} r={r} i={i} taken={!!r.player_id && draftedIds.has(r.player_id)} />
-              ))}
-            </ol>
-          ) : (
-            <Empty>Payload has no recommendations.</Empty>
-          )}
-          <div className="flex items-center justify-between border-t border-line px-3 py-1.5 text-[11px] text-muted">
-            <span>
-              rec <code>{rec.rec_id}</code> · run <code>{rec.model_run_id ?? p?.model_run_id ?? "—"}</code>
-            </span>
-            <span>{recCount} recs for this draft</span>
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
-function FallbackCard({
-  available,
-  myRoster,
-  picksUntil,
-  currentPick,
-  nextMine,
   onSelect,
 }: {
-  available: PlayerRow[];
-  myRoster: PlayerRow[];
-  picksUntil: number;
-  currentPick: number;
-  nextMine: number | null;
+  usingModel: boolean;
+  rec: DraftLive["rec"];
+  recCands: Candidate[];
+  fbCands: Candidate[];
+  weakest: string[];
+  recCount: number;
   onSelect: (p: PlayerRow) => void;
 }) {
-  const { items, weakest } = useMemo(
-    () => fallbackRanking(available, myRoster, picksUntil, currentPick, 8),
-    [available, myRoster, picksUntil, currentPick],
+  const p = rec?.payload;
+  const modelList = (
+    <>
+      {(p?.strategy?.name || p?.team_profile) && (
+        <div className="space-y-1 pb-2 text-xs">
+          {p?.strategy?.name && (
+            <div>
+              <span className="text-muted">Strategy </span>
+              <span className="font-medium">{p.strategy.name}</span>
+              {p.strategy.notes && <span className="text-muted"> — {p.strategy.notes}</span>}
+            </div>
+          )}
+          {p?.team_profile?.expected_category_wins != null && (
+            <div>
+              <span className="text-muted">Expected category wins / week </span>
+              <span className="num font-medium">{fmt(p.team_profile.expected_category_wins, 1)} of 9</span>
+              {!!p.team_profile.punts?.length && (
+                <span className="text-muted"> · punting {p.team_profile.punts.map((x) => CAT_LABEL[x as keyof typeof CAT_LABEL] ?? x).join(", ")}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {!!p?.warnings?.length && (
+        <ul className="pb-2 text-xs text-warn">
+          {p.warnings.map((w, i) => (
+            <li key={i}>⚠ {w}</li>
+          ))}
+        </ul>
+      )}
+      <ol className="divide-y divide-line">
+        {recCands.map((c, i) => (
+          <li key={c.key} className={`py-2.5 ${c.taken ? "opacity-40" : ""}`}>
+            <div className="flex items-baseline gap-2">
+              <span className="num w-5 text-xs text-muted">{i + 1}</span>
+              <span className={`min-w-0 flex-1 truncate font-medium ${c.taken ? "line-through" : ""}`}>{c.name}</span>
+              <span className="shrink-0 text-xs text-muted">{c.positions.join("/")}</span>
+              {c.prob != null && <span className={`num shrink-0 text-xs ${probTone(c.prob)}`}>{pct(c.prob)}</span>}
+            </div>
+            <div className="mt-1">
+              <CatStrip impact={c.rec?.cat_impact} />
+              <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
+                <span>
+                  score <span className="num text-fg">{fmt(c.rec?.score)}</span>
+                </span>
+                <span>
+                  value <span className="num">{fmt(c.rec?.value)}</span>
+                </span>
+                <span>
+                  marginal <span className="num">{fmt(c.rec?.marginal_value)}</span>
+                </span>
+                <span>
+                  ADP <span className="num">{fmt(c.rec?.adp, 1)}</span>
+                </span>
+              </div>
+              {c.reason && <p className="mt-0.5 text-xs text-muted">{c.reason}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+      {rec && (
+        <p className="pt-2 text-[11px] text-muted">
+          rec <code>{rec.rec_id}</code> · run <code>{rec.model_run_id ?? p?.model_run_id ?? "—"}</code> · as of {rec.as_of_pick} → for #
+          {rec.for_pick ?? p?.for_pick ?? "?"} · {recCount} recs for this draft. Category cells = change in my weekly category z-score; % =
+          chance he&apos;s still there at my following pick.
+        </p>
+      )}
+    </>
   );
-  return (
-    <Card
-      title={
-        <span className="flex items-center gap-2">
-          Fallback ranking <Badge tone="warn">fallback (client-side)</Badge>
-        </span>
-      }
-      bodyClassName="p-0"
-      right={nextMine ? <span className="num">for #{nextMine}</span> : null}
-    >
-      <p className="border-b border-line px-3 py-1.5 text-[11px] text-muted">
-        Best available by player_values.value + 0.25× value in my weakest categories
-        {weakest.length ? ` (${weakest.map((c) => CAT_LABEL[c as keyof typeof CAT_LABEL]).join(", ")})` : ""} + 0.4 if it fills an empty
-        G/F/C group. P(avail) is a rough ADP estimate. Not the optimizer.
+  const fallbackList = (
+    <>
+      <p className="pb-2 text-xs text-muted">
+        Client-side fallback (not the optimizer): value + 0.25× value in my weakest categories
+        {weakest.length ? ` (${weakest.map((c) => CAT_LABEL[c as keyof typeof CAT_LABEL]).join(", ")})` : ""} + 0.4 if he fills an empty G/F/C
+        group. % = rough ADP-based chance he lasts to my next pick.
       </p>
-      {items.length === 0 ? (
-        <Empty>No player values loaded.</Empty>
+      {fbCands.length === 0 ? (
+        <p className="py-2 text-sm text-muted">No player values loaded.</p>
       ) : (
-        <ol>
-          {items.map((it, i) => (
-            <li key={it.row.player_id} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line px-3 py-2 first:border-t-0">
-              <span className="num w-5 text-sm text-muted">{i + 1}</span>
-              <span className="font-semibold">{it.row.name}</span>
-              <span className="text-xs text-muted">{it.row.team}</span>
-              {it.row.positions.map((p) => (
-                <Badge key={p}>{p}</Badge>
-              ))}
-              <span className="ml-auto flex items-center gap-3 text-xs">
-                <span>
-                  <span className="text-muted">adj </span>
-                  <span className="num font-semibold">{fmt(it.score)}</span>
-                </span>
-                <span>
-                  <span className="text-muted">val </span>
-                  <span className="num">{fmt(it.row.value)}</span>
-                </span>
-                <ProbBar p={it.probAvail} label="ADP-based estimate" />
-                <button onClick={() => onSelect(it.row)} className="rounded border border-line px-1.5 text-[11px] text-muted hover:border-accent hover:text-accent">
-                  select
-                </button>
-              </span>
-              <span className="w-full pl-7 text-[11px] text-muted">{it.reason}</span>
+        <ol className="divide-y divide-line">
+          {fbCands.map((c, i) => (
+            <li key={c.key} className="py-2.5">
+              <div className="flex items-baseline gap-2">
+                <span className="num w-5 text-xs text-muted">{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
+                <span className="shrink-0 text-xs text-muted">{c.positions.join("/")}</span>
+                {c.prob != null && <span className={`num shrink-0 text-xs ${probTone(c.prob)}`}>{pct(c.prob)}</span>}
+                {c.row && (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(c.row!)}
+                    className="shrink-0 rounded border border-line px-1.5 text-[11px] text-muted hover:border-accent hover:text-accent"
+                  >
+                    pick
+                  </button>
+                )}
+              </div>
+              <div className="mt-1">
+                <CatStrip impact={c.row?.cat_values} scale={1.5} />
+                <p className="mt-0.5 text-[11px] text-muted">
+                  value <span className="num">{fmt(c.row?.value)}</span> · {c.reason}
+                </p>
+              </div>
             </li>
           ))}
         </ol>
       )}
-    </Card>
+    </>
+  );
+  return (
+    <div className="pb-3">
+      {usingModel ? (
+        modelList
+      ) : (
+        <>
+          {fallbackList}
+          {rec && recCands.length > 0 && (
+            <div className="mt-3 border-t border-line pt-3">
+              <div className="pb-2 text-xs font-medium text-warn">Last model recommendation (stale, as of pick {rec.as_of_pick})</div>
+              {modelList}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ agent */
 
-function AgentActionCard({ live }: { live: DraftLive | null }) {
+function AgentLine({ live }: { live: DraftLive | null }) {
   const runs = live?.agentRuns ?? [];
   const events = live?.agentEvents ?? [];
   const run = runs[0];
+  if (!run) return null;
   const lastDecision = events.find((e) => e.kind === "decision");
   const dec = live?.decisions?.[0];
+  const disagree = dec?.agrees_with_model === false;
   return (
-    <Card
-      title="Agent next action"
-      right={run ? <Badge tone={statusTone(run.status)}>{run.status}</Badge> : null}
-    >
-      {!run ? (
-        <Empty>No agent run references this draft (agent_runs.task).</Empty>
-      ) : (
-        <div className="space-y-2 text-sm">
+    <div className={`rounded-xl border bg-panel px-4 ${disagree ? "border-warn/60" : "border-line"}`}>
+      <Expander
+        bare
+        summary={
+          <span className="block truncate text-fg">
+            <span className="text-muted">Agent </span>
+            <span className="font-medium">{run.agent}</span>
+            <span className="text-muted"> · {run.status}</span>
+            {disagree && <span className="text-warn"> · ≠ model</span>}
+            {lastDecision?.message && <span className="text-muted"> · {lastDecision.message}</span>}
+          </span>
+        }
+      >
+        <div className="space-y-2 pb-3 text-sm">
           <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted">
-            <span className="font-medium text-fg">{run.agent}</span>
             <Badge tone={run.mode === "live" ? "bad" : "neutral"}>{run.mode ?? "?"}</Badge>
             <span>
               heartbeat <Ago ts={run.heartbeat_at} staleAfter={run.status === "running" ? 120 : undefined} />
             </span>
           </div>
-          {lastDecision ? (
-            <div className="rounded border border-accent/40 bg-accent/5 p-2">
+          {lastDecision && (
+            <div className="rounded-lg border border-accent/40 bg-accent/5 p-2">
               <div className="flex items-center gap-1.5 text-[11px] text-muted">
                 <KindIcon kind="decision" /> latest decision · <Ago ts={lastDecision.ts} />
               </div>
               <div className="mt-0.5 font-medium leading-snug">{lastDecision.message}</div>
               {lastDecision.payload != null && <JsonView value={lastDecision.payload} label="payload" />}
             </div>
-          ) : (
-            <div className="text-xs text-muted">No decision events yet.</div>
           )}
           {dec && (
-            <div className={`rounded border p-2 text-xs ${dec.agrees_with_model === false ? "border-warn/50 bg-warn/10" : "border-line"}`}>
+            <div className={`rounded-lg border p-2 text-xs ${disagree ? "border-warn/50 bg-warn/10" : "border-line"}`}>
               <div className="flex items-center gap-2">
-                <span className="text-muted">decision row</span>
                 <Badge>{dec.kind}</Badge>
-                {dec.agrees_with_model === false ? <Badge tone="warn">disagrees with model</Badge> : dec.agrees_with_model ? <Badge tone="good">agrees</Badge> : null}
+                {disagree ? <Badge tone="warn">disagrees with model</Badge> : dec.agrees_with_model ? <Badge tone="good">agrees</Badge> : null}
               </div>
               {dec.rationale && <div className="mt-1">{dec.rationale}</div>}
             </div>
@@ -687,14 +754,14 @@ function AgentActionCard({ live }: { live: DraftLive | null }) {
             ))}
           </ul>
         </div>
-      )}
-    </Card>
+      </Expander>
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ manual */
 
-function ManualPickCard({
+function ManualPickSheet({
   draft,
   currentPick,
   available,
@@ -702,6 +769,7 @@ function ManualPickCard({
   setSelected,
   teamName,
   lastPick,
+  onClose,
   onDone,
 }: {
   draft: Draft;
@@ -711,7 +779,8 @@ function ManualPickCard({
   setSelected: (p: PlayerRow | null) => void;
   teamName: (s: number) => string;
   lastPick: DraftPick | null;
-  onDone: () => void;
+  onClose: () => void;
+  onDone: (msg: { ok: boolean; text: string }) => void;
 }) {
   const ws = useWriteStatus();
   const [overall, setOverall] = useState<string>("");
@@ -721,6 +790,12 @@ function ManualPickCard({
   const effectiveOverall = overall === "" ? currentPick : Number(overall);
   const info = effectiveOverall ? pickInfo(effectiveOverall, draft.num_teams, draft.order_type, customRoundsOf(draft.config, draft.num_teams, draft.num_rounds), draft.num_rounds) : null;
   const canWrite = ws.writesEnabled && ws.authed;
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
 
   const matches = useMemo(() => {
     const n = normName(q);
@@ -749,11 +824,11 @@ function ManualPickCard({
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (r.ok) {
-      setMsg({ ok: true, text: `Recorded #${effectiveOverall}: ${name}` });
       setSelected(null);
       setQ("");
       setOverall("");
-      onDone();
+      onDone({ ok: true, text: `Recorded #${effectiveOverall}: ${name}` });
+      onClose();
     } else if (r.status === 409 && !overwrite) {
       if (window.confirm(`${j.error}\n\nOverwrite?`)) submit(true);
     } else {
@@ -771,109 +846,125 @@ function ManualPickCard({
     );
     const j = await r.json().catch(() => ({}));
     setBusy(false);
-    setMsg(r.ok ? { ok: true, text: `Removed #${lastPick.overall_pick}` } : { ok: false, text: j.error || `HTTP ${r.status}` });
-    onDone();
+    const m = r.ok ? { ok: true, text: `Removed #${lastPick.overall_pick}` } : { ok: false, text: j.error || `HTTP ${r.status}` };
+    setMsg(m);
+    onDone(m);
   };
 
   return (
-    <Card title="Manual pick entry" right={<WriteAccess compact />}>
-      {!ws.loaded ? (
-        <div className="text-xs text-muted">Checking write access…</div>
-      ) : !ws.writesEnabled ? (
-        <div className="rounded border border-warn/40 bg-warn/10 p-2 text-xs text-warn">
-          Writes disabled: {ws.reason ?? "server not configured"} Picks can still be recorded from the CLI:{" "}
-          <code>fantasy draft pick &lt;overall&gt; &lt;player&gt;</code>
-        </div>
-      ) : null}
-      <fieldset disabled={!canWrite || busy} className={`mt-2 space-y-2 ${!canWrite ? "opacity-60" : ""}`}>
-        <div className="flex items-end gap-2">
-          <label className="w-24 shrink-0">
-            <span className="block text-[10.5px] uppercase tracking-wider text-muted">Overall #</span>
-            <input
-              inputMode="numeric"
-              value={overall}
-              placeholder={currentPick ? String(currentPick) : ""}
-              onChange={(e) => setOverall(e.target.value.replace(/\D/g, ""))}
-              className="num w-full rounded border border-line bg-panel-2 px-2 py-2 text-base outline-none focus:border-accent"
-            />
-          </label>
-          <div className="pb-2 text-xs text-muted">
-            {info ? (
-              <>
-                R{info.round}.{info.pickInRound} · {teamName(info.slot)}
-                {info.slot === draft.my_slot && <span className="ml-1 text-accent">(me)</span>}
-              </>
-            ) : (
-              "draft complete"
-            )}
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true" aria-label="Enter a pick">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/50" />
+      <div className="relative max-h-[88vh] w-full overflow-auto rounded-t-2xl border border-line bg-panel px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl md:max-w-md md:rounded-2xl">
+        <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-line md:hidden" />
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Enter a pick</h2>
+          <div className="flex items-center gap-3">
+            <WriteAccess compact />
+            <button type="button" onClick={onClose} className="text-sm text-muted hover:text-fg">
+              Close
+            </button>
           </div>
         </div>
-        <div className="relative">
-          <span className="block text-[10.5px] uppercase tracking-wider text-muted">Player</span>
-          {selected ? (
-            <div className="flex items-center gap-2 rounded border border-accent bg-accent/5 px-2 py-2">
-              <span className="font-medium">{selected.name}</span>
-              <span className="text-xs text-muted">
-                {selected.team} {selected.positions.join("/")}
-              </span>
-              <button type="button" onClick={() => setSelected(null)} className="ml-auto text-xs text-muted hover:text-fg">
-                change
-              </button>
-            </div>
-          ) : (
-            <>
+        {!ws.loaded ? (
+          <div className="text-xs text-muted">Checking write access…</div>
+        ) : !ws.writesEnabled ? (
+          <div className="rounded-lg border border-warn/40 bg-warn/10 p-2 text-xs text-warn">
+            Writes disabled: {ws.reason ?? "server not configured"} Picks can still be recorded from the CLI:{" "}
+            <code>fantasy draft pick &lt;overall&gt; &lt;player&gt;</code>
+          </div>
+        ) : !ws.authed ? (
+          <div className="text-xs text-muted">Tap “unlock” above and enter the passphrase to record picks.</div>
+        ) : null}
+        <fieldset disabled={!canWrite || busy} className={`mt-3 space-y-3 ${!canWrite ? "opacity-60" : ""}`}>
+          <div className="flex items-end gap-3">
+            <label className="w-24 shrink-0">
+              <span className="block text-xs text-muted">Overall #</span>
               <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search available players…"
-                className="w-full rounded border border-line bg-panel-2 px-2 py-2 text-base outline-none focus:border-accent"
+                inputMode="numeric"
+                value={overall}
+                placeholder={currentPick ? String(currentPick) : ""}
+                onChange={(e) => setOverall(e.target.value.replace(/\D/g, ""))}
+                className="num w-full rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-base outline-none focus:border-accent"
               />
-              {matches.length > 0 && (
-                <ul className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded border border-line bg-panel shadow-xl">
-                  {matches.map((m) => (
-                    <li key={m.player_id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelected(m);
-                          setQ("");
-                        }}
-                        className="flex w-full items-center gap-2 px-2 py-2 text-left text-sm hover:bg-panel-2"
-                      >
-                        <span className="font-medium">{m.name}</span>
-                        <span className="text-xs text-muted">
-                          {m.team} {m.positions.join("/")}
-                        </span>
-                        <span className="num ml-auto text-xs text-muted">#{m.rank ?? "—"}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+            </label>
+            <div className="pb-2.5 text-sm text-muted">
+              {info ? (
+                <>
+                  R{info.round}.{info.pickInRound} · {teamName(info.slot)}
+                  {info.slot === draft.my_slot && <span className="ml-1 text-accent">(me)</span>}
+                </>
+              ) : (
+                "draft complete"
               )}
-              {q && matches.length === 0 && (
-                <div className="mt-1 text-[11px] text-muted">No match in available players — will record the free-text name (no player_id).</div>
-              )}
-            </>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => submit(false)}
-            disabled={!effectiveOverall || (!selected && !q.trim())}
-            className="flex-1 rounded bg-accent px-3 py-2 text-sm font-semibold text-accent-fg disabled:opacity-40"
-          >
-            {busy ? "Saving…" : `Record pick${effectiveOverall ? ` #${effectiveOverall}` : ""}`}
-          </button>
-          {lastPick?.source === "manual" && (
-            <button type="button" onClick={undo} className="rounded border border-line px-3 py-2 text-xs text-muted hover:text-bad">
-              Undo #{lastPick.overall_pick}
+            </div>
+          </div>
+          <div className="relative">
+            <span className="block text-xs text-muted">Player</span>
+            {selected ? (
+              <div className="flex items-center gap-2 rounded-lg border border-accent bg-accent/5 px-3 py-2.5">
+                <span className="font-medium">{selected.name}</span>
+                <span className="text-xs text-muted">
+                  {selected.team} {selected.positions.join("/")}
+                </span>
+                <button type="button" onClick={() => setSelected(null)} className="ml-auto text-xs text-muted hover:text-fg">
+                  change
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search available players…"
+                  className="w-full rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-base outline-none focus:border-accent"
+                />
+                {matches.length > 0 && (
+                  <ul className="mt-1 max-h-64 overflow-auto rounded-lg border border-line bg-panel">
+                    {matches.map((m) => (
+                      <li key={m.player_id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelected(m);
+                            setQ("");
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-panel-2"
+                        >
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-xs text-muted">
+                            {m.team} {m.positions.join("/")}
+                          </span>
+                          <span className="num ml-auto text-xs text-muted">#{m.rank ?? "—"}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {q && matches.length === 0 && (
+                  <div className="mt-1 text-[11px] text-muted">No match in available players — will record the free-text name (no player_id).</div>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={!effectiveOverall || (!selected && !q.trim())}
+              className="flex-1 rounded-lg bg-accent px-3 py-3 text-[15px] font-semibold text-accent-fg disabled:opacity-40"
+            >
+              {busy ? "Saving…" : `Record pick${effectiveOverall ? ` #${effectiveOverall}` : ""}`}
             </button>
-          )}
-        </div>
-      </fieldset>
-      {msg && <div className={`mt-2 text-xs ${msg.ok ? "text-good" : "text-bad"}`}>{msg.text}</div>}
-    </Card>
+            {lastPick?.source === "manual" && (
+              <button type="button" onClick={undo} className="rounded-lg border border-line px-3 py-3 text-xs text-muted hover:text-bad">
+                Undo #{lastPick.overall_pick}
+              </button>
+            )}
+          </div>
+        </fieldset>
+        {msg && <div className={`mt-2 text-xs ${msg.ok ? "text-good" : "text-bad"}`}>{msg.text}</div>}
+      </div>
+    </div>
   );
 }
 
@@ -893,81 +984,66 @@ function RosterCard({
   payload: RecPayload | null;
 }) {
   const totals = CATS.map((c) => ({ c, v: myRoster.reduce((s, p) => s + (p.cat_values[c] ?? 0), 0) }));
-  const maxAbs = Math.max(1, ...totals.map((t) => Math.abs(t.v)));
-  const sorted = [...totals].sort((a, b) => b.v - a.v);
-  const strengths = myRoster.length ? sorted.slice(0, 3) : [];
-  const weaknesses = myRoster.length ? sorted.slice(-3).reverse() : [];
+  const ranked = [...totals].sort((a, b) => b.v - a.v).map((t) => t.c);
   const profile = payload?.team_profile?.categories ?? {};
-  const posCount: Record<string, number> = {};
-  for (const r of myRoster) for (const p of r.positions) posCount[p] = (posCount[p] ?? 0) + 1;
+  const hasProfile = Object.keys(profile).length > 0;
+  // strong / weak: model win probability when present, else top/bottom 3 of my summed category values
+  const level = (c: (typeof CATS)[number]): "strong" | "weak" | "mid" | "none" => {
+    if (!myRoster.length) return "none";
+    const wp = profile[c]?.win_prob;
+    if (hasProfile && wp != null) return wp >= 0.6 ? "strong" : wp <= 0.4 ? "weak" : "mid";
+    const i = ranked.indexOf(c);
+    return i < 3 ? "strong" : i >= ranked.length - 3 ? "weak" : "mid";
+  };
+  const STYLE = {
+    strong: "bg-good/20 text-good border-good/40",
+    weak: "bg-bad/15 text-bad border-bad/40",
+    mid: "bg-panel-2 text-muted border-line",
+    none: "bg-panel-2 text-muted border-line",
+  };
 
   return (
-    <Card title="My roster" right={<span className="num">{myPicks.length} players</span>}>
+    <section className="rounded-xl border border-line bg-panel px-4 py-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-[15px] font-medium">Your roster</h2>
+        <span className="text-xs text-muted">{myPicks.length} players</span>
+      </div>
       {myPicks.length === 0 ? (
-        <Empty>No picks yet.</Empty>
+        <p className="py-2 text-sm text-muted">No picks yet.</p>
       ) : (
-        <ul className="mb-3 space-y-1">
+        <ul className="mt-2 space-y-1">
           {myPicks.map((p) => {
             const row = (p.player_id && rowById.get(p.player_id)) || rowByName.get(normName(p.player_name));
             return (
-              <li key={p.overall_pick} className="flex items-center gap-2 text-sm">
-                <span className="num w-10 text-xs text-muted">
-                  R{p.round}·{p.overall_pick}
-                </span>
-                <span className="truncate font-medium">{p.player_name ?? row?.name ?? p.player_id}</span>
-                <span className="text-xs text-muted">{row?.positions.join("/")}</span>
-                <span className="num ml-auto text-xs">{fmt(row?.value)}</span>
+              <li key={p.overall_pick} className="flex items-baseline gap-2 text-[15px]">
+                <span className="num w-8 shrink-0 text-xs text-muted">R{p.round}</span>
+                <span className="min-w-0 truncate">{p.player_name ?? row?.name ?? p.player_id}</span>
+                <span className="shrink-0 text-xs text-muted">{row?.positions.join("/")}</span>
               </li>
             );
           })}
         </ul>
       )}
-      <div className="mb-1 flex items-center justify-between text-[10.5px] uppercase tracking-wider text-muted">
-        <span>Category profile (Σ cat value)</span>
-        {Object.keys(profile).length > 0 && <span>win%</span>}
-      </div>
-      <div className="space-y-1">
+      <div className="mt-3 grid grid-cols-9 gap-1">
         {totals.map(({ c, v }) => {
-          const w = (Math.abs(v) / maxAbs) * 50;
           const wp = profile[c]?.win_prob;
           return (
-            <div key={c} className="flex items-center gap-2 text-xs">
-              <span className="w-8 text-muted">{CAT_LABEL[c]}</span>
-              <div className="relative h-3 flex-1 rounded bg-panel-2">
-                <div className="absolute inset-y-0 left-1/2 w-px bg-line" />
-                <div
-                  className={`absolute inset-y-0 rounded ${v >= 0 ? "bg-good/70" : "bg-bad/70"}`}
-                  style={v >= 0 ? { left: "50%", width: `${w}%` } : { right: "50%", width: `${w}%` }}
-                />
-              </div>
-              <span className="num w-10 text-right">{signed(v, 1)}</span>
-              {Object.keys(profile).length > 0 && <span className="num w-9 text-right text-muted">{wp != null ? pct(wp) : "—"}</span>}
+            <div
+              key={c}
+              title={`${CAT_LABEL[c]}: Σ value ${signed(v, 1)}${wp != null ? ` · win ${pct(wp)}` : ""}`}
+              className={`rounded border py-1 text-center text-[10px] leading-none font-medium ${STYLE[level(c)]}`}
+            >
+              {CAT_LABEL[c]}
             </div>
           );
         })}
       </div>
       {myRoster.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1 text-xs">
-          {strengths.map((s) => (
-            <Badge key={s.c} tone="good">
-              ▲ {CAT_LABEL[s.c]}
-            </Badge>
-          ))}
-          {weaknesses.map((s) => (
-            <Badge key={s.c} tone="bad">
-              ▼ {CAT_LABEL[s.c]}
-            </Badge>
-          ))}
-          <span className="ml-auto flex gap-1">
-            {POSITIONS.map((p) => (
-              <span key={p} className="num text-muted">
-                {p}:{posCount[p] ?? 0}
-              </span>
-            ))}
-          </span>
-        </div>
+        <p className="mt-1.5 text-[11px] text-muted">
+          green = strength, red = weakness ({hasProfile ? "model weekly win %" : "sum of category values"})
+        </p>
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -995,7 +1071,7 @@ function AvailableTable({
   const [q, setQ] = useState("");
   const [pos, setPos] = useState("ALL");
   const [sort, setSort] = useState<SortKey>("value");
-  const [limit, setLimit] = useState(60);
+  const [limit, setLimit] = useState(40);
 
   const filtered = useMemo(() => {
     const n = normName(q);
@@ -1021,28 +1097,20 @@ function AvailableTable({
   );
 
   return (
-    <Card
-      title="Available players"
-      bodyClassName="p-0"
-      right={
-        <span className="truncate">
-          {rows.length} avail · run <code>{runId ?? "none"}</code> {runAt && <Ago ts={runAt} />}
-        </span>
-      }
-    >
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+    <div>
+      <div className="space-y-2 border-b border-line px-3 py-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name / team"
-          className="min-w-0 flex-1 rounded border border-line bg-panel-2 px-2 py-1.5 text-sm outline-none focus:border-accent sm:max-w-56"
+          className="w-full rounded-lg border border-line bg-panel-2 px-3 py-2 text-base outline-none focus:border-accent"
         />
         <div className="flex flex-wrap gap-1">
           {["ALL", "PG", "SG", "G", "SF", "PF", "F", "C"].map((p) => (
             <button
               key={p}
               onClick={() => setPos(p)}
-              className={`rounded border px-2 py-1 text-xs ${pos === p ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:text-fg"}`}
+              className={`rounded-md border px-2 py-1 text-xs ${pos === p ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:text-fg"}`}
             >
               {p}
             </button>
@@ -1072,7 +1140,7 @@ function AvailableTable({
               {filtered.slice(0, limit).map((r) => (
                 <tr key={r.player_id} className="hover:bg-panel-2">
                   <td className="num text-muted">{r.rank ?? "—"}</td>
-                  <td className="sticky left-0 bg-panel max-w-[44vw] sm:max-w-none">
+                  <td className="sticky left-0 max-w-[44vw] bg-panel sm:max-w-none">
                     <div className="truncate font-medium">{r.name}</div>
                     <div className="truncate text-[11px] text-muted">
                       {r.team} · {r.positions.join("/")}
@@ -1090,7 +1158,7 @@ function AvailableTable({
                   <td className="text-right">
                     <button
                       onClick={() => onSelect(r)}
-                      title="Select in manual pick panel"
+                      title="Enter as a pick"
                       className="rounded border border-line px-1.5 text-xs text-muted hover:border-accent hover:text-accent"
                     >
                       +
@@ -1101,17 +1169,75 @@ function AvailableTable({
             </tbody>
           </table>
           {filtered.length > limit && (
-            <button onClick={() => setLimit((l) => l + 100)} className="w-full border-t border-line py-2 text-xs text-accent">
+            <button onClick={() => setLimit((l) => l + 100)} className="w-full border-t border-line py-2.5 text-sm text-accent">
               Show more ({filtered.length - limit} more)
             </button>
           )}
         </div>
       )}
-    </Card>
+      <p className="border-t border-line px-3 py-1.5 text-[11px] text-muted">
+        run <code>{runId ?? "none"}</code> {runAt && <Ago ts={runAt} />} · tap a column to sort · + enters a pick
+      </p>
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ board */
+
+function BoardPanel({
+  draft,
+  picks,
+  pickMap,
+  currentPick,
+  teamName,
+  myUpcoming,
+  total,
+}: {
+  draft: Draft;
+  picks: DraftPick[];
+  pickMap: Map<number, DraftPick>;
+  currentPick: number | null;
+  teamName: (s: number) => string;
+  myUpcoming: number[];
+  total: number;
+}) {
+  const recent = [...picks].sort((a, b) => b.overall_pick - a.overall_pick).slice(0, 8);
+  return (
+    <div>
+      <div className="px-4 py-2 text-xs text-muted">
+        {picks.length}/{total} picks · your upcoming:{" "}
+        <span className="num text-fg">{myUpcoming.slice(0, 8).join(", ") || "—"}</span>
+        {myUpcoming.length > 8 ? ` +${myUpcoming.length - 8}` : ""}
+      </div>
+      {recent.length === 0 ? (
+        <p className="px-4 pb-3 text-sm text-muted">No picks yet.</p>
+      ) : (
+        <ul className="border-t border-line">
+          {recent.map((p) => (
+            <li
+              key={p.overall_pick}
+              className={`flex items-baseline gap-3 border-b border-line px-4 py-2 text-sm last:border-b-0 ${p.team_slot === draft.my_slot ? "bg-mine" : ""}`}
+            >
+              <span className="num w-8 shrink-0 text-xs text-muted">#{p.overall_pick}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{p.player_name ?? p.player_id}</span>
+              <span className="shrink-0 truncate text-xs text-muted">
+                {teamName(p.team_slot)}
+                {p.source && p.source !== "yahoo_sync" && <span className="ml-1 text-warn">{p.source}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="border-t border-line px-4">
+        <Expander bare summary="Full board grid">
+          <div className="-mx-4">
+            <DraftBoard draft={draft} pickMap={pickMap} currentPick={currentPick} teamName={teamName} />
+          </div>
+        </Expander>
+      </div>
+    </div>
+  );
+}
 
 function DraftBoard({
   draft,
@@ -1129,62 +1255,58 @@ function DraftBoard({
   const rounds = Array.from({ length: draft.num_rounds }, (_, i) => i + 1);
   const custom = customRoundsOf(draft.config, N, draft.num_rounds);
   const order = draftOrder(N, draft.num_rounds, draft.order_type, custom);
-  const ref = useRef<HTMLTableCellElement | null>(null);
   return (
-    <Card title="Draft board" bodyClassName="p-0" right={<span>rounds × slots · my column highlighted</span>}>
-      <div className="scroll-thin overflow-x-auto">
-        <table className="w-full border-collapse text-xs">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 w-10 bg-panel px-1 py-1.5 text-[10px] font-medium text-muted">Rd</th>
-              {slots.map((s) => (
-                <th
-                  key={s}
-                  className={`min-w-[88px] border-l border-line px-1 py-1.5 text-left text-[10.5px] font-medium ${s === draft.my_slot ? "bg-mine text-accent" : "text-muted"}`}
-                >
-                  <span className="num">{s}</span> <span className="truncate">{teamName(s)}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rounds.map((r) => {
-              const inRound = order.filter((p) => p.round === r);
-              const bySlot = new Map(inRound.map((p) => [p.slot, p.overall]));
-              const rev = custom ? false : inRound[0]?.slot !== 1;
-              return (
-                <tr key={r} className="border-t border-line">
-                  <td className="sticky left-0 z-10 bg-panel px-1 py-1 text-center text-[10.5px] text-muted">
-                    <span className="num">{r}</span>
-                    <span className="ml-0.5">{custom ? "*" : rev ? "←" : "→"}</span>
-                  </td>
-                  {slots.map((s) => {
-                    const overall = bySlot.get(s) ?? 0;
-                    const p = pickMap.get(overall);
-                    const isCur = overall === currentPick;
-                    const mine = s === draft.my_slot;
-                    return (
-                      <td
-                        key={s}
-                        ref={isCur ? ref : undefined}
-                        className={`h-11 border-l border-line px-1 py-0.5 align-top ${mine ? "bg-mine" : ""} ${isCur ? "outline-2 -outline-offset-2 outline-accent" : ""}`}
-                      >
-                        <div className="num text-[9.5px] text-muted">
-                          {overall}
-                          {p?.source && p.source !== "yahoo_sync" && <span className="ml-1 text-warn">{p.source}</span>}
-                        </div>
-                        <div className={`truncate leading-tight ${p ? "font-medium" : "text-muted"}`} title={p?.player_name ?? ""}>
-                          {p ? p.player_name ?? p.player_id : isCur ? "on clock" : ""}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+    <div className="scroll-thin overflow-x-auto border-t border-line">
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr>
+            <th className="sticky left-0 z-10 w-10 bg-panel px-1 py-1.5 text-[10px] font-medium text-muted">Rd</th>
+            {slots.map((s) => (
+              <th
+                key={s}
+                className={`min-w-[88px] border-l border-line px-1 py-1.5 text-left text-[10.5px] font-medium ${s === draft.my_slot ? "bg-mine text-accent" : "text-muted"}`}
+              >
+                <span className="num">{s}</span> <span className="truncate">{teamName(s)}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rounds.map((r) => {
+            const inRound = order.filter((p) => p.round === r);
+            const bySlot = new Map(inRound.map((p) => [p.slot, p.overall]));
+            const rev = custom ? false : inRound[0]?.slot !== 1;
+            return (
+              <tr key={r} className="border-t border-line">
+                <td className="sticky left-0 z-10 bg-panel px-1 py-1 text-center text-[10.5px] text-muted">
+                  <span className="num">{r}</span>
+                  <span className="ml-0.5">{custom ? "*" : rev ? "←" : "→"}</span>
+                </td>
+                {slots.map((s) => {
+                  const overall = bySlot.get(s) ?? 0;
+                  const p = pickMap.get(overall);
+                  const isCur = overall === currentPick;
+                  const mine = s === draft.my_slot;
+                  return (
+                    <td
+                      key={s}
+                      className={`h-11 border-l border-line px-1 py-0.5 align-top ${mine ? "bg-mine" : ""} ${isCur ? "outline-2 -outline-offset-2 outline-accent" : ""}`}
+                    >
+                      <div className="num text-[9.5px] text-muted">
+                        {overall}
+                        {p?.source && p.source !== "yahoo_sync" && <span className="ml-1 text-warn">{p.source}</span>}
+                      </div>
+                      <div className={`truncate leading-tight ${p ? "font-medium" : "text-muted"}`} title={p?.player_name ?? ""}>
+                        {p ? p.player_name ?? p.player_id : isCur ? "on clock" : ""}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

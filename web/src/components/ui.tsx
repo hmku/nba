@@ -108,3 +108,29 @@ export function ErrorNote({ error }: { error: string | null | undefined }) {
     <div className="rounded border border-bad/30 bg-bad/10 px-3 py-2 text-xs text-bad">Supabase error: {error}</div>
   );
 }
+
+/** Collapsed-by-default expander (native <details>, works in server components). */
+export function Disclosure({
+  summary,
+  right,
+  children,
+  open,
+  className = "",
+}: {
+  summary: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+  open?: boolean;
+  className?: string;
+}) {
+  return (
+    <details open={open} className={`group rounded-xl border border-line bg-panel ${className}`}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 select-none [&::-webkit-details-marker]:hidden">
+        <span className="text-xs text-muted transition-transform group-open:rotate-90">▶</span>
+        <span className="min-w-0 flex-1 text-[15px] font-medium">{summary}</span>
+        {right && <span className="shrink-0 text-xs text-muted">{right}</span>}
+      </summary>
+      <div className="border-t border-line">{children}</div>
+    </details>
+  );
+}
