@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { DraftSim, SeasonSim } from "@/lib/sim";
 import { explanationText } from "@/lib/sim";
 import { CATS } from "@/lib/categories";
+import { ScenarioOutlook } from "@/components/Outlook";
 import { fmt, pct, signed, shortTime } from "@/lib/format";
 import {
   CatLabel,
@@ -41,11 +42,17 @@ export default function DraftModel({ dsim, pre }: { dsim: DraftSim | null; pre: 
   const pex = pre?.explanations ?? null;
   return (
     <div className="space-y-3">
+      {(!pre || pre.isPreseason) && (
+        <>
+          <SectionTitle right="pre-draft · scenario range">Season outlook</SectionTitle>
+          <ScenarioOutlook />
+        </>
+      )}
       {dsim && <DraftSimSection d={dsim} />}
       {pre ? (
         <SeasonOutlook s={pre} />
       ) : (
-        <EmptyState icon="◷" title="No pre-draft season projection yet">
+        <EmptyState icon="◷" title="No status-quo season projection yet">
           <code className="num">fantasy sim preseason</code> plays simulated leagues through a whole season to estimate
           P(playoffs) and P(title).
         </EmptyState>
@@ -159,12 +166,20 @@ function SeasonOutlook({ s }: { s: SeasonSim }) {
   const a = (k: string) => (across && typeof across[k] === "number" ? (across[k] as number) : null);
   const ex = s.explanations;
   const myRow = s.table.find((r) => r.isMe || r.team === s.myTeamId);
+  const sq = s.isPreseason;
   return (
     <>
-      <SectionTitle right={<>{s.isPreseason ? "pre-draft projection" : "from rosters"} · {shortTime(s.run.created_at)}</>}>
-        Season outlook
+      <SectionTitle right={<>{sq ? "pre-draft" : "from rosters"} · {shortTime(s.run.created_at)}</>}>
+        {sq ? "Status-quo scenario (optimistic)" : "Season outlook"}
       </SectionTitle>
       <Panel className="px-4 py-3">
+        {sq && (
+          <p className="mb-3 rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] leading-snug text-warn">
+            The optimistic end of the range above: the other 11 teams draft by noisy ADP and the season is graded with
+            our own projections. The numbers, histogram and category ranks here (and the league table) all come from
+            this one scenario.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           <Hero label="Playoffs" value={<PctSe v={g("p_playoffs") ?? myRow?.pPlayoffs ?? null} se={g("p_playoffs_se")} />} />
           <Hero label="Title" value={<PctSe v={g("p_title") ?? myRow?.pTitle ?? null} se={g("p_title_se")} />} />

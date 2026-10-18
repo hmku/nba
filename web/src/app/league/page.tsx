@@ -9,6 +9,7 @@ import { fmt, pct, shortTime } from "@/lib/format";
 import { ErrorNote } from "@/components/ui";
 import { CatLabel, CatStrip, EmptyState, Explain, Panel, SectionTitle, ShareBar } from "@/components/viz";
 import { explanationText } from "@/lib/sim";
+import { ScenarioOutlook } from "@/components/Outlook";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "League" };
@@ -56,6 +57,12 @@ export default async function LeaguePage() {
         </EmptyState>
       ) : (
         <>
+          {sim.isPreseason && (
+            <>
+              <SectionTitle right="pre-draft · scenario range">My season outlook</SectionTitle>
+              <ScenarioOutlook compact />
+            </>
+          )}
           <Standings sim={sim} nameOf={nameOf} />
           <Heatmap sim={sim} nameOf={nameOf} />
         </>
@@ -73,9 +80,15 @@ function Standings({ sim, nameOf }: { sim: SeasonSim; nameOf: (t: number, f?: st
   return (
     <>
       <SectionTitle right={`${sim.nSims ?? "?"} sims${sim.nLeagues ? ` · ${sim.nLeagues} drafts` : ""} · ${shortTime(sim.run.created_at)}`}>
-        Projected standings
+        {sim.isPreseason ? "Standings · status quo" : "Projected standings"}
       </SectionTitle>
       <Panel className="overflow-hidden">
+        {sim.isPreseason && (
+          <p className="border-b border-line bg-warn/10 px-4 py-2 text-[12.5px] leading-snug text-warn">
+            <span className="font-semibold">Status-quo scenario (optimistic):</span> other teams draft by noisy ADP and
+            everything is graded with our projections. My realistic range is above.
+          </p>
+        )}
         <table className="w-full text-[13.5px]">
           <thead>
             <tr className="text-[10.5px] tracking-wider text-muted uppercase">
@@ -130,7 +143,7 @@ function Heatmap({ sim, nameOf }: { sim: SeasonSim; nameOf: (t: number, f?: stri
     if (!Object.keys(cp).length) return null;
     return (
       <>
-        <SectionTitle>My category strengths</SectionTitle>
+        <SectionTitle right="status-quo scenario">My category strengths</SectionTitle>
         <Panel className="px-3 py-3">
           <CatStrip cells={Object.fromEntries(CATS.map((c) => [c, { value: cp[c]?.rank ?? null, z: cp[c]?.z ?? null }]))} />
           <p className="mt-2 text-xs text-muted">

@@ -1,0 +1,265 @@
+{
+  "source": {
+    "doc": "docs/research/optimism_decomposition.md",
+    "url": "https://github.com/hmku/nba/blob/main/docs/research/optimism_decomposition.md",
+    "git_sha": "170deb4993848c092e19aa024b9a689ef12c66fd",
+    "date": "2026-10-18"
+  },
+  "slot": 1,
+  "baseline": {
+    "p_playoffs": 0.5,
+    "p_title": 0.08333333333333333
+  },
+  "central": {
+    "label": "A few sharp opponents; truth halfway between our projections and the market",
+    "rooms": [
+      "C3",
+      "C3m"
+    ],
+    "truth": "blend",
+    "p_playoffs": [
+      0.83,
+      0.894
+    ],
+    "p_title": [
+      0.282,
+      0.347
+    ]
+  },
+  "pessimistic": {
+    "label": "11 sharp market-informed opponents; the market is right",
+    "room": "C11m",
+    "truth": "market",
+    "p_playoffs": 0.672,
+    "se_playoffs": 0.007,
+    "p_title": 0.12,
+    "se_title": 0.003
+  },
+  "optimistic": {
+    "label": "Status quo: opponents draft by noisy ADP; graded by our projections",
+    "room": "B",
+    "truth": "ours",
+    "p_playoffs": 0.965,
+    "se_playoffs": 0.001,
+    "p_title": 0.548,
+    "se_title": 0.006
+  },
+  "slot_alone": {
+    "label": "Symmetric room: all 12 teams draft like us",
+    "room": "A_sym",
+    "truth": "ours",
+    "p_playoffs": 0.612,
+    "se_playoffs": 0.008,
+    "p_title": 0.129,
+    "se_title": 0.004
+  },
+  "table": [
+    {
+      "id": "adp_all",
+      "label": "adp_all",
+      "who": "all 12 by noisy ADP (me too)",
+      "ours": {
+        "p_playoffs": 0.542,
+        "se_playoffs": 0.016,
+        "p_title": 0.104,
+        "se_title": 0.006
+      },
+      "blend": {
+        "p_playoffs": 0.539,
+        "se_playoffs": 0.013,
+        "p_title": 0.103,
+        "se_title": 0.005
+      },
+      "market": {
+        "p_playoffs": 0.539,
+        "se_playoffs": 0.012,
+        "p_title": 0.103,
+        "se_title": 0.005
+      }
+    },
+    {
+      "id": "A_sym",
+      "label": "A_sym",
+      "who": "all 12 our optimizer, each on its own noisy view",
+      "ours": {
+        "p_playoffs": 0.612,
+        "se_playoffs": 0.008,
+        "p_title": 0.129,
+        "se_title": 0.004
+      },
+      "blend": {
+        "p_playoffs": 0.582,
+        "se_playoffs": 0.007,
+        "p_title": 0.11,
+        "se_title": 0.004
+      },
+      "market": {
+        "p_playoffs": 0.547,
+        "se_playoffs": 0.01,
+        "p_title": 0.094,
+        "se_title": 0.004
+      }
+    },
+    {
+      "id": "A_bpa",
+      "label": "A_bpa",
+      "who": "all 12 value-BPA (fast proxy), own views",
+      "ours": {
+        "p_playoffs": 0.575,
+        "se_playoffs": 0.008,
+        "p_title": 0.116,
+        "se_title": 0.004
+      },
+      "blend": {
+        "p_playoffs": 0.579,
+        "se_playoffs": 0.008,
+        "p_title": 0.115,
+        "se_title": 0.005
+      },
+      "market": {
+        "p_playoffs": 0.576,
+        "se_playoffs": 0.011,
+        "p_title": 0.115,
+        "se_title": 0.006
+      }
+    },
+    {
+      "id": "C11",
+      "label": "C11",
+      "who": "me optimizer; 11 opponents our optimizer (our-like views)",
+      "ours": {
+        "p_playoffs": 0.752,
+        "se_playoffs": 0.006,
+        "p_title": 0.251,
+        "se_title": 0.005
+      },
+      "blend": {
+        "p_playoffs": 0.718,
+        "se_playoffs": 0.006,
+        "p_title": 0.217,
+        "se_title": 0.004
+      },
+      "market": {
+        "p_playoffs": 0.679,
+        "se_playoffs": 0.008,
+        "p_title": 0.176,
+        "se_title": 0.006
+      }
+    },
+    {
+      "id": "C6",
+      "label": "C6",
+      "who": "me optimizer; 6 such opponents, 5 ADP",
+      "ours": {
+        "p_playoffs": 0.869,
+        "se_playoffs": 0.004,
+        "p_title": 0.307,
+        "se_title": 0.005
+      },
+      "blend": {
+        "p_playoffs": 0.788,
+        "se_playoffs": 0.005,
+        "p_title": 0.232,
+        "se_title": 0.004
+      },
+      "market": {
+        "p_playoffs": 0.678,
+        "se_playoffs": 0.007,
+        "p_title": 0.135,
+        "se_title": 0.004
+      }
+    },
+    {
+      "id": "C3",
+      "label": "C3",
+      "who": "me optimizer; 3 such opponents, 8 ADP",
+      "ours": {
+        "p_playoffs": 0.921,
+        "se_playoffs": 0.003,
+        "p_title": 0.385,
+        "se_title": 0.006
+      },
+      "blend": {
+        "p_playoffs": 0.83,
+        "se_playoffs": 0.005,
+        "p_title": 0.282,
+        "se_title": 0.005
+      },
+      "market": {
+        "p_playoffs": 0.694,
+        "se_playoffs": 0.006,
+        "p_title": 0.155,
+        "se_title": 0.004
+      }
+    },
+    {
+      "id": "C11m",
+      "label": "C11m",
+      "who": "me optimizer; 11 opponents our optimizer on market-like views",
+      "ours": {
+        "p_playoffs": 0.94,
+        "se_playoffs": 0.003,
+        "p_title": 0.469,
+        "se_title": 0.006
+      },
+      "blend": {
+        "p_playoffs": 0.845,
+        "se_playoffs": 0.005,
+        "p_title": 0.283,
+        "se_title": 0.005
+      },
+      "market": {
+        "p_playoffs": 0.672,
+        "se_playoffs": 0.007,
+        "p_title": 0.12,
+        "se_title": 0.003
+      }
+    },
+    {
+      "id": "C3m",
+      "label": "C3m",
+      "who": "me optimizer; 3 market-informed optimizers, 8 ADP",
+      "ours": {
+        "p_playoffs": 0.961,
+        "se_playoffs": 0.002,
+        "p_title": 0.53,
+        "se_title": 0.007
+      },
+      "blend": {
+        "p_playoffs": 0.894,
+        "se_playoffs": 0.004,
+        "p_title": 0.347,
+        "se_title": 0.006
+      },
+      "market": {
+        "p_playoffs": 0.754,
+        "se_playoffs": 0.007,
+        "p_title": 0.173,
+        "se_title": 0.005
+      }
+    },
+    {
+      "id": "B",
+      "label": "status quo",
+      "who": "me optimizer; 11 noisy ADP (= `fantasy sim preseason`)",
+      "ours": {
+        "p_playoffs": 0.965,
+        "se_playoffs": 0.001,
+        "p_title": 0.548,
+        "se_title": 0.006
+      },
+      "blend": {
+        "p_playoffs": 0.906,
+        "se_playoffs": 0.003,
+        "p_title": 0.372,
+        "se_title": 0.005
+      },
+      "market": {
+        "p_playoffs": 0.783,
+        "se_playoffs": 0.005,
+        "p_title": 0.197,
+        "se_title": 0.004
+      }
+    }
+  ]
+}

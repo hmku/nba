@@ -1,9 +1,12 @@
 import type { ReactNode } from "react";
+import { OPTIMISM } from "@/components/Outlook";
+import { pct } from "@/lib/format";
 
 /**
  * "How the model works" — concise prose. Facts are taken from docs/STATUS.md,
  * docs/research/availability_model.md, docs/research/season_simulator.md,
- * docs/handoffs/2026-10-18-optimizer-diagnosis.md and the module docstrings in src/fantasy/.
+ * docs/handoffs/2026-10-18-optimizer-diagnosis.md, docs/research/optimism_decomposition.md (scenario numbers come
+ * from web/src/content/optimism.json) and the module docstrings in src/fantasy/.
  * Keep it in sync when the model changes (bump the versions quoted below).
  */
 
@@ -159,8 +162,26 @@ export default function HowItWorks() {
             25% as single rest days.
           </li>
           <li>
-            Before the draft, the &quot;pre-draft projection&quot; drafts several simulated leagues (me = optimizer, others =
-            noisy ADP) and plays each one out. After the draft it runs on the real rosters.
+            Before the draft, <code>fantasy sim preseason</code> drafts several simulated leagues (me = optimizer, others =
+            noisy ADP), plays each one out and grades it with our own projections. That is the <b>status-quo scenario</b>,
+            the optimistic end ({pct(OPTIMISM.optimistic.p_playoffs, 1)} playoffs / {pct(OPTIMISM.optimistic.p_title, 1)} title for
+            slot 1). After the draft it runs on the real rosters.
+          </li>
+          <li>
+            The <b>headline outlook is a scenario range</b> from the optimism decomposition: the same draft seeds replayed
+            with 0, 3, 6 or 11 opponents drafting with our optimizer, each league graded under three &quot;truths&quot; (our
+            projections, the market&apos;s ADP-implied view, a 50/50 blend). Central estimate (3 sharp opponents, blend):{" "}
+            <b>
+              {pct(OPTIMISM.central.p_playoffs[0])}–{pct(OPTIMISM.central.p_playoffs[1])} playoffs,{" "}
+              {pct(OPTIMISM.central.p_title[0])}–{pct(OPTIMISM.central.p_title[1])} title
+            </b>
+            ; pessimistic (11 sharp market-informed opponents, market right) {pct(OPTIMISM.pessimistic.p_playoffs)} /{" "}
+            {pct(OPTIMISM.pessimistic.p_title)}; slot 1 alone (all teams draft like us){" "}
+            {pct(OPTIMISM.slot_alone.p_playoffs)} / {pct(OPTIMISM.slot_alone.p_title)}; average team 50% / 8.3%.{" "}
+            <a href={OPTIMISM.source.url} className="text-accent" target="_blank" rel="noreferrer">
+              Research note
+            </a>
+            .
           </li>
           <li>Reproducible: the same seed gives the same answer, and roster changes are compared with common random numbers.</li>
         </ul>
@@ -173,8 +194,10 @@ export default function HowItWorks() {
             ADP with no strategy. A team that &quot;beats the market&quot; by our own numbers looks dominant.
           </li>
           <li>
-            <b>Absolute levels are optimistic</b> (e.g. ~6.3 of 9 categories, 90% matchup wins vs a league-average team, ~95%
-            playoffs). Use the tools for <b>relative</b> comparisons: candidate A vs B, add vs drop, which categories to chase.
+            <b>Absolute levels are optimistic</b> (e.g. ~6.3 of 9 categories, 90% matchup wins vs a league-average team,{" "}
+            {pct(OPTIMISM.optimistic.p_playoffs, 1)} playoffs in the status quo). The decomposition shows most of that comes from
+            ADP-drafting opponents and from grading with our own projections, which is why the outlook is shown as a range.
+            Use the tools for <b>relative</b> comparisons: candidate A vs B, add vs drop, which categories to chase.
           </li>
           <li>
             <b>Uncalibrated priors</b>: game-to-game variance, ADP spread, season-level error, injury-spell structure and
