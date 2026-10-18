@@ -14,6 +14,10 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
       170 `mock-` rows across 14 tables + lock `mock:yahoo:browser`; real rows untouched).
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set in Vercel (verified live 2026-10-18 15:03 UTC).
 - [x] `DASHBOARD_PASSPHRASE` set (writes enabled, verified 2026-10-18 15:10 UTC).
+- [ ] **Meta Muse access (optional)** — Vercel → fantasy-nba → Settings → Environment Variables: add `AGENT_API_TOKEN`
+      (Production) = a long random string (`openssl rand -hex 32`), then tell an agent "trigger a dashboard build" (env
+      vars only reach new builds; a plain Redeploy is skipped unless the last commit touched `web/`). Then give Muse,
+      privately, the URL https://fantasy.harrisonku.com/agent and the token (`docs/integrations/muse.md` has a ready prompt).
 - [ ] Unlock writes on each device you'll use (lock icon in the dashboard nav). Consider a longer passphrase
       (the dashboard is public; changing it needs a `web/` build — ask an agent).
 - [ ] **Confirm the dashboard is public**: open https://fantasy.harrisonku.com in a private tab.

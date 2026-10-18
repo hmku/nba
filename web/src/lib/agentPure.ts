@@ -84,6 +84,23 @@ export function resolvePlayer<T extends NamedPlayer>(query: string, pool: T[], c
   const base = pool.filter((p) => normName(p.name).replace(SUFFIX, "") === qb);
   if (base.length === 1) return { status: "ok", player: base[0] };
   if (base.length > 1) return { status: "ambiguous", candidates: base };
+  // Yahoo-style abbreviations: "V. Wembanyama", "S. Gilgeous-Alexander"
+  const ab = /^([a-z])\.?\s+(.+)$/i.exec(q);
+  if (ab) {
+    const ini = ab[1].toLowerCase();
+    const rest = normName(ab[2]).replace(SUFFIX, "");
+    const hits = pool.filter((p) => {
+      const parts = p.name.trim().split(/\s+/);
+      return normName(parts[0]).startsWith(ini) && normName(parts.slice(1).join(" ")).replace(SUFFIX, "") === rest;
+    });
+    if (hits.length === 1) return { status: "ok", player: hits[0] };
+    if (hits.length > 1) return { status: "ambiguous", candidates: hits };
+  }
+  // a unique substring of ≥ 5 chars (e.g. a distinctive last name) is unambiguous
+  if (qn.length >= 5) {
+    const sub = pool.filter((p) => normName(p.name).includes(qn));
+    if (sub.length === 1) return { status: "ok", player: sub[0] };
+  }
   const scored = pool
     .map((p) => ({ p, s: similarity(qn, normName(p.name)) }))
     .sort((a, b) => b.s - a.s || (a.p.rank ?? 1e9) - (b.p.rank ?? 1e9));

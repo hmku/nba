@@ -27,6 +27,7 @@ The public Supabase URL/publishable key are also hardcoded as fallbacks in `src/
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public (set in Vercel) | publishable key; RLS = read-only SELECT |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only**, user must add in Vercel | enables writes (manual picks, approvals) |
 | `DASHBOARD_PASSPHRASE` | **server-only**, user must add in Vercel | passphrase to unlock writes (httpOnly cookie, 30 days) |
+| `AGENT_API_TOKEN` | **server-only**, user must add in Vercel | bearer token for the external-agent API `/api/agent/*` (Meta Muse); unset → those routes return 503 |
 
 Without the two server-only vars the UI shows "Writes disabled (read-only)" and all write
 buttons are disabled; reads keep working. After adding them in Vercel, **redeploy** (env vars
@@ -110,6 +111,7 @@ pre-draft, my category strip from `my_outlook.category_profile`; rosters from `d
 draft, or the sim's draft post-draft; names from `drafts.config.team_names`), else the sim's rosters, else a pre-draft
 note with one simulated roster for me.
 
+- `/agent` (public, not in the nav): instructions for Meta Muse — see "External-agent API" below.
 - `/activity`: health strip (age of latest projections / values / draft sim / season sim, ⚠ if stale → History;
   stuck "running" runs with heartbeat >10m and expired locks shown in amber); with no runs, an explanatory empty
   state (runs, decisions vs model, approvals, transactions); pending approvals pinned at top (approve/reject with note → POST `/api/approvals`),
@@ -127,6 +129,34 @@ note with one simulated roster for me.
 - `POST /api/draft/pick {draft_id, overall_pick, player_id?, player_name, overwrite?}`;
   `DELETE /api/draft/pick?draft_id=&overall_pick=` (manual rows only).
 - `POST /api/approvals {approval_id, decision: approved|rejected, note?}` (only pending rows).
+
+## External-agent API (`/api/agent/*`, bearer token)
+For the user's outside assistant **Meta Muse** (reads the league's Messenger group chat). Instructions for Muse:
+public page **`/agent`** (source `web/src/content/muse.md`, copied verbatim to `docs/integrations/muse.md`; a test
+keeps them identical). Auth: `Authorization: Bearer $AGENT_API_TOKEN` (sha256 + `timingSafeEqual`; 401 + 400 ms delay on
+mismatch; 503 `{"error":"AGENT_API_TOKEN not configured"}` when unset). All responses JSON with `ok`. Reads use the
+anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src/lib/agentPure.ts` (pure, unit-tested by
+`npm test`), `src/lib/agentApi.ts` (server-only), `src/app/api/agent/**`.
+- `GET /api/agent` — public machine-readable endpoint list.
+- `GET /api/agent/state` — active **non-mock** draft (newest not complete; `mock-*`/`is_mock` never exposed): my slot,
+  on the clock (= highest recorded + 1, as on /draft), my upcoming/all picks (custom order honoured), last 12 picks,
+  gaps; latest rec top 5 + `stale` (same freshness rule as /draft, or all top picks taken); my roster; season outlook
+  (newest of post-draft `season` / pre-draft projection: P(playoffs), P(title), current week P(win)); pending approvals
+  count; last 10 agent events. `ok:false` (HTTP 200) with `errors` when some reads failed.
+- `GET /api/agent/players?q=&limit=&available=1` — terms match team/position exactly or name/id substring.
+- `POST /api/agent/pick {overall?, player, note?, allow_unknown?}` — records an observed pick, `source='external_agent'`.
+  Same player at same pick → 200 `unchanged`; pick or player already recorded → 409 (never overwrites); name resolution
+  mirrors `fantasy/draft/names.py` plus Yahoo "V. Wembanyama" and unique ≥5-char substrings; ambiguous/unknown → 422
+  with `candidates`; `allow_unknown` records `unknown:<slug>` like `fantasy draft pick --force`. Default `overall` = lowest
+  unrecorded pick. Also logs an `observation` (`payload.report_kind = "observed_pick"`) in the muse run.
+- `POST /api/agent/report {kind, message, details?, source?}` — kinds `draft_order|trade|rule|injury_news|schedule|
+  chat_note|other`; message trimmed to 2000 chars, details ≤ 8000 chars JSON. Upserts the day's run
+  `muse-YYYY-MM-DD` (US/Eastern; agent `muse`, mode `dry_run`, status `running`, heartbeat refreshed) and inserts an
+  `agent_events` row kind `observation`, `event_id muse-ev-<hex>`, payload `{report_kind, source, details, reported_by}`.
+- Rate limit: ≥ 60 muse events in the last hour (reports + observed picks, counted in the DB) → 429.
+- Activity shows a "League intel from Muse" list (kind badge + source badge) and badges on those events in the
+  timeline; the muse run is excluded from the "stuck running" warning (it only heartbeats on reports).
+- Revoke: change/delete `AGENT_API_TOKEN` in Vercel and trigger a build (push touching `web/`).
 
 ## Mock data
 UI demo rows are prefixed `mock-` (draft `mock-ui-demo`, runs `mock-ui-valuation` /

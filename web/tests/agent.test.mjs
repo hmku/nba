@@ -47,6 +47,10 @@ test("resolvePlayer: id, accents, suffix, fuzzy, ambiguity", () => {
   assert.equal(nf.status, "not_found");
   assert.equal(nf.candidates.length, 2);
   assert.equal(resolvePlayer("Totally Unknown", pool).status, "not_found");
+  assert.equal(resolvePlayer("V. Wembanyama", pool).player.player_id, "victor-wembanyama");
+  assert.equal(resolvePlayer("J. Jackson Jr.", pool).player.player_id, "jaren-jackson-jr");
+  assert.equal(resolvePlayer("J. Williams", pool).status, "ambiguous");
+  assert.equal(resolvePlayer("Wembanyama", pool).player.player_id, "victor-wembanyama");
 });
 
 test("searchPlayers matches name/team/position terms", () => {

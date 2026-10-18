@@ -92,7 +92,7 @@ export async function GET(req: Request) {
           : null,
         my_next_pick: nextMine,
         picks_until_my_turn: nextMine != null && b.on_the_clock != null ? nextMine - b.on_the_clock : null,
-        my_upcoming_picks: upcoming.map((o) => ({ overall: o, round: pickInfo(o, N, draft.order_type, custom, R).round })),
+        my_upcoming_picks: upcoming,
         my_all_picks: mine,
         gaps: b.gaps,
         gaps_note: b.gaps.length
