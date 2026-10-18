@@ -1,7 +1,10 @@
 """League settings and scoring categories.
 
-Defaults reflect the user's recollection of league 44495 and are marked unverified until
-confirmed from Yahoo (API or browser). Code must read settings from here, never hardcode.
+Defaults reflect league 44495 as shown on Yahoo's league settings page (screenshots sent by the
+user, 2026-10-18; recorded in data/manual/league_settings.json with source
+"yahoo_settings_screenshot"). Fields not shown there (draft order / third-round reversal, my
+draft slot) stay the user's recollection and are marked unverified. Code must read settings
+from here, never hardcode.
 """
 
 from __future__ import annotations
@@ -73,19 +76,47 @@ class LeagueSettings(BaseModel):
     categories: list[str] = Field(default_factory=lambda: list(NINE_CAT))
     roster_slots: dict[str, int] = Field(
         default_factory=lambda: {
-            "PG": 1, "SG": 1, "G": 1, "SF": 1, "PF": 1, "F": 1, "C": 2, "Util": 2, "BN": 3, "IL": 4,
+            "PG": 1, "SG": 1, "G": 1, "SF": 1, "PF": 1, "F": 1, "C": 2, "Util": 2, "BN": 3, "IL": 3,
         }
     )
-    draft_order_type: Literal["snake", "snake_3rr", "custom"] = "snake_3rr"
+    # draft
+    draft_type: str = "live_standard"  # Yahoo: Live Standard Draft
+    draft_order_type: Literal["snake", "snake_3rr", "custom"] = "snake_3rr"  # NOT on the settings page
     draft_datetime: str = "2026-10-19T22:00:00-04:00"
     seconds_per_pick: int = 60
     my_slot: int = 1
+    # transactions
     max_weekly_adds: int = 6
+    max_season_adds: int | None = None  # None = no maximum
+    max_trades: int | None = None  # None = no maximum
+    trade_end_date: str = "2027-03-04"
+    allow_draft_pick_trades: bool = False
+    trade_review: Literal["commissioner", "league_votes", "none"] = "commissioner"
+    trade_reject_days: int = 2
     waiver_days: int = 2
     waiver_type: str = "continual rolling list"
+    waiver_mode: str = "standard"
+    il_direct_add: bool = True  # injured FA/waiver players can be added straight into an IL slot
+    cant_cut_list: str = "yahoo_sports"
+    post_draft_players: str = "follow_waiver_rules"
+    # lineups / scoring period
+    weekly_deadline: Literal["daily_today", "daily_tomorrow", "weekly"] = "daily_today"
+    start_scoring_week: int = 1
+    lock_benched_players: bool = False
+    # playoffs
     playoff_teams: int = 6
     playoff_weeks: list[int] = Field(default_factory=lambda: [18, 19, 20])
+    playoff_end_date: str = "2027-03-21"  # Sunday ending the last playoff week (Yahoo settings page)
+    playoff_reseed: bool = True  # re-seed after each round: top remaining seed plays the lowest
+    playoff_tiebreak: Literal["higher_seed"] = "higher_seed"  # tied playoff matchup -> higher seed advances
+    lock_eliminated_teams: bool = True
+    divisions: bool = False
+    # league meta
+    cash_league: bool = False
+    auto_renew: bool = True
+    publicly_viewable: bool = False
     source: str = "user_recollection"
+    verified_at: str | None = None  # date the verified fields were last confirmed
     # field name -> True once confirmed against Yahoo
     verified: dict[str, bool] = Field(default_factory=dict)
 
@@ -108,7 +139,8 @@ class LeagueSettings(BaseModel):
         return [CATEGORIES[k] for k in self.categories]
 
     def unverified_fields(self) -> list[str]:
-        keys = ["num_teams", "scoring_type", "categories", "roster_slots", "draft_order_type", "my_slot"]
+        keys = ["num_teams", "scoring_type", "categories", "roster_slots", "draft_order_type", "my_slot",
+                "playoff_weeks", "playoff_end_date"]
         return [k for k in keys if not self.verified.get(k)]
 
 

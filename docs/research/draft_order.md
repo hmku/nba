@@ -54,9 +54,10 @@ later round) ([Yahoo help SLN6347](https://help.yahoo.com/kb/SLN6347.html),
 * Default basketball league: H2H 9-cat (FG%, FT%, 3PTM, PTS, REB, AST, ST, BLK, TO); roster PG, SG, G,
   SF, PF, F, C, C, Util, Util + 3 BN + IL slots (Yahoo help "Default league settings in Fantasy
   Basketball", [SLN6919](https://help.yahoo.com/kb/SLN6919.html), lists 3 IL; an AOL/Yahoo 101 guide
-  lists 2). Our league reportedly has **4 IL** (commissioner-customized). Yahoo NBA also offers `IL+`
-  slots; eligibility: IL = status INJ/O (and on some settings GTD/DTD), IL+ adds DTD/GTD/O
-  **(unverified — check league settings page)**.
+  lists 2). Our league has **3 IL** and no IL+ (verified from the Yahoo settings page screenshot,
+  2026-10-18; the earlier recollection of 4 IL was wrong). IL slots are not drafted, so the draft is
+  still 13 rounds. Eligibility: IL = status INJ/O (and on some settings GTD/DTD); injured free agents
+  can be added directly into an IL slot in this league.
 * Live draft pick clock default 60 s (league confirmed 60 s).
 * **Timeout behaviour**: if a manager doesn't pick within the time limit (or leaves/misses the draft),
   **Autopick** picks for them: highest-ranked available player by the manager's **Pre-Draft Rankings**

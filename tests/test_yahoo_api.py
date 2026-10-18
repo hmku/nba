@@ -57,7 +57,7 @@ def test_settings_from_yahoo_maps_league_44495():
         "C": 2,
         "Util": 2,
         "BN": 3,
-        "IL": 4,
+        "IL": 3,
     }
     assert s["draft_type"] == "live"
     assert s["is_auction_draft"] is False
