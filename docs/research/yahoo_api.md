@@ -11,20 +11,56 @@ from: the source code of the maintained client libraries (downloaded from PyPI: 
 `spilchen/yahoo_fantasy_api` tests, search-engine snippets of the Yahoo docs/help pages, and prior
 knowledge. Items marked **(unverified)** need a live check on the user's machine.
 
+## 0. Access policy changed in 2025-2026: self-serve app creation no longer works (updated 2026-10-18)
+
+The old "create an app at developer.yahoo.com/apps/create, tick Fantasy Sports" flow (still in the yfpy
+README and most blog posts) is **obsolete**:
+
+* **Oct 2025**: new apps can only pick Fantasy Sports **Read**, not Read/Write ([yfpy #79](https://github.com/uberfastman/yfpy/issues/79)).
+* **Jun 2026**: a commenter on #79 reports the `oob` redirect is also gone for new apps (legacy apps still worked). Unconfirmed by Yahoo, so for a new app assume `oob` fails.
+* **Jul 2026**: Yahoo started returning `403 "This application is not authorized to perform this action"` on **every**
+  fantasy endpoint for unapproved and legacy apps. Token issue and refresh still succeed, so the failure shows up only on API calls.
+  The create-app form **no longer offers a Fantasy Sports permission**. Yahoo's guide now redirects to an
+  application program ([yfpy #84](https://github.com/uberfastman/yfpy/issues/84), [#85](https://github.com/uberfastman/yfpy/issues/85)).
+* Application form: https://sports.yahoo.com/developer/access/ (read 2026-10-18). It says: *"The Yahoo
+  Fantasy Sports API currently provides read access only. Write access is not available at this time."*
+  Each application is reviewed by hand, and vague ones are closed without a reply. You must describe the product, the data
+  you need and the user base, **"including where access is limited to personal or single league use"**, so
+  personal use is an accepted category. Fields include Expected Users (pick Small, < 1,000) and an optional Client ID
+  ("New users without a YDN account can leave this blank, access will be provisioned after approval").
+* What applicants reported in #84: about 1–8 weeks from applying to working access (one person applied Jul 31 and was working Sep 26). Steps were:
+  approval email → DocuSign "API Access and Use Agreement" → a "Developer Application Confirmation Form"
+  asking for Client ID + App ID. **Apps created before Fantasy access was enabled on the account could not
+  be fixed.** Applicants had to create a **new** app after enablement and submit its Client ID. The "access is live" emails
+  sometimes arrived before calls worked, so check with a real call (e.g. `game/nba`). A personal single-league
+  applicant was approved through the same process; there is no separate hobbyist track.
+* Consequences for us: **no write ops via the API at all** (lineups/adds/drops/trades must go through the
+  browser: see the `yahoo-browser` skill). API access cannot be counted on for the 2026-10-19 draft.
+
+**Steps for the user now:** (1) Apply at sports.yahoo.com/developer/access with your Yahoo account. Product:
+"personal analysis tool for my own single league (44495), read-only". Data: league settings, rosters,
+players, stats, transactions, matchups. Users: Small / 1. Leave Client ID blank unless you already have a YDN app. (2) Wait
+for approval, sign the DocuSign agreement, and only **then** create a new app at developer.yahoo.com/apps/create
+(Confidential/"Web Application" type, Redirect URI `https://localhost:8080`, Fantasy Sports Read if offered).
+Submit its Client ID on the confirmation form. (3) Run
+`python -m fantasy.league.yahoo_auth --redirect-uri https://localhost:8080` and paste the full
+dead-page URL. The helper takes `code=` from it. (4) If every call still returns 403, the backend has not caught up yet. Wait, or reply
+to the approval email.
+
 ## 1. Auth: OAuth 2.0 (authorization-code + refresh token)
 
 | Item | Value |
 |---|---|
-| App registration | https://developer.yahoo.com/apps/create/ (signed in as the league member) |
-| Application type | **Installed Application** (confidential "Web Application" also works) |
-| Redirect URI field | required, must be **https**; register `https://localhost:8080` (yfpy README) |
-| Permissions | **Fantasy Sports → Read** (choose **Read/Write** only if write ops are ever enabled; changing it later requires re-auth) |
+| App registration | Apply first at https://sports.yahoo.com/developer/access/ (§0). After approval, create a new app at https://developer.yahoo.com/apps/create/ (signed in as the league member) |
+| Application type | Confidential client ("Web Application"), which is what working 2026 reports used. "Installed Application" was the old default |
+| Redirect URI field | required, must be **https**; register `https://localhost:8080` and **pass `--redirect-uri https://localhost:8080`** to our helper (its default is still `oob`) |
+| Permissions | **Fantasy Sports → Read** (Read/Write is no longer granted; see §0) |
 | Authorize URL | `https://api.login.yahoo.com/oauth2/request_auth?client_id=…&redirect_uri=oob&response_type=code&language=en-us` |
 | Token URL | `POST https://api.login.yahoo.com/oauth2/get_token`, HTTP Basic `client_id:client_secret`, form `grant_type=authorization_code&code=…&redirect_uri=oob` |
 | Refresh | same URL, `grant_type=refresh_token&refresh_token=…&redirect_uri=oob` |
 | Access token lifetime | `expires_in: 3600` (1 h) |
 | Refresh token | long-lived (no documented expiry; invalidated if the user revokes the app or changes password). Yahoo may return a new one on refresh — persist it. |
-| `oob` | Still used as the redirect by `yahoo_oauth` 2.1.1 (Dec 2024) and yfpy 17 (Sep 2025): Yahoo then displays the code on a page. If `oob` is ever rejected, use `https://localhost:8080` and copy `code=` from the (dead) redirected URL — our helper accepts the full URL. |
+| `oob` | Used by `yahoo_oauth` 2.1.1 (Dec 2024) and yfpy 17 (Sep 2025), and still works for legacy apps. It is reportedly removed for new apps (Jun 2026, yfpy #79). For a new app, use `https://localhost:8080` and copy `code=` from the (dead) redirected URL. Our helper accepts the full URL. The `redirect_uri` in the token/refresh calls must match the one used to authorize. |
 
 Our implementation: `fantasy settings yahoo-auth` (lead wires `fantasy.league.yahoo_auth.cli_command`;
 also `python -m fantasy.league.yahoo_auth`) → `~/.config/fantasy/yahoo_oauth.json` (0600). Env vars
