@@ -1,7 +1,7 @@
 import { anonClient } from "@/lib/supabase";
 import { activeDraft, fail, reply, requireAgent } from "@/lib/agentApi";
 import { boardInfo, recIsFresh } from "@/lib/agentPure";
-import { customRoundsOf, pickInfo, picksForSlot } from "@/lib/draftOrder";
+import { customRoundsOf, pickInfoForDraft, picksForDraft } from "@/lib/draftOrder";
 import { currentWeek, latestSimRuns, parseSeasonSim, pickPreseasonRun, pickSeasonRun, todayET } from "@/lib/sim";
 import { asStringArray } from "@/lib/format";
 import type { AgentEvent, AgentRun, DraftPick, DraftRecommendation, Player } from "@/lib/types";
@@ -41,16 +41,15 @@ export async function GET(req: Request) {
       const N = draft.num_teams;
       const R = draft.num_rounds;
       const total = N * R;
-      const custom = customRoundsOf(draft.config, N, R);
       const teamNames = (draft.config?.team_names ?? {}) as Record<string, string>;
       const tn = (slot: number) => teamNames[String(slot)] ?? `Team ${slot}`;
       const b = boardInfo(
         picks.map((p) => p.overall_pick),
         total,
       );
-      const cur = b.on_the_clock != null ? pickInfo(b.on_the_clock, N, draft.order_type, custom, R) : null;
+      const cur = b.on_the_clock != null ? pickInfoForDraft(draft, b.on_the_clock) : null;
       const recorded = new Set(picks.map((p) => p.overall_pick));
-      const mine = picksForSlot(draft.my_slot, N, R, draft.order_type, custom);
+      const mine = picksForDraft(draft, draft.my_slot);
       const upcoming = mine.filter((o) => !recorded.has(o) && (b.on_the_clock == null || o >= b.on_the_clock));
       const nextMine = upcoming[0] ?? null;
 
@@ -81,7 +80,7 @@ export async function GET(req: Request) {
         num_teams: N,
         num_rounds: R,
         order_type: draft.order_type,
-        custom_order: custom != null,
+        custom_order: customRoundsOf(draft.config, N, R) != null,
         my_slot: draft.my_slot,
         my_team_name: tn(draft.my_slot),
         picks_made: b.picks_made,

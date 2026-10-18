@@ -12,7 +12,7 @@ import {
   writer,
 } from "@/lib/agentApi";
 import { REPORTS_PER_HOUR, defaultOverall, resolvePlayer, slugify, validatePick } from "@/lib/agentPure";
-import { customRoundsOf, pickInfo } from "@/lib/draftOrder";
+import { pickInfoForDraft } from "@/lib/draftOrder";
 import { syncDraftStatus } from "@/lib/draftStatus";
 import type { DraftPick } from "@/lib/types";
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
   const dup = picks.find((p) => p.player_id === playerId);
   if (dup) return fail(`Conflict: ${playerName} is already recorded at pick ${dup.overall_pick}`, 409, { existing: dup });
 
-  const info = pickInfo(overall, draft.num_teams, draft.order_type, customRoundsOf(draft.config, draft.num_teams, draft.num_rounds), draft.num_rounds);
+  const info = pickInfoForDraft(draft, overall);
   const now = new Date().toISOString();
   const row = {
     draft_id: draft.draft_id,

@@ -19,7 +19,7 @@ from fantasy.db.schema import (
     player_values,
     players,
 )
-from fantasy.draft.order import pick_info
+from fantasy.draft.order import draft_order, pick_info
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.valuation import ValuationRun, git_sha
 from fantasy.ops.common import json_safe as _clean
@@ -34,6 +34,15 @@ def _nan_none(x: Any) -> Any:
 
 
 # ---------------------------------------------------------------- drafts
+def with_order(config: dict | None, num_teams: int, num_rounds: int, order_type: str) -> dict:
+    """`config` plus `order_slots`: the team slot of every overall pick (index = overall - 1), computed by
+    fantasy.draft.order so the dashboard reads the order instead of re-deriving it (TS mirror = fallback)."""
+    cfg = dict(config or {})
+    order = draft_order(num_teams, num_rounds, order_type, cfg.get("custom_rounds"))
+    cfg["order_slots"] = [p.slot for p in order]
+    return cfg
+
+
 def create_draft(
     draft_id: str, settings: LeagueSettings, is_mock: bool = False, my_slot: int | None = None,
     config: dict | None = None, engine: Engine | None = None,
@@ -47,7 +56,7 @@ def create_draft(
         "num_rounds": settings.num_rounds,
         "my_slot": my_slot or settings.my_slot,
         "order_type": settings.draft_order_type,
-        "config": config or {},
+        "config": with_order(config, settings.num_teams, settings.num_rounds, settings.draft_order_type),
         "is_mock": is_mock,
         "created_at": _now(),
         "updated_at": _now(),
@@ -55,7 +64,11 @@ def create_draft(
     with eng.begin() as conn:
         existing = conn.execute(select(drafts).where(drafts.c.draft_id == draft_id)).mappings().first()
         if existing:
-            return dict(existing)
+            out = dict(existing)
+            if "order_slots" not in (out["config"] or {}):  # backfill rows created before order_slots existed
+                out["config"] = with_order(out["config"], out["num_teams"], out["num_rounds"], out["order_type"])
+                conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(config=out["config"]))
+            return out
         conn.execute(insert(drafts).values(**row))
     return row
 
@@ -78,7 +91,8 @@ def set_draft_order(draft_id: str, custom_rounds: list[list[int]], engine: Engin
         row = conn.execute(select(drafts).where(drafts.c.draft_id == draft_id)).mappings().first()
         if row is None:
             raise KeyError(draft_id)
-        config = {**(row["config"] or {}), "custom_rounds": custom_rounds}
+        config = with_order({**(row["config"] or {}), "custom_rounds": custom_rounds},
+                            row["num_teams"], row["num_rounds"], "custom")
         conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(
             order_type="custom", config=config, updated_at=_now()))
 

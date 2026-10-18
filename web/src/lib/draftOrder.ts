@@ -1,4 +1,5 @@
-/** Draft order helpers (mirror of src/fantasy/draft/order.py).
+/** Draft order helpers (mirror of src/fantasy/draft/order.py). Prefer orderForDraft(): it reads the order
+ *  Python stored with the draft (config.order_slots) and only falls back to this mirror.
  *  snake:      R1 1→N, R2 N→1, R3 1→N, ...
  *  snake_3rr:  R1 1→N, R2 N→1, R3 N→1, R4 1→N, R5 N→1, ...
  *  custom:     drafts.config.custom_rounds = [[slot order of round 1], [round 2], ...]
@@ -66,6 +67,49 @@ export function pickInfo(overall: number, numTeams: number, orderType: string, c
 
 export function picksForSlot(slot: number, numTeams: number, numRounds: number, orderType: string, custom?: CustomRounds) {
   return draftOrder(numTeams, numRounds, orderType, custom)
+    .filter((p) => p.slot === slot)
+    .map((p) => p.overall);
+}
+
+/** The Python-computed order stored with the draft (`drafts.config.order_slots`: team slot of every
+ *  overall pick, written by `fantasy draft init|set-order`), validated (N×R entries, each round a
+ *  permutation of 1..N); null when absent/invalid. */
+export function storedOrderOf(config: unknown, numTeams: number, numRounds: number): number[] | null {
+  const os = (config as { order_slots?: unknown } | null)?.order_slots;
+  if (!Array.isArray(os) || os.length !== numTeams * numRounds) return null;
+  const slots = os.map(Number);
+  for (let r = 0; r < numRounds; r++) {
+    const sorted = slots.slice(r * numTeams, (r + 1) * numTeams).sort((a, b) => a - b);
+    if (sorted.some((v, i) => v !== i + 1)) return null;
+  }
+  return slots;
+}
+
+export interface DraftOrderSource {
+  num_teams: number;
+  num_rounds: number;
+  order_type: string;
+  config: unknown;
+}
+
+/** Pick order for a drafts row: the stored Python order when present, else the TS mirror (fallback). */
+export function orderForDraft(d: DraftOrderSource): PickSlot[] {
+  const N = d.num_teams;
+  const stored = storedOrderOf(d.config, N, d.num_rounds);
+  if (stored)
+    return stored.map((slot, i) => ({ overall: i + 1, round: Math.floor(i / N) + 1, slot, pickInRound: (i % N) + 1 }));
+  return draftOrder(N, d.num_rounds, d.order_type, customRoundsOf(d.config, N, d.num_rounds));
+}
+
+export function pickInfoForDraft(d: DraftOrderSource, overall: number): PickSlot {
+  return (
+    orderForDraft(d)[overall - 1] ??
+    pickInfo(overall, d.num_teams, d.order_type, customRoundsOf(d.config, d.num_teams, d.num_rounds), d.num_rounds)
+  );
+}
+
+export function picksForDraft(d: DraftOrderSource, slot: number): number[] {
+  return orderForDraft(d)
     .filter((p) => p.slot === slot)
     .map((p) => p.overall);
 }

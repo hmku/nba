@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { anonClient } from "@/lib/supabase";
 import { loadDraftLive, loadDrafts, loadValues, latestRun, slimValues, type DraftLive, type ValuesBundle } from "@/lib/data";
 import type { Draft, DraftPick, RecItem, RecPayload, AgentEvent } from "@/lib/types";
-import { customRoundsOf, draftOrder, pickInfo, picksForSlot } from "@/lib/draftOrder";
+import { customRoundsOf, orderForDraft, pickInfoForDraft, picksForDraft } from "@/lib/draftOrder";
 import { CATS, CAT_LABEL, heatStyle } from "@/lib/categories";
 import { fmt, pct, signed, asStringArray } from "@/lib/format";
 import { matchesPos, normName, toRows, type PlayerRow } from "@/lib/players";
@@ -222,7 +222,6 @@ function DraftView({
   const N = draft.num_teams;
   const R = draft.num_rounds;
   const total = N * R;
-  const orderType = draft.order_type;
   const picks = useMemo(() => live?.picks ?? [], [live]);
   const pickMap = useMemo(() => new Map(picks.map((p) => [p.overall_pick, p])), [picks]);
   const teamNames = (draft.config?.team_names ?? {}) as Record<string, string>;
@@ -234,9 +233,8 @@ function DraftView({
   const gaps: number[] = [];
   for (let i = 1; i < maxPick; i++) if (!pickMap.has(i)) gaps.push(i);
   const complete = currentPick > total;
-  const custom = customRoundsOf(draft.config, N, R);
-  const cur = complete ? null : pickInfo(currentPick, N, orderType, custom, R);
-  const myAll = picksForSlot(draft.my_slot, N, R, orderType, custom);
+  const cur = complete ? null : pickInfoForDraft(draft, currentPick);
+  const myAll = picksForDraft(draft, draft.my_slot);
   const myUpcoming = myAll.filter((p) => p >= currentPick);
   const nextMine = myUpcoming[0] ?? null;
   const picksUntil = nextMine != null ? nextMine - currentPick : null;
@@ -788,7 +786,7 @@ function ManualPickSheet({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const effectiveOverall = overall === "" ? currentPick : Number(overall);
-  const info = effectiveOverall ? pickInfo(effectiveOverall, draft.num_teams, draft.order_type, customRoundsOf(draft.config, draft.num_teams, draft.num_rounds), draft.num_rounds) : null;
+  const info = effectiveOverall ? pickInfoForDraft(draft, effectiveOverall) : null;
   const canWrite = ws.writesEnabled && ws.authed;
 
   useEffect(() => {
@@ -1254,7 +1252,7 @@ function DraftBoard({
   const slots = Array.from({ length: N }, (_, i) => i + 1);
   const rounds = Array.from({ length: draft.num_rounds }, (_, i) => i + 1);
   const custom = customRoundsOf(draft.config, N, draft.num_rounds);
-  const order = draftOrder(N, draft.num_rounds, draft.order_type, custom);
+  const order = orderForDraft(draft);
   return (
     <div className="scroll-thin overflow-x-auto border-t border-line">
       <table className="w-full border-collapse text-xs">

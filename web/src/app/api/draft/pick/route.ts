@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWriter } from "@/lib/guard";
-import { customRoundsOf, pickInfo } from "@/lib/draftOrder";
+import { pickInfoForDraft } from "@/lib/draftOrder";
 import { syncDraftStatus } from "@/lib/draftStatus";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +42,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { round, slot } = pickInfo(
-    overall,
-    draft.num_teams,
-    draft.order_type,
-    customRoundsOf(draft.config, draft.num_teams, draft.num_rounds),
-    draft.num_rounds,
-  );
+  const { round, slot } = pickInfoForDraft(draft, overall);
   const row = {
     draft_id: draftId,
     overall_pick: overall,
