@@ -18,7 +18,6 @@ jobs:
 
   web:
     runs-on: ubuntu-latest
-    if: hashFiles('web/package.json') != ''
     defaults:
       run:
         working-directory: web
