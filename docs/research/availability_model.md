@@ -2,8 +2,8 @@
 
 Code: `src/fantasy/model/availability.py` (fitted constants), `projections.py` (`Params.gp_model`,
 `manual_gp_scale`, `playoff_mult` column), `lines.py` (`availability()`), `valuation.py`
-(`ValuationParams.gp_risk_lambda`, `playoff_weight`). Versions: projections `baseline-0.2.0`
-(meta `gp_model.version = gp-ols-0.1`), valuation `valuation-0.2.0`.
+(`ValuationParams.gp_risk_lambda`, `playoff_weight`). Versions: projections `baseline-0.2.1`
+(meta `gp_model.version = gp-ols-0.1`, `playoff_mult.version = playoff-mult-0.2`), valuation `valuation-0.2.1`.
 Experiment scripts (not committed; session scratchpad `gp/`): `build_panel.py`, `fit.py`,
 `final_fit.py`, `late_season.py`, `compare.py`, `sim.py`.
 
@@ -107,7 +107,8 @@ Why the default is 0:
   and that is what the fitted model provides (the old rule was 8 games optimistic, a much larger
   error than any risk premium).
 - Variance mostly diversifies: injuries to the 13 rostered players are close to independent, and
-  4 IL slots plus 6 adds per week let you replace an injured player's games.
+  3 IL slots (verified 2026-10-18; injured free agents can go straight into an IL slot) plus 6 adds
+  per week let you replace an injured player's games.
 - The non-diversifiable risk that matters for winning the title is a star missing the 2-3 playoff
   weeks. `playoff_weight` prices that directly, using a fitted multiplier. Adding λ on top would
   double count.
@@ -117,43 +118,55 @@ Why the default is 0:
   Use it as a manual risk-aversion knob: `fantasy values build --gp-risk-lambda 0.25`.
 
 ## 3. Playoff weeks (`playoff_weight`, default 0.30) and the fitted `playoff_mult`
-`playoff_mult` (in the projections file) = expected availability in Yahoo weeks 18-20 divided by
-season-average availability. It was fitted on 2010-11..2023-24 box scores (NocturneBear/NBA-Data-2010-2024
-on GitHub, which includes DNP rows), using 82-game seasons and single-team players with ≥1000 minutes
-the season before (n = 2,391). The window is the 3 weeks that end 7 days before the last
-regular-season game (about Mar 15 – Apr 4 for an Apr 11 finish).
+`playoff_mult` (in the projections file) = expected availability in the league's fantasy playoff weeks
+divided by season-average availability. **League 44495's playoffs are weeks 18-20 ending Sun
+2027-03-21** (Yahoo settings page, verified 2026-10-18), i.e. Mar 1-21, ending **21 days before** the
+NBA regular season ends (Apr 11, 2027). Fit (`playoff-mult-0.2`): 2010-11..2023-24 box scores
+(NocturneBear/NBA-Data-2010-2024 on GitHub, includes DNP rows), 82-game seasons, single-team players
+with ≥1000 minutes the season before (n = 2,339 player-seasons, 11 seasons). Window per season = the
+21 days ending 21 days before that season's last regular-season day (≈ Mar 1-21 for an Apr 11
+finish). Multiplicative OLS `p_window = p_season·(c + b_tank·(0.5 - team_prev_wpct) + b_inj·max(0, 60 - g1)/10)`,
+season-cluster bootstrap SEs (2,000 resamples). Script: scratchpad `settings/playoff_refit.py`
+(reproduces the old fit exactly when the window offset is set back to 7 days).
 
-| group | season avail | window avail | ratio |
-|---|---|---|---|
-| all | 0.779 | 0.737 | 0.946 ± 0.007 |
-| team prior-season win% ≤ .35 | 0.757 | 0.697 | 0.921 ± 0.018 |
-| team prior-season win% > .65 | 0.796 | 0.767 | 0.964 ± 0.014 |
-| prior season ≤ 50 games | 0.693 | 0.597 | 0.862 ± 0.042 |
-| prior season > 75 games | 0.824 | 0.782 | 0.949 ± 0.009 |
-| age 31-33 / 34+ | 0.716 / 0.747 | 0.690 / 0.705 | 0.965 / 0.944 (± 0.025) |
+| window (offset before season end) | ratio window/season | const | tank | injury |
+|---|---|---|---|---|
+| 7 days (old, ≈ Mar 15 - Apr 4; `playoff-mult-0.1`) | 0.946 ± 0.007 | 0.958 ± 0.007 | -0.077 ± 0.045 | -0.035 ± 0.015 |
+| 14 days | 0.962 ± 0.006 | 0.971 ± 0.007 | -0.030 ± 0.034 | +0.005 ± 0.016 |
+| **21 days (league window, ≈ Mar 1-21)** | **0.974 ± 0.006** | 0.982 ± 0.006 | -0.023 ± 0.034 | +0.018 ± 0.014 |
+| 28 days | 0.989 ± 0.006 | 0.996 ± 0.004 | -0.013 ± 0.029 | +0.016 ± 0.016 |
 
-(The final week of the NBA season is worse still, at 0.664 overall and 0.467 for teams that finish
-≤ .35, but it falls outside the fantasy playoffs.)
+On the league window: prior-season win% ≤ .35 → ratio 0.962, > .65 → 0.972; prior season ≤ 50 games →
+0.994 (n = 104). The injury-history term has an unstable sign across eras (2011-17: -0.005, 2018-24:
++0.035) and is dropped; the tank term is not significant but keeps its plausible sign (2011-17 -0.027,
+2018-24 -0.012). **Chosen:** `mult = 0.984 (± 0.005) - 0.019 (± 0.034)·(0.5 - team_prev_wpct)` → 0.978-0.989
+for every player (was 0.75-0.98). The late-season effect the old fit found (tanking teams and
+injury-prone players sitting) lives mostly in the last 3 weeks before the season ends, which are
+*after* this league's fantasy season (NBA games Mar 22 - Apr 11 do not count at all).
 
-Regression (multiplicative, with bootstrap SEs clustered by season):
-`mult = 0.958 - 0.077·(0.5 - team_prev_wpct) - 0.035·max(0, 60 - g1)/10`
-(tank -0.077 ± 0.042, injury -0.035 ± 0.015). The age term was +0.003 ± 0.013 and was dropped.
-The age-≥32 prior suggested in the task is **not supported**: older players miss more games in
-total, but no more in the playoff window than in the rest of the season. Minutes ≥ 34 gave
--0.011 ± 0.010 per 4 min, not significant, and was dropped. The tank effect is larger in 2018-24
-(-0.165) than in 2011-17 (-0.024). Tank proxy: the player's 2026-27 team's 2025-26 record
-(`TEAM_RECORD_2025_26`). This proxy is noisy. Indiana, for example, went 19-63 without Haliburton.
+Effect on values (`fantasy values build`, defaults): rank Spearman vs before 0.99993; 30 of the top 60
+move, by at most 8 places: Walker Kessler 45→37, Anthony Davis 51→46, Tyler Herro 62→57 (enters the
+top 60), Derik Queen 61→59; Brandon Miller 56→60, Durant 39→42, Pritchard 40→43, Avdija 59→62 and
+VanVleet 60→63 (leave the top 60). The top 15 is unchanged.
 
 The weight is a **prior, not fitted**:
 `a_eff = a·((1-w)·r + w·m)`, with `r = (1 - s·m)/(1 - s)` and `s = 3/20` (the calendar share of
 playoff weeks). `w = s = 0.15` reproduces the plain season average. The default `w = 0.30` counts a
 playoff week twice as much as a regular-season week, because for a strong team the playoffs decide
-the title. This changes availability by -3.5% (multiplier 0.80, e.g. AD) to -0.5% (contender,
-healthy). Players with the biggest moves: AD 46→51, Kevin Durant 42→39, Brandon Miller 60→56.
-`--playoff-weight 0.5` is the stronger, title-focused setting.
+the title. With `playoff-mult-0.1` this changed availability by -3.5% (multiplier 0.80, e.g. AD) to
+-0.5% (contender, healthy); with the refit multipliers (0.978-0.989) the tilt is -0.3% to -0.2% for
+everyone, i.e. `playoff_weight` now barely matters. `--playoff-weight 0.5` is the stronger,
+title-focused setting. (`s = 3/20` counts matchups; by days the playoffs are 21 of the 153 fantasy-season
+days, 0.137 — the difference is immaterial at these multipliers.)
 
 ## 4. Open issues
-- `stream_recovery = 0.5` is still unfitted. With 4 IL slots and 6 adds per week it may be too low.
-  Raising it would reduce the penalty for every missed game, including the gp-model change.
-- Playoff week dates are approximate (Yahoo's schedule was not verified).
-- Rookies have no history, so they get `playoff_mult` without the injury term and a manual gp × 0.90.
+- `stream_recovery = 0.5` is still unfitted. It should reflect the verified roster rules: **3 IL slots**
+  (not 4 as previously assumed; no IL+), injured free agents/waiver players can be added directly into
+  an IL slot, 6 adds per week, no season cap, daily lineups (effective today). One fewer IL slot means a
+  team with 4+ simultaneously injured players must use a bench spot (or drop), so recovery is slightly
+  lower than the 4-IL reasoning suggested; 6 weekly adds with daily lineups still argue it may be above
+  0.5. The default is left at 0.5 until it is fitted (in-season transaction logs / the season simulator's
+  streaming model).
+- Playoff weeks are verified (18-20, ending Sun 2027-03-21 → Mar 1-21); the dates of the other weeks
+  are derived (see `docs/research/season_simulator.md`).
+- Rookies have no history; with `playoff-mult-0.2` the injury term is 0 for everyone anyway. Rookie gp is a manual prior × 0.90.

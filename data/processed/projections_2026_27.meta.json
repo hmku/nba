@@ -1,5 +1,5 @@
 {
-  "model_version": "baseline-0.2.0",
+  "model_version": "baseline-0.2.1",
   "gp_model": {
     "version": "gp-ols-0.1",
     "data": "sumitrodatta bbref mirror (Player Totals, Team Summaries), full history",
@@ -7,10 +7,19 @@
     "n": 4366,
     "oos": "fit T<=2024: RMSE 2025 21.00->19.06 (gain 1.94 +- 0.31), 2026 21.87->20.05 (1.82 +- 0.32)"
   },
+  "playoff_mult": {
+    "version": "playoff-mult-0.2",
+    "window": "3 weeks ending 21 days before the NBA regular season's last day",
+    "data": "NocturneBear/NBA-Data-2010-2024 box scores, 82-game seasons 2011-2024, single-team players, prior mp>=1000",
+    "n": 2339,
+    "full_model": "const 0.982 +- 0.006, tank -0.023 +- 0.034, injury +0.018 +- 0.014 (season-cluster bootstrap)",
+    "chosen": "const+tank: const 0.984 +- 0.005, tank -0.019 +- 0.034; injury dropped",
+    "previous": "playoff-mult-0.1 (window ending 7 days before season end): 0.958, tank -0.077 +- 0.045, injury -0.035 +- 0.015"
+  },
   "season": "2026-27",
   "output": "data/processed/projections_2026_27.csv",
   "rows": 456,
-  "sha256": "d8e1f390bec58e1c449569ceada0076c7fbdf3d04ec48e34c453265427a6aa6d",
+  "sha256": "25ef6ca42a101c0bb348b3ada237ac5e33278c7fb57cf362598e7b81aa1dbb8b",
   "sources": [
     "bbref_baseline",
     "bbref_baseline+manual",

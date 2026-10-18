@@ -66,7 +66,7 @@ def test_playoff_mult():
     contender = A.playoff_mult("OKC", 75)
     tanker = A.playoff_mult("WAS", 75)
     assert tanker < contender <= 1.0
-    assert A.playoff_mult("OKC", 30) < contender  # injury history
+    assert A.playoff_mult("OKC", 30) <= contender  # injury history (term is 0 in playoff-mult-0.2)
     assert A.playoff_mult("OKC", None) == pytest.approx(contender)  # no history: no injury term
     assert A.playoff_mult("BKN", 75) == A.playoff_mult("BRK", 75)
     assert A.playoff_mult("???", 75) == pytest.approx(A.PLAYOFF_COEF["const"])

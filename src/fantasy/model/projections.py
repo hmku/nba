@@ -35,13 +35,16 @@ from fantasy.data.provenance import MANUAL_DIR, PROCESSED_DIR, RAW_DIR, read_pro
 from fantasy.model.availability import (
     GP_FIT,
     GP_MODEL_VERSION,
+    PLAYOFF_FIT,
+    PLAYOFF_MODEL_VERSION,
     gp_sd_from_model,
     playoff_mult,
     predict_gp,
 )
 
 # 0.2.0: fitted games-played model + calibrated gp_sd + playoff_mult column
-MODEL_VERSION = "baseline-0.2.0"
+# 0.2.1: playoff_mult refit on the league's real playoff window (Mar 1-21; playoff-mult-0.2)
+MODEL_VERSION = "baseline-0.2.1"
 SEASON = "2026-27"
 OUTPUT_PATH = PROCESSED_DIR / "projections_2026_27.csv"
 
@@ -549,6 +552,7 @@ def write(path: Path = OUTPUT_PATH, params: Params | None = None) -> dict:
     meta = {
         "model_version": MODEL_VERSION,
         "gp_model": {"version": GP_MODEL_VERSION, **GP_FIT} if params.gp_model == "fitted" else "shrink",
+        "playoff_mult": {"version": PLAYOFF_MODEL_VERSION, **PLAYOFF_FIT},
         "season": SEASON,
         "output": str(path.relative_to(PROCESSED_DIR.parents[1])),
         "rows": len(df),

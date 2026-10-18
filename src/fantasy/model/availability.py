@@ -17,13 +17,21 @@ docs/research/availability_model.md); the constants below are the fitted values.
 2. gp_sd: residual sd of that model by predicted-gp level (linear interpolation between bucket
    means). Age and history volatility add nothing once the level is known (sd ratios 0.96-1.02).
    The residual distribution is left-skewed (median +5, 10th percentile about -25 to -35).
-3. Playoff-week multiplier (Yahoo weeks 18-20, the 3 weeks ending a week before the NBA regular
-   season ends): share of team games played in that window relative to the whole season, fitted on
-   2010-11..2023-24 box scores (82-game seasons, single-team players, prior season >= 1000 min):
+3. Playoff-week multiplier (league 44495: Yahoo weeks 18-20 = Mar 1-21, 2027, i.e. the 3 weeks ending
+   21 days before the NBA regular season ends on Apr 11): share of team games played in that window
+   relative to the whole season, fitted on 2010-11..2023-24 box scores (82-game seasons, single-team
+   players, prior season >= 1000 min), window = the 21 days ending 21 days before each season's last
+   regular-season day:
 
-     mult = 0.958 - 0.077*(0.5 - team_prev_wpct) - 0.035*max(0, 60 - g1)/10
+     mult = 0.984 - 0.019*(0.5 - team_prev_wpct)
 
-   Age was tested and does not matter here (+0.003 +- 0.013 per 4 years over 30).
+   (playoff-mult-0.2, 2026-10-18). The first fit (playoff-mult-0.1: 0.958 - 0.077*tank
+   - 0.035*max(0, 60 - g1)/10) used the 3 weeks ending 7 days before the season end (~Mar 15 - Apr 4),
+   which is where late-season tanking/resting concentrates; it does not apply to this league's
+   calendar. On the correct window the injury-history term is +0.018 +- 0.014 with an unstable sign
+   across eras (-0.005 for 2011-17, +0.035 for 2018-24), so it is dropped (coefficient 0); the tank
+   term is small and not significant but keeps its plausible sign. Age was not significant before
+   either.
 """
 
 from __future__ import annotations
@@ -57,7 +65,17 @@ GP_FIT = {
 GP_SD_KNOTS_X = (42.7, 49.3, 55.2, 60.3, 65.2, 70.1)
 GP_SD_KNOTS_Y = (23.9, 22.3, 21.2, 18.8, 17.5, 15.3)
 
-PLAYOFF_COEF = {"const": 0.958, "tank": -0.077, "injury": -0.035}
+PLAYOFF_MODEL_VERSION = "playoff-mult-0.2"
+# window: 21 days ending 21 days before the last regular-season day (fantasy playoffs Mar 1-21, 2027)
+PLAYOFF_COEF = {"const": 0.984, "tank": -0.019, "injury": 0.0}
+PLAYOFF_FIT = {
+    "window": "3 weeks ending 21 days before the NBA regular season's last day",
+    "data": "NocturneBear/NBA-Data-2010-2024 box scores, 82-game seasons 2011-2024, single-team players, prior mp>=1000",
+    "n": 2339,
+    "full_model": "const 0.982 +- 0.006, tank -0.023 +- 0.034, injury +0.018 +- 0.014 (season-cluster bootstrap)",
+    "chosen": "const+tank: const 0.984 +- 0.005, tank -0.019 +- 0.034; injury dropped",
+    "previous": "playoff-mult-0.1 (window ending 7 days before season end): 0.958, tank -0.077 +- 0.045, injury -0.035 +- 0.015",
+}
 PLAYOFF_MULT_RANGE = (0.75, 1.0)
 
 # 2025-26 regular-season records (bbref Team Summaries via the sumitrodatta mirror, fetched

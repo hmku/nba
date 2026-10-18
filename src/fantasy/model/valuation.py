@@ -38,7 +38,8 @@ from fantasy.model.lines import (
 
 # 0.2.0: availability = fitted gp (projections baseline-0.2.0) with optional gp risk penalty and a
 # playoff-week tilt (playoff_weight); see docs/research/availability_model.md
-MODEL_VERSION = "valuation-0.2.0"
+# 0.2.1: projections baseline-0.2.1 (playoff_mult refit on the Mar 1-21 fantasy playoff window)
+MODEL_VERSION = "valuation-0.2.1"
 
 
 @dataclass
