@@ -46,9 +46,12 @@ data-auditor, draft-shadow (all read-only).
 - `FANTASY_DB_URL` unset → local SQLite `var/fantasy.db` (dev/tests). Production = Supabase Postgres
   (project `fantasy-nba`, ref `bdzpkdkhlzjzddkptjex`); set `FANTASY_DB_URL` to its pooler URL (secret, from the user).
   Dashboard reads Supabase; if you worked on SQLite, `fantasy publish` copies rows up.
-- Cloud sessions: network policy blocks stats.nba.com / basketball-reference / Yahoo for curl & Python.
-  GitHub (raw) and package registries work; WebFetch/WebSearch work for research. Yahoo browser
-  operations require a **local** Claude Code session with Claude in Chrome (`claude --chrome`).
+- Cloud sessions: the environment allowlist covers basketball-reference, nba.com (stats.nba.com times out),
+  Yahoo public pages/API, ESPN, CBS, Rotowire, FantasyPros, GitHub and package registries. Postgres is NOT
+  reachable from cloud (HTTPS proxy only): publish with `fantasy publish --rest` (Supabase auth injected by a
+  network secret). Yahoo *account* operations (league pages, draft room) require a **local** Claude Code
+  session with Claude in Chrome (`claude --chrome`).
+- Research agents: don't leave main red — run `python -m pytest -q` and `ruff check src tests` before pushing.
 
 ## Safety rules (non-negotiable)
 - Mode `dry_run` is the default. Never touch Yahoo roster state outside a `live` run.
