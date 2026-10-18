@@ -4,6 +4,11 @@ The atomic unit for all valuation is a per-game *line* of raw stats (makes AND a
 percentages, never averaged percentages). "Effective" lines blend a player's projection with
 replacement-level production for the games he is expected to miss (you stream a waiver player
 into an empty slot, but imperfectly — `stream_recovery` controls how much is recovered).
+
+Availability (`availability()`) is gp / 82, optionally with a downside adjustment for gp
+uncertainty (`gp_risk_lambda`: gp - lambda * gp_sd) and a tilt toward availability in the fantasy
+playoff weeks (`playoff_weight`, using the projections' `playoff_mult`). See
+docs/research/availability_model.md.
 """
 
 from __future__ import annotations
@@ -21,6 +26,9 @@ DEFAULT_PROJECTIONS = REPO_ROOT / "data" / "processed" / "projections_2026_27.cs
 STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
 SEASON_GAMES = 82
 GAMES_PER_WEEK = 3.5  # 82 games over ~23.5 matchup weeks
+# Share of the fantasy season's matchup weeks that are playoff weeks (weeks 18-20 of 20). A
+# playoff_weight equal to this leaves availability unchanged (season average).
+PLAYOFF_CALENDAR_SHARE = 3 / 20
 
 # Per-game coefficient of variation for each raw stat (within-player game-to-game noise).
 # Heuristic priors; calibrate against game logs (task: backtesting).
@@ -56,6 +64,11 @@ def load_projections(path: Path | str | None = None) -> ProjectionSet:
     df["positions"] = df.get("positions", pd.Series(index=df.index, dtype=object)).map(parse_positions)
     for col in STATS + ["gp"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    # optional availability columns (older projection files lack them -> neutral values)
+    df["gp_sd"] = pd.to_numeric(df["gp_sd"], errors="coerce").fillna(0.0) if "gp_sd" in df else 0.0
+    df["playoff_mult"] = (
+        pd.to_numeric(df["playoff_mult"], errors="coerce").fillna(1.0) if "playoff_mult" in df else 1.0
+    )
     if "adp" not in df:
         df["adp"] = np.nan
     df["adp"] = pd.to_numeric(df["adp"], errors="coerce")
@@ -66,11 +79,42 @@ def load_projections(path: Path | str | None = None) -> ProjectionSet:
     return ProjectionSet(df=df, path=str(p), sha256=hashlib.sha256(raw).hexdigest())
 
 
+def availability(
+    df: pd.DataFrame, gp_risk_lambda: float = 0.0, playoff_weight: float = PLAYOFF_CALENDAR_SHARE
+) -> np.ndarray:
+    """Share of scheduled games a player is valued as available for.
+
+    a = clip((gp - gp_risk_lambda * gp_sd) / 82, 0, 1), then reweighted between regular-season and
+    playoff weeks: a * ((1 - w) * r + w * m), where m = playoff_mult (playoff-week availability
+    relative to the season average), r = (1 - s*m) / (1 - s) the matching regular-season
+    availability (so the season average is preserved), s = PLAYOFF_CALENDAR_SHARE and
+    w = playoff_weight. w = s reproduces the plain season average.
+    """
+    gp = df["gp"].to_numpy(dtype=float)
+    if gp_risk_lambda:
+        sd = df["gp_sd"].to_numpy(dtype=float) if "gp_sd" in df else np.zeros(len(df))
+        gp = gp - gp_risk_lambda * sd
+    a = np.clip(gp / SEASON_GAMES, 0.0, 1.0)
+    if playoff_weight != PLAYOFF_CALENDAR_SHARE and "playoff_mult" in df:
+        s, w = PLAYOFF_CALENDAR_SHARE, playoff_weight
+        m = df["playoff_mult"].to_numpy(dtype=float)
+        r = (1 - s * m) / (1 - s)
+        a = np.clip(a * ((1 - w) * r + w * m), 0.0, 1.0)
+    return a
+
+
 def effective_lines(
-    df: pd.DataFrame, replacement: pd.Series | None, stream_recovery: float = 0.5
+    df: pd.DataFrame,
+    replacement: pd.Series | None,
+    stream_recovery: float = 0.5,
+    avail: np.ndarray | None = None,
 ) -> pd.DataFrame:
-    """Per-scheduled-game lines: avail * own + (1 - avail) * recovery * replacement."""
-    avail = (df["gp"] / SEASON_GAMES).clip(0, 1).to_numpy()[:, None]
+    """Per-scheduled-game lines: avail * own + (1 - avail) * recovery * replacement.
+
+    `avail` defaults to the plain season average gp / 82 (see `availability`)."""
+    if avail is None:
+        avail = availability(df)
+    avail = np.asarray(avail, dtype=float)[:, None]
     own = df[STATS].to_numpy(dtype=float)
     if replacement is None:
         eff = avail * own

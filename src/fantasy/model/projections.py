@@ -9,7 +9,10 @@ Pipeline (all inputs are cached files; no network):
 3. Age curve multiplier on production rates (makes and attempts scaled together so efficiency
    is unchanged; turnovers scale with usage too).
 4. Minutes per game: recency-weighted MPG plus young-player growth, then manual role overrides.
-5. Games: recency-weighted games, shrunk toward a league prior; gp_sd from history + base noise.
+5. Games: fitted model (fantasy.model.availability.predict_gp: last three seasons' games, age,
+   ironman hinges; fitted out of sample on bbref history) and gp_sd from its residuals; the
+   playoff-week availability multiplier (`playoff_mult`) from team strength and injury history.
+   `Params.gp_model="shrink"` restores the baseline-0.1 rule (recency mean shrunk toward 68).
 6. Manual overlays (data/manual/): team changes, injuries/status, role adjustments, rookies
    without NBA history, Yahoo ADP and position eligibility overrides.
 7. Points are recomputed from makes: pts = 2*FGM + 3PM + FTM.
@@ -29,15 +32,23 @@ import pandas as pd
 
 from fantasy.data.ids import canonical_id
 from fantasy.data.provenance import MANUAL_DIR, PROCESSED_DIR, RAW_DIR, read_provenance
+from fantasy.model.availability import (
+    GP_FIT,
+    GP_MODEL_VERSION,
+    gp_sd_from_model,
+    playoff_mult,
+    predict_gp,
+)
 
-MODEL_VERSION = "baseline-0.1"
+# 0.2.0: fitted games-played model + calibrated gp_sd + playoff_mult column
+MODEL_VERSION = "baseline-0.2.0"
 SEASON = "2026-27"
 OUTPUT_PATH = PROCESSED_DIR / "projections_2026_27.csv"
 
 COLUMNS = [
     "player_id", "name", "team", "positions", "age", "gp", "gp_sd", "mpg",
     "fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov",
-    "adp", "status", "injury_note", "source",
+    "adp", "status", "injury_note", "source", "playoff_mult",
 ]  # fmt: skip
 RATE_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov"]
 POSITIONS = ["PG", "SG", "SF", "PF", "C"]
@@ -50,8 +61,14 @@ class Params:
         default_factory=lambda: {2026: 5.0, 2025: 3.0, 2024: 2.0}
     )
     prior_min: float = 400.0  # minutes of league-average (by position group) production added
-    gp_prior: float = 68.0  # league prior for games played by a rotation player
-    gp_prior_weight: float = 1.0  # weight of prior in units of "seasons"
+    gp_model: str = "fitted"  # fitted (availability.predict_gp) | shrink (baseline-0.1 rule)
+    # Explicit manual gp values (overrides, rookie priors) were set on the baseline-0.1 scale, which
+    # over-predicted realised games by ~10% (realised / predicted = 0.87-0.92 out of sample for
+    # rotation players); with the fitted model they are multiplied by this to stay comparable.
+    # 1.0 = take manual gp literally. Only applies when gp_model == "fitted".
+    manual_gp_scale: float = 0.90
+    gp_prior: float = 68.0  # shrink only: league prior for games played by a rotation player
+    gp_prior_weight: float = 1.0  # shrink only: weight of prior in units of "seasons"
     gp_min: float = 0.0
     gp_max: float = 80.0
     gp_sd_base: float = 7.0
@@ -253,14 +270,20 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         gw = g["w"]
         n_eff = gw.sum() / max(w.values())
         g_mean = float((games * gw).sum() / gw.sum())
-        gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (
-            n_eff + params.gp_prior_weight
-        )
-        gp = float(np.clip(gp, params.gp_min, params.gp_max))
-        hist_sd = (
-            float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum())) if len(g) > 1 else 10.0
-        )
-        gp_sd = float(np.sqrt(params.gp_sd_base**2 + (0.6 * hist_sd) ** 2))
+        g1_latest = float(games.iloc[-1])
+        if params.gp_model == "fitted":
+            gp, gp_sd = _fitted_gp(g, max(w), age_now, params.gp_max)
+        else:
+            gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (
+                n_eff + params.gp_prior_weight
+            )
+            gp = float(np.clip(gp, params.gp_min, params.gp_max))
+            hist_sd = (
+                float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum()))
+                if len(g) > 1
+                else 10.0
+            )
+            gp_sd = float(np.sqrt(params.gp_sd_base**2 + (0.6 * hist_sd) ** 2))
 
         pg = {s: rate[s] * mpg for s in RATE_STATS}
         cinfo = career.loc[pid] if pid in career.index else None
@@ -273,6 +296,7 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
                 "age": round(age_now, 1),
                 "gp": gp,
                 "gp_sd": gp_sd,
+                "g1_latest": g1_latest,
                 "mpg": mpg,
                 **pg,
                 "last_season": int(last["season"]),
@@ -288,7 +312,34 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
     return df
 
 
-def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame:
+def _fitted_gp(g: pd.DataFrame, latest: int, age: float, cap: float) -> tuple[float, float]:
+    """Fitted expected games and sd from a player's season rows (`season`, `g`).
+
+    Calendar lags (latest, latest-1, latest-2), as in the fit; a player who missed the latest
+    season entirely (re-activated by a manual override) is shifted so his last played season
+    counts as the most recent one.
+    """
+    by = dict(zip(g["season"].astype(int), g["g"].astype(float).clip(upper=82), strict=True))
+    top = latest if latest in by else max(by)
+    lags = [by.get(top - k) for k in range(3)]
+    gp = predict_gp(lags, age, cap=cap)
+    return gp, gp_sd_from_model(gp)
+
+
+def _apply_manual(
+    df: pd.DataFrame, notes: dict[str, list[str]], params: Params | None = None
+) -> pd.DataFrame:
+    params = params or Params()
+    fitted = params.gp_model == "fitted"
+    gp_scale = params.manual_gp_scale if fitted else 1.0
+
+    def manual_gp(pid: str, value: float) -> float:
+        if gp_scale != 1.0:
+            notes.setdefault(pid, []).append(
+                f"manual gp {value:g} x {gp_scale:g} (manual_gp_scale: baseline-0.1 scale -> fitted)"
+            )
+        return float(value) * gp_scale
+
     df = df.set_index("player_id")
     df["status"] = "healthy"
     df["injury_note"] = ""
@@ -331,9 +382,13 @@ def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame
                     "tov",
                 ]
             }
+            row["gp"] = manual_gp(pid, row["gp"])
+            sd = float(r.get("gp_sd") or 12.0)
+            if fitted:  # never tighter than the calibrated residual sd at that level
+                sd = max(sd, gp_sd_from_model(row["gp"]))
             row.update(
                 name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
-                gp_sd=float(r.get("gp_sd") or 12.0), last_season=0, seasons_used="",
+                gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
                 weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
                 adp=np.nan, source="manual_rookie_prior", bbref_id="",
             )  # fmt: skip
@@ -355,7 +410,11 @@ def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame
         if r.get("injury_note"):
             df.at[pid, "injury_note"] = r["injury_note"]
         if r.get("gp"):
-            df.at[pid, "gp"] = float(r["gp"])
+            df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]))
+            if fitted:
+                df.at[pid, "gp_sd"] = max(
+                    float(df.at[pid, "gp_sd"]), gp_sd_from_model(float(df.at[pid, "gp"]))
+                )
         if r.get("games_missed"):
             df.at[pid, "gp"] = max(
                 0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82
@@ -393,7 +452,12 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
     df = baseline(params)
     pos = derive_positions(load_pbp(), params.season_weights)
     df["positions"] = df["bbref_id"].map(pos)
-    df = _apply_manual(df, notes)
+    df = _apply_manual(df, notes, params)
+    # expected availability in fantasy playoff weeks relative to the season (team after overrides)
+    df["playoff_mult"] = [
+        playoff_mult(t, None if pd.isna(g1) else float(g1))
+        for t, g1 in zip(df["team"], df["g1_latest"], strict=True)
+    ]
 
     # rookies: positions from manual file; others missing -> bbref listed pos
     miss = df["positions"].isna() | (df["positions"] == "")
@@ -448,6 +512,7 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
         "stl",
         "blk",
         "tov",
+        "playoff_mult",
     ]
     for c in num:
         df[c] = df[c].astype(float).round(3 if c not in ("age", "gp", "gp_sd", "mpg") else 1)
@@ -483,6 +548,7 @@ def write(path: Path = OUTPUT_PATH, params: Params | None = None) -> dict:
     sha = hashlib.sha256(path.read_bytes()).hexdigest()
     meta = {
         "model_version": MODEL_VERSION,
+        "gp_model": {"version": GP_MODEL_VERSION, **GP_FIT} if params.gp_model == "fitted" else "shrink",
         "season": SEASON,
         "output": str(path.relative_to(PROCESSED_DIR.parents[1])),
         "rows": len(df),

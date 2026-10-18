@@ -1,9 +1,16 @@
 {
-  "model_version": "baseline-0.1",
+  "model_version": "baseline-0.2.0",
+  "gp_model": {
+    "version": "gp-ols-0.1",
+    "data": "sumitrodatta bbref mirror (Player Totals, Team Summaries), full history",
+    "train_targets": "2014-2026 (bbref season labels), players with >= 500 min in T-1",
+    "n": 4366,
+    "oos": "fit T<=2024: RMSE 2025 21.00->19.06 (gain 1.94 +- 0.31), 2026 21.87->20.05 (1.82 +- 0.32)"
+  },
   "season": "2026-27",
   "output": "data/processed/projections_2026_27.csv",
   "rows": 456,
-  "sha256": "a1fda89d06619f6f2c086d2b52f80850719cad18cb3102284402cea94427fcc4",
+  "sha256": "d8e1f390bec58e1c449569ceada0076c7fbdf3d04ec48e34c453265427a6aa6d",
   "sources": [
     "bbref_baseline",
     "bbref_baseline+manual",
@@ -23,6 +30,8 @@
       "2024": 2.0
     },
     "prior_min": 400.0,
+    "gp_model": "fitted",
+    "manual_gp_scale": 0.9,
     "gp_prior": 68.0,
     "gp_prior_weight": 1.0,
     "gp_min": 0.0,
@@ -92,6 +101,7 @@
       "ADP row for unknown player ignored"
     ],
     "aj-dybantsa": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "allen-graves": [
@@ -122,12 +132,15 @@
       "traded TOR->LAC"
     ],
     "brayden-burries": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "caleb-wilson": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "cameron-boozer": [
+      "manual gp 72 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "caris-levert": [
@@ -137,15 +150,18 @@
       "FA signing"
     ],
     "damian-lillard": [
+      "manual gp 58 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "missed 2025-26; age 36"
     ],
     "dangelo-russell": [
       "six-team deal"
     ],
     "darius-acuff-jr": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "darryn-peterson": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "deandre-ayton": [
@@ -164,6 +180,7 @@
       "added by CHO"
     ],
     "fred-vanvleet": [
+      "manual gp 64 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "missed 2025-26"
     ],
     "gary-harris": [
@@ -206,6 +223,7 @@
       "on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron"
     ],
     "jayson-tatum": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "full season after Achilles return (16 games in 2025-26)"
     ],
     "jerami-grant": [
@@ -242,6 +260,7 @@
       "traded LAC->TOR for Brandon Ingram"
     ],
     "keaton-wagler": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "kelel-ware": [
@@ -263,6 +282,7 @@
       "six-team deal"
     ],
     "kingston-flemings": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "klay-thompson": [
@@ -275,6 +295,7 @@
       "added by TOR"
     ],
     "kyrie-irving": [
+      "manual gp 58 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "missed 2025-26; age 34"
     ],
     "lamelo-ball": [
@@ -306,6 +327,7 @@
       "FA addition"
     ],
     "mikel-brown-jr": [
+      "manual gp 68 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "miles-bridges": [
@@ -318,6 +340,7 @@
       "ADP row for unknown player ignored"
     ],
     "nate-ament": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "naz-reid": [
@@ -362,9 +385,6 @@
     "santi-aldama": [
       "six-team deal"
     ],
-    "shaedon-sharpe": [
-      "kept despite max_rows=450 volume cut (manual override)"
-    ],
     "taurean-prince": [
       "six-team deal"
     ],
@@ -381,13 +401,19 @@
       "traded MIA->MIL; bigger role"
     ],
     "tyrese-haliburton": [
+      "manual gp 66 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "missed 2025-26; projected from 2023-25"
     ],
     "walker-kessler": [
       "traded UTA->LAL; jammed pinkie not expected to cost games",
+      "manual gp 64 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "2025-26 games lost to one-off shoulder surgery; healthy now"
     ],
+    "yanic-konan-niederhauser": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
     "yaxel-lendeborg": [
+      "manual gp 70 x 0.9 (manual_gp_scale: baseline-0.1 scale -> fitted)",
       "rookie/no NBA history: manual conservative prior"
     ],
     "zaccharie-risacher": [

@@ -32,16 +32,24 @@ from fantasy.model.lines import (
     GAMES_PER_WEEK,
     STATS,
     ProjectionSet,
+    availability,
     effective_lines,
 )
 
-MODEL_VERSION = "valuation-0.1.0"
+# 0.2.0: availability = fitted gp (projections baseline-0.2.0) with optional gp risk penalty and a
+# playoff-week tilt (playoff_weight); see docs/research/availability_model.md
+MODEL_VERSION = "valuation-0.2.0"
 
 
 @dataclass
 class ValuationParams:
     kappa: float = 1.0  # 0 = z-scores, 1 = G-scores
     stream_recovery: float = 0.5  # share of missed games recovered by streaming replacements
+    # downside adjustment for games-played uncertainty: value gp - lambda * gp_sd (0 = expected gp)
+    gp_risk_lambda: float = 0.0
+    # weight of the fantasy playoff weeks (18-20) in availability; 0.15 (= 3/20 weeks) is neutral,
+    # 0.30 counts a playoff week double. A prior, not fitted (playoff_mult itself is fitted).
+    playoff_weight: float = 0.30
     replacement_band: int = 12  # players beyond the pool averaged to form replacement level
     punt: list[str] = field(default_factory=list)  # categories given zero weight
     iterations: int = 3
@@ -79,7 +87,8 @@ def compute_values(
     weights = pd.Series({k: (0.0 if k in params.punt else 1.0) for k in settings.categories})
 
     replacement: pd.Series | None = None
-    eff = effective_lines(df, None)
+    avail = availability(df, params.gp_risk_lambda, params.playoff_weight)
+    eff = effective_lines(df, None, avail=avail)
     order = df.index
     for _ in range(params.iterations):
         pool = order[:n_pool]
@@ -88,7 +97,7 @@ def compute_values(
         order = total.sort_values(ascending=False).index
         band = order[n_pool : n_pool + params.replacement_band]
         replacement = df.loc[band, STATS].mean()
-        eff = effective_lines(df, replacement, params.stream_recovery)
+        eff = effective_lines(df, replacement, params.stream_recovery, avail=avail)
 
     pool = order[:n_pool]
     scores = _cat_scores(eff, pool, settings, params.kappa)

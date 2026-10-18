@@ -34,6 +34,10 @@ def build(
     projections: Annotated[Path | None, typer.Option("--projections")] = None,
     kappa: Annotated[float, typer.Option("--kappa", help="0=z-scores, 1=G-scores")] = 1.0,
     punt: Annotated[str, typer.Option("--punt", help="Comma-separated categories to zero-weight")] = "",
+    gp_risk_lambda: Annotated[float, typer.Option("--gp-risk-lambda", help="value gp - lambda*gp_sd")] = 0.0,
+    playoff_weight: Annotated[
+        float, typer.Option("--playoff-weight", help="weight of playoff weeks in availability (0.15 = neutral)")
+    ] = 0.30,
     save: Annotated[bool, typer.Option("--save/--no-save")] = True,
     top: Annotated[int, typer.Option("--top")] = 40,
     as_json: Annotated[bool, typer.Option("--json")] = False,
@@ -42,7 +46,9 @@ def build(
     s = load_settings()
     punt_cats = _parse_punt(punt, s.categories, as_json)
     proj = load_projections(projections)
-    run = run_valuation(proj, s, ValuationParams(kappa=kappa, punt=punt_cats))
+    run = run_valuation(proj, s, ValuationParams(
+        kappa=kappa, punt=punt_cats, gp_risk_lambda=gp_risk_lambda, playoff_weight=playoff_weight
+    ))
     if save:
         from fantasy.draft.store import save_valuation
 
