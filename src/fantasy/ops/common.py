@@ -28,6 +28,7 @@ EXIT_NOT_ALLOWED = 4  # policy refusal: approval required / dry_run / approval n
 EXIT_DUPLICATE = 5  # duplicate transaction (existing record returned)
 EXIT_NOT_FOUND = 6  # unknown id
 EXIT_INVALID_STATE = 7  # invalid state transition (txn, approval already decided, run not running)
+EXIT_STILL_PENDING = 8  # `approval show --wait N`: still pending when the wait ran out
 
 
 class OpsError(Exception):

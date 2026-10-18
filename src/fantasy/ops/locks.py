@@ -163,6 +163,24 @@ def release(resource: str, run_id: str) -> bool:
     )
 
 
+def release_all(run_id: str) -> list[str]:
+    """Release every lock (expired or not) held by run_id. Returns the released resources."""
+    with engine().begin() as conn:
+        held = [
+            r[0]
+            for r in conn.execute(
+                select(locks.c.resource).where(locks.c.holder_run_id == run_id)
+            )
+        ]
+        if held:
+            conn.execute(
+                delete(locks).where(
+                    and_(locks.c.holder_run_id == run_id, locks.c.resource.in_(held))
+                )
+            )
+    return sorted(held)
+
+
 def force_release(resource: str) -> bool:
     """Human/operator override: remove a lock regardless of holder."""
     with engine().begin() as conn:

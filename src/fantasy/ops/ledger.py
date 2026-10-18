@@ -1,6 +1,7 @@
 """Agent run ledger: runs, heartbeats, events and decisions.
 
 Lifecycle: start_run -> (log_event / record_decision / heartbeat)* -> end_run.
+end_run releases every lock the run still holds (reported as `released_locks`).
 A run whose heartbeat is older than `stale_minutes` is considered stale; `reap_stale_runs`
 marks such runs `abandoned` (it does not release their locks -- locks expire by TTL).
 """
@@ -98,6 +99,7 @@ def heartbeat(run_id: str) -> dict[str, Any]:
 
 
 def end_run(run_id: str, status: str = "succeeded", summary: str | None = None) -> dict[str, Any]:
+    """End a run and release all locks it holds. Returns the run plus `released_locks`."""
     if status not in RUN_END_STATUSES:
         raise ValueError(f"status must be one of {RUN_END_STATUSES}, got {status!r}")
     t = now()
@@ -117,7 +119,13 @@ def end_run(run_id: str, status: str = "succeeded", summary: str | None = None) 
         raise InvalidStateError(
             f"run {run_id} already ended ({run['status']})", run_id=run_id, status=run["status"]
         )
-    return get_run(run_id)
+    from fantasy.ops import locks  # local import: locks must not depend on the ledger
+
+    released = locks.release_all(run_id)
+    if released:
+        log_event(run_id, "note", f"run ended; released locks: {', '.join(released)}",
+                  {"released_locks": released})
+    return {**get_run(run_id), "released_locks": released}
 
 
 def list_runs(status: str | None = None, agent: str | None = None, limit: int = 50) -> list[dict]:

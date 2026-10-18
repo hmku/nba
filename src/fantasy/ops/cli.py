@@ -3,7 +3,7 @@
 Every command accepts `--json`: stdout is then a single JSON object, always with an "ok" key.
 Exit codes (see fantasy.ops.common): 0 ok, 1 error, 2 usage, 3 conflict (lock held / task
 claimed), 4 not allowed (approval required, dry_run), 5 duplicate txn, 6 not found,
-7 invalid state transition.
+7 invalid state transition, 8 still pending (`approval show --wait` timed out).
 Run ids come from `--run-id` or the FANTASY_RUN_ID environment variable.
 """
 
@@ -19,7 +19,7 @@ from typing import Annotated, Any
 import typer
 
 from fantasy.ops import approvals, ledger, locks, seed_tasks, tasks, transactions
-from fantasy.ops.common import EXIT_ERROR, EXIT_USAGE, OpsError, jsonable
+from fantasy.ops.common import EXIT_ERROR, EXIT_STILL_PENDING, EXIT_USAGE, OpsError, jsonable
 
 RunId = Annotated[
     str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
@@ -169,9 +169,11 @@ def run_end(
     run_id: RunId = None,
     json_out: JsonOut = False,
 ) -> None:
-    """End a run."""
+    """End a run and release every lock it still holds (listed as `released_locks`)."""
     run = ledger.end_run(_need_run(run_id), status, summary)
-    emit({"run": run}, json_out, f"{run['run_id']} {run['status']}")
+    released = run.pop("released_locks", [])
+    emit({"run": run, "released_locks": released}, json_out,
+         f"{run['run_id']} {run['status']}" + (f"; released {', '.join(released)}" if released else ""))
 
 
 @run_app.command("list")
@@ -324,10 +326,19 @@ def approval_show(
     wait: Annotated[float, typer.Option(help="Poll up to N seconds while pending")] = 0,
     json_out: JsonOut = False,
 ) -> None:
-    """Show an approval (optionally waiting for a decision)."""
+    """Show an approval (optionally waiting for a decision).
+
+    With --wait N: exit 8 (`still_pending`) if the approval is still pending after N seconds."""
     if wait > 0:
         approvals.wait(approval_id, timeout=wait, poll=min(5.0, wait))
     a = approvals.get_approval(approval_id)
+    if wait > 0 and a["status"] == "pending":
+        if json_out:
+            typer.echo(json.dumps(jsonable({"ok": False, "error": "still_pending", "approval": a}),
+                                  sort_keys=True))
+        else:
+            typer.echo(f"still pending after {wait:g}s: {approval_id}", err=True)
+        raise typer.Exit(EXIT_STILL_PENDING)
     emit({"approval": a}, json_out)
 
 
