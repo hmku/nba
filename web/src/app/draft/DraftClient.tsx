@@ -164,7 +164,7 @@ function DraftView({
   const myUpcoming = myAll.filter((p) => p >= currentPick);
   const nextMine = myUpcoming[0] ?? null;
   const picksUntil = nextMine != null ? nextMine - currentPick : null;
-  const onClock = picksUntil === 0;
+  const onClock = picksUntil === 0 && draft.status !== "pending" && draft.status !== "complete";
 
   const allRows = useMemo(() => toRows(values.values, values.players), [values]);
   const rowById = useMemo(() => new Map(allRows.map((r) => [r.player_id, r])), [allRows]);
@@ -210,6 +210,11 @@ function DraftView({
         <div className="rounded-lg border border-warn/50 bg-warn/10 px-3 py-2 text-xs text-warn">
           Missing picks below #{maxPick}: {gaps.slice(0, 20).join(", ")}
           {gaps.length > 20 ? ` (+${gaps.length - 20} more)` : ""}. Re-sync from Yahoo or enter them manually (set Overall #).
+        </div>
+      )}
+      {draft.status === "pending" && picks.length === 0 && (
+        <div className="rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs text-muted">
+          Draft not started (status <b>pending</b>). My first pick is #{nextMine ?? "—"}; the board starts updating as soon as picks are synced.
         </div>
       )}
       {onClock && (
