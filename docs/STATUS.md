@@ -26,6 +26,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 5. Tech debt (after the draft): ordered plan in `docs/research/tech_debt.md` (backlog via `fantasy task seed`); first item: keep `main` green (research WIP snapshots currently push failing tests).
 
 ## Known limitations
+- Pre-draft season projection (96% playoffs / 55% title from slot 1) is the optimistic end: symmetric room 61%/13%, sharp market-informed opponents + market truth 67%/12%, central ≈ 83–89% / 28–35% (`docs/research/optimism_decomposition.md`).
 - Cloud sessions can now reach bbref / Yahoo public API / ESPN / CBS (stats.nba.com times out, cdn.nba.com 403s at origin).
   Stats still come from the GitHub mirror of Basketball-Reference (verified identical to bbref.com 2026-10-18).
 - Opponent model = league-average team; absolute win probabilities are optimistic.

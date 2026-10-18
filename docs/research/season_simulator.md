@@ -66,6 +66,8 @@ prior and the injury-spell structure — calibrate those before trusting title o
   projections will look dominant (e.g. 95% playoffs / 57% title on `mock-full`). The market's ADP
   carries information our projections lack; treat absolute probabilities as optimistic and use the
   tool for **relative** comparisons (candidate A vs B, add vs drop, week-N category gaps).
+  Quantified in `optimism_decomposition.md` (`fantasy sim symmetric`): slot 1 is 61%/13% in a room where
+  everyone drafts like us, and the status-quo 96%/55% drops to 78%/20% if the market's player ranking is right.
 - No in-season management by anyone: rosters are frozen except streaming; no trades, no waiver
   pickups of breakout players, no IL juggling beyond "an injured player frees a starting slot".
 - Positional eligibility ignored in daily lineups (slightly optimistic usage); lineup priority uses
