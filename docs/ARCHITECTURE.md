@@ -52,6 +52,11 @@ One row per player, **per-game means** for the 2026-27 season:
   `fantasy txn plan|mark|list`, `fantasy task list|add|claim|done` (ops).
 - `fantasy publish [--rest]` – push local state (sqlite) to Supabase: SQL to `FANTASY_PUBLISH_URL`, or `--rest` over HTTPS/PostgREST (cloud sessions). `fantasy db init|ping [--rest]`.
 - Exit codes (ops contract, `fantasy.ops.common`): 0 ok, 1 error, 2 usage, 3 conflict, 4 not allowed, 5 duplicate, 6 not found, 7 invalid state, 8 still pending.
+- Failure JSON (every group, `fantasy.cli_common`): `{"ok": false, "code": <machine code>, "message": <text>, "error": ...}`
+  on stdout with `--json` (stderr `error: ...` without). Branch on the exit code, then `code` (`usage`, `not_found`,
+  `conflict`, `unresolved_player`, `draft_complete`, `not_allowed`, `lock_held`, `invalid_state`, `still_pending`,
+  `rest_auth`, ...). `error` is kept for old callers: it equals `code` in ops commands (and `prepare-pick`/`confirm-pick`
+  ledger refusals) but is the human message in `draft`/`sim`/`values`/`settings`.
 
 ### Durable state
 All runtime state goes through `fantasy.db` tables (see `schema.py`). Markdown is for knowledge

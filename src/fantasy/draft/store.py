@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 import uuid
 from datetime import UTC, datetime
@@ -23,25 +22,11 @@ from fantasy.db.schema import (
 from fantasy.draft.order import pick_info
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.valuation import ValuationRun, git_sha
+from fantasy.ops.common import json_safe as _clean
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-def _clean(obj: Any) -> Any:
-    """Make payloads JSON-safe (NaN -> None, numpy -> python)."""
-    return json.loads(json.dumps(obj, default=_default), parse_constant=lambda _: None)
-
-
-def _default(o: Any) -> Any:
-    if hasattr(o, "item"):
-        return o.item()
-    if isinstance(o, float) and math.isnan(o):
-        return None
-    if isinstance(o, set | tuple):
-        return list(o)
-    return str(o)
 
 
 def _nan_none(x: Any) -> Any:

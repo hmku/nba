@@ -9,8 +9,8 @@ from sqlalchemy import Engine, insert
 
 from fantasy.db.engine import get_engine
 from fantasy.db.schema import model_runs
-from fantasy.draft.store import _clean
 from fantasy.model.valuation import git_sha
+from fantasy.ops.common import json_safe as _clean
 from fantasy.sim import SIM_VERSION
 
 

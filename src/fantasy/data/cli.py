@@ -6,12 +6,14 @@ import json
 
 import typer
 
+from fantasy.cli_common import dumps
+
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Data ingestion and projections")
 
 
 def _emit(obj: dict, as_json: bool) -> None:
     if as_json:
-        typer.echo(json.dumps(obj, indent=2, default=str))
+        typer.echo(dumps(obj))
     else:
         for k, v in obj.items():
             if isinstance(v, (list, dict)) and len(json.dumps(v, default=str)) > 200:
@@ -113,6 +115,6 @@ def top(
     ]
     rows = z[cols].round(2).to_dict(orient="records")
     if as_json:
-        typer.echo(json.dumps({"ok": True, "players": rows}, indent=2, default=str))
+        typer.echo(dumps({"ok": True, "players": rows}))
     else:
         typer.echo(z[cols].round(2).to_string(index=False))

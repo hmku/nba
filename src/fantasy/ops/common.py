@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import subprocess
 import uuid
 from datetime import UTC, date, datetime
@@ -43,7 +44,9 @@ class OpsError(Exception):
         self.details = details
 
     def to_dict(self) -> dict[str, Any]:
-        return {"ok": False, "error": self.code, "message": self.message, **jsonable(self.details)}
+        # `error` == `code` for ops errors (historical); `code` is the cross-group machine field
+        return {"ok": False, "error": self.code, "code": self.code, "message": self.message,
+                **jsonable(self.details)}
 
 
 class ConflictError(OpsError):
@@ -131,6 +134,22 @@ def jsonable(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [jsonable(v) for v in value]
     return value
+
+
+def _json_default(o: Any) -> Any:
+    if hasattr(o, "item"):  # numpy scalars
+        return o.item()
+    if isinstance(o, float) and math.isnan(o):
+        return None
+    if isinstance(o, set | tuple):
+        return list(o)
+    return str(o)  # datetimes, paths, ...
+
+
+def json_safe(value: Any) -> Any:
+    """Make a payload JSON-safe for model/draft outputs: NaN/inf -> None, numpy -> python,
+    sets/tuples -> lists, anything else str(). (`jsonable` is the ops-row variant: ISO datetimes.)"""
+    return json.loads(json.dumps(value, default=_json_default), parse_constant=lambda _: None)
 
 
 def row_dict(row: Any) -> dict[str, Any] | None:

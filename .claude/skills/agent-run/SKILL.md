@@ -19,7 +19,9 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
   same skip rules; runbook section 5b). `rest_unreachable` = host not allowed in the environment's
   network settings, `rest_auth` = key missing: point the user to docs/USER_TODO.md, never ask for keys in chat.
 - For Yahoo writes: a **local** session with Claude in Chrome (see `yahoo-browser` skill).
-- Always pass `--json` and branch on the **exit code**, then read the JSON.
+- Always pass `--json` and branch on the **exit code**, then read the JSON. Every failure has `ok: false`,
+  a machine `code` (e.g. `lock_held`, `not_allowed`, `usage`, `not_found`) and a human `message`; prefer `code`
+  over `error` (in non-ops groups such as `draft`, `error` holds the message, not a code).
 
 | exit | meaning | what you do |
 |---|---|---|

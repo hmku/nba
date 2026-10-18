@@ -306,8 +306,8 @@ def save_draft_sim(res: dict, params: dict, inputs: dict, engine=None) -> str:  
 
     from fantasy.db.engine import get_engine
     from fantasy.db.schema import model_runs
-    from fantasy.draft.store import _clean
     from fantasy.model.valuation import git_sha
+    from fantasy.ops.common import json_safe as _clean
 
     eng = engine or get_engine()
     now = datetime.now(UTC)

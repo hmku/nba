@@ -73,7 +73,7 @@ def handled(fn: Callable) -> Callable:
             fail(err, as_json)
         except ValueError as exc:
             if as_json:
-                typer.echo(json.dumps({"ok": False, "error": "usage", "message": str(exc)}))
+                typer.echo(json.dumps({"ok": False, "error": "usage", "code": "usage", "message": str(exc)}))
             else:
                 typer.echo(f"error [usage]: {exc}", err=True)
             raise typer.Exit(EXIT_USAGE) from exc
@@ -83,7 +83,7 @@ def handled(fn: Callable) -> Callable:
             if not as_json:
                 raise
             msg = f"{type(exc).__name__}: {exc}"
-            typer.echo(json.dumps({"ok": False, "error": "error", "message": msg}))
+            typer.echo(json.dumps({"ok": False, "error": "error", "code": "error", "message": msg}))
             raise typer.Exit(EXIT_ERROR) from exc
 
     return wrapper
@@ -331,7 +331,8 @@ def approval_show(
     a = approvals.get_approval(approval_id)
     if wait > 0 and a["status"] == "pending":
         if json_out:
-            typer.echo(json.dumps(jsonable({"ok": False, "error": "still_pending", "approval": a}),
+            typer.echo(json.dumps(jsonable({"ok": False, "error": "still_pending", "code": "still_pending",
+                                            "message": f"still pending after {wait:g}s", "approval": a}),
                                   sort_keys=True))
         else:
             typer.echo(f"still pending after {wait:g}s: {approval_id}", err=True)

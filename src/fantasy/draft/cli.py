@@ -11,6 +11,7 @@ from typing import Annotated
 
 import typer
 
+from fantasy.cli_common import check_choice, dumps, emit, fail, failure, parse_punt
 from fantasy.draft import store
 from fantasy.draft.names import NameResolutionError, resolve_player
 from fantasy.draft.optimizer import (
@@ -35,37 +36,6 @@ REAL_DRAFT_ID = re.compile(r"nba\.l\.\d+-\d{4}")
 OBJECTIVES = ("cat_wins", "matchup")
 
 
-def _emit(obj: dict, as_json: bool, text: str | None = None) -> None:
-    if as_json:
-        typer.echo(json.dumps(store._clean(obj), indent=2))
-    else:
-        typer.echo(text if text is not None else json.dumps(store._clean(obj), indent=2))
-
-
-def _fail(msg: str, as_json: bool, code: int = 1, **extra: object) -> None:
-    if as_json:
-        typer.echo(json.dumps({"ok": False, "error": msg, **extra}))
-    else:
-        typer.echo(f"error: {msg}", err=True)
-    raise typer.Exit(code)
-
-
-def _check_choice(value: str | None, valid: list[str] | tuple[str, ...], what: str, as_json: bool) -> None:
-    """Exit 2 with the list of valid values if `value` is not one of them (None = not given)."""
-    if value is not None and value not in valid:
-        _fail(f"invalid {what} {value!r}; valid: {', '.join(valid)}", as_json, code=2, valid=list(valid))
-
-
-def parse_punt(punt: str | None, categories: list[str], as_json: bool) -> list[str]:
-    """Comma-separated category keys; exit 2 listing valid keys on anything unknown."""
-    cats = [p.strip() for p in (punt or "").split(",") if p.strip()]
-    bad = [c for c in cats if c not in categories]
-    if bad:
-        _fail(f"invalid punt categor{'y' if len(bad) == 1 else 'ies'} {', '.join(bad)}; "
-              f"valid: {', '.join(categories)}", as_json, code=2, valid=list(categories))
-    return cats
-
-
 def _settings_for(draft: dict | None) -> LeagueSettings:
     s = load_settings()
     if draft:
@@ -77,7 +47,7 @@ def _settings_for(draft: dict | None) -> LeagueSettings:
 def _load_draft(draft_id: str | None, as_json: bool) -> dict:
     d = store.get_draft(draft_id)
     if not d:
-        _fail(f"draft not found: {draft_id or '(none exist)'} — run `fantasy draft init`", as_json)
+        fail(f"draft not found: {draft_id or '(none exist)'} — run `fantasy draft init`", as_json, code="not_found")
     assert d is not None
     return d
 
@@ -118,19 +88,19 @@ def init(
     Non-mock drafts become the default for every draft command, so: ids starting with `mock` need
     --mock (exit 2), and non-mock ids must look like `nba.l.<digits>-<year>` unless --force."""
     if not mock and draft_id.lower().startswith("mock"):
-        _fail(f"draft id {draft_id!r} looks like a mock: pass --mock (a non-mock draft becomes the default "
-              "for every draft command)", as_json, code=2, draft_id=draft_id)
+        fail(f"draft id {draft_id!r} looks like a mock: pass --mock (a non-mock draft becomes the default "
+             "for every draft command)", as_json, exit_code=2, draft_id=draft_id)
     if not mock and not REAL_DRAFT_ID.fullmatch(draft_id) and not force:
-        _fail(f"non-mock draft id {draft_id!r} must match nba.l.<digits>-<year> (e.g. nba.l.44495-2026); "
-              "use --mock for rehearsals or --force", as_json, code=2, draft_id=draft_id)
+        fail(f"non-mock draft id {draft_id!r} must match nba.l.<digits>-<year> (e.g. nba.l.44495-2026); "
+             "use --mock for rehearsals or --force", as_json, exit_code=2, draft_id=draft_id)
     s = load_settings()
     row = store.create_draft(draft_id, s, is_mock=mock, my_slot=slot)
     picks = [p.overall for p in order_for_draft(row) if p.slot == row["my_slot"]]
     warn = []
     if bool(row["is_mock"]) != mock:
         warn.append(f"draft {draft_id} already exists with is_mock={bool(row['is_mock'])}; --mock={mock} ignored")
-    _emit({"ok": True, "draft_id": draft_id, "draft": row, "my_picks": picks, "warnings": warn}, as_json,
-          f"draft {draft_id} ({row['order_type']}, {row['num_teams']} teams × {row['num_rounds']} rounds); my picks: {picks}")
+    emit({"ok": True, "draft_id": draft_id, "draft": row, "my_picks": picks, "warnings": warn}, as_json,
+         f"draft {draft_id} ({row['order_type']}, {row['num_teams']} teams × {row['num_rounds']} rounds); my picks: {picks}")
 
 
 @app.command()
@@ -143,8 +113,8 @@ def order(
 ) -> None:
     """Show pick numbers for a slot under an order type (snake | snake_3rr)."""
     picks = picks_for_slot(slot, teams, rounds, order_type)
-    _emit({"ok": True, "draft_id": None, "slot": slot, "order_type": order_type, "picks": picks}, as_json,
-          f"slot {slot} ({order_type}): {picks}")
+    emit({"ok": True, "draft_id": None, "slot": slot, "order_type": order_type, "picks": picks}, as_json,
+         f"slot {slot} ({order_type}): {picks}")
 
 
 @app.command("set-order")
@@ -163,13 +133,13 @@ def set_order(
             custom = [[int(x) for x in r.split(",") if x.strip()] for r in rounds.split(";") if r.strip()]
         draft_order(d["num_teams"], d["num_rounds"], "custom", custom)
     except (ValueError, TypeError, OSError) as e:
-        _fail(f"invalid --rounds: {e}", as_json, code=2, draft_id=d["draft_id"])
+        fail(f"invalid --rounds: {e}", as_json, exit_code=2, draft_id=d["draft_id"])
     store.set_draft_order(d["draft_id"], custom)
     d = store.get_draft(d["draft_id"])
     mine = [p.overall for p in order_for_draft(d) if p.slot == d["my_slot"]]
     formula = picks_for_slot(d["my_slot"], d["num_teams"], d["num_rounds"], "snake_3rr")
-    _emit({"ok": True, "draft_id": d["draft_id"], "my_picks": mine, "matches_3rr_formula": mine == formula}, as_json,
-          f"order saved; my picks: {mine} ({'matches' if mine == formula else 'DIFFERS FROM'} 3RR formula)")
+    emit({"ok": True, "draft_id": d["draft_id"], "my_picks": mine, "matches_3rr_formula": mine == formula}, as_json,
+         f"order saved; my picks: {mine} ({'matches' if mine == formula else 'DIFFERS FROM'} 3RR formula)")
 
 
 @app.command()
@@ -190,7 +160,7 @@ def queue(
     v = values[~values.index.isin(taken)].head(top)
     rows = [{"rank": i, "player_id": pid, "name": r["name"], "team": r["team"], "positions": list(r["positions"])}
             for i, (pid, r) in enumerate(v.iterrows(), 1)]
-    _emit({"ok": True, "draft_id": d["draft_id"] if d else None, "queue": rows}, as_json, "\n".join(f"{r['rank']:>3}. {r['name']} ({r['team']})" for r in rows))
+    emit({"ok": True, "draft_id": d["draft_id"] if d else None, "queue": rows}, as_json, "\n".join(f"{r['rank']:>3}. {r['name']} ({r['team']})" for r in rows))
 
 
 @app.command()
@@ -207,8 +177,8 @@ def pick(
     d = _load_draft(draft_id, as_json)
     n_total = d["num_teams"] * d["num_rounds"]
     if overall is not None and not 1 <= overall <= n_total:
-        _fail(f"invalid --overall {overall}; valid: 1..{n_total}", as_json, code=2, draft_id=d["draft_id"],
-              valid_range=[1, n_total])
+        fail(f"invalid --overall {overall}; valid: 1..{n_total}", as_json, exit_code=2, draft_id=d["draft_id"],
+             valid_range=[1, n_total])
     proj = load_projections(projections)
     values = proj.df
     try:
@@ -216,17 +186,17 @@ def pick(
         name = str(values.loc[pid, "name"])
     except NameResolutionError as e:
         if not force:
-            _fail(str(e), as_json, code=2, candidates=e.candidates)
+            fail(str(e), as_json, exit_code=2, code="unresolved_player", candidates=e.candidates)
         pid, name = f"unknown:{player.strip().lower().replace(' ', '-')}", player.strip()
     taken = {p["overall_pick"] for p in store.get_picks(d["draft_id"])}
     ov = overall if overall is not None else next((k for k in range(1, n_total + 1) if k not in taken), None)
     if ov is None:
-        _fail("draft is complete", as_json)
+        fail("draft is complete", as_json, code="draft_complete", draft_id=d["draft_id"])
     try:
         row = store.record_pick(d, ov, pid, name, source, force=force)
     except store.PickConflict as e:
-        _fail(str(e), as_json, code=2)
-    _emit({"ok": True, "draft_id": d["draft_id"], "pick": row}, as_json, f"#{ov}: {name} ({pid}) [{row['status']}]")
+        fail(str(e), as_json, exit_code=2, code="conflict")
+    emit({"ok": True, "draft_id": d["draft_id"], "pick": row}, as_json, f"#{ov}: {name} ({pid}) [{row['status']}]")
 
 
 @app.command()
@@ -234,7 +204,7 @@ def undo(overall: int, draft_id: DraftOpt = None, as_json: JsonOpt = False) -> N
     """Remove a recorded pick (to correct mistakes)."""
     d = _load_draft(draft_id, as_json)
     n = store.undo_pick(d["draft_id"], overall)
-    _emit({"ok": n > 0, "draft_id": d["draft_id"], "removed": n}, as_json, f"removed {n} pick(s)")
+    emit({"ok": n > 0, "draft_id": d["draft_id"], "removed": n}, as_json, f"removed {n} pick(s)")
 
 
 @app.command()
@@ -262,7 +232,7 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
         "gaps": [p for p in range(1, (max(taken) if taken else 0)) if p not in taken],
     }
     if as_json:
-        _emit(out, True)
+        emit(out, True)
         return
     clock = out["on_the_clock"]
     typer.echo(f"{d['draft_id']} [{d['status']}] picks made {len(picks)}; on the clock: {clock}")
@@ -297,13 +267,13 @@ def recommend(
     from fantasy.valuesearch.model import OBJECTIVES as VALUE_OBJECTIVES
     from fantasy.valuesearch.search import DEFAULT_SEARCH, OPPONENT_MODELS, SEARCH_MODES
 
-    _check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
-    _check_choice(search, SEARCH_MODES, "--search", as_json)
+    check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
+    check_choice(search, SEARCH_MODES, "--search", as_json)
     # value-search objectives are only valid with an explicit --search value|advise; the default path keeps
     # the optimizer's objectives (cat_wins | matchup)
-    _check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES if search in ("value", "advise") else OBJECTIVES,
+    check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES if search in ("value", "advise") else OBJECTIVES,
                   "--objective", as_json)
-    _check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
+    check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
     search = search or DEFAULT_SEARCH
     value_objective = objective if objective in VALUE_OBJECTIVES else "blend"
     rollouts = rollouts or (24 if opponents == "ours" else 48)
@@ -333,7 +303,7 @@ def recommend(
         except Exception as e:
             rec["warnings"].append(f"could not save recommendation: {e}")
     if as_json:
-        _emit(rec, True)
+        emit(rec, True)
         return
     typer.echo(f"Pick #{rec['for_pick']} (on the clock: #{rec.get('on_the_clock', {}).get('overall')}); "
                f"strategy {rec['strategy']['name']} — {rec['strategy']['notes']}")
@@ -477,7 +447,7 @@ def simulate(
     """Monte Carlo mock drafts: opponents draft by noisy ADP, I draft with the optimizer."""
     from fantasy.draft.simulate import save_draft_sim, simulate_drafts
 
-    _check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
+    check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
     d = _load_draft(draft_id, as_json) if draft_id else None
     s = _settings_for(d)
     if slot:
@@ -500,12 +470,12 @@ def simulate(
     res = {"ok": True, "run_id": run_id, "draft_id": d["draft_id"] if d else None,
            "order_type": s.draft_order_type, "custom_order": bool(custom), **res}
     if as_json:
-        _emit(res, True)
+        emit(res, True)
         return
     sm = res["summary"]
     head = {k: sm[k] for k in ("n_sims", "my_slot", "optimizer", "baseline_bpa", "edge", "first_pick_counts",
                                "strategy_counts")}
-    typer.echo(json.dumps(store._clean({**head, "run_id": run_id}), indent=2))
+    typer.echo(dumps({**head, "run_id": run_id}))
 
 
 RunOpt = Annotated[str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")]
@@ -530,26 +500,26 @@ def prepare_pick(
     retried automatically (next attempt number); a `planned` txn left by another run is re-owned.
     """
     from fantasy.ops import ledger, transactions
-    from fantasy.ops.common import OpsError
+    from fantasy.ops.common import EXIT_NOT_ALLOWED, OpsError
 
     if not run_id:
-        _fail("no run id (set FANTASY_RUN_ID)", as_json, code=2)
+        fail("no run id (set FANTASY_RUN_ID)", as_json, exit_code=2)
     d = _load_draft(draft_id, as_json)
     did = d["draft_id"]
     values = load_projections(projections).df
     try:
         pid = resolve_player(player, values)
     except NameResolutionError as e:
-        _fail(str(e), as_json, code=2, candidates=e.candidates, draft_id=did)
+        fail(str(e), as_json, exit_code=2, code="unresolved_player", candidates=e.candidates, draft_id=did)
     name = str(values.loc[pid, "name"])
 
-    def refuse(msg: str, code: int = 4, **extra: object) -> None:
+    def refuse(msg: str, **extra: object) -> None:  # ops-style: error == code (exit 4)
         if as_json:
-            typer.echo(json.dumps(store._clean({"ok": False, "error": "not_allowed", "message": msg,
-                                                "action": "DO_NOT_CLICK", "draft_id": did, **extra})))
+            typer.echo(json.dumps(failure(msg, "not_allowed", error="not_allowed", action="DO_NOT_CLICK",
+                                          draft_id=did, **extra)))
         else:
             typer.echo(f"DO NOT CLICK: {msg}", err=True)
-        raise typer.Exit(code)
+        raise typer.Exit(EXIT_NOT_ALLOWED)
 
     picks = store.get_picks(did)
     taken = {p["overall_pick"]: p for p in picks}
@@ -596,7 +566,7 @@ def prepare_pick(
            "agrees_with_model": dec.get("agrees_with_model"),
            "rank_in_recommendations": None if rank_in_recs is None else rank_in_recs + 1,
            "gaps": gaps, "warnings": warnings}
-    _emit(out, as_json, f"CLICK DRAFT: {name} ({out['team']}) at #{overall}  txn={txn['txn_id']}  "
+    emit(out, as_json, f"CLICK DRAFT: {name} ({out['team']}) at #{overall}  txn={txn['txn_id']}  "
                         f"agrees_with_model={out['agrees_with_model']} {warnings or ''}")
 
 
@@ -655,17 +625,17 @@ def confirm_pick(
     try:
         txn = transactions.get_txn(txn_id)
         if txn["kind"] != "draft_pick":
-            _fail(f"{txn_id} is a {txn['kind']} transaction, not draft_pick; use `fantasy txn mark`", as_json, code=2)
+            fail(f"{txn_id} is a {txn['kind']} transaction, not draft_pick; use `fantasy txn mark`", as_json, exit_code=2)
         did = (txn["payload"] or {}).get("draft_id")
         if failed:
             txn = transactions.mark_failed(txn_id, failed, run_id=run_id)
-            _emit({"ok": True, "draft_id": did, "txn": txn}, as_json, f"marked failed: {failed}")
+            emit({"ok": True, "draft_id": did, "txn": txn}, as_json, f"marked failed: {failed}")
             return
         if txn["status"] == "verified":
             already_verified = True
         else:
             if not evidence:
-                _fail("--evidence is required (e.g. 'draft log shows pick 24 = X for my team')", as_json, code=2)
+                fail("--evidence is required (e.g. 'draft log shows pick 24 = X for my team')", as_json, exit_code=2)
             try:
                 ev = json.loads(evidence)
             except json.JSONDecodeError:
@@ -677,16 +647,16 @@ def confirm_pick(
     p = txn["payload"]
     d = store.get_draft(p["draft_id"])
     if d is None:
-        _fail(f"draft {p['draft_id']} not found", as_json, code=6)
+        fail(f"draft {p['draft_id']} not found", as_json, exit_code=6)
     values = load_projections(projections).df
     name = str(values.loc[p["player_id"], "name"]) if p["player_id"] in values.index else p["player_id"]
     try:
         row = store.record_pick(d, p["overall_pick"], p["player_id"], name, "agent", force=False)
     except store.PickConflict as e:
-        _fail(f"txn verified but the board disagrees: {e} — fix with `draft undo`/`draft pick`", as_json,
-              code=2, draft_id=d["draft_id"], txn=txn)
-    _emit({"ok": True, "draft_id": d["draft_id"], "txn": txn, "pick": row, "already_verified": already_verified},
-          as_json, f"verified #{p['overall_pick']} {name}" + (" (txn was already verified)" if already_verified else ""))
+        fail(f"txn verified but the board disagrees: {e} — fix with `draft undo`/`draft pick`", as_json,
+             exit_code=2, code="conflict", draft_id=d["draft_id"], txn=txn)
+    emit({"ok": True, "draft_id": d["draft_id"], "txn": txn, "pick": row, "already_verified": already_verified},
+         as_json, f"verified #{p['overall_pick']} {name}" + (" (txn was already verified)" if already_verified else ""))
 
 
 def _str(x: object) -> str:
