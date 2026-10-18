@@ -7,6 +7,7 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 - [ ] **League settings screenshots** — Yahoo app/site → League → Settings: send screenshots of the full page
       (scoring categories, roster positions, draft type/order, trades, waivers, playoffs) in chat; an agent will
       record and verify them (`fantasy settings verify`). The draft *order* page too, if visible.
+      Especially: **playoff weeks and their dates** (models currently disagree: mid-Feb–mid-Mar vs mid-Mar–early-Apr).
 - [ ] **Clean demo rows in Supabase** — Supabase → SQL Editor → paste the "Delete with:" block from
       `docs/runbooks/dashboard.md` (only touches `mock-` rows). Agents can't run deletes from the cloud session.
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set in Vercel (verified live 2026-10-18 15:03 UTC).

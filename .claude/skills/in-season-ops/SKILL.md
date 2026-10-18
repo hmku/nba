@@ -1,6 +1,6 @@
 ---
 name: in-season-ops
-description: PLACEHOLDER for Phase 2 (in-season management after the 2026-10-19 draft) - states honestly what does not exist yet (Yahoo roster sync, lineup optimizer, waiver/streaming optimizer, matchup simulation, trade evaluator) and what an agent may do today (read-only inspection and reporting), plus the approval policy for adds/drops/trades. Use when asked to set a lineup, pick up/drop players, evaluate a trade, check the matchup, or run a daily/morning check.
+description: PLACEHOLDER for Phase 2 (in-season management after the 2026-10-19 draft) - states honestly what does not exist yet (Yahoo roster sync, lineup optimizer, waiver/streaming optimizer, trade evaluator; matchup/season simulation now exists via the season-sim skill) and what an agent may do today (read-only inspection and reporting), plus the approval policy for adds/drops/trades. Use when asked to set a lineup, pick up/drop players, evaluate a trade, check the matchup, or run a daily/morning check.
 ---
 
 # In-season operations (Phase 2 - mostly NOT built yet)
@@ -11,10 +11,10 @@ description: PLACEHOLDER for Phase 2 (in-season management after the 2026-10-19 
 | Yahoo roster sync (my roster, all rosters, FAs, transactions -> DB) | T-004 | not built. `src/fantasy/league/yahoo_api.py` has read-only parsers (`parse_roster`, `parse_players`, `parse_teams`) but no sync command and no OAuth tokens yet (T-003). |
 | Daily lineup optimizer | T-005 | not built. No `fantasy lineup ...` command. |
 | Waiver / streaming optimizer | T-006 | not built. |
-| Weekly H2H matchup simulation | T-007 | not built (the draft's `CategoryModel` is a season-level, league-average-opponent model). |
+| Weekly H2H matchup simulation | T-007 | **built (MVP)**: `fantasy sim season|matchup|compare` — see `.claude/skills/season-sim/SKILL.md`. Needs Yahoo rosters + schedule JSON post-draft. |
 | Trade evaluator | T-008 | not built. |
 | Scheduled morning agent | T-011 | not built. |
-| NBA schedule / games-per-week data | - | not ingested. |
+| NBA schedule / games-per-week data | - | ingested from basketball-reference (`fantasy sim schedule`, `data/raw/bbref_schedule/`); fantasy week calendar unverified vs Yahoo. |
 Check `fantasy task list --area season` and `docs/STATUS.md` - if any of these became `done`, a newer
 skill or runbook should replace this placeholder; update this file.
 
