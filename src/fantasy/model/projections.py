@@ -329,123 +329,131 @@ def _fitted_gp(g: pd.DataFrame, latest: int, age: float, cap: float) -> tuple[fl
     return gp, gp_sd_from_model(gp)
 
 
+ROOKIE_STAT_COLS = ["age", "gp", "mpg", "fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov"]
+USAGE_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "ast", "tov"]  # scaled by `usage_mult` (role change)
+
+
+class _ManualGp:
+    """Converts a hand-entered games-played value to the active GP model's scale (and notes it)."""
+
+    def __init__(self, params: Params, notes: dict[str, list[str]]) -> None:
+        self.fitted = params.gp_model == "fitted"
+        self.scale = params.manual_gp_scale if self.fitted else 1.0
+        self.notes = notes
+
+    def __call__(self, pid: str, value: float) -> float:
+        if self.scale != 1.0:
+            self.notes.setdefault(pid, []).append(
+                f"manual gp {value:g} x {self.scale:g} (manual_gp_scale: baseline-0.1 scale -> fitted)"
+            )
+        return float(value) * self.scale
+
+
+def _drop_inactive(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop retired/unsigned/overseas players, and players without a 2025-26 season unless activated by an
+    override row (else assumed out of the league)."""
+    inactive = load_manual("inactive_2026_27.csv")
+    if not inactive.empty:
+        drop = [p for p in inactive["player_id"] if p in df.index]
+        df = df.drop(index=drop)
+    active_ok = set(load_manual("player_overrides_2026_27.csv").get("player_id", []))
+    stale = df.index[(df["last_season"] < 2026) & ~df.index.isin(active_ok)]
+    return df.drop(index=stale)
+
+
+def _add_rookies(df: pd.DataFrame, notes: dict[str, list[str]], manual_gp: _ManualGp) -> None:
+    """Rookies / players without NBA history: conservative manual priors (in place)."""
+    rookies = load_manual("rookies_2026_27.csv")
+    if rookies.empty:
+        return
+    for pid, r in rookies.set_index("player_id").iterrows():
+        if pid in df.index:
+            continue
+        row = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
+        row["gp"] = manual_gp(pid, row["gp"])
+        sd = float(r.get("gp_sd") or 12.0)
+        if manual_gp.fitted:  # never tighter than the calibrated residual sd at that level
+            sd = max(sd, gp_sd_from_model(row["gp"]))
+        row.update(
+            name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
+            gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
+            weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
+            adp=np.nan, source="manual_rookie_prior", bbref_id="",
+        )  # fmt: skip
+        df.loc[pid] = pd.Series(row)
+        notes.setdefault(pid, []).append("rookie/no NBA history: manual conservative prior")
+
+
+def _apply_override(df: pd.DataFrame, pid: str, r: pd.Series, notes: dict[str, list[str]],
+                    manual_gp: _ManualGp) -> None:
+    """One player_overrides row: team, status, injury note, gp, games missed, mpg, usage, note (in place)."""
+    if r.get("team"):
+        df.at[pid, "team"] = r["team"]
+    if r.get("status"):
+        assert r["status"] in STATUS_VALUES, (pid, r["status"])
+        df.at[pid, "status"] = r["status"]
+    if r.get("injury_note"):
+        df.at[pid, "injury_note"] = r["injury_note"]
+    if r.get("gp"):
+        df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]))
+        if manual_gp.fitted:
+            df.at[pid, "gp_sd"] = max(
+                float(df.at[pid, "gp_sd"]), gp_sd_from_model(float(df.at[pid, "gp"]))
+            )
+    if r.get("games_missed"):
+        df.at[pid, "gp"] = max(
+            0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82
+        )
+        df.at[pid, "gp_sd"] = float(df.at[pid, "gp_sd"]) + 0.15 * float(r["games_missed"])
+    if r.get("mpg"):
+        new = float(r["mpg"])
+        old = float(df.at[pid, "mpg"])
+        for s in RATE_STATS:
+            df.at[pid, s] = float(df.at[pid, s]) * new / old
+        df.at[pid, "mpg"] = new
+    if r.get("usage_mult"):  # role change: scales shot volume/assists/turnovers
+        um = float(r["usage_mult"])
+        for s in USAGE_STATS:
+            df.at[pid, s] = float(df.at[pid, s]) * um
+    if r.get("note"):
+        notes.setdefault(pid, []).append(r["note"])
+    if not str(df.at[pid, "source"]).endswith("+manual"):
+        df.at[pid, "source"] = df.at[pid, "source"] + "+manual"
+
+
+def _apply_overrides(df: pd.DataFrame, notes: dict[str, list[str]], manual_gp: _ManualGp) -> None:
+    for _, r in load_manual("player_overrides_2026_27.csv").iterrows():
+        pid = r["player_id"]
+        if pid not in df.index:
+            notes.setdefault(pid, []).append("override for unknown player ignored")
+            continue
+        _apply_override(df, pid, r, notes, manual_gp)
+
+
+def _apply_adp(df: pd.DataFrame, notes: dict[str, list[str]]) -> None:
+    adp = load_manual("adp_yahoo_2026_27.csv")
+    for _, r in adp.iterrows():
+        if r["player_id"] in df.index and r.get("adp"):
+            df.at[r["player_id"], "adp"] = float(r["adp"])
+        elif r["player_id"] not in df.index:
+            notes.setdefault(r["player_id"], []).append("ADP row for unknown player ignored")
+
+
 def _apply_manual(
     df: pd.DataFrame, notes: dict[str, list[str]], params: Params | None = None
 ) -> pd.DataFrame:
-    params = params or Params()
-    fitted = params.gp_model == "fitted"
-    gp_scale = params.manual_gp_scale if fitted else 1.0
-
-    def manual_gp(pid: str, value: float) -> float:
-        if gp_scale != 1.0:
-            notes.setdefault(pid, []).append(
-                f"manual gp {value:g} x {gp_scale:g} (manual_gp_scale: baseline-0.1 scale -> fitted)"
-            )
-        return float(value) * gp_scale
-
+    """Manual data on top of the statistical baseline, in order: inactive/stale players dropped,
+    rookie priors added, player overrides, Yahoo ADP. Order matters (overrides can touch rookies)."""
+    manual_gp = _ManualGp(params or Params(), notes)
     df = df.set_index("player_id")
     df["status"] = "healthy"
     df["injury_note"] = ""
     df["adp"] = np.nan
     df["source"] = "bbref_baseline"
-
-    # --- inactive players (retired / unsigned / overseas)
-    inactive = load_manual("inactive_2026_27.csv")
-    if not inactive.empty:
-        drop = [p for p in inactive["player_id"] if p in df.index]
-        df = df.drop(index=drop)
-
-    # players without a 2025-26 season need explicit activation (else assumed out of league)
-    active_ok = set(load_manual("player_overrides_2026_27.csv").get("player_id", []))
-    stale = df.index[(df["last_season"] < 2026) & ~df.index.isin(active_ok)]
-    df = df.drop(index=stale)
-
-    # --- rookies / players without NBA history
-    rookies = load_manual("rookies_2026_27.csv")
-    if not rookies.empty:
-        rk = rookies.set_index("player_id")
-        for pid, r in rk.iterrows():
-            if pid in df.index:
-                continue
-            row = {
-                c: float(r[c])
-                for c in [
-                    "age",
-                    "gp",
-                    "mpg",
-                    "fgm",
-                    "fga",
-                    "ftm",
-                    "fta",
-                    "fg3m",
-                    "reb",
-                    "ast",
-                    "stl",
-                    "blk",
-                    "tov",
-                ]
-            }
-            row["gp"] = manual_gp(pid, row["gp"])
-            sd = float(r.get("gp_sd") or 12.0)
-            if fitted:  # never tighter than the calibrated residual sd at that level
-                sd = max(sd, gp_sd_from_model(row["gp"]))
-            row.update(
-                name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
-                gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
-                weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
-                adp=np.nan, source="manual_rookie_prior", bbref_id="",
-            )  # fmt: skip
-            df.loc[pid] = pd.Series(row)
-            notes.setdefault(pid, []).append("rookie/no NBA history: manual conservative prior")
-
-    # --- player overrides: team, status, gp, mpg, production multiplier
-    ov = load_manual("player_overrides_2026_27.csv")
-    for _, r in ov.iterrows():
-        pid = r["player_id"]
-        if pid not in df.index:
-            notes.setdefault(pid, []).append("override for unknown player ignored")
-            continue
-        if r.get("team"):
-            df.at[pid, "team"] = r["team"]
-        if r.get("status"):
-            assert r["status"] in STATUS_VALUES, (pid, r["status"])
-            df.at[pid, "status"] = r["status"]
-        if r.get("injury_note"):
-            df.at[pid, "injury_note"] = r["injury_note"]
-        if r.get("gp"):
-            df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]))
-            if fitted:
-                df.at[pid, "gp_sd"] = max(
-                    float(df.at[pid, "gp_sd"]), gp_sd_from_model(float(df.at[pid, "gp"]))
-                )
-        if r.get("games_missed"):
-            df.at[pid, "gp"] = max(
-                0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82
-            )
-            df.at[pid, "gp_sd"] = float(df.at[pid, "gp_sd"]) + 0.15 * float(r["games_missed"])
-        if r.get("mpg"):
-            new = float(r["mpg"])
-            old = float(df.at[pid, "mpg"])
-            for s in RATE_STATS:
-                df.at[pid, s] = float(df.at[pid, s]) * new / old
-            df.at[pid, "mpg"] = new
-        if r.get("usage_mult"):  # role change: scales shot volume/assists/turnovers
-            um = float(r["usage_mult"])
-            for s in ["fgm", "fga", "ftm", "fta", "fg3m", "ast", "tov"]:
-                df.at[pid, s] = float(df.at[pid, s]) * um
-        if r.get("note"):
-            notes.setdefault(pid, []).append(r["note"])
-        if not str(df.at[pid, "source"]).endswith("+manual"):
-            df.at[pid, "source"] = df.at[pid, "source"] + "+manual"
-
-    # --- ADP
-    adp = load_manual("adp_yahoo_2026_27.csv")
-    if not adp.empty:
-        for _, r in adp.iterrows():
-            if r["player_id"] in df.index and r.get("adp"):
-                df.at[r["player_id"], "adp"] = float(r["adp"])
-            elif r["player_id"] not in df.index:
-                notes.setdefault(r["player_id"], []).append("ADP row for unknown player ignored")
+    df = _drop_inactive(df)
+    _add_rookies(df, notes, manual_gp)
+    _apply_overrides(df, notes, manual_gp)
+    _apply_adp(df, notes)
     return df.reset_index()
 
 
