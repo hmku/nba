@@ -40,6 +40,9 @@ def _run_one(ctx: DraftContext, opt: DraftOptimizer | None, sampled_pos: np.ndar
                     if len(slots) - f <= left_after:
                         row = int(r)
                         break
+                if row < 0:  # no candidate keeps the lineup completable: take best available
+                    av = np.flatnonzero(available)
+                    row = int(av[np.argmax(ctx.value[av])])
             mine.append(row)
         else:
             row = int(next(r for r in room_order if available[r]))
@@ -58,7 +61,7 @@ def simulate_drafts(
     strategies: Counter[str] = Counter()
     for _ in range(n_sims):
         mr = ctx.market_rank
-        sampled = mr + rng.normal(0, 1, len(mr)) * adp_sd(mr) * noise
+        sampled = mr + rng.normal(0, 1, len(mr)) * adp_sd(mr) * ctx.sd_mult * noise
         mine, strat = _run_one(ctx, opt, sampled)
         base, _ = _run_one(ctx, None, sampled)
         ev, evb = ctx.model.evaluate_team(mine), ctx.model.evaluate_team(base)

@@ -32,6 +32,8 @@ from fantasy.model.catmodel import CategoryModel, build_arrays
 from fantasy.model.lines import ProjectionSet
 from fantasy.model.valuation import ValuationParams, compute_values, market_order
 
+NO_ADP_SD_MULT = 1.6
+
 DEFAULT_STRATEGIES: dict[str, list[str]] = {
     "balanced": [],
     "punt_ft": ["ft_pct"],
@@ -80,6 +82,8 @@ class DraftContext:
         self.model = CategoryModel(settings, self.arrays, self.market)
         mrank = {pid: i + 1 for i, pid in enumerate(self.market)}
         self.market_rank = np.array([mrank[p] for p in self.ids], dtype=float)
+        # players without market ADP: their slot is a model-based guess, so widen the spread
+        self.sd_mult = np.where(values["adp"].notna().to_numpy(), 1.0, NO_ADP_SD_MULT)
         self.positions = [list(p) for p in values["positions"]]
         self.value = values["value"].to_numpy(dtype=float)
         self.order: list[Pick] = draft_order(settings.num_teams, settings.num_rounds, settings.draft_order_type, custom_rounds)
@@ -118,10 +122,12 @@ class DraftState:
     my_slot: int
 
     def current_pick(self, n_total: int) -> int:
-        for k in range(1, n_total + 1):
-            if k not in self.taken:
-                return k
-        return n_total + 1
+        """The pick after the latest recorded one. Unrecorded earlier picks (sync gaps) are reported
+        as warnings but must not move the clock backwards."""
+        return min(max(self.taken, default=0) + 1, n_total + 1)
+
+    def gaps(self) -> list[int]:
+        return [k for k in range(1, max(self.taken, default=0)) if k not in self.taken]
 
 
 class DraftOptimizer:
@@ -177,7 +183,7 @@ class DraftOptimizer:
         mrank = self.ctx.market_rank
         for j, p in enumerate(future_picks):
             remaining = future_picks[j + 1 :]
-            pa = prob_available(p, current_pick, mrank)
+            pa = prob_available(p, current_pick, mrank, self.ctx.sd_mult)
             cand_mask = avail & (pa >= self.params.avail_threshold)
             cand = np.flatnonzero(cand_mask)
             if len(cand) == 0:
@@ -218,6 +224,8 @@ class DraftOptimizer:
         on_clock_slot = ctx.order[current - 1].slot if current <= n_total else None
         my_turn = on_clock_slot == state.my_slot
         warnings: list[str] = []
+        if state.gaps():
+            warnings.append(f"Picks {state.gaps()} not recorded: some listed players may already be gone; sync the board.")
         if unknown:
             warnings.append(f"{len(unknown)} drafted player(s) not in projections: {', '.join(unknown[:5])}")
         unverified = ctx.settings.unverified_fields()
@@ -235,7 +243,7 @@ class DraftOptimizer:
         by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
         if decision_pick > current:
             # not on the clock yet: only consider players with a real chance of lasting to my pick
-            p_dec = prob_available(decision_pick, current, ctx.market_rank[avail_idx])
+            p_dec = prob_available(decision_pick, current, ctx.market_rank[avail_idx], ctx.sd_mult[avail_idx])
             avail_idx = avail_idx[p_dec >= 0.15]
             by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
             by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
@@ -281,8 +289,8 @@ class DraftOptimizer:
             c = r["row"]
             pid = ctx.ids[c]
             v = ctx.values.loc[pid]
-            p_next = float(prob_available(next_pick, current, ctx.market_rank[[c]])[0]) if next_pick else 0.0
-            p_dec = float(prob_available(decision_pick, current, ctx.market_rank[[c]])[0])
+            p_next = float(prob_available(next_pick, current, ctx.market_rank[[c]], ctx.sd_mult[[c]])[0]) if next_pick else 0.0
+            p_dec = float(prob_available(decision_pick, current, ctx.market_rank[[c]], ctx.sd_mult[[c]])[0])
             marginal = r["obj"] - (second_obj if r["obj"] == best_obj else best_obj)
             recs.append({
                 "player_id": pid,

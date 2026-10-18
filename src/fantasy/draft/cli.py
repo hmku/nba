@@ -200,7 +200,7 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
     picks = store.get_picks(d["draft_id"])
     order_ = order_for_draft(d)
     taken = {p["overall_pick"]: p for p in picks}
-    current = next((p.overall for p in order_ if p.overall not in taken), None)
+    current = (max(taken, default=0) + 1) if (max(taken, default=0) < len(order_)) else None
     mine = [p.overall for p in order_ if p.slot == d["my_slot"]]
     out = {
         "draft_id": d["draft_id"], "status": d["status"], "picks_made": len(picks),

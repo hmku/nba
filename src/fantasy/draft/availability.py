@@ -21,19 +21,21 @@ def adp_sd(adp: np.ndarray) -> np.ndarray:
     return SD_FLOOR + SD_SLOPE * np.asarray(adp, dtype=float)
 
 
-def survival(pick: float, adp: np.ndarray) -> np.ndarray:
+def survival(pick: float, adp: np.ndarray, sd_mult: np.ndarray | float = 1.0) -> np.ndarray:
     """P(player is drafted at a pick later than `pick`), unconditional."""
     adp = np.asarray(adp, dtype=float)
-    return norm.sf((pick + 0.5 - adp) / adp_sd(adp))
+    return norm.sf((pick + 0.5 - adp) / (adp_sd(adp) * sd_mult))
 
 
-def prob_available(at_pick: float, current_pick: float, adp: np.ndarray) -> np.ndarray:
+def prob_available(
+    at_pick: float, current_pick: float, adp: np.ndarray, sd_mult: np.ndarray | float = 1.0
+) -> np.ndarray:
     """P(available at `at_pick` | available now at `current_pick`)."""
     if at_pick <= current_pick:
         return np.ones_like(np.asarray(adp, dtype=float))
     # picks before current_pick are already resolved, so condition on surviving to current_pick - 1
-    s_now = survival(current_pick - 1, adp)
-    s_then = survival(at_pick - 1, adp)
+    s_now = survival(current_pick - 1, adp, sd_mult)
+    s_then = survival(at_pick - 1, adp, sd_mult)
     with np.errstate(divide="ignore", invalid="ignore"):
         p = np.where(s_now > 1e-12, s_then / s_now, 0.0)
     return np.clip(p, 0.0, 1.0)
