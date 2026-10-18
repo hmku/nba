@@ -114,9 +114,37 @@ Execution recipe for any Yahoo write:
   `lock release --force`. Then `fantasy run reap`.
 - **Approval never answered**: it expires; the txn stays `awaiting_approval` — cancel it.
 - **Offline work** (no Supabase): run with the local SQLite DB, then
-  `FANTASY_PUBLISH_URL=postgresql://... fantasy publish`. Upserts every table by primary key
+  `FANTASY_PUBLISH_URL=postgresql://... fantasy publish` (laptop) or `fantasy publish --rest`
+  (cloud session, section 5b). Upserts every table by primary key
   except `locks` (ephemeral). Tasks/transactions whose title/idempotency key collide with a
   *different* row online are skipped and reported, never overwritten.
+
+## 5b. Publishing from cloud sessions (HTTPS / PostgREST)
+
+Cloud Claude Code sessions only have an HTTPS proxy (Postgres hosts do not even resolve), so
+`FANTASY_DB_URL=postgresql://...` and `fantasy publish --target ...` only work on the laptop. In
+the cloud, work on local SQLite and publish over HTTPS:
+
+```bash
+fantasy db ping --rest --json          # GET rest/v1/tasks?select=task_id&limit=1
+#   exit 0 auth_ok; error "rest_unreachable" = host not in the environment's Allowed domains;
+#   "rest_auth" (401/403) = no/invalid key -> see docs/USER_TODO.md (never ask for the key in chat)
+fantasy publish --rest --dry-run       # counts rows/batches per table, sends nothing
+fantasy publish --rest [--source sqlite:///...] [--tables players,model_runs ...] --json
+```
+- Source defaults to `FANTASY_DB_URL` if it is SQLite, else `var/fantasy.db`. Target `SUPABASE_URL`
+  (default `https://bdzpkdkhlzjzddkptjex.supabase.co`).
+- `POST /rest/v1/<table>?on_conflict=<pk cols>` with `Prefer: resolution=merge-duplicates`, 500
+  rows per request, FK-safe order (`metadata.sorted_tables`), `locks` never. Datetimes as ISO
+  UTC, JSON columns as JSON, NaN as null. 5xx/network errors are retried twice (it is an upsert,
+  so idempotent); proxy denials are not retried.
+- Same safety rule as SQL publish: tasks/transactions whose title/idempotency key belongs to a
+  different PK online (checked with a GET first) are skipped and listed under `skipped`. Other
+  per-table failures (e.g. 409) land in `errors` and the command exits 1.
+- Auth: `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) is sent as `apikey` (plus
+  `Authorization: Bearer` for legacy `eyJ...` JWT keys); with neither set no auth header is sent and
+  the environment's network secret is expected to inject `apikey`. The key is never printed.
+- Python: `fantasy.db.rest.publish_rest(source_url, tables=..., dry_run=...)`, `rest.ping()`.
 
 ## 6. Tasks (backlog)
 

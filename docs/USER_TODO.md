@@ -19,9 +19,18 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 - [ ] **Apply for Yahoo API access** (optional, takes weeks, not needed for the draft):
       https://sports.yahoo.com/developer/access/ — "personal read-only analysis tool for my own single league (44495)",
       users: Small, leave Client ID blank. See `docs/research/yahoo_api.md` §0.
-- [ ] **Database URL for agents**: Supabase → fantasy-nba → Connect → *Session pooler* URI. Add it as
-      `FANTASY_DB_URL` in the cloud environment's environment variables (so cloud agents write to Supabase directly)
-      and keep it for your laptop (step 3 below). Never paste it into chat or commit it.
+- [ ] **Database access for agents — laptop**: Supabase → fantasy-nba → Connect → *Session pooler* URI
+      (if you don't know the DB password: Project Settings → Database → *Reset database password*).
+      Use it as `FANTASY_DB_URL` on your laptop (step 3 below). Never paste it into chat or commit it.
+- [ ] **Database access for agents — cloud sessions** (they cannot open Postgres connections; they publish
+      over HTTPS with `fantasy publish --rest`). In the cloud environment's settings (environment menu in the
+      session title bar → Edit):
+      1. *Network access*: add `bdzpkdkhlzjzddkptjex.supabase.co` under **Allowed domains** (keep "Allow
+         package managers" ticked) — today the proxy answers 403 to this host.
+      2. *Network secrets*: for host `bdzpkdkhlzjzddkptjex.supabase.co` inject header
+         `apikey: <sb_secret_… key>` (Supabase → Project Settings → API Keys → secret key). If network secrets
+         aren't offered, add an environment variable `SUPABASE_SECRET_KEY=<sb_secret_… key>` instead.
+      New sessions pick both up; check with `fantasy db ping --rest`. Never paste keys into chat.
 
 ## At your computer (before the draft — ideally Monday afternoon)
 1. [ ] Install/update Claude Code and sign in (`/login`, not an API key).

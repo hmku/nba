@@ -8,7 +8,9 @@ from typing import Annotated, Any
 import typer
 from sqlalchemy import create_engine, func, select
 
+from fantasy.db import rest
 from fantasy.db.engine import DEFAULT_SQLITE, db_url
+from fantasy.db.rest import PUBLISH_SKIP, PUBLISH_UNIQUE, unique_clashes
 from fantasy.db.schema import drafts, metadata, model_runs
 from fantasy.ops import approvals, ledger, locks, tasks, transactions
 from fantasy.ops.cli import JsonOut, emit, handled
@@ -125,13 +127,6 @@ def _render_text(s: dict[str, Any]) -> str:
 # ------------------------------------------------------------------ publish
 
 
-# Ephemeral state that must not be copied (an offline lease means nothing online).
-PUBLISH_SKIP = frozenset({"locks"})
-# Natural unique keys besides the PK: rows that would collide with a *different* target row
-# are skipped (reported), never overwritten -- e.g. offline task T-013 vs. online T-013.
-PUBLISH_UNIQUE = {"tasks": "title", "transactions": "idempotency_key"}
-
-
 def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any]:
     """Upsert every row of every table from source into target (FK order, PK upsert)."""
     if source_url == target_url:
@@ -160,16 +155,9 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any
                 existing = {
                     r[0]: r[1] for r in dconn.execute(select(table.c[pkcol], table.c[uniq]))
                 }
-                by_uniq = {v: k for k, v in existing.items()}
-                keep = []
-                for r in rows:
-                    clash_pk = by_uniq.get(r[uniq], r[pkcol]) != r[pkcol]
-                    clash_uniq = r[pkcol] in existing and existing[r[pkcol]] != r[uniq]
-                    if clash_pk or clash_uniq:
-                        skipped.setdefault(table.name, []).append(r[pkcol])
-                    else:
-                        keep.append(r)
-                rows = keep
+                rows, skipped_pks = unique_clashes(rows, pkcol, uniq, existing)
+                if skipped_pks:
+                    skipped[table.name] = skipped_pks
             for i in range(0, len(rows), chunk):
                 batch = rows[i : i + chunk]
                 stmt = dialect_insert(table).values(batch)
@@ -219,6 +207,33 @@ def register(app: typer.Typer) -> None:
         emit({"dialect": eng.dialect.name, "created": False, "migrations_dir": MIGRATIONS_DIR},
              json_out, msg)
 
+    @db_app.command("ping")
+    @handled
+    def db_ping(
+        use_rest: Annotated[bool, typer.Option("--rest", help="Check Supabase over HTTPS "
+                                                "(PostgREST) instead of FANTASY_DB_URL")] = False,
+        json_out: JsonOut = False,
+    ) -> None:
+        """Quick connectivity/auth check. Exit 0 = reachable and authorised."""
+        if use_rest:
+            res = rest.ping()
+            got = f"HTTP {res['status']}" if res["reachable"] else "UNREACHABLE"
+            text = f"{res['target']}: {got} auth_ok={res['auth_ok']} (auth: {res['auth']})"
+            if res.get("message"):
+                text += "\n" + res["message"]
+            if not res["auth_ok"]:
+                details = {k: v for k, v in res.items() if k != "message"}
+                err = (rest.RestUnreachableError if not res["reachable"]
+                       else rest.RestAuthError if res["status"] in (401, 403)
+                       else rest.RestError)
+                raise err(text, ping=details)
+            emit({"ping": res}, json_out, text)
+            return
+        url = db_url()
+        with engine(url).connect() as conn:
+            conn.execute(select(1))
+        emit({"ping": {"db": _redact(url), "auth_ok": True}}, json_out, f"ok: {_redact(url)}")
+
     app.add_typer(db_app, name="db")
 
     @app.command("publish")
@@ -228,21 +243,45 @@ def register(app: typer.Typer) -> None:
                                                    " or local sqlite)")] = None,
         target: Annotated[str | None, typer.Option(envvar="FANTASY_PUBLISH_URL",
                                                    help="Target Postgres URL")] = None,
+        use_rest: Annotated[bool, typer.Option("--rest", help="Publish over HTTPS to Supabase "
+                                                "PostgREST (SUPABASE_URL) instead of --target")]
+        = False,
+        tables: Annotated[list[str] | None, typer.Option(help="--rest: only these tables "
+                                                          "(repeat or comma-separate)")] = None,
+        dry_run: Annotated[bool, typer.Option("--dry-run", help="--rest: count rows/batches, "
+                                              "send nothing")] = False,
         json_out: JsonOut = False,
     ) -> None:
-        """Copy all rows from the local sqlite DB to FANTASY_PUBLISH_URL (upsert by PK)."""
-        if not target:
-            raise ValueError("set FANTASY_PUBLISH_URL or pass --target")
-        for prefix in ("postgres://", "postgresql://"):
-            if target.startswith(prefix):
-                target = "postgresql+psycopg://" + target[len(prefix):]
+        """Copy all rows from the local sqlite DB to Supabase (upsert by PK; skips `locks`).
+
+        Default: SQL to FANTASY_PUBLISH_URL (laptop). --rest: HTTPS/PostgREST (cloud sessions).
+        """
         if source:
             src = source
         else:  # the local sqlite DB: FANTASY_DB_URL if it is sqlite, else the default file
             src = db_url() if db_url().startswith("sqlite") else f"sqlite:///{DEFAULT_SQLITE}"
+        if use_rest:
+            res = rest.publish_rest(src, tables=tables, dry_run=dry_run)
+            verb = "would upsert" if dry_run else "upserted"
+            lines = [f"{'DRY RUN ' if dry_run else ''}{_redact(src)} -> {res['target']}"
+                     f" (auth: {res['auth']})"]
+            lines += [f"{k}: {verb} {v} rows in {res['batches'][k]} batch(es)"
+                      for k, v in res["rows"].items()]
+            if res["skipped"]:
+                lines.append(f"SKIPPED (unique-key clash with different target row): "
+                             f"{res['skipped']}")
+            if res["errors"]:
+                lines.append(f"ERRORS: {res['errors']}")
+                raise rest.RestError("\n".join(lines), **{**res, "source": _redact(src)})
+            emit({"source": _redact(src), **res}, json_out, "\n".join(lines))
+            return
+        if not target:
+            raise ValueError("set FANTASY_PUBLISH_URL or pass --target (or use --rest)")
+        for prefix in ("postgres://", "postgresql://"):
+            if target.startswith(prefix):
+                target = "postgresql+psycopg://" + target[len(prefix):]
         res = publish(src, target)
         text = "\n".join(f"{k}: {v}" for k, v in res["rows"].items())
         if res["skipped"]:
             text += f"\nSKIPPED (unique-key clash with different target row): {res['skipped']}"
         emit({"source": _redact(src), "target": _redact(target), **res}, json_out, text)
-

@@ -14,6 +14,10 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 - `fantasy` on PATH (`pip install -e ".[dev]"`). DB: `FANTASY_DB_URL` = Supabase pooler URL in
   production (secret, from the user; never echo it), unset = local SQLite `var/fantasy.db`.
   If you worked on SQLite, the dashboard sees nothing until `fantasy publish` (asks the user).
+- **Cloud sessions** cannot reach Postgres (HTTPS proxy only): work on SQLite, then
+  `fantasy db ping --rest --json` and `fantasy publish --rest [--dry-run] --json` (PostgREST upsert,
+  same skip rules; runbook section 5b). `rest_unreachable` = host not allowed in the environment's
+  network settings, `rest_auth` = key missing: point the user to docs/USER_TODO.md, never ask for keys in chat.
 - For Yahoo writes: a **local** session with Claude in Chrome (see `yahoo-browser` skill).
 - Always pass `--json` and branch on the **exit code**, then read the JSON.
 
