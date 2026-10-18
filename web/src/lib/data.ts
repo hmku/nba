@@ -132,14 +132,34 @@ export async function loadValues(db: SupabaseClient, runId?: string): Promise<Va
     const { data } = await db.from("model_runs").select("*").eq("run_id", runId).maybeSingle();
     run = (data as ModelRun) ?? null;
   }
-  if (!run) run = await latestRun(db, "valuation");
-  if (!run) return { run: null, values: [], players: {}, errors };
   let values: PlayerValue[] = [];
-  try {
-    values = await pagedByRun<PlayerValue>(db, "player_values", run.run_id, "rank");
-  } catch (e) {
-    errors.push(String(e));
+  // Candidate runs: the requested one, else the latest few valuation runs; use the first that has rows
+  // (a run row can exist before its player_values finish loading).
+  let candidates: ModelRun[] = run ? [run] : [];
+  if (!run) {
+    const { data } = await db
+      .from("model_runs")
+      .select("*")
+      .eq("kind", "valuation")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    candidates = (data as ModelRun[]) ?? [];
   }
+  run = candidates[0] ?? null;
+  for (const c of candidates) {
+    try {
+      const v = await pagedByRun<PlayerValue>(db, "player_values", c.run_id, "rank");
+      if (v.length) {
+        run = c;
+        values = v;
+        break;
+      }
+    } catch (e) {
+      errors.push(String(e));
+      break;
+    }
+  }
+  if (!run) return { run: null, values: [], players: {}, errors };
   const players = await loadPlayers(db);
   return { run, values, players, errors };
 }
