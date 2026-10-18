@@ -13,6 +13,10 @@ export default async function PlayersPage() {
     loadValues(db),
     loadProjections(db).catch((e) => ({ run: null, rows: [], error: String(e) })),
   ]);
+  // Don't mix mock projections with a real valuation run.
+  const mixMock = !!proj.run?.run_id.startsWith("mock-") && !values.run?.run_id.startsWith("mock-");
+  const projRun = mixMock ? null : proj.run;
+  const projRows = mixMock ? [] : proj.rows;
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-semibold tracking-tight">Players</h1>
@@ -21,8 +25,8 @@ export default async function PlayersPage() {
       ))}
       <PlayersClient
         values={slimValues(values)}
-        projRun={proj.run}
-        projections={proj.rows.map((p) => {
+        projRun={projRun}
+        projections={projRows.map((p) => {
           const ex = (p.extra ?? {}) as Record<string, unknown>;
           return { ...p, extra: { name: ex.name ?? null, team: ex.team ?? null } };
         })}
