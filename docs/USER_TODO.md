@@ -7,9 +7,9 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 - [ ] **Clean demo rows in Supabase** — Supabase → SQL Editor → paste the "Delete with:" block from
       `docs/runbooks/dashboard.md` (only touches `mock-` rows). Agents can't run deletes from the cloud session.
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set in Vercel (verified live 2026-10-18 15:03 UTC).
-- [ ] **`DASHBOARD_PASSPHRASE`** in Vercel → https://vercel.com/hku-projects/fantasy-nba/settings/environment-variables
-      (any phrase you choose). Then tell an agent to trigger a build — Vercel "Redeploy" is skipped by the
-      ignored build step unless `web/` changed. Then unlock on each device via the lock icon.
+- [x] `DASHBOARD_PASSPHRASE` set (writes enabled, verified 2026-10-18 15:10 UTC).
+- [ ] Unlock writes on each device you'll use (lock icon in the dashboard nav). Consider a longer passphrase
+      (the dashboard is public; changing it needs a `web/` build — ask an agent).
 - [ ] **Confirm the dashboard is public**: open https://fantasy.harrisonku.com in a private tab.
 - [ ] **Apply for Yahoo API access** (optional, takes weeks, not needed for the draft):
       https://sports.yahoo.com/developer/access/ — "personal read-only analysis tool for my own single league (44495)",
