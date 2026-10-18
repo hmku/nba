@@ -351,11 +351,12 @@ def simulate(
     draft_id: Annotated[str | None, typer.Option(
         "--draft-id", envvar="FANTASY_DRAFT_ID",
         help="Use this draft's teams/slot and custom order (set-order); default: settings + formula order")] = None,
+    save: Annotated[bool, typer.Option("--save/--no-save", help="Record a model_runs row (kind draft_sim)")] = True,
     projections: ProjOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
     """Monte Carlo mock drafts: opponents draft by noisy ADP, I draft with the optimizer."""
-    from fantasy.draft.simulate import simulate_drafts
+    from fantasy.draft.simulate import save_draft_sim, simulate_drafts
 
     _check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
     d = _load_draft(draft_id, as_json) if draft_id else None
@@ -366,12 +367,26 @@ def simulate(
     proj = load_projections(projections)
     ctx = DraftContext(proj, s, custom_rounds=custom)
     res = simulate_drafts(ctx, n_sims=sims, seed=seed, noise=noise, strategy=strategy)
-    res = {"ok": True, "draft_id": d["draft_id"] if d else None,
+    run_id = None
+    if save:
+        try:
+            run_id = save_draft_sim(
+                res,
+                {"n_sims": sims, "seed": seed, "noise": noise, "strategy": strategy, "my_slot": s.my_slot},
+                {"projections_path": proj.path, "projections_sha256": proj.sha256,
+                 "draft_id": d["draft_id"] if d else None, "order_type": s.draft_order_type,
+                 "custom_rounds": custom, "num_teams": s.num_teams, "my_picks": res["summary"]["my_picks"]})
+        except Exception as e:  # recording must never block the answer
+            print(f"warning: could not record draft_sim run: {e}", file=sys.stderr)
+    res = {"ok": True, "run_id": run_id, "draft_id": d["draft_id"] if d else None,
            "order_type": s.draft_order_type, "custom_order": bool(custom), **res}
     if as_json:
         _emit(res, True)
         return
-    typer.echo(json.dumps(store._clean(res["summary"]), indent=2))
+    sm = res["summary"]
+    head = {k: sm[k] for k in ("n_sims", "my_slot", "optimizer", "baseline_bpa", "edge", "first_pick_counts",
+                               "strategy_counts")}
+    typer.echo(json.dumps(store._clean({**head, "run_id": run_id}), indent=2))
 
 
 RunOpt = Annotated[str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")]

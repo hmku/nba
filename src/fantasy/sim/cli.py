@@ -345,3 +345,61 @@ def draft_check_cmd(
         lines.append(f"  {c['name']:<24} P(po) {c['p_playoffs']:.1%} ±{c['p_playoffs_se']:.1%}  P(title) {c['p_title']:.1%}  "
                      f"diff vs first {c['p_playoffs_diff_vs_first']:+.3f} ± {c['p_playoffs_diff_se'] or 0:.3f}")
     _emit(out, as_json, "\n".join(lines))
+
+
+@app.command()
+def preseason(
+    leagues: Annotated[int, typer.Option("--leagues", help="Simulated drafts (leagues); season sims are split across them")] = 8,
+    sims: SimsOpt = 2000, seed: SeedOpt = 0,
+    draft_seed: Annotated[int, typer.Option("--draft-seed")] = 0,
+    noise: Annotated[float, typer.Option("--noise", help="Opponent ADP noise multiplier in the simulated drafts")] = 1.0,
+    strategy: Annotated[str | None, typer.Option("--strategy", help="Force a draft strategy (default: scan)")] = None,
+    slot: Annotated[int | None, typer.Option("--slot")] = None,
+    schedule: SchedOpt = None, nba_schedule: NbaOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True,
+    streaming: StreamOpt = True, save: SaveOpt = True, projections: ProjOpt = None, as_json: JsonOpt = False,
+) -> None:
+    """Pre-draft season projection: simulate full drafts (me = optimizer, others = noisy ADP), play each
+    league's season and pool P(playoffs)/P(title)/rank by draft slot. Saved as kind season_sim with
+    summary.scenario = "pre-draft projection"."""
+    from fantasy.draft.optimizer import DEFAULT_STRATEGIES, DraftContext
+    from fantasy.sim.persist import save_sim_run
+    from fantasy.sim.preseason import preseason as run_preseason
+
+    if strategy and strategy not in DEFAULT_STRATEGIES:
+        _fail(f"unknown --strategy {strategy}", as_json, code=2, valid=list(DEFAULT_STRATEGIES))
+    if leagues < 1:
+        _fail("--leagues must be >= 1", as_json, code=2)
+    settings = load_settings()
+    if slot:
+        settings = settings.model_copy(update={"my_slot": slot})
+    proj = load_projections(projections)
+    team_ids = list(range(1, settings.num_teams + 1))
+    try:
+        sctx = build_context(proj, settings, team_ids, schedule_file=schedule, nba_schedule_file=nba_schedule,
+                             week1_end=date.fromisoformat(week1_end) if week1_end else None,
+                             merge_allstar=merge_allstar)
+    except ValueError as e:
+        _fail(str(e), as_json, code=2)
+    dctx = DraftContext(proj, settings, values=sctx.values)
+    params = _params(sims, seed, streaming)
+    summary = run_preseason(sctx, dctx, n_leagues=leagues, params=params, draft_seed=draft_seed, noise=noise,
+                            strategy=strategy)
+    run_id = None
+    if save:
+        try:
+            run_id = save_sim_run(
+                "season_sim",
+                {**params.to_dict(), "command": "preseason", "leagues": leagues, "draft_seed": draft_seed,
+                 "noise": noise, "strategy": strategy, "my_slot": settings.my_slot},
+                {**sctx.inputs(), "league_source": "simulated drafts", "draft_order_type": settings.draft_order_type,
+                 "my_picks": [p.overall for p in dctx.order if p.slot == settings.my_slot]},
+                summary)
+        except Exception as e:  # recording must never block the answer
+            print(f"warning: could not record sim run: {e}", file=sys.stderr)
+    m = summary["my_outlook"]
+    text = [f"pre-draft projection (slot {settings.my_slot}, {summary['n_leagues']} simulated leagues, "
+            f"{summary['n_sims']} seasons, {summary['compute_seconds']}s): P(playoffs) {m['p_playoffs']:.1%} "
+            f"±{m['p_playoffs_se']:.1%}  P(title) {m['p_title']:.1%}  exp rank {m['exp_rank']:.1f}  run {run_id}"]
+    for r in summary["league_table"]:
+        text.append(f"  {r['name']:<14} P(po) {r['p_playoffs']:6.1%}  P(title) {r['p_title']:6.1%}  rank {r['exp_rank']:.1f}")
+    _emit({"ok": True, "sim_version": SIM_VERSION, "run_id": run_id, **summary}, as_json, "\n".join(text))
