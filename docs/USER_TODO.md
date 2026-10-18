@@ -50,6 +50,7 @@ Read and follow https://fantasy.harrisonku.com/agent (instructions + API). Your 
 6. To revoke later: change/delete `AGENT_API_TOKEN` in Vercel and ask Claude to trigger a build.
 
 ## At your computer (before the draft — ideally Monday afternoon)
+_Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the mock-draft rehearsal (step 7) **after 6pm ET** so you test the final code._
 1. [ ] Install/update Claude Code and sign in (`/login`, not an API key).
 2. [ ] `git clone https://github.com/hmku/nba && cd nba && pip install -e ".[dev]"` (Python ≥ 3.11).
 3. [ ] `export FANTASY_DB_URL='<session pooler URI>'` (put it in your shell rc or a git-ignored `.env`); check `fantasy status` works.
