@@ -2,17 +2,19 @@
   "model_version": "baseline-0.1",
   "season": "2026-27",
   "output": "data/processed/projections_2026_27.csv",
-  "rows": 454,
-  "sha256": "9436eb8287b2b888fc7074086e78ff55d7930fc63eccfbde3513b5bf3fa1f4a5",
+  "rows": 456,
+  "sha256": "7681a8a005b68d142929390dd76dfa9c71bd2c5d144bcce480119cf44f5ffa3a",
   "sources": [
     "bbref_baseline",
     "bbref_baseline+manual",
-    "manual_rookie_prior"
+    "manual_rookie_prior",
+    "manual_rookie_prior+manual"
   ],
   "source_counts": {
-    "bbref_baseline": 350,
-    "bbref_baseline+manual": 93,
-    "manual_rookie_prior": 11
+    "bbref_baseline": 305,
+    "bbref_baseline+manual": 140,
+    "manual_rookie_prior": 9,
+    "manual_rookie_prior+manual": 2
   },
   "params": {
     "season_weights": {
@@ -65,7 +67,7 @@
     },
     {
       "path": "data/manual/player_overrides_2026_27.csv",
-      "sha256": "c0fa4864a6994a6eefd99d6435f801735df8ca6ac2f358da2ee9ac4cbbd45ca2",
+      "sha256": "110853b14800ac8b864ea0f770b5a40343c1b33668247bc0edc09dea2e2957c2",
       "url": "manual",
       "fetched_at": null
     },
@@ -194,6 +196,9 @@
     "jalen-duren": [
       "re-signed DET 5yr/$200M (Oct 1)"
     ],
+    "jamir-watkins": [
+      "kept despite max_rows=450 volume cut (manual override)"
+    ],
     "jaxson-hayes": [
       "added by UTA"
     ],
@@ -209,11 +214,11 @@
     "jeremy-sochan": [
       "added by POR"
     ],
-    "jimmy-butler": [
-      "kept despite max_rows=450 volume cut (manual override)"
-    ],
     "john-collins": [
       "six-team deal"
+    ],
+    "johnny-furphy": [
+      "kept despite max_rows=450 volume cut (manual override)"
     ],
     "jonathan-kuminga": [
       "signed MIN (2yr)"
@@ -356,6 +361,9 @@
     ],
     "santi-aldama": [
       "six-team deal"
+    ],
+    "shaedon-sharpe": [
+      "kept despite max_rows=450 volume cut (manual override)"
     ],
     "taurean-prince": [
       "six-team deal"

@@ -62,6 +62,14 @@ def fetch_yahoo(
     _emit(out, as_json)
 
 
+@app.command("fetch-injuries")
+def fetch_injuries(as_json: bool = typer.Option(False, "--json")) -> None:
+    """Cache the ESPN (API) and CBS injury reports into data/raw/ (review, then edit overrides)."""
+    from fantasy.data.injuries import fetch
+
+    _emit({"fetched": fetch()}, as_json)
+
+
 @app.command("fetch-nba-api")
 def fetch_nba_api(
     seasons: str = typer.Option("2025-26,2024-25,2023-24", help="comma-separated NBA seasons"),
