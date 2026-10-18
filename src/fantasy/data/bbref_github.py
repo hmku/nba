@@ -58,7 +58,10 @@ def fetch(min_season: int = MIN_SEASON, timeout: float = 60.0) -> list[dict]:
                     method="httpx GET raw.githubusercontent.com, pandas filter",
                     rows=len(df),
                     notes=note,
-                    extra={"upstream_rows": full_rows, "upstream": "https://github.com/sumitrodatta/bball-reference-datasets"},
+                    extra={
+                        "upstream_rows": full_rows,
+                        "upstream": "https://github.com/sumitrodatta/bball-reference-datasets",
+                    },
                 )
             )
     return provs

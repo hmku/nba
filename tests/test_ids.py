@@ -14,7 +14,13 @@ def test_slugify_examples():
 
 
 def test_slugify_is_ascii_and_idempotent():
-    for n in ["Luka Dončić", "Jusuf Nurkić", "Nikola Vučević", "Bogdan Bogdanović", "Moussa Diabaté"]:
+    for n in [
+        "Luka Dončić",
+        "Jusuf Nurkić",
+        "Nikola Vučević",
+        "Bogdan Bogdanović",
+        "Moussa Diabaté",
+    ]:
         s = slugify(n)
         assert s.isascii() and s == s.lower() and " " not in s
         assert slugify(s) == s

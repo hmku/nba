@@ -31,7 +31,10 @@ def fetch(seasons: list[str], sleep_s: float = 1.0) -> list[dict]:
     provs = []
     for season in seasons:
         resp = leaguedashplayerstats.LeagueDashPlayerStats(
-            season=season, per_mode_detailed="Totals", season_type_all_star="Regular Season", timeout=60
+            season=season,
+            per_mode_detailed="Totals",
+            season_type_all_star="Regular Season",
+            timeout=60,
         )
         df = resp.get_data_frames()[0]
         path = out_dir / f"league_player_totals_{season}.csv"

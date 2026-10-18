@@ -21,12 +21,17 @@ def _emit(obj: dict, as_json: bool) -> None:
 
 
 @app.command("build-projections")
-def build_projections(as_json: bool = typer.Option(False, "--json", help="JSON summary on stdout")) -> None:
+def build_projections(
+    as_json: bool = typer.Option(False, "--json", help="JSON summary on stdout"),
+) -> None:
     """Regenerate data/processed/projections_2026_27.csv from cached raw + manual data (no network)."""
     from fantasy.model.projections import write
 
     meta = write()
-    summary = {k: meta[k] for k in ("model_version", "season", "output", "rows", "sha256", "sources", "source_counts")}
+    summary = {
+        k: meta[k]
+        for k in ("model_version", "season", "output", "rows", "sha256", "sources", "source_counts")
+    }
     summary["inputs"] = meta["inputs"]
     _emit(summary, as_json)
 
@@ -63,7 +68,23 @@ def top(
 
     df = pd.read_csv(OUTPUT_PATH)
     z = zscores(df).head(n)
-    cols = ["player_id", "name", "team", "positions", "gp", "mpg", "pts", "reb", "ast", "stl", "blk", "fg3m", "tov", "adp", "z"]
+    cols = [
+        "player_id",
+        "name",
+        "team",
+        "positions",
+        "gp",
+        "mpg",
+        "pts",
+        "reb",
+        "ast",
+        "stl",
+        "blk",
+        "fg3m",
+        "tov",
+        "adp",
+        "z",
+    ]
     rows = z[cols].round(2).to_dict(orient="records")
     if as_json:
         typer.echo(json.dumps(rows, indent=2, default=str))

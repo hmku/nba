@@ -46,7 +46,9 @@ STATUS_VALUES = {"healthy", "out", "gtd", "out_for_season", "unknown"}
 
 @dataclass(frozen=True)
 class Params:
-    season_weights: dict[int, float] = field(default_factory=lambda: {2026: 5.0, 2025: 3.0, 2024: 2.0})
+    season_weights: dict[int, float] = field(
+        default_factory=lambda: {2026: 5.0, 2025: 3.0, 2024: 2.0}
+    )
     prior_min: float = 400.0  # minutes of league-average (by position group) production added
     gp_prior: float = 68.0  # league prior for games played by a rotation player
     gp_prior_weight: float = 1.0  # weight of prior in units of "seasons"
@@ -54,6 +56,8 @@ class Params:
     gp_max: float = 80.0
     gp_sd_base: float = 7.0
     mpg_max: float = 37.5
+    mpg_prior: float = 16.0  # bench-player minutes prior for small samples
+    mpg_prior_games: float = 25.0
     min_total_minutes: float = 150.0  # weighted minutes needed to be projected at all
     max_rows: int = 450
 
@@ -116,7 +120,8 @@ def load_manual(name: str) -> pd.DataFrame:
         df["player_id"] = df["name"].map(canonical_id)
     elif "player_id" in df.columns:
         df["player_id"] = [
-            pid.strip() or canonical_id(n) for pid, n in zip(df["player_id"], df.get("name", ""), strict=False)
+            pid.strip() or canonical_id(n)
+            for pid, n in zip(df["player_id"], df.get("name", ""), strict=False)
         ]
     return df
 
@@ -140,7 +145,13 @@ def derive_positions(pbp: pd.DataFrame, weights: dict[int, float]) -> dict[str, 
     there, plus his bbref listed position. Yahoo is usually at least this generous; manual
     overrides in data/manual/positions_overrides.csv take precedence.
     """
-    pct_cols = {"PG": "pg_percent", "SG": "sg_percent", "SF": "sf_percent", "PF": "pf_percent", "C": "c_percent"}
+    pct_cols = {
+        "PG": "pg_percent",
+        "SG": "sg_percent",
+        "SF": "sf_percent",
+        "PF": "pf_percent",
+        "C": "c_percent",
+    }
     p = pbp[pbp["season"].isin([s for s in weights if s >= 2025])].copy()
     p["w"] = p["season"].map(weights) * pd.to_numeric(p["mp"], errors="coerce").fillna(0)
     out: dict[str, str] = {}
@@ -172,12 +183,18 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
     tot = tot[tot["season"].isin(list(w))].copy()
     tot["w"] = tot["season"].map(w)
 
-    career = pd.read_csv(_raw("player_career_info.csv")).drop_duplicates("player_id").set_index("player_id")
+    career = (
+        pd.read_csv(_raw("player_career_info.csv"))
+        .drop_duplicates("player_id")
+        .set_index("player_id")
+    )
 
     # position-group league mean per-minute rates (rotation players, latest season)
     latest = tot[(tot["season"] == max(w)) & (tot["mp"] >= 500)].copy()
     latest["grp"] = latest["pos"].map(_pos_group)
-    grp_rates = latest.groupby("grp")[RATE_STATS].sum().div(latest.groupby("grp")["mp"].sum(), axis=0)
+    grp_rates = (
+        latest.groupby("grp")[RATE_STATS].sum().div(latest.groupby("grp")["mp"].sum(), axis=0)
+    )
     # replacement-ish prior: scale down production (low-minute players are below average),
     # but keep shooting percentages at the group mean (makes and attempts scaled together)
     grp_rates = grp_rates * 0.85
@@ -193,7 +210,9 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         prior = grp_rates.loc[grp]
         rate = {}
         for s in RATE_STATS:
-            rate[s] = ((g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (wmin + params.prior_min)
+            rate[s] = ((g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (
+                wmin + params.prior_min
+            )
         # keep makes <= attempts after regression
         rate["fgm"] = min(rate["fgm"], rate["fga"])
         rate["ftm"] = min(rate["ftm"], rate["fta"])
@@ -212,6 +231,15 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         mpg_hist = gg["mp"] / gg["g"].clip(lower=1)
         rw = gg["season"].map({max(w): 0.6, max(w) - 1: 0.3, max(w) - 2: 0.1})
         mpg = float((mpg_hist * rw).sum() / rw.sum())
+        # small samples (e.g. late-season minutes on tanking teams, two-way players): shrink
+        # minutes toward a bench prior; players with >= 80 career games (in window) are untouched
+        g_total = float(g["g"].sum())
+        shrink = (
+            params.mpg_prior_games
+            / (g_total + params.mpg_prior_games)
+            * float(np.clip((80.0 - g_total) / 50.0, 0.0, 1.0))
+        )
+        mpg = (1 - shrink) * mpg + shrink * params.mpg_prior
         if mpg < 30:
             mpg += MPG_GROWTH.get(int(round(age_now)), 0.0)
         if age_now >= 33:
@@ -225,9 +253,13 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         gw = g["w"]
         n_eff = gw.sum() / max(w.values())
         g_mean = float((games * gw).sum() / gw.sum())
-        gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (n_eff + params.gp_prior_weight)
+        gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (
+            n_eff + params.gp_prior_weight
+        )
         gp = float(np.clip(gp, params.gp_min, params.gp_max))
-        hist_sd = float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum())) if len(g) > 1 else 10.0
+        hist_sd = (
+            float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum())) if len(g) > 1 else 10.0
+        )
         gp_sd = float(np.sqrt(params.gp_sd_base**2 + (0.6 * hist_sd) ** 2))
 
         pg = {s: rate[s] * mpg for s in RATE_STATS}
@@ -281,7 +313,24 @@ def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame
         for pid, r in rk.iterrows():
             if pid in df.index:
                 continue
-            row = {c: float(r[c]) for c in ["age", "gp", "mpg", "fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov"]}
+            row = {
+                c: float(r[c])
+                for c in [
+                    "age",
+                    "gp",
+                    "mpg",
+                    "fgm",
+                    "fga",
+                    "ftm",
+                    "fta",
+                    "fg3m",
+                    "reb",
+                    "ast",
+                    "stl",
+                    "blk",
+                    "tov",
+                ]
+            }
             row.update(
                 name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
                 gp_sd=float(r.get("gp_sd") or 12.0), last_season=0, seasons_used="",
@@ -308,7 +357,9 @@ def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame
         if r.get("gp"):
             df.at[pid, "gp"] = float(r["gp"])
         if r.get("games_missed"):
-            df.at[pid, "gp"] = max(0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82)
+            df.at[pid, "gp"] = max(
+                0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82
+            )
             df.at[pid, "gp_sd"] = float(df.at[pid, "gp_sd"]) + 0.15 * float(r["games_missed"])
         if r.get("mpg"):
             new = float(r["mpg"])
@@ -371,7 +422,23 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
     df["_rel"] = df["mpg"] * df["gp"].clip(lower=20)
     df = df.sort_values(["_rel", "player_id"], ascending=[False, True]).head(params.max_rows)
 
-    num = ["age", "gp", "gp_sd", "mpg", "fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
+    num = [
+        "age",
+        "gp",
+        "gp_sd",
+        "mpg",
+        "fgm",
+        "fga",
+        "ftm",
+        "fta",
+        "fg3m",
+        "pts",
+        "reb",
+        "ast",
+        "stl",
+        "blk",
+        "tov",
+    ]
     for c in num:
         df[c] = df[c].astype(float).round(3 if c not in ("age", "gp", "gp_sd", "mpg") else 1)
     df["adp"] = df["adp"].astype(float).round(1)
@@ -381,7 +448,9 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
 
 
 def inputs_manifest() -> list[dict]:
-    files = sorted((RAW_DIR / "bbref_sumitrodatta").glob("*.csv")) + sorted(MANUAL_DIR.glob("*.csv"))
+    files = sorted((RAW_DIR / "bbref_sumitrodatta").glob("*.csv")) + sorted(
+        MANUAL_DIR.glob("*.csv")
+    )
     out = []
     for f in files:
         prov = read_provenance(f) or {}
@@ -410,11 +479,16 @@ def write(path: Path = OUTPUT_PATH, params: Params | None = None) -> dict:
         "sha256": sha,
         "sources": sorted(set(df["source"])),
         "source_counts": df["source"].value_counts().to_dict(),
-        "params": {k: (v if not isinstance(v, dict) else {str(a): b for a, b in v.items()}) for k, v in asdict(params).items()},
+        "params": {
+            k: (v if not isinstance(v, dict) else {str(a): b for a, b in v.items()})
+            for k, v in asdict(params).items()
+        },
         "inputs": inputs_manifest(),
         "notes": {k: v for k, v in sorted(notes.items())},
     }
-    path.with_name(path.stem + ".meta.json").write_text(json.dumps(meta, indent=2, default=str) + "\n")
+    path.with_name(path.stem + ".meta.json").write_text(
+        json.dumps(meta, indent=2, default=str) + "\n"
+    )
     return meta
 
 
