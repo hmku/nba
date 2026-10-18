@@ -33,7 +33,7 @@ def test_draft_watch_publishes_one_recommendation_per_board_change(proj_path, mo
         if len(sleeps) == 2:
             raise _Stop
 
-    monkeypatch.setattr("fantasy.draft.cli.time.sleep", fake_sleep)
+    monkeypatch.setattr("fantasy.draft.cli_recommend.time.sleep", fake_sleep)
     res = runner.invoke(app, ["draft", "watch", "--draft-id", "mock-w", "--projections", str(proj_path),
                               "--interval", "0"])
     assert isinstance(res.exception, _Stop)

@@ -16,7 +16,7 @@ runner = CliRunner()
 def _env(db_url, monkeypatch):
     monkeypatch.delenv("FANTASY_RUN_ID", raising=False)
     monkeypatch.delenv("FANTASY_DRAFT_ID", raising=False)
-    monkeypatch.setattr("fantasy.draft.cli.time.sleep", lambda _s: None)
+    monkeypatch.setattr("fantasy.draft.cli_recommend.time.sleep", lambda _s: None)
 
 
 def _watch(proj_path, n: int):
@@ -63,7 +63,7 @@ def test_read_failures_back_off_and_keep_polling(proj_path, monkeypatch):
         return real_get(draft_id, engine)
 
     monkeypatch.setattr(store, "get_picks", flaky_get)
-    monkeypatch.setattr("fantasy.draft.cli.time.sleep", waits.append)
+    monkeypatch.setattr("fantasy.draft.cli_recommend.time.sleep", waits.append)
     res = runner.invoke(app, ["draft", "watch", "--draft-id", "mock-w", "--projections", str(proj_path),
                               "--interval", "2", "--max-iterations", "6"])
     assert res.exit_code == 0, res.output
@@ -80,7 +80,7 @@ def test_backoff_is_capped(proj_path, monkeypatch):
         raise OperationalError("SELECT", {}, Exception("down"))
 
     monkeypatch.setattr(store, "get_picks", always_fail)
-    monkeypatch.setattr("fantasy.draft.cli.time.sleep", waits.append)
+    monkeypatch.setattr("fantasy.draft.cli_recommend.time.sleep", waits.append)
     res = runner.invoke(app, ["draft", "watch", "--draft-id", "mock-w", "--projections", str(proj_path),
                               "--interval", "3", "--max-iterations", "8"])
     assert res.exit_code == 0, res.output
