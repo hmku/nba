@@ -17,6 +17,11 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 - [ ] Unlock writes on each device you'll use (lock icon in the dashboard nav). Consider a longer passphrase
       (the dashboard is public; changing it needs a `web/` build — ask an agent).
 - [ ] **Confirm the dashboard is public**: open https://fantasy.harrisonku.com in a private tab.
+- [ ] **Third-party projections in a public repo (decide; 2026-10-19)**: the repo `hmku/nba` is public. We now commit
+      normalised ESPN and FantasyPros projection numbers (`data/raw/espn/projections_*.csv`, `data/raw/fantasypros/`);
+      raw payloads are git-ignored. Both sites' terms allow personal use only, with no redistribution. Either make the repo private
+      or tell an agent to git-ignore those CSVs too (the blend then needs `fantasy data fetch-external` on each machine).
+      See `docs/research/projection_quality.md` §2.
 - [ ] **Apply for Yahoo API access** (optional, takes weeks, not needed for the draft):
       https://sports.yahoo.com/developer/access/ — "personal read-only analysis tool for my own single league (44495)",
       users: Small, leave Client ID blank. See `docs/research/yahoo_api.md` §0.

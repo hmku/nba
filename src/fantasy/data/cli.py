@@ -25,8 +25,18 @@ def _emit(obj: dict, as_json: bool) -> None:
 @app.command("build-projections")
 def build_projections(
     as_json: bool = typer.Option(False, "--json", help="JSON summary on stdout"),
+    blend: str = typer.Option(
+        "",
+        "--blend",
+        help="also write a blend with cached external projections, e.g. 'ours=0.5,espn=0.5' "
+        "(sources: ours, espn, fantasypros; 'default' = ours=0.5,espn=0.5)",
+    ),
+    blend_gp: str = typer.Option("", "--blend-gp", help="blend games too, e.g. 'ours=1' (default: ours only)"),
+    blend_output: str = typer.Option("", "--blend-output", help="blend CSV path (default data/processed/projections_2026_27.blend.csv)"),
 ) -> None:
-    """Regenerate data/processed/projections_2026_27.csv from cached raw + manual data (no network)."""
+    """Regenerate data/processed/projections_2026_27.csv from cached raw + manual data (no network).
+
+    With --blend, additionally writes the blended file (the default projections file is unchanged)."""
     from fantasy.model.projections import write
 
     meta = write()
@@ -35,6 +45,17 @@ def build_projections(
         for k in ("model_version", "season", "output", "rows", "sha256", "sources", "source_counts")
     }
     summary["inputs"] = meta["inputs"]
+    if blend:
+        from pathlib import Path
+
+        from fantasy.model.blend import BLEND_OUTPUT, DEFAULT_WEIGHTS, BlendSpec, write_blend
+
+        spec = BlendSpec.parse(DEFAULT_WEIGHTS if blend == "default" else blend, blend_gp or None)
+        bmeta = write_blend(spec, out_path=Path(blend_output) if blend_output else BLEND_OUTPUT)
+        summary["blend"] = {k: v for k, v in bmeta.items() if k != "ignored_external"}
+        summary["blend"]["ignored_external"] = {
+            k: len(v) for k, v in bmeta.get("ignored_external", {}).items()
+        }
     _emit(summary, as_json)
 
 
@@ -70,6 +91,21 @@ def fetch_injuries(as_json: bool = typer.Option(False, "--json")) -> None:
     from fantasy.data.injuries import fetch
 
     _emit({"fetched": fetch()}, as_json)
+
+
+@app.command("fetch-external")
+def fetch_external(
+    source: str = typer.Option(..., help="espn | fantasypros | all"),
+    season: int = typer.Option(2027, help="season end year (2027 = 2026-27); ESPN also has past seasons"),
+    n: int = typer.Option(450, help="ESPN: players to request, in ESPN draft-rank order"),
+    refresh: bool = typer.Option(False, "--refresh", help="re-download even if the raw payload is cached"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Fetch third-party season projections (cached, parsed to data/raw/<source>/projections_*.csv)."""
+    from fantasy.data.external import SOURCES, fetch
+
+    sources = list(SOURCES) if source == "all" else [source]
+    _emit({"fetched": [fetch(s, season=season, n=n, refresh=refresh) for s in sources]}, as_json)
 
 
 @app.command("fetch-nba-api")

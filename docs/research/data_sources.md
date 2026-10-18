@@ -1,6 +1,22 @@
 # Data sources (projections 2026-27)
 
-Last updated: 2026-10-18 (UTC). Owner: data & projections agent.
+Last updated: 2026-10-19 (UTC). Owner: data & projections agent.
+
+## Update 2026-10-19: external projections (ESPN, FantasyPros) + full-history bbref for backtests
+- **ESPN fantasy API** (unofficial, no auth): `https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/<yyyy>/segments/0/leaguedefaults/1?view=kona_player_info`
+  with header `X-Fantasy-Filter` (limit, draft-rank sort, `filterStatsForSourceIds=[1]`, `filterStatsForSplitTypeIds=[0]`).
+  Stat set `id = "10<yyyy>"` = ESPN's season projection (per-game `averageStats`: FGM/FGA/FTM/FTA/3PM/PTS/REB/AST/STL/BLK/TO, MIN, GP).
+  Past seasons are served too (2018-19 onward; 2019-20 has only 14 rows; **2022-23 is an in-season update and not preseason**).
+  `fantasy data fetch-external --source espn [--season 2027]` writes `data/raw/espn/projections_<yyyy_yy>.csv` (+ provenance).
+- **FantasyPros consensus** `https://www.fantasypros.com/nba/projections/overall.php`: season totals (no attempts) for 264 players.
+  `fantasy data fetch-external --source fantasypros` writes `data/raw/fantasypros/projections_2026_27.csv`.
+- Basketball-Reference player pages show a "2026-27 Projection" table (per-36 rates only, from bbref's Marcel-like system). Reachable but not
+  ingested. Hashtag Basketball, FantasyData and DARKO were unreachable from the container.
+- Licensing: ESPN and FantasyPros content is for personal use with no redistribution. Raw payloads are git-ignored, and only normalised
+  numbers are committed. The repo is public, so the user decides (USER_TODO).
+- The backtest used the full sumitrodatta `Player Totals.csv` (all seasons), downloaded to the session scratchpad only (not committed).
+- Analysis, blend and licensing table: `docs/research/projection_quality.md`. This supersedes "Not obtained → full-table external
+  projections" below.
 
 ## Update 2026-10-18 (v2): direct sources now reachable
 - **Yahoo public draft analysis API** (no login): `https://pub-api-rw.fantasysports.yahoo.com/fantasy/v2/league/478.l.public/players;start=N;count=25;sort=DA_AP;out=draft_analysis?format=json`

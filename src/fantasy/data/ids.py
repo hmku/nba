@@ -69,6 +69,7 @@ ALIASES: dict[str, str] = {
     "pj-washington-jr": "pj-washington",
     "bobby-portis-jr": "bobby-portis",
     "robert-williams-iii": "robert-williams",
+    "walter-clayton-jr": "walter-clayton",
 }
 
 
