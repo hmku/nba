@@ -10,6 +10,8 @@ orchestrate, investigate, decide within policy, drive Yahoo in the browser, veri
 Never re-derive valuations in your head — run the tools and interpret their JSON.
 
 ## Start of every session (mandatory)
+The SessionStart hook prints `fantasy status` and the newest handoffs. Use the `handoff` skill at the
+start/end of each session and the `agent-run` skill for any run/lock/txn work.
 1. Read `docs/STATUS.md` (current state + next priorities) and the newest notes in `docs/handoffs/`.
 2. `pip install -e ".[dev]"` if `fantasy` is not on PATH; then `fantasy status` (runs, locks, approvals,
    transactions needing reconciliation, data freshness, active draft).
@@ -25,7 +27,10 @@ Never re-derive valuations in your head — run the tools and interpret their JS
 ## Layout
 See `docs/ARCHITECTURE.md`. Python package `src/fantasy/` (league, data, model, draft, ops, db);
 dashboard `web/` (Next.js → Vercel); DB schema `src/fantasy/db/schema.py` → `supabase/migrations/`.
-Research notes: `docs/research/`. Runbooks: `docs/runbooks/`. Skills: `.claude/skills/`.
+Research notes: `docs/research/`. Runbooks: `docs/runbooks/`.
+Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval,
+agent-run, handoff, in-season-ops (Phase 2 placeholder). Subagents (`.claude/agents/`): quant-reviewer,
+data-auditor, draft-shadow (all read-only).
 
 ## Key commands (all accept `--json`; prefer JSON when acting on output)
 | Purpose | Command |
@@ -56,7 +61,10 @@ Research notes: `docs/research/`. Runbooks: `docs/runbooks/`. Skills: `.claude/s
   information changes (injury news), re-run the optimizer and record the new decision + rationale.
 - Record observations, commands, model outputs, decisions (with `agrees_with_model`), browser actions and
   verifications with `fantasy run event|decision`. No secrets/cookies/tokens in logs, events or commits.
-- League settings in `data/manual/league_settings.json` are the user's recollection until verified.
+- League settings: defaults in `src/fantasy/league/settings.py` are the user's recollection; `fantasy settings verify`
+  creates `data/manual/league_settings.json` once fields are confirmed on Yahoo.
+- Rehearsals always use `fantasy draft init --draft-id mock-N --mock` and `export FANTASY_DRAFT_ID=mock-N`.
+- Never run `fantasy approval decide` or `fantasy lock release --force` yourself — those are human actions.
 
 ## Engineering conventions
 - Python ≥3.11, typed, small modules; ingestion (`data/`) separate from modeling (`model/`).
