@@ -10,8 +10,8 @@ Regimes (opponents = every slot except mine):
   sym     our balanced optimizer on their own perturbed view (= value-search validation "sym", the
           optimism-decomposition C11 proxy; "as smart as us, independent errors")
   symbpa  value-BPA (lineup-feasible) on their own perturbed view (A_bpa-style smart-but-simple room)
-Each league is graded under truth `ours` (the drafting projections) and `market`
-(fantasy.sim.market_truth.market_implied_projections).
+Each league is graded under truth `ours` (the drafting projections), `market`
+(fantasy.sim.market_truth.market_implied_projections) and `mid` (their 50/50 blend_projections).
 
   python -m fantasy.draft.policy_eval run --seeds 0:200 --slots 1 --regimes adp,sym,symbpa --out x.jsonl
   python -m fantasy.draft.policy_eval summary --out x.jsonl
@@ -48,7 +48,7 @@ SPECS: dict[str, tuple[str, float, float]] = {
     "opt_sd50": ("opt_sd50", 0.0, 0.0),
     "value_search": ("value_search", 0.0, 0.0),
 }
-TRUTHS = ("ours", "market")
+TRUTHS = ("ours", "market", "mid")  # mid = 50/50 ours / market-implied stat lines
 _E: dict = {}
 
 
@@ -151,7 +151,7 @@ def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, va
     from fantasy.league.settings import load_settings
     from fantasy.model.lines import load_projections
     from fantasy.sim.context import build_context
-    from fantasy.sim.market_truth import market_implied_projections
+    from fantasy.sim.market_truth import blend_projections, market_implied_projections
 
     threadpool_limits(1)
     s = load_settings()
@@ -173,7 +173,8 @@ def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, va
         vs = ValueSearch(ctx, Featurizer(ctx, proj.df), ValueModel.load(value_model))
     _E.clear()
     _E.update(settings=s, proj=proj, ctx=ctx, n_eval=n_eval, opts=opts, vs=vs,
-              truths={"ours": ours, "market": build_context(mt.proj, s, teams, nba=ours.nba)},
+              truths={"ours": ours, "market": build_context(mt.proj, s, teams, nba=ours.nba),
+                      "mid": build_context(blend_projections(proj, mt, 0.5), s, teams, nba=ours.nba)},
               meta={"projections": proj.path, "projections_sha256": proj.sha256, "opt_strategy": opt_strategy,
                     "n_eval": n_eval, "eval_version": EVAL_VERSION})
 
@@ -245,7 +246,7 @@ def run_job(job: tuple[int, int, str, list[str]]) -> dict:
         ev = ctx.model.evaluate_team(rows)
         t2 = time.perf_counter()
         out["policies"][spec] = {
-            "roster": rosters[me], "value_sum": round(float(ctx.value[rows].sum()), 4),
+            "roster": rosters[me], "league": {str(t): r for t, r in rosters.items()}, "value_sum": round(float(ctx.value[rows].sum()), 4),
             "catmodel_ecw": round(float(ev["expected_category_wins"]), 4),
             "grade": grade(rosters, me, seed), "log": pol.log,
             "draft_s": round(t2 - t1, 2), "grade_s": round(time.perf_counter() - t2, 2)}
@@ -274,6 +275,8 @@ def summarize(rows: list[dict], base: str = "bpa") -> dict:
         for truth in TRUTHS:
             k = f"slot{slot}/{regime}/{truth}"
             out[k] = {"n": len(rr)}
+            if any(truth not in r["policies"][specs[0]]["grade"] for r in rr):
+                continue
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["policies"][p]["grade"][truth][metric] for r in rr]) for p in specs}
                 m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
