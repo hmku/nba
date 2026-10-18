@@ -21,8 +21,12 @@ function inline(text: string, key: string): ReactNode[] {
   let m: RegExpExecArray | null;
   let i = 0;
   while ((m = re.exec(text))) {
+    let t = m[0];
+    if (t.startsWith("https://")) {
+      t = t.replace(/[.,;:]+$/, ""); // trailing sentence punctuation is not part of the URL
+      re.lastIndex = m.index + t.length;
+    }
     if (m.index > last) out.push(text.slice(last, m.index));
-    const t = m[0];
     const k = `${key}-${i++}`;
     if (t.startsWith("`")) out.push(<code key={k} className="rounded bg-panel-2 px-1 py-0.5 text-[0.92em]">{t.slice(1, -1)}</code>);
     else if (t.startsWith("**")) out.push(<strong key={k}>{t.slice(2, -2)}</strong>);
