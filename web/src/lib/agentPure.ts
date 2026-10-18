@@ -24,14 +24,44 @@ export function normName(s: string | null | undefined): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-export function slugify(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+// Mirror of src/fantasy/data/ids.py (player_id = canonicalId(display name)). Kept in sync by the fixture
+// tests/fixtures/player_id_parity.json (generated from Python; checked by pytest and web/tests/agent.test.mjs).
+/** Characters NFKD does not decompose into ascii (ids._TRANSLIT). */
+export const TRANSLIT: Record<string, string> = {
+  "đ": "d", "Đ": "D", "ø": "o", "Ø": "O", "ł": "l", "Ł": "L", "ß": "ss", "æ": "ae", "Æ": "AE",
+  "œ": "oe", "Œ": "OE", "ı": "i", "\u0451": "e", "\u0435": "e", // Cyrillic ё / е (bbref: Egor Dёmin)
+};
+
+/** Known spelling variants across sources -> canonical slug (ids.ALIASES). */
+export const ALIASES: Record<string, string> = {
+  "nicolas-claxton": "nic-claxton", "cam-johnson": "cameron-johnson", "herb-jones": "herbert-jones",
+  "kj-martin": "kenyon-martin-jr", "gg-jackson": "gg-jackson-ii", "alex-sarr": "alexandre-sarr",
+  "bub-carrington": "carlton-carrington", "ron-holland": "ronald-holland-ii", "ronald-holland": "ronald-holland-ii",
+  "derrick-jones": "derrick-jones-jr", "jabari-smith": "jabari-smith-jr", "jaren-jackson": "jaren-jackson-jr",
+  "michael-porter": "michael-porter-jr", "kelly-oubre": "kelly-oubre-jr", "wendell-carter": "wendell-carter-jr",
+  "gary-trent": "gary-trent-jr", "tim-hardaway": "tim-hardaway-jr", "larry-nance": "larry-nance-jr",
+  "jaime-jaquez": "jaime-jaquez-jr", "trey-murphy": "trey-murphy-iii", "kevin-porter": "kevin-porter-jr",
+  "dereck-lively": "dereck-lively-ii", "jimmy-butler-iii": "jimmy-butler", "moe-wagner": "moritz-wagner",
+  "pj-washington-jr": "pj-washington", "bobby-portis-jr": "bobby-portis", "robert-williams-iii": "robert-williams",
+  "walter-clayton-jr": "walter-clayton",
+};
+
+/** Lowercase ascii slug (ids.slugify): transliterate, strip accents, drop ' ’ ., other runs -> "-". */
+export function slugify(name: string): string {
+  return Array.from(name ?? "", (c) => TRANSLIT[c] ?? c)
+    .join("")
+    .normalize("NFKD")
+    .replace(/[^\x00-\x7f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/[\s-]+/g, "-");
+    .replace(/['’.]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** The player_id Python would assign to this name (ids.canonical_id). */
+export function canonicalId(name: string): string {
+  const s = slugify(name);
+  return ALIASES[s] ?? s;
 }
 
 const SUFFIX = /(jr|sr|ii|iii|iv)$/;
@@ -74,7 +104,10 @@ export type Resolution<T extends NamedPlayer> =
 export function resolvePlayer<T extends NamedPlayer>(query: string, pool: T[], cutoff = 0.82): Resolution<T> {
   const q = query.trim();
   if (!q) return { status: "not_found", candidates: [] };
-  const byId = pool.find((p) => p.player_id === q) ?? pool.find((p) => p.player_id === slugify(q));
+  const byId =
+    pool.find((p) => p.player_id === q) ??
+    pool.find((p) => p.player_id === slugify(q)) ??
+    pool.find((p) => p.player_id === canonicalId(q));
   if (byId) return { status: "ok", player: byId };
   const qn = normName(q);
   const exact = pool.filter((p) => normName(p.name) === qn);

@@ -17,5 +17,3 @@ export function KindIcon({ kind }: { kind: string }) {
     </span>
   );
 }
-
-export const KIND_NAMES = Object.keys(KINDS);

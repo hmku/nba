@@ -15,8 +15,6 @@ export const CAT_LABEL: Record<CatKey, string> = {
   tov: "TO",
 };
 
-export const POSITIONS = ["PG", "SG", "SF", "PF", "C"] as const;
-
 /** Background color for a z-like value (higher = better). Diverging green/red, alpha scaled. */
 export function heatStyle(v: number | null | undefined, scale = 2): CSSProperties {
   if (v == null || Number.isNaN(v)) return {};

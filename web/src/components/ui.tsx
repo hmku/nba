@@ -80,16 +80,6 @@ export function Empty({ children }: { children: ReactNode }) {
   return <div className="py-4 text-center text-sm text-muted">{children}</div>;
 }
 
-export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[10.5px] uppercase tracking-wider text-muted">{label}</div>
-      <div className="num text-lg font-semibold leading-tight">{value}</div>
-      {sub && <div className="text-xs text-muted">{sub}</div>}
-    </div>
-  );
-}
-
 export function JsonView({ value, label = "JSON" }: { value: unknown; label?: string }) {
   if (value == null) return <span className="text-xs text-muted">—</span>;
   return (
