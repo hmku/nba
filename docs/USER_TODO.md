@@ -10,8 +10,8 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
         Previously: — screenshot the Draft Order page if available (Yahoo → League →
         Draft Order / draft room), else it gets checked in the laptop session (draft-prep step 4). Confirm
         your picks are 1, 24, 36, 37, 60, 61, … (3rd-round reversal) and that you pick #1.
-- [ ] **Clean demo rows in Supabase** — Supabase → SQL Editor → paste the "Delete with:" block from
-      `docs/runbooks/dashboard.md` (only touches `mock-` rows). Agents can't run deletes from the cloud session.
+- [x] **Clean demo rows in Supabase** — done by agent via PostgREST DELETEs on 2026-10-18 (user-approved;
+      170 `mock-` rows across 14 tables + lock `mock:yahoo:browser`; real rows untouched).
 - [x] `SUPABASE_SERVICE_ROLE_KEY` set in Vercel (verified live 2026-10-18 15:03 UTC).
 - [x] `DASHBOARD_PASSPHRASE` set (writes enabled, verified 2026-10-18 15:10 UTC).
 - [ ] Unlock writes on each device you'll use (lock icon in the dashboard nav). Consider a longer passphrase
