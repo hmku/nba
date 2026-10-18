@@ -46,7 +46,7 @@ fantasy settings show --json        # check `unverified`
 3. **On the clock:** sync again (last picks), re-run `recommend --json`. Choose `recommendations[0]` unless:
    - the player has fresh injury news (check the player card in the draft room) → note it, rerun excluding
      nobody — instead pick the next recommendation and record the disagreement;
-   - top options are within ~0.01 score: prefer the one with *lower* `prob_available_next` (it won't come back).
+   - top options are within ~0.03 score (model noise — treat as ties): prefer the one with *lower* `prob_available_next` (it won't come back).
 4. **Prepare (one call — logs decision vs model, plans txn, checks policy+lock, marks submitted):**
    `fantasy draft prepare-pick "<Name>" --overall N --rationale "<why>" --json`
    - `action: CLICK` (exit 0) → in the draft room search the exact name, check team/position match

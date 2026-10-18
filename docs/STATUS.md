@@ -28,6 +28,10 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
   Basketball-Reference + manual research. Run `fantasy data fetch-nba-api` locally to refresh.
 - Opponent model = league-average team; absolute win probabilities are optimistic.
 - Variance priors (`GAME_CV`), ADP sd and `USAGE` are uncalibrated heuristics.
+- Quant review (2026-10-18) open concerns: weekly variance ignores schedule (games/week) variance and
+  category correlation → overconfident win probs; GP weighted ~linearly (`stream_recovery=0.5` may
+  over-penalize long injuries given 4 IL slots); punt scan rarely beats balanced under the cat-wins objective
+  (candidates are pre-filtered by balanced value); recommendation margins < ~0.03 are noise; sim edge vs BPA is in-sample.
 
 ## How to validate work
 `pytest` (all offline, synthetic data) · `ruff check src tests` · `cd web && npm run build` ·
