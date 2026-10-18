@@ -65,6 +65,7 @@ export default function PlayersClient({
   const [pos, setPos] = useState("ALL");
   const [sort, setSort] = useState<{ k: string; asc: boolean }>({ k: "value", asc: false });
   const [open, setOpen] = useState<Row | null>(null);
+  const [limit, setLimit] = useState(120);
 
   const sorted = useMemo(() => {
     const n = normName(q);
@@ -155,7 +156,7 @@ export default function PlayersClient({
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r) => (
+                {sorted.slice(0, limit).map((r) => (
                   <tr key={r.player_id} className="cursor-pointer hover:bg-panel-2" onClick={() => setOpen(r)}>
                     <td className="num text-muted">{r.rank ?? "—"}</td>
                     <td className="sticky left-0 bg-panel">
@@ -182,6 +183,11 @@ export default function PlayersClient({
                 ))}
               </tbody>
             </table>
+            {sorted.length > limit && (
+              <button onClick={() => setLimit((l) => l + 200)} className="w-full border-t border-line py-2 text-xs text-accent">
+                Show more ({sorted.length - limit} more)
+              </button>
+            )}
           </div>
         )}
       </Card>

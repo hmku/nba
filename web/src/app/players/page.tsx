@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
-import { loadProjections, loadValues } from "@/lib/data";
+import { loadProjections, loadValues, slimValues } from "@/lib/data";
 import { ErrorNote } from "@/components/ui";
 import PlayersClient from "./PlayersClient";
 
@@ -19,7 +19,14 @@ export default async function PlayersPage() {
       {values.errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
       ))}
-      <PlayersClient values={values} projRun={proj.run} projections={proj.rows} />
+      <PlayersClient
+        values={slimValues(values)}
+        projRun={proj.run}
+        projections={proj.rows.map((p) => {
+          const ex = (p.extra ?? {}) as Record<string, unknown>;
+          return { ...p, extra: { name: ex.name ?? null, team: ex.team ?? null } };
+        })}
+      />
     </div>
   );
 }
