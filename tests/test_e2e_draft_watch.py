@@ -92,11 +92,19 @@ def _n_recs(db_url: str) -> int:
         eng.dispose()
 
 
+def _wait_recs(db_url: str, n: int, timeout: float = 10) -> int:
+    """The line is printed just before the save: poll briefly for the row count to reach n."""
+    deadline = time.monotonic() + timeout
+    while (got := _n_recs(db_url)) < n and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return got
+
+
 def test_watch_publishes_per_change_and_exits_when_my_picks_are_done(P, db_url, proj_path):
     w = Watcher(db_url, str(proj_path))
     try:
         assert w.next_rec() == (0, "1")
-        assert _n_recs(db_url) == 1
+        assert _wait_recs(db_url, 1) == 1
         assert w.drain(0.8) == []  # idle board: no new recommendations
         assert cli("draft", "pick", "player-000", "--overall", 1, "--source", "browser", "--json", *P)[0] == 0
         assert w.next_rec() == (1, "24")
@@ -105,7 +113,7 @@ def test_watch_publishes_per_change_and_exits_when_my_picks_are_done(P, db_url, 
         assert cli("draft", "undo", 2, "--json", "--draft-id", D)[0] == 0  # a correction is a change too
         assert w.next_rec() == (1, "24")
         assert w.drain(0.5) == []
-        assert _n_recs(db_url) == 4
+        assert _wait_recs(db_url, 4) == 4
         # the rest of my picks (gaps elsewhere are fine for this purpose): watch must stop by itself
         for i, ov in enumerate(MY_PICKS_3RR_SLOT1[1:], start=10):
             assert cli("draft", "pick", f"player-{i:03d}", "--overall", ov, "--json", *P)[0] == 0
