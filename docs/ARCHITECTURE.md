@@ -25,7 +25,7 @@ judgement, browser execution) + **Supabase** (durable state) + **Next.js dashboa
 | `src/fantasy/draft/` | draft | draft order (3RR/custom), availability model (ADP), draft optimizer, Monte Carlo draft sim, live draft state (`store.py`), name resolution |
 | `src/fantasy/sim/` | model | league-aware season simulator (`fantasy sim ...`): schedule, weekly H2H engine, playoffs, pre-draft projection, draft-check; research experiments live beside it |
 | `src/fantasy/ops/` | infra | agent runs/events, locks, approvals, transaction ledger, tasks; `fantasy run|lock|approval|txn|task` |
-| `src/fantasy/db/` | infra | `schema.py` (single source of truth), `engine.py`, `ddl.py` (renders Supabase migration), `rest.py` (publish/ping over Supabase PostgREST), `sqldump.py` (INSERT statements for SQL-only access) |
+| `src/fantasy/db/` | infra | `schema.py` (single source of truth), `engine.py`, `ddl.py` (renders Supabase migration), `rest.py` (publish/ping over Supabase PostgREST), `sqldump.py` (upsert statements for SQL-only access, e.g. the Supabase MCP; snapshot-tested with `ddl.py`) |
 | `src/fantasy/cli.py` | all | top-level Typer app; sub-apps registered from each area |
 | `web/` | web | Next.js (App Router, TS, Tailwind) dashboard: Draft / Matchup / League / Activity tabs, Players, History, external-agent API `/api/agent/*` (see `docs/runbooks/dashboard.md`) |
 | `supabase/migrations/` | infra | generated from `schema.py` + RLS policies |

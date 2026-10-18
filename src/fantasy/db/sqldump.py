@@ -1,7 +1,12 @@
-"""Render rows of a (local) database as Postgres INSERT ... ON CONFLICT DO NOTHING statements.
+"""Render rows of a (local) database as Postgres upsert statements
+(INSERT ... ON CONFLICT (<pk>) DO UPDATE SET <non-pk cols> = excluded.<col>).
 
 Used to publish to Supabase when only SQL access (e.g. the Supabase MCP) is available:
   python -m fantasy.db.sqldump --source sqlite:///var/fantasy.db --tables players model_runs ... --out dir/
+
+Same semantics as `fantasy publish` / `publish --rest` (upsert by primary key, `locks` never published),
+except that unique-key clashes with *different* target rows cannot be pre-checked offline: such a
+statement fails in the target instead of being skipped.
 """
 
 from __future__ import annotations
@@ -13,6 +18,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, select
 
+from fantasy.db.rest import PUBLISH_SKIP
 from fantasy.db.schema import metadata
 
 
@@ -34,8 +40,11 @@ def dump(source: str, tables: list[str], chunk_chars: int = 90_000) -> list[str]
     eng = create_engine(source)
     chunks: list[str] = []
     for name in tables:
+        if name in PUBLISH_SKIP:
+            continue
         t = metadata.tables[name]
         cols = [c.name for c in t.columns]
+        pk = [c.name for c in t.primary_key.columns]
         with eng.connect() as conn:
             rows = conn.execute(select(t)).mappings().all()
         buf: list[str] = []
@@ -45,15 +54,18 @@ def dump(source: str, tables: list[str], chunk_chars: int = 90_000) -> list[str]
             buf.append(vals)
             size += len(vals)
             if size > chunk_chars:
-                chunks.append(_stmt(name, cols, buf))
+                chunks.append(_stmt(name, cols, pk, buf))
                 buf, size = [], 0
         if buf:
-            chunks.append(_stmt(name, cols, buf))
+            chunks.append(_stmt(name, cols, pk, buf))
     return chunks
 
 
-def _stmt(table: str, cols: list[str], rows: list[str]) -> str:
-    return f"insert into {table} ({','.join(cols)}) values\n" + ",\n".join(rows) + "\non conflict do nothing;"
+def _stmt(table: str, cols: list[str], pk: list[str], rows: list[str]) -> str:
+    rest = [c for c in cols if c not in pk]
+    action = ("do update set " + ", ".join(f"{c} = excluded.{c}" for c in rest)) if rest else "do nothing"
+    return (f"insert into {table} ({','.join(cols)}) values\n" + ",\n".join(rows)
+            + f"\non conflict ({','.join(pk)}) {action};")
 
 
 if __name__ == "__main__":
