@@ -15,7 +15,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
+# ruff/mypy pinned to a minor: their rule sets change between releases (CI must match local)
+dev = ["pytest>=8", "pytest-cov>=5", "ruff==0.16.*", "mypy==2.4.*"]
 nba = ["nba_api>=1.5"]
 # training the value-search model only (draft-time inference is numpy): python -m fantasy.valuesearch.train
 valuesearch = ["scikit-learn==1.5.2"]
@@ -43,3 +44,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 ignore = ["E501"]
+
+[tool.mypy]
+# CI type-checks the clean subset only (.github/workflows/ci.yml); grow it module by module.
+ignore_missing_imports = true

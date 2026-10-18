@@ -78,7 +78,7 @@ def _player_row(entry: list) -> dict[str, Any]:
     def num(k: str) -> float | None:
         v = da.get(k)
         try:
-            return float(v)
+            return float(v)  # type: ignore[arg-type]  # None -> TypeError -> None
         except (TypeError, ValueError):
             return None
 

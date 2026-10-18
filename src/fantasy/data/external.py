@@ -155,7 +155,7 @@ def parse_fantasypros(text: str, season: int) -> pd.DataFrame:
         team = tm.group(1) if tm else "FA"
         name = htmllib.unescape(nm.group(1)).strip()
         row: dict[str, Any] = {
-            c: (vals[c] / gp if vals[c] is not None else None)
+            c: (vals[c] / gp if vals[c] is not None else None)  # type: ignore[operator]
             for c in ["pts", "reb", "ast", "blk", "stl", "fg3m", "tov"]
         }
         row.update(

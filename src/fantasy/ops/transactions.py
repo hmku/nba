@@ -242,7 +242,7 @@ def mark_failed(
     txn_id: str, error: str, evidence: dict[str, Any] | None = None, run_id: str | None = None
 ) -> dict[str, Any]:
     txn = get_txn(txn_id)
-    extra = {"failed_at": now().isoformat()}
+    extra: dict[str, Any] = {"failed_at": now().isoformat()}
     if evidence:
         extra["evidence"] = evidence
     _transition(

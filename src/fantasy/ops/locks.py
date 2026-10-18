@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import and_, delete, or_, select, update
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -109,9 +109,9 @@ def acquire(
     for _ in range(5):
         try:
             if _try_insert(resource, run_id, ttl_seconds, purpose):
-                return get_lock(resource) | {"taken_over": False}
+                return cast(dict[str, Any], get_lock(resource)) | {"taken_over": False}
             if _try_takeover(resource, run_id, ttl_seconds, purpose):
-                return get_lock(resource) | {"taken_over": True}
+                return cast(dict[str, Any], get_lock(resource)) | {"taken_over": True}
         except OperationalError:  # sqlite "database is locked" under contention: retry
             continue
         current = get_lock(resource)
@@ -142,7 +142,7 @@ def renew(resource: str, run_id: str, ttl_seconds: float = DEFAULT_TTL) -> dict[
         raise LockHeldError(
             f"{resource} is held by {current['holder_run_id']}", resource=resource, holder=current
         )
-    return get_lock(resource)
+    return cast(dict[str, Any], get_lock(resource))
 
 
 def release(resource: str, run_id: str) -> bool:

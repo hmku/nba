@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import typer
 from sqlalchemy import create_engine, func, select
@@ -58,15 +58,15 @@ def collect_status(stale_minutes: float = ledger.DEFAULT_STALE_MINUTES) -> dict[
             .order_by(model_runs.c.kind)
         )
         freshness = []
-        for r in mr:
-            d = row_dict(r)
+        for mrow in mr:
+            d = row_dict(mrow)
             freshness.append(
                 {
                     "kind": d["kind"],
                     "run_id": d["run_id"],
                     "model_version": d["model_version"],
                     "created_at": d["created_at"],
-                    "age_hours": round(age_seconds(d["created_at"], t) / 3600, 2)
+                    "age_hours": round(cast(float, age_seconds(d["created_at"], t)) / 3600, 2)
                     if d["created_at"]
                     else None,
                 }
@@ -136,7 +136,7 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any
     if dst.dialect.name == "postgresql":
         from sqlalchemy.dialects.postgresql import insert as dialect_insert
     elif dst.dialect.name == "sqlite":
-        from sqlalchemy.dialects.sqlite import insert as dialect_insert
+        from sqlalchemy.dialects.sqlite import insert as dialect_insert  # type: ignore[assignment]
 
         metadata.create_all(dst)
     else:

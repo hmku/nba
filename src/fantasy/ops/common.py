@@ -13,7 +13,7 @@ import math
 import subprocess
 import uuid
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, overload
 
 from sqlalchemy import Engine
 
@@ -90,6 +90,10 @@ def now() -> datetime:
     return datetime.now(UTC)
 
 
+@overload
+def as_utc(value: datetime) -> datetime: ...
+@overload
+def as_utc(value: None) -> None: ...
 def as_utc(value: datetime | None) -> datetime | None:
     """SQLite returns naive datetimes (stored as UTC); normalise everything to aware UTC."""
     if value is None:
@@ -152,6 +156,10 @@ def json_safe(value: Any) -> Any:
     return json.loads(json.dumps(value, default=_json_default), parse_constant=lambda _: None)
 
 
+@overload
+def row_dict(row: None) -> None: ...
+@overload
+def row_dict(row: Any) -> dict[str, Any]: ...
 def row_dict(row: Any) -> dict[str, Any] | None:
     if row is None:
         return None
