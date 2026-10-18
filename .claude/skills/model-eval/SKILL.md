@@ -32,7 +32,7 @@ stored with `draft set-order`.
 | Lever | Command | Notes |
 |---|---|---|
 | kappa (0 = z-scores, 1 = G-scores) | `fantasy values build --kappa 0 --no-save --top 40 --json` | compare `top[]` ranks vs default |
-| punt | `fantasy values build --punt ft_pct,tov --no-save --json` | category keys: `fg_pct ft_pct fg3m pts reb ast stl blk tov`. Unknown names are silently accepted and ignored - check `params.punt`. |
+| punt | `fantasy values build --punt ft_pct,tov --no-save --json` | category keys: `fg_pct ft_pct fg3m pts reb ast stl blk tov`. Unknown names exit 2 with the `valid` list. `fantasy draft recommend --kappa K --punt ...` applies the same valuation params to recommendations. |
 | strategy in the draft | `fantasy draft recommend --strategy punt_ft --no-save --json`; `strategy.scan` in a normal recommend | names: balanced, punt_ft, punt_fg, punt_tov, punt_ast, punt_pts, punt_fg3m, punt_ft_tov. Unknown name -> KeyError traceback (exit 1). |
 | objective | `fantasy draft recommend --objective matchup --no-save --json` (default `cat_wins`) | on a 2026-10-18 test board the two objectives gave very different top-3 - worth investigating before trusting `matchup`. Unknown values are not validated. |
 | opponent noise | `simulate --noise` | |

@@ -53,7 +53,7 @@ fetched_at). Same inputs -> same sha256 (`git diff data/processed` empty).
 
 ## 4. Sanity checks
 ```bash
-fantasy data top --n 30            # per-game 9-cat z (ignores gp); --json gives a list of rows
+fantasy data top --n 30            # per-game 9-cat z (ignores gp); --json gives {"ok": true, "players": [...]}
 git diff --stat data/processed     # what moved
 ```
 - Players you edited: check their row (`grep -i "<name>" data/processed/projections_2026_27.csv`)

@@ -44,7 +44,7 @@ One row per player, **per-game means** for the 2026-27 season:
 ### CLI (all commands accept `--json`; JSON is the agent interface, text is for humans)
 - `fantasy settings show` – effective league settings and whether they're verified.
 - `fantasy values build` – run valuation from projections → model run + player values.
-- `fantasy draft init --draft-id ... [--mock]` / `fantasy draft pick <overall> <player>` / `fantasy draft recommend` / `fantasy draft board` / `fantasy draft simulate`
+- `fantasy draft init --draft-id ... [--mock]` (mock ids need `--mock`; real ids `nba.l.<digits>-<year>`) / `fantasy draft pick <player> --overall N` / `fantasy draft recommend [--kappa --punt]` / `fantasy draft board` / `fantasy draft simulate [--draft-id]` / `fantasy draft prepare-pick|confirm-pick`. Every draft command's JSON carries `ok` and the resolved `draft_id`.
 - `fantasy status` – one-shot overview (freshness, pending approvals, locks, active draft).
 - `fantasy run start|event|end`, `fantasy lock acquire|release|show`, `fantasy approval request|list|decide`,
   `fantasy txn plan|mark|list`, `fantasy task list|add|claim|done` (ops).

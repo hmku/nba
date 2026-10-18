@@ -20,11 +20,11 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 | exit | meaning | what you do |
 |---|---|---|
 | 0 | ok | continue |
-| 1 | unexpected error (also: some validation errors, e.g. `draft set-order` with wrong round count) | read `error`, fix input, do not loop |
-| 2 | usage: bad args, unresolved player name (JSON has `candidates`), missing run id | fix args / use player_id |
+| 1 | unexpected error | read `error`, fix input, do not loop |
+| 2 | usage: bad args, unresolved player name (JSON has `candidates`), missing run id, invalid `--strategy/--objective/--punt` or `set-order` rounds (JSON has `valid`), mock-looking draft id without `--mock` | fix args / use player_id |
 | 3 | conflict: lock held by another run, task owned by someone else | STOP that action; report holder |
 | 4 | not allowed: dry_run, approval missing/pending, lock not held | do NOT perform the Yahoo action |
-| 5 | duplicate txn (JSON has `existing`) | inspect `existing.status`; never re-plan to dodge it |
+| 5 | duplicate txn (JSON has `existing`) | inspect `existing.status`; never re-plan to dodge it (`draft prepare-pick` handles draft-pick retries itself) |
 | 6 | not found | check ids |
 | 7 | invalid state transition / run not running / approval already decided | re-read state (`txn show`, `run show`) |
 | 8 | still pending: `approval show --wait N` timed out with the approval still `pending` | keep waiting or stop; do NOT act |
@@ -99,7 +99,8 @@ planned -> awaiting_approval -> submitted -> verified
    |            |                    \-----> failed
    \-> cancelled / failed  (from planned / awaiting_approval)
 ```
-Recipe for any Yahoo write (draft picks have composite commands, see `live-draft`):
+Recipe for any Yahoo write. **Draft picks: use `fantasy draft prepare-pick` / `fantasy draft confirm-pick`
+(see `live-draft`), not this generic recipe** - only `confirm-pick` records the pick on the board.
 ```bash
 fantasy txn plan <draft_pick|add|drop|add_drop|lineup|trade> --payload @p.json --summary "..." --json
 #   status planned or awaiting_approval; exit 5 + existing if same (kind,payload,scope,attempt) exists.
@@ -116,7 +117,8 @@ fantasy run event verification "..."
 - After approval is granted the txn **stays `awaiting_approval`** until you mark it submitted (that is
   allowed; `txn check` tells you whether it would pass).
 - Retrying after `failed`: plan again with `--attempt 2` (new idempotency key; needs a fresh approval
-  if policy requires one). Never re-plan a `submitted` txn.
+  if policy requires one). Never re-plan a `submitted` txn. For draft picks `prepare-pick` does this
+  automatically (next attempt after failed/cancelled; re-owns a `planned` txn left by e.g. a dry run).
 - Cancel abandoned plans: `fantasy txn mark <id> cancelled --error "<reason>"`.
 
 ## 7. Recovery: "previous session died mid-transaction"
@@ -129,9 +131,9 @@ fantasy run event verification "..."
      (this also records the pick on the board). Other kinds: `fantasy txn mark <id> verified --evidence ...`.
    - did not happen -> draft pick: `fantasy draft confirm-pick <txn_id> --failed "<reason>"`;
      others: `fantasy txn mark <id> failed --error "<reason>"`. Only then may you retry with `--attempt 2`.
-   - For draft picks prefer `confirm-pick` over `txn mark verified`: `txn mark` does **not** record the
-     pick on the board, and afterwards `confirm-pick` exits 7. If that already happened, record it with
-     `fantasy draft pick "<Name>" --overall N --source browser`.
+   - **Draft picks are reconciled with `fantasy draft confirm-pick`**, not `txn mark`: `txn mark verified`
+     does **not** record the pick on the board. If it was already used, run `fantasy draft confirm-pick <txn_id>`
+     anyway - on a verified txn it just records the pick (idempotent, exit 0, `already_verified: true`).
 4. `txns_awaiting_approval` from the dead run: if still wanted, keep waiting (any run may submit it);
    otherwise `txn mark <id> cancelled`.
 5. Locks held by the dead run: wait for `expires_at`, or ask the user to approve a `--force` release.

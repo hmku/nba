@@ -86,7 +86,7 @@ fantasy draft set-order --draft-id nba.l.44495-2026 --rounds "1,2,...,12;12,...,
 ```
 - Each round lists **draft slots** (a team's round-1 position) in pick order. If Yahoo shows team
   names, map name -> round-1 slot first.
-- Must contain exactly 13 rounds (`{"ok": false, "error": "custom order needs 13 rounds, got N"}`, exit 1).
+- Must contain exactly 13 rounds, each a permutation of slots 1..12 (`{"ok": false, "error": "invalid --rounds: custom order needs 13 rounds, got N"}`, exit 2).
 - Output: `my_picks` (expected `[1,24,36,37,60,61,84,85,108,109,132,133,156]`) and
   `matches_3rr_formula`. If `false`, tell the user immediately (classic mistake: only R3 flipped ->
   `1,24,36,48,49,72,...`) - they may want the commissioner to fix it; re-run set-order after any fix.
@@ -97,18 +97,20 @@ fantasy draft set-order --draft-id nba.l.44495-2026 --rounds "1,2,...,12;12,...,
 fantasy values build --json     # model_version, params (kappa=1 G-scores, stream_recovery 0.5), top[]
 ```
 Creates a `model_runs` row (shows in `fantasy status` model freshness). `recommend` uses default
-params and reuses/creates the matching valuation run itself, so `--punt/--kappa` here are for analysis
-only - punting during the draft is decided by `recommend`'s strategy scan.
+params (unless given `--kappa/--punt`) and reuses/creates the matching valuation run itself, so
+`--punt/--kappa` here are for analysis only - punting during the draft is decided by `recommend`'s strategy scan.
+Unknown `--punt` names exit 2.
 
 ## 6. Simulate
 ```bash
-fantasy draft simulate --sims 20 --seed 1 --json     # ~4 s per sim
+fantasy draft simulate --sims 20 --seed 1 --draft-id nba.l.44495-2026 --json     # ~4 s per sim
 ```
 Read `summary`: `optimizer.expected_category_wins_mean` vs `baseline_bpa.expected_category_wins_mean`,
 `edge_category_wins` (optimizer minus best-player-available; expect >= ~0, small at n=20),
 `first_pick_counts`, `strategy_counts`. Report these to the user; don't overinterpret absolute win
-probabilities (opponent = league-average team). Caveat: `simulate` uses the formula order from settings
-(`draft_order_type`), **not** the custom order stored by `set-order`; pass `--slot` to test other slots.
+probabilities (opponent = league-average team). With `--draft-id` (or `FANTASY_DRAFT_ID`) `simulate` uses
+that draft's slot/teams and the custom order stored by `set-order` (`custom_order: true` in the output);
+without it, the formula order from settings. Pass `--slot` to test other slots.
 `model-eval` skill covers sensitivity runs.
 
 ## 7. Pre-Draft Rankings safety net (T-014)
@@ -125,7 +127,8 @@ Re-export after big changes (new ADP, settings fix).
 Yahoo mock drafts are usually a plain snake with a random slot and may have different settings - read
 them from the mock room. Always use a **separate mock draft id with `--mock`** and export it:
 without `--mock` the record is treated as a real draft and becomes the default for every `draft`
-command (`Default: latest non-mock draft`).
+command (`Default: latest non-mock draft`). `draft init` now refuses `mock*` ids without `--mock` and
+non-mock ids not shaped `nba.l.<digits>-<year>` (exit 2); every draft command's JSON has `draft_id` - check it.
 ```bash
 fantasy draft init --draft-id mock-1 --mock --slot <your mock slot> --json
 export FANTASY_DRAFT_ID=mock-1

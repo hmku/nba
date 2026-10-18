@@ -10,6 +10,7 @@ Requires a **local** Claude Code session started with `claude --chrome` (Claude 
 cannot reach Yahoo. Read `docs/runbooks/live_draft.md` once for context.
 
 League: 12 teams, 13 rounds, my slot 1, 60 s per pick. Draft id: `nba.l.44495-2026` (use `mock-<n>` for rehearsals).
+Every `fantasy draft ...` JSON includes the `draft_id` it resolved - check it is the draft you mean.
 
 ## 0. Authorisation
 - Making picks in the real draft is authorised **only** in a run started with `--mode live` for that
@@ -35,12 +36,26 @@ fantasy settings show --json        # check `unverified`
 - Safety net: put `fantasy draft queue --top 60` into Yahoo **Pre-Draft Rankings** (autopick uses it if the clock expires).
 - `fantasy run event observation "setup complete" --payload '{"my_picks": [...]}'`
 
+### Mock rehearsal recipe
+```bash
+export FANTASY_RUN_ID=$(fantasy run start --agent draft-manager --task "mock rehearsal mock-N" --mode dry_run)
+fantasy draft init --draft-id mock-N --mock --slot <my slot in the mock> --json   # mock* ids REQUIRE --mock (exit 2 otherwise)
+export FANTASY_DRAFT_ID=mock-N          # otherwise commands default to the latest NON-mock draft
+# Yahoo mocks are a plain snake: odd rounds 1..12, even rounds 12..1
+fantasy draft set-order --rounds "$(python3 -c "n=12;r=13;print(';'.join(','.join(map(str,range(1,n+1) if i%2==0 else range(n,0,-1))) for i in range(r)))")" --json
+fantasy lock acquire draft:$FANTASY_DRAFT_ID --ttl 7200 --purpose "mock rehearsal"
+```
+Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_run"`, decision logged with
+`mode: dry_run`): never click; record the pick Yahoo autopicks with `draft pick`. Afterwards
+`fantasy run end` (releases the locks), `unset FANTASY_DRAFT_ID`.
+
 ## 2. Loop (every pick)
 1. **Sync the board.** Read the draft room's pick log. For every pick not yet recorded:
    `fantasy draft pick "<Name as shown>" --overall <N> --source browser --json`
    - exit 2 = unresolved name or conflict → read `candidates`, retry with the exact player_id; if the player
      isn't in projections use `--force` (records `unknown:<name>`) and log an `observation`.
-   - `fantasy draft board --json` → `gaps` must be empty before recommending.
+   - `fantasy draft board --json` → `gaps` must be empty before recommending **and before every
+     `prepare-pick`** (it also reports `gaps` in its output/warnings). Fill each gap from the draft log first.
 2. **When my pick is ≤ 2 picks away**, precompute: `fantasy draft recommend --json` (≈3 s). Read
    `recommendations[0..4]`, `strategy`, `warnings`, `prob_available_next`.
 3. **On the clock:** sync again (last picks), re-run `recommend --json`. Choose `recommendations[0]` unless:
@@ -50,13 +65,21 @@ fantasy settings show --json        # check `unverified`
 4. **Prepare (one call — logs decision vs model, plans txn, checks policy+lock, marks submitted):**
    `fantasy draft prepare-pick "<Name>" --overall N --rationale "<why>" --json`
    - `action: CLICK` (exit 0) → in the draft room search the exact name, check team/position match
-     `team` in the output, click **Draft**, confirm.
-   - exit 4 `DO_NOT_CLICK` (dry_run / lock missing) → do not click. exit 5/7 → this pick was already
-     submitted: re-read the draft log instead of clicking again. exit 2 → name ambiguous, use a player_id.
+     `team` in the output, click **Draft**, confirm. If `gaps` is non-empty, stop and sync first.
+   - exit 4 `DO_NOT_CLICK` → do not click. Reasons (`message`): dry_run, lock missing, `--overall` is not
+     my pick per the stored order (`my_picks` listed), that pick is already recorded on the board, or the
+     player is already recorded as drafted.
+   - exit 7 (or 5) → this pick already has a submitted/verified txn: re-read the draft log and
+     reconcile with `confirm-pick`; never click again. exit 2 → name ambiguous, use a player_id.
 5. **Verify independently** in the draft log (my team, pick N, right player), then
    `fantasy draft confirm-pick <txn_id> --evidence "draft log: #N <Name> → my team" --json`
    (records the pick on the board). If not visible after ~10 s, re-read; **never click Draft twice**.
-   If someone else got him first: `fantasy draft confirm-pick <txn_id> --failed "taken at #N-1"`, take the next rec.
+   If someone else got him first / the click did not register: `fantasy draft confirm-pick <txn_id> --failed "<reason>"`.
+   **Retry is automatic:** just run `prepare-pick` again for the same `--overall` (same or next player) -
+   it plans the next attempt (`attempt: 2`, `txn_note: "retry (attempt 2)"`). It also re-owns a `planned`
+   txn left by an earlier dry run and cancels planned txns for other players.
+   Reconcile draft picks only with `confirm-pick` (it records the pick on the board); if someone used
+   `txn mark <id> verified`, run `confirm-pick <txn_id>` anyway - it is idempotent and records the pick.
 6. If you deviate from `recommendations[0]`, the rationale must say why (it is stored with `agrees_with_model=false`
    and shown on the dashboard).
 7. `fantasy lock renew draft:$FANTASY_DRAFT_ID --ttl 10800` every ~30 min; `fantasy run heartbeat` every few picks.
@@ -71,5 +94,5 @@ haven't clicked, click the precomputed top pick if still available. Autopick (Pr
 - Never perform any roster action other than drafting. Don't chat in the draft room.
 
 ## 4. After the draft
-`fantasy draft board --json` (13 players), compare to Yahoo roster, `fantasy run end --summary "..."`,
-release locks, write `docs/handoffs/<date>-draft.md` (roster, deviations from model, issues), commit & push.
+`fantasy draft board --json` (13 players), compare to Yahoo roster, `fantasy run end --summary "..."`
+(this releases every lock the run holds and lists them in `released_locks`), write `docs/handoffs/<date>-draft.md` (roster, deviations from model, issues), commit & push.
