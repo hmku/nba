@@ -17,6 +17,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10"]
 nba = ["nba_api>=1.5"]
+# training the value-search model only (draft-time inference is numpy): python -m fantasy.valuesearch.train
+valuesearch = ["scikit-learn==1.5.2"]
 
 [project.scripts]
 fantasy = "fantasy.cli:app"

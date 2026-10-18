@@ -270,16 +270,37 @@ def recommend(
     draft_id: DraftOpt = None,
     projections: ProjOpt = None,
     strategy: Annotated[str | None, typer.Option("--strategy", help="Force a strategy (e.g. punt_ft); default scans")] = None,
-    objective: Annotated[str, typer.Option("--objective", help="cat_wins | matchup")] = "cat_wins",
+    objective: Annotated[str, typer.Option("--objective", help="Optimizer: cat_wins | matchup. Value search: "
+                                           "blend (default) | title | playoffs | rank")] = "cat_wins",
     kappa: Annotated[float, typer.Option("--kappa", help="Valuation: 0=z-scores, 1=G-scores")] = 1.0,
     punt: Annotated[str, typer.Option("--punt", help="Valuation: comma-separated categories to zero-weight")] = "",
     top: Annotated[int, typer.Option("--top", help="Recommendations to print in text mode")] = 8,
     save: Annotated[bool, typer.Option("--save/--no-save", help="Store in draft_recommendations")] = True,
+    search: Annotated[str | None, typer.Option("--search", help="none | advise (add an advisory value_search block, "
+                                               "optimizer order kept) | value (value search picks the top). "
+                                               "Default: see fantasy.valuesearch.search.DEFAULT_SEARCH")] = None,
+    rollouts: Annotated[int | None, typer.Option("--rollouts", help="Value search: rollouts per candidate "
+                                                 "(default 48; 24 with --opponents ours, which is ~10x slower)")] = None,
+    search_candidates: Annotated[int, typer.Option("--search-candidates", help="Value search: top-N optimizer candidates")] = 6,
+    opponents: Annotated[str, typer.Option("--opponents", help="Value search opponent model: adp | ours")] = "adp",
+    value_model: Annotated[Path | None, typer.Option("--value-model", help="Value model artifact (.npz)")] = None,
     as_json: JsonOpt = False,
 ) -> None:
     """Recommend my next pick given all recorded picks. Deterministic for a given state."""
+    from fantasy.valuesearch.model import OBJECTIVES as VALUE_OBJECTIVES
+    from fantasy.valuesearch.search import DEFAULT_SEARCH, OPPONENT_MODELS, SEARCH_MODES
+
     _check_choice(strategy, list(DEFAULT_STRATEGIES), "--strategy", as_json)
-    _check_choice(objective, OBJECTIVES, "--objective", as_json)
+    _check_choice(objective, OBJECTIVES + VALUE_OBJECTIVES, "--objective", as_json)
+    _check_choice(search, SEARCH_MODES, "--search", as_json)
+    _check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
+    search = search or DEFAULT_SEARCH
+    value_objective = objective if objective in VALUE_OBJECTIVES else "blend"
+    rollouts = rollouts or (24 if opponents == "ours" else 48)
+    if objective in VALUE_OBJECTIVES:
+        if search == "none":
+            _fail(f"--objective {objective} is a value-search objective; use it with --search value|advise", as_json, code=2)
+        objective = "cat_wins"
     d = _load_draft(draft_id, as_json)
     s = _settings_for(d)
     vp = ValuationParams(kappa=kappa, punt=parse_punt(punt, s.categories, as_json))
@@ -289,6 +310,9 @@ def recommend(
     state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
     opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective))
     rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+    if search != "none" and rec.get("recommendations"):
+        _attach_value_search(rec, ctx, state, search, value_objective, rollouts, search_candidates, opponents,
+                             value_model, projections)
     rec["compute_seconds"] = round(time.time() - t0, 2)
     rec["ok"] = True
     rec["valuation_params"] = {"kappa": vp.kappa, "punt": vp.punt}
@@ -308,8 +332,42 @@ def recommend(
     for i, r in enumerate(rec["recommendations"][:top], 1):
         typer.echo(f"{i:>2}. {r['name']:<26} {'/'.join(r['positions']):<9} score {r['score']:.3f} "
                    f"({r['marginal_value']:+.3f})  avail@next {r['prob_available_next']:.0%}  — {r['reason']}")
+    vsb = rec.get("value_search")
+    if vsb and vsb.get("candidates"):
+        tag = "decided top pick" if vsb.get("mode") == "value" else "advisory only"
+        best = vsb["candidates"][0]
+        typer.echo(f"value search ({tag}, {vsb['params']['objective']}): {vsb['top_pick_name']} "
+                   f"[best mean: {best['name']} P(title) {best['p_title']:.0%}, P(playoffs) {best['p_playoffs']:.0%}, "
+                   f"{best['diff_vs_optimizer_top']:+.3f} ± {best['diff_se'] or 0:.3f} vs optimizer #1]")
     for w in rec["warnings"]:
         typer.echo(f"WARNING: {w}")
+
+
+def _attach_value_search(rec: dict, ctx: DraftContext, state: DraftState, mode: str, objective: str, rollouts: int,
+                         n_candidates: int, opponents: str, model_path: Path | None, projections: Path | None) -> None:
+    """Add the `value_search` block; with mode "value" also move its pick to the top. Never raises: a
+    value-search failure must not block a live pick (it becomes a warning)."""
+    try:
+        from fantasy.valuesearch.features import Featurizer
+        from fantasy.valuesearch.model import ValueModel
+        from fantasy.valuesearch.search import SearchParams, ValueSearch
+
+        proj = load_projections(projections)
+        vs = ValueSearch(ctx, Featurizer(ctx, proj.df), ValueModel.load(model_path))
+        cands = [r["player_id"] for r in rec["recommendations"]]
+        res = vs.run(state.taken, state.my_slot, cands,
+                     SearchParams(n_candidates=n_candidates, rollouts=rollouts, opponents=opponents, objective=objective))
+    except Exception as e:  # noqa: BLE001
+        rec["warnings"].append(f"value search failed ({type(e).__name__}: {e}); optimizer ranking unchanged")
+        return
+    res["mode"] = mode
+    res["advisory"] = mode != "value"
+    if mode == "value" and res["top_pick"] != cands[0]:
+        recs = rec["recommendations"]
+        j = next(i for i, r in enumerate(recs) if r["player_id"] == res["top_pick"])
+        recs.insert(0, recs.pop(j))
+        recs[0]["reason"] = f"value search: {res['decision_rule']}; " + recs[0]["reason"]
+    rec["value_search"] = res
 
 
 @app.command()
