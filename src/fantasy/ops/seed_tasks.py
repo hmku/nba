@@ -40,6 +40,19 @@ SEED: list[tuple[int, str, str, str]] = [
      "write a status summary."),
     (3, "model", "Projection model improvements",
      "Better minutes/usage modelling, injury risk, rookie priors, blend more sources."),
+    (0, "infra", "Configure FANTASY_DB_URL for Supabase",
+     "User supplies the Supabase pooler connection string (Project Settings > Database) so local agents "
+     "write runs/picks/recs to the shared DB the dashboard reads."),
+    (0, "draft", "Load model rankings into Yahoo Pre-Draft Rankings",
+     "Before the draft, enter `fantasy draft queue --top 60` into Yahoo pre-draft rankings so autopick "
+     "falls back to our model if the 60s clock expires."),
+    (0, "draft", "Record actual Yahoo draft order",
+     "Read the draft order page on Yahoo (Yahoo has no native 3RR; commissioner enters it by hand) and "
+     "store it with `fantasy draft set-order`; confirm my picks."),
+    (1, "model", "Calibrate availability and variance priors",
+     "Fit ADP sd (draft/availability.py) on Yahoo draft results and GAME_CV per-game CVs (model/lines.py) on game logs."),
+    (2, "model", "Positional scarcity in valuation",
+     "Replacement level by position eligibility; currently handled only via roster feasibility in the optimizer."),
 ]
 
 

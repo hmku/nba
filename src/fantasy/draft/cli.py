@@ -316,3 +316,107 @@ def simulate(
         _emit(res, True)
         return
     typer.echo(json.dumps(store._clean(res["summary"]), indent=2))
+
+
+RunOpt = Annotated[str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")]
+
+
+@app.command("prepare-pick")
+def prepare_pick(
+    player: Annotated[str, typer.Argument(help="Player to draft (name or player_id)")],
+    overall: Annotated[int, typer.Option("--overall", help="My overall pick number")],
+    rationale: Annotated[str, typer.Option("--rationale")] = "",
+    draft_id: DraftOpt = None,
+    run_id: RunOpt = None,
+    projections: ProjOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """One call before clicking Draft: log decision vs latest recommendation, plan the txn, mark it submitted.
+
+    Exit 0 with action=CLICK → click Draft in Yahoo now. Exit 4 → NOT allowed (dry_run, no lock): do not click.
+    Exit 7 → this pick was already submitted: verify on Yahoo instead of clicking again.
+    """
+    from fantasy.ops import ledger, transactions
+    from fantasy.ops.common import DuplicateError, OpsError
+
+    if not run_id:
+        _fail("no run id (set FANTASY_RUN_ID)", as_json, code=2)
+    d = _load_draft(draft_id, as_json)
+    values = load_projections(projections).df
+    try:
+        pid = resolve_player(player, values)
+    except NameResolutionError as e:
+        _fail(str(e), as_json, code=2, candidates=e.candidates)
+    name = str(values.loc[pid, "name"])
+    rec = store.latest_recommendation(d["draft_id"]) or {}
+    recs = rec.get("recommendations") or []
+    top = {k: recs[0].get(k) for k in ("player_id", "name", "score")} if recs else None
+    rank_in_recs = next((i for i, r in enumerate(recs) if r.get("player_id") == pid), None)
+    warnings = []
+    if rec.get("for_pick") not in (None, overall):
+        warnings.append(f"latest recommendation was for pick {rec.get('for_pick')}, not {overall}")
+    if rank_in_recs is None:
+        warnings.append("chosen player is not in the latest recommendation list")
+    try:
+        dec = ledger.record_decision(run_id, "draft_pick", top, {"player_id": pid, "name": name, "overall": overall},
+                                     rationale or None)
+        payload = {"draft_id": d["draft_id"], "overall_pick": overall, "player_id": pid}
+        try:
+            txn = transactions.plan("draft_pick", payload, run_id=run_id, summary=f"Draft {name} at #{overall}")
+        except DuplicateError as e:
+            txn = e.details.get("existing") or {}
+            if txn.get("status") != "planned":
+                raise
+        txn = transactions.mark_submitted(txn["txn_id"], run_id)
+    except OpsError as e:
+        if as_json:
+            typer.echo(json.dumps({**e.to_dict(), "action": "DO_NOT_CLICK"}, default=str))
+        else:
+            typer.echo(f"DO NOT CLICK: {e.message}", err=True)
+        raise typer.Exit(e.exit_code) from e
+    out = {"ok": True, "action": "CLICK", "player_id": pid, "name": name, "team": _str(values.loc[pid, "team"]),
+           "overall": overall, "txn_id": txn["txn_id"], "agrees_with_model": dec.get("agrees_with_model"),
+           "rank_in_recommendations": None if rank_in_recs is None else rank_in_recs + 1, "warnings": warnings}
+    _emit(out, as_json, f"CLICK DRAFT: {name} ({out['team']}) at #{overall}  txn={txn['txn_id']}  "
+                        f"agrees_with_model={out['agrees_with_model']} {warnings or ''}")
+
+
+@app.command("confirm-pick")
+def confirm_pick(
+    txn_id: Annotated[str, typer.Argument()],
+    evidence: Annotated[str, typer.Option("--evidence", help="What on Yahoo shows the pick (text or JSON)")] = "",
+    failed: Annotated[str | None, typer.Option("--failed", help="Mark failed with this reason instead")] = None,
+    run_id: RunOpt = None,
+    projections: ProjOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """After clicking: verify (records the pick on the board) or mark failed. Never click twice."""
+    from fantasy.ops import transactions
+    from fantasy.ops.common import OpsError
+
+    try:
+        txn = transactions.get_txn(txn_id)
+        if failed:
+            txn = transactions.mark_failed(txn_id, failed, run_id=run_id)
+            _emit({"ok": True, "txn": txn}, as_json, f"marked failed: {failed}")
+            return
+        if not evidence:
+            _fail("--evidence is required (e.g. 'draft log shows pick 24 = X for my team')", as_json, code=2)
+        try:
+            ev = json.loads(evidence)
+        except json.JSONDecodeError:
+            ev = {"note": evidence}
+        txn = transactions.mark_verified(txn_id, ev, run_id=run_id)
+    except OpsError as e:
+        typer.echo(json.dumps(e.to_dict(), default=str) if as_json else f"error: {e.message}")
+        raise typer.Exit(e.exit_code) from e
+    p = txn["payload"]
+    d = store.get_draft(p["draft_id"])
+    values = load_projections(projections).df
+    name = str(values.loc[p["player_id"], "name"]) if p["player_id"] in values.index else p["player_id"]
+    row = store.record_pick(d, p["overall_pick"], p["player_id"], name, "agent", force=False)
+    _emit({"ok": True, "txn": txn, "pick": row}, as_json, f"verified #{p['overall_pick']} {name}")
+
+
+def _str(x: object) -> str:
+    return "" if x is None or x != x else str(x)

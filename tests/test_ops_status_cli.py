@@ -8,6 +8,7 @@ from fantasy.cli import app
 from fantasy.db.engine import db_url
 from fantasy.db.schema import drafts, model_runs, tasks
 from fantasy.ops.common import engine, now
+from fantasy.ops.seed_tasks import SEED
 from fantasy.ops.testing import use_test_db
 
 runner = CliRunner()
@@ -117,11 +118,11 @@ def test_db_init_and_publish(tmp_path):
     target = f"sqlite:///{tmp_path / 'target.db'}"
     src = ["--source", db_url()]
     code, out = cli("publish", *src, "--target", target, "--json")
-    assert code == 0 and out["rows"]["tasks"] == 12
+    assert code == 0 and out["rows"]["tasks"] == len(SEED)
     code, out = cli("publish", *src, "--json", env={"FANTASY_PUBLISH_URL": target})  # idempotent
     assert code == 0
     with create_engine(target).connect() as conn:
-        assert conn.execute(select(func.count()).select_from(tasks)).scalar() == 12
+        assert conn.execute(select(func.count()).select_from(tasks)).scalar() == len(SEED)
     assert cli("publish", "--json")[0] == 2  # no target
     # a different task under an existing id in the target is skipped, not overwritten
     with create_engine(target).begin() as conn:

@@ -167,6 +167,16 @@ def save_recommendation(rec: dict, engine: Engine | None = None) -> str:
     return rec_id
 
 
+def latest_recommendation(draft_id: str, engine: Engine | None = None) -> dict | None:
+    eng = engine or get_engine()
+    with eng.connect() as conn:
+        row = conn.execute(
+            select(draft_recommendations).where(draft_recommendations.c.draft_id == draft_id)
+            .order_by(draft_recommendations.c.created_at.desc()).limit(1)
+        ).mappings().first()
+    return dict(row["payload"]) if row else None
+
+
 # ---------------------------------------------------------------- valuation runs
 def find_valuation_run(projections_sha: str, params: dict, engine: Engine | None = None) -> str | None:
     eng = engine or get_engine()
