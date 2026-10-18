@@ -56,7 +56,7 @@ New exit code 8 (`EXIT_STILL_PENDING`) in `fantasy.ops.common`.
   `docs/ARCHITECTURE.md`, `docs/runbooks/agent_ops.md`, `docs/research/yahoo_api.md`
 
 ## Tests performed
-- `python -m pytest -q`: all green (137+ tests); `ruff check src tests`: clean.
+- `python -m pytest -q`: all 141 tests pass; `ruff check src tests`: clean.
 - `fantasy data build-projections --json`: 454 rows; the four overridden players verified in the CSV.
 
 ## Problems encountered
