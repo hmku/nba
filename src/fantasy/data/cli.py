@@ -28,7 +28,7 @@ def build_projections(
     from fantasy.model.projections import write
 
     meta = write()
-    summary = {
+    summary = {"ok": True} | {
         k: meta[k]
         for k in ("model_version", "season", "output", "rows", "sha256", "sources", "source_counts")
     }
@@ -105,6 +105,6 @@ def top(
     ]
     rows = z[cols].round(2).to_dict(orient="records")
     if as_json:
-        typer.echo(json.dumps(rows, indent=2, default=str))
+        typer.echo(json.dumps({"ok": True, "players": rows}, indent=2, default=str))
     else:
         typer.echo(z[cols].round(2).to_string(index=False))

@@ -15,8 +15,18 @@ from fantasy.model.valuation import ValuationParams, run_valuation
 app = typer.Typer(no_args_is_help=True, help="Category valuation of players (G-scores over replacement).")
 
 
-def _parse_punt(punt: str) -> list[str]:
-    return [p.strip() for p in punt.split(",") if p.strip()]
+def _parse_punt(punt: str, categories: list[str], as_json: bool) -> list[str]:
+    """Comma-separated category keys; unknown keys exit 2 with the valid list."""
+    cats = [p.strip() for p in punt.split(",") if p.strip()]
+    bad = [c for c in cats if c not in categories]
+    if bad:
+        msg = f"invalid --punt {', '.join(bad)}; valid: {', '.join(categories)}"
+        if as_json:
+            typer.echo(json.dumps({"ok": False, "error": msg, "valid": list(categories)}))
+        else:
+            typer.echo(f"error: {msg}", err=True)
+        raise typer.Exit(2)
+    return cats
 
 
 @app.command()
@@ -30,8 +40,9 @@ def build(
 ) -> None:
     """Value all players from the projections file; store a model run + player values."""
     s = load_settings()
+    punt_cats = _parse_punt(punt, s.categories, as_json)
     proj = load_projections(projections)
-    run = run_valuation(proj, s, ValuationParams(kappa=kappa, punt=_parse_punt(punt)))
+    run = run_valuation(proj, s, ValuationParams(kappa=kappa, punt=punt_cats))
     if save:
         from fantasy.draft.store import save_valuation
 
@@ -42,7 +53,7 @@ def build(
                  "positions": list(r["positions"]), "value": round(float(r["value"]), 3),
                  "adp": None if r["adp"] != r["adp"] else float(r["adp"]),
                  "cat_values": {k: round(float(r[k]), 3) for k in s.categories}} for pid, r in v.iterrows()]
-        typer.echo(json.dumps({"run_id": run.run_id, "saved": save, "model_version": run.model_version,
+        typer.echo(json.dumps({"ok": True, "run_id": run.run_id, "saved": save, "model_version": run.model_version,
                                "params": run.params, "inputs": run.inputs, "top": rows}, indent=2, default=str))
         return
     typer.echo(f"run {run.run_id} ({'saved' if save else 'not saved'})")

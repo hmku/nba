@@ -299,6 +299,44 @@ def list_txns(
         return [row_dict(r) for r in conn.execute(q)]
 
 
+def draft_pick_txns(draft_id: str, overall: int) -> list[dict[str, Any]]:
+    """All draft_pick transactions (any player, any attempt) for one pick, oldest first."""
+    q = (
+        select(transactions)
+        .where(transactions.c.kind == "draft_pick")
+        .order_by(transactions.c.created_at)
+    )
+    with engine().connect() as conn:
+        rows = [row_dict(r) for r in conn.execute(q)]
+    return [
+        r for r in rows
+        if (r["payload"] or {}).get("draft_id") == draft_id
+        and int((r["payload"] or {}).get("overall_pick") or -1) == int(overall)
+    ]
+
+
+def attempt_of(txn: dict[str, Any]) -> int:
+    return int((txn.get("verification") or {}).get("attempt") or 1)
+
+
+def reassign(txn_id: str, run_id: str) -> dict[str, Any]:
+    """Re-own a still-`planned` txn (e.g. left behind by a dry run) to `run_id`."""
+    with engine().begin() as conn:
+        res = conn.execute(
+            update(transactions)
+            .where(and_(transactions.c.txn_id == txn_id,
+                        transactions.c.status.in_(("planned", "awaiting_approval"))))
+            .values(run_id=run_id, updated_at=now())
+        )
+    if res.rowcount != 1:
+        cur = get_txn(txn_id)
+        raise InvalidStateError(
+            f"cannot re-own a {cur['status']} transaction", txn_id=txn_id, status=cur["status"]
+        )
+    ledger.log_event(run_id, "note", f"re-owned planned transaction {txn_id}", {"txn_id": txn_id})
+    return get_txn(txn_id)
+
+
 def needs_reconciliation(older_than_seconds: float = 0) -> list[dict[str, Any]]:
     """Transactions stuck in `submitted`. Re-check Yahoo before doing anything with them."""
     cutoff = now() - timedelta(seconds=older_than_seconds)
