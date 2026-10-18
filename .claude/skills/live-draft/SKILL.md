@@ -84,6 +84,13 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
    txn left by an earlier dry run and cancels planned txns for other players.
    Reconcile draft picks only with `confirm-pick` (it records the pick on the board); if someone used
    `txn mark <id> verified`, run `confirm-pick <txn_id>` anyway - it is idempotent and records the pick.
+   - **`value_search` block (advisory, on by default since 2026-10-18):** a learned season-outcome model
+     re-scores the top 6 candidates (P(title)/P(playoffs) with paired SEs). It does **not** change
+     `recommendations[0]`; validation did not justify that (docs/research/value_search.md). Use it only as
+     a tie-breaker among near-equal options (it is never worse than the optimizer in validation). Note the
+     same validation found plain best-available-by-value (BPA) beat the optimizer under the full season
+     simulator; that is an open question for the lead, not a license to deviate. `--search value` lets it
+     pick the top (opt-in); `--search none` skips it (saves ~0.5–1 s). If it fails you get a warning only.
 6. If you deviate from `recommendations[0]`, the rationale must say why (it is stored with `agrees_with_model=false`
    and shown on the dashboard).
 7. `fantasy lock renew draft:$FANTASY_DRAFT_ID --ttl 10800` every ~30 min; `fantasy run heartbeat` every few picks.

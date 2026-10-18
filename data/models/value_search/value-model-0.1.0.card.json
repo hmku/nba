@@ -108,7 +108,8 @@
     },
     "seasons_per_league": [
       160
-    ]
+    ],
+    "generator": "python -m fantasy.valuesearch.datagen --n 716 --seed0 100000 --seasons 160"
   },
   "projections_sha256": "25ef6ca42a101c0bb348b3ada237ac5e33278c7fb57cf362598e7b81aa1dbb8b",
   "metrics": {
@@ -273,5 +274,296 @@
     "e_rank": 2.6645352591003757e-14,
     "e_cat_wins": 1.9895196601282805e-13
   },
-  "train_seconds": 63.4
+  "train_seconds": 63.4,
+  "validation": {
+    "method": "fantasy.valuesearch.validate: 200 paired drafts (seeds 0-199), slot 1, graded by the full season simulator (400 seasons); regimes adp/ours, sym/ours, adp/market",
+    "summary": {
+      "adp/ours": {
+        "n": 200,
+        "p_playoffs": {
+          "optimizer": {
+            "mean": 0.9659,
+            "se": 0.001
+          },
+          "value_search": {
+            "mean": 0.9673,
+            "se": 0.001
+          },
+          "bpa": {
+            "mean": 0.9718,
+            "se": 0.0008
+          },
+          "value_search-optimizer": {
+            "mean": 0.0015,
+            "se": 0.0009,
+            "z": 1.61
+          },
+          "optimizer-bpa": {
+            "mean": -0.006,
+            "se": 0.0008,
+            "z": -7.27
+          },
+          "value_search-bpa": {
+            "mean": -0.0045,
+            "se": 0.0009,
+            "z": -4.89
+          }
+        },
+        "p_title": {
+          "optimizer": {
+            "mean": 0.5511,
+            "se": 0.0039
+          },
+          "value_search": {
+            "mean": 0.5597,
+            "se": 0.004
+          },
+          "bpa": {
+            "mean": 0.5574,
+            "se": 0.004
+          },
+          "value_search-optimizer": {
+            "mean": 0.0087,
+            "se": 0.0035,
+            "z": 2.48
+          },
+          "optimizer-bpa": {
+            "mean": -0.0063,
+            "se": 0.0037,
+            "z": -1.72
+          },
+          "value_search-bpa": {
+            "mean": 0.0024,
+            "se": 0.0035,
+            "z": 0.67
+          }
+        },
+        "e_rank": {
+          "optimizer": {
+            "mean": 1.8537,
+            "se": 0.0142
+          },
+          "value_search": {
+            "mean": 1.8442,
+            "se": 0.0145
+          },
+          "bpa": {
+            "mean": 1.7957,
+            "se": 0.0121
+          },
+          "value_search-optimizer": {
+            "mean": -0.0095,
+            "se": 0.0105,
+            "z": -0.91
+          },
+          "optimizer-bpa": {
+            "mean": 0.058,
+            "se": 0.0101,
+            "z": 5.73
+          },
+          "value_search-bpa": {
+            "mean": 0.0485,
+            "se": 0.0107,
+            "z": 4.54
+          }
+        }
+      },
+      "adp/market": {
+        "n": 200,
+        "p_playoffs": {
+          "optimizer": {
+            "mean": 0.7844,
+            "se": 0.0033
+          },
+          "value_search": {
+            "mean": 0.7955,
+            "se": 0.0032
+          },
+          "bpa": {
+            "mean": 0.7994,
+            "se": 0.003
+          },
+          "value_search-optimizer": {
+            "mean": 0.0111,
+            "se": 0.0027,
+            "z": 4.19
+          },
+          "optimizer-bpa": {
+            "mean": -0.0151,
+            "se": 0.0025,
+            "z": -5.96
+          },
+          "value_search-bpa": {
+            "mean": -0.0039,
+            "se": 0.0027,
+            "z": -1.46
+          }
+        },
+        "p_title": {
+          "optimizer": {
+            "mean": 0.1962,
+            "se": 0.003
+          },
+          "value_search": {
+            "mean": 0.2066,
+            "se": 0.0031
+          },
+          "bpa": {
+            "mean": 0.1995,
+            "se": 0.0033
+          },
+          "value_search-optimizer": {
+            "mean": 0.0105,
+            "se": 0.0027,
+            "z": 3.87
+          },
+          "optimizer-bpa": {
+            "mean": -0.0034,
+            "se": 0.0028,
+            "z": -1.2
+          },
+          "value_search-bpa": {
+            "mean": 0.0071,
+            "se": 0.0027,
+            "z": 2.67
+          }
+        },
+        "e_rank": {
+          "optimizer": {
+            "mean": 3.9954,
+            "se": 0.0295
+          },
+          "value_search": {
+            "mean": 3.9096,
+            "se": 0.03
+          },
+          "bpa": {
+            "mean": 3.8859,
+            "se": 0.0282
+          },
+          "value_search-optimizer": {
+            "mean": -0.0857,
+            "se": 0.0229,
+            "z": -3.74
+          },
+          "optimizer-bpa": {
+            "mean": 0.1095,
+            "se": 0.0222,
+            "z": 4.94
+          },
+          "value_search-bpa": {
+            "mean": 0.0238,
+            "se": 0.023,
+            "z": 1.03
+          }
+        }
+      },
+      "adp/search": {
+        "picks": 2600,
+        "agree_rate": 0.749,
+        "mean_seconds": 0.77,
+        "max_seconds": 7.13,
+        "same_roster_rate": 0.03
+      },
+      "sym/ours": {
+        "n": 200,
+        "p_playoffs": {
+          "optimizer": {
+            "mean": 0.7444,
+            "se": 0.0048
+          },
+          "value_search": {
+            "mean": 0.7524,
+            "se": 0.0046
+          },
+          "bpa": {
+            "mean": 0.8055,
+            "se": 0.0033
+          },
+          "value_search-optimizer": {
+            "mean": 0.008,
+            "se": 0.005,
+            "z": 1.59
+          },
+          "optimizer-bpa": {
+            "mean": -0.0611,
+            "se": 0.0047,
+            "z": -12.9
+          },
+          "value_search-bpa": {
+            "mean": -0.0531,
+            "se": 0.0045,
+            "z": -11.79
+          }
+        },
+        "p_title": {
+          "optimizer": {
+            "mean": 0.2448,
+            "se": 0.0033
+          },
+          "value_search": {
+            "mean": 0.2509,
+            "se": 0.0035
+          },
+          "bpa": {
+            "mean": 0.2822,
+            "se": 0.0036
+          },
+          "value_search-optimizer": {
+            "mean": 0.0061,
+            "se": 0.0039,
+            "z": 1.57
+          },
+          "optimizer-bpa": {
+            "mean": -0.0374,
+            "se": 0.0043,
+            "z": -8.77
+          },
+          "value_search-bpa": {
+            "mean": -0.0313,
+            "se": 0.0044,
+            "z": -7.06
+          }
+        },
+        "e_rank": {
+          "optimizer": {
+            "mean": 4.3731,
+            "se": 0.0424
+          },
+          "value_search": {
+            "mean": 4.3365,
+            "se": 0.0411
+          },
+          "bpa": {
+            "mean": 3.8618,
+            "se": 0.0323
+          },
+          "value_search-optimizer": {
+            "mean": -0.0365,
+            "se": 0.0432,
+            "z": -0.85
+          },
+          "optimizer-bpa": {
+            "mean": 0.5112,
+            "se": 0.043,
+            "z": 11.88
+          },
+          "value_search-bpa": {
+            "mean": 0.4747,
+            "se": 0.0422,
+            "z": 11.24
+          }
+        }
+      },
+      "sym/search": {
+        "picks": 2600,
+        "agree_rate": 0.671,
+        "mean_seconds": 0.81,
+        "max_seconds": 12.76,
+        "same_roster_rate": 0.005
+      }
+    },
+    "adoption": "not adopted as default (P(playoffs) z=1.61 < 2 in ADP rooms); default --search advise, opt-in --search value"
+  },
+  "holdout_generator": "python -m fantasy.valuesearch.datagen --n 100 --seed0 900000 --seasons 2000"
 }

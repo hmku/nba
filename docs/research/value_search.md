@@ -58,7 +58,9 @@ Reading: across the league the model is about as accurate as a ~100–160-season
 league, in ~0.2 ms instead of ~0.25 s. It is worse on the *top* teams' P(title) (slot-1 RMSE 0.046).
 **What matters for search is resolving small differences between candidate rosters in the same room**,
 and there it is weak: on the validation leagues (three policies' leagues per room), the correlation
-between model-predicted and simulated *within-room* differences was <!--REL-->
+between model-predicted and simulated *within-room* differences was **0.20 for P(title) and 0.39 for P(playoffs) in ADP rooms (sign agreement 60% / 63%), 0.46 / 0.85 in
+symmetric rooms (65% / 84%)** (200 rooms × 2 alternative policies each; level RMSE on these leagues 0.054
+for P(title), 0.014 for P(playoffs) in ADP rooms)
 (the simulated differences themselves carry 400-season noise, so these correlations are attenuated, but
 the sign agreement on P(title) is only modestly above a coin flip).
 
@@ -98,13 +100,74 @@ paired (± paired SE, z in parentheses).
   (ADP order made the true value order by rescaling each ADP player's volume; built by the
   optimism-decomposition agent, reused here).
 
-<!--TABLES-->
+**(i) ADP room, our projections** (n = 200 paired drafts)
+
+| metric | optimizer | value search | BPA | VS − opt (z) | opt − BPA (z) | VS − BPA (z) |
+|---|---|---|---|---|---|---|
+| P(playoffs) | 0.966 ± 0.001 | 0.967 ± 0.001 | 0.972 ± 0.001 | +0.0015 ± 0.0009 (1.61) | -0.0060 ± 0.0008 (-7.27) | -0.0045 ± 0.0009 (-4.89) |
+| P(title) | 0.551 ± 0.004 | 0.560 ± 0.004 | 0.557 ± 0.004 | +0.0087 ± 0.0035 (2.48) | -0.0063 ± 0.0037 (-1.72) | +0.0024 ± 0.0035 (0.67) |
+| E[rank] | 1.854 ± 0.014 | 1.844 ± 0.015 | 1.796 ± 0.012 | -0.0095 ± 0.0105 (-0.91) | +0.0580 ± 0.0101 (5.73) | +0.0485 ± 0.0107 (4.54) |
+**(ii) symmetric room (11 opp. = our optimizer on own views)** (n = 200 paired drafts)
+
+| metric | optimizer | value search | BPA | VS − opt (z) | opt − BPA (z) | VS − BPA (z) |
+|---|---|---|---|---|---|---|
+| P(playoffs) | 0.744 ± 0.005 | 0.752 ± 0.005 | 0.805 ± 0.003 | +0.0080 ± 0.0050 (1.59) | -0.0611 ± 0.0047 (-12.9) | -0.0531 ± 0.0045 (-11.79) |
+| P(title) | 0.245 ± 0.003 | 0.251 ± 0.004 | 0.282 ± 0.004 | +0.0061 ± 0.0039 (1.57) | -0.0374 ± 0.0043 (-8.77) | -0.0313 ± 0.0044 (-7.06) |
+| E[rank] | 4.373 ± 0.042 | 4.337 ± 0.041 | 3.862 ± 0.032 | -0.0365 ± 0.0432 (-0.85) | +0.5112 ± 0.0430 (11.88) | +0.4747 ± 0.0422 (11.24) |
+**(iii) ADP room, market-is-right truth** (n = 200 paired drafts)
+
+| metric | optimizer | value search | BPA | VS − opt (z) | opt − BPA (z) | VS − BPA (z) |
+|---|---|---|---|---|---|---|
+| P(playoffs) | 0.784 ± 0.003 | 0.795 ± 0.003 | 0.799 ± 0.003 | +0.0111 ± 0.0027 (4.19) | -0.0151 ± 0.0025 (-5.96) | -0.0039 ± 0.0027 (-1.46) |
+| P(title) | 0.196 ± 0.003 | 0.207 ± 0.003 | 0.200 ± 0.003 | +0.0105 ± 0.0027 (3.87) | -0.0034 ± 0.0028 (-1.2) | +0.0071 ± 0.0027 (2.67) |
+| E[rank] | 3.995 ± 0.029 | 3.910 ± 0.030 | 3.886 ± 0.028 | -0.0857 ± 0.0229 (-3.74) | +0.1095 ± 0.0222 (4.94) | +0.0238 ± 0.0230 (1.03) |
+
+Search diagnostics (5,200 value-search decisions): it kept the optimizer's #1 at 75% of picks in ADP rooms
+and 67% in symmetric rooms, yet produced a different 13-man roster in 97% / 99.5% of drafts. Per-call
+search time in these runs: mean 0.8 s, max 7.1 s (ADP) / 12.8 s (symmetric) — the maxima occurred with
+3 validation workers plus two other agents' jobs on 4 cores (load average 6–9); the CLI measurements in
+§4 are the latency reference.
 
 ## 6. Adoption decision
-<!--DECISION-->
+Rule (set before the run): change the default only if value search beats the optimizer on **both**
+P(title) and P(playoffs) with paired z ≥ 2 in (i), and does not lose in (ii)/(iii).
+
+| check | result | pass? |
+|---|---|---|
+| (i) P(title) VS − opt | +0.0087 ± 0.0035 (z 2.48) | yes |
+| (i) P(playoffs) VS − opt | +0.0015 ± 0.0009 (z 1.61) | **no** |
+| (ii) doesn't lose | +0.008 ± 0.005 P(po), +0.006 ± 0.004 P(title) (z ≈ 1.6) | yes |
+| (iii) doesn't lose | +0.011 ± 0.003 P(po) (z 4.2), +0.011 ± 0.003 P(title) (z 3.9) | yes |
+
+**Decision: not adopted as the default ordering.** `fantasy draft recommend` keeps the optimizer's
+order; its payload now carries an **advisory** `value_search` block by default (`--search advise`,
+`DEFAULT_SEARCH` in `search.py`; adds ≈0.5–1 s). `--search value` is the opt-in that lets value search
+pick the top; `--search none` restores the old payload exactly. Value search is never worse than the
+optimizer in any regime and is clearly better under the market-is-right truth (+1.1 pp title, +1.1 pp
+playoffs), so it is a reasonable opt-in, but the P(playoffs) gain in the main regime is not established
+and the value model's within-room resolution is weak (§3). A failure of the search (e.g. missing
+artifact) only adds a warning; it never blocks a recommendation.
 
 ## Side finding: BPA beats the current optimizer under the full season simulator
-<!--BPA-->
+Not the question asked, but the most decision-relevant result of the run (same 200 paired drafts, full
+season simulator):
+
+| regime | opt − BPA P(playoffs) | opt − BPA P(title) | opt − BPA E[rank] (lower = better) |
+|---|---|---|---|
+| (i) ADP room | −0.0060 ± 0.0008 (z −7.3) | −0.0063 ± 0.0037 (z −1.7) | +0.058 ± 0.010 (z 5.7) |
+| (ii) symmetric room | **−0.061 ± 0.005 (z −12.9)** | **−0.037 ± 0.004 (z −8.8)** | +0.51 ± 0.04 (z 11.9) |
+| (iii) market-is-right | −0.015 ± 0.003 (z −6.0) | −0.003 ± 0.003 (z −1.2) | +0.11 ± 0.02 (z 4.9) |
+
+The optimizer's +0.07 expected-category-wins edge over BPA (optimizer-diagnosis handoff) is measured by the
+same league-average category model it optimizes; the season simulator — specific opponents, injuries as
+spells, daily lineup cap, playoffs — does not reproduce it. In symmetric rooms the gap is large: the
+optimizer waits on players its ADP availability model says will last, but opponents who also use the
+optimizer take them. Value search recovers only a small part (it re-ranks the optimizer's candidates).
+**Recommendation for the lead/user (not changed here):** treat BPA-by-value as at least as good as the
+optimizer's #1 for the real draft; investigate before trusting the optimizer's reaches (e.g. require the
+optimizer's pick to beat BPA by a margin, or make the availability model room-aware). Caveat: in-sample
+w.r.t. our projections and uncalibrated simulator priors; the optimism-decomposition work
+(`fantasy.sim.symmetric`) is the place to cross-check.
 
 ## Limitations
 - **In-sample**: training labels, validation (i)/(ii) and the search all use our projections and the

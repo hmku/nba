@@ -29,7 +29,7 @@ from fantasy.valuesearch.policies import Board, GreedyCatPolicy, sample_room_ord
 OPPONENT_MODELS = ("adp", "ours")
 SEARCH_MODES = ("none", "advise", "value")
 # Adoption decision (docs/research/value_search.md): "value" only if validation beat the optimizer.
-DEFAULT_SEARCH = "none"
+DEFAULT_SEARCH = "advise"
 
 
 @dataclass
