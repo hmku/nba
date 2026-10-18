@@ -27,10 +27,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="antialiased">
-        <div className="flex min-h-screen flex-col md:flex-row">
-          <Nav />
-          <main className="min-w-0 flex-1 px-3 py-3 md:px-5 md:py-5">{children}</main>
-        </div>
+        <Nav />
+        <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-24 md:pb-10">{children}</main>
       </body>
     </html>
   );
