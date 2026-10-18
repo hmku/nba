@@ -102,9 +102,12 @@ export function searchPlayers<T extends NamedPlayer>(q: string, pool: T[]): T[] 
     .map((t) => normName(t))
     .filter(Boolean);
   if (!terms.length) return pool;
+  // a term matches a team/position exactly, or (≥ 2 chars) a substring of the name/id; so "okc c" = OKC centers
   return pool.filter((p) => {
-    const hay = `${normName(p.name)}|${normName(p.player_id)}|${normName(p.team ?? "")}|${(p.positions ?? []).map(normName).join("|")}`;
-    return terms.every((t) => hay.includes(t));
+    const team = normName(p.team ?? "");
+    const pos = (p.positions ?? []).map(normName);
+    const name = `${normName(p.name)}|${normName(p.player_id)}`;
+    return terms.every((t) => t === team || pos.includes(t) || (t.length >= 2 && name.includes(t)));
   });
 }
 

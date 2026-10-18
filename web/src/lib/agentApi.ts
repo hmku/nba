@@ -70,12 +70,13 @@ export interface PoolPlayer {
 /** Players table joined with the latest valuation run that has rows (rank / value / adp). */
 export async function playerPool(db: SupabaseClient): Promise<{ pool: PoolPlayer[]; valuationRun: string | null }> {
   const players: Record<string, Player> = await loadPlayers(db);
-  const { data: runs } = await db
+  const { data: runs, error: runsErr } = await db
     .from("model_runs")
     .select("run_id")
     .eq("kind", "valuation")
     .order("created_at", { ascending: false })
     .limit(3);
+  if (runsErr) throw new Error(runsErr.message);
   let values: PlayerValue[] = [];
   let runId: string | null = null;
   for (const r of (runs as { run_id: string }[]) ?? []) {

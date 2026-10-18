@@ -31,6 +31,37 @@ const DOT: Record<string, string> = {
   neutral: "bg-line",
 };
 
+const REPORT_TONE: Record<string, string> = {
+  draft_order: "bad",
+  trade: "accent",
+  rule: "warn",
+  injury_news: "warn",
+  schedule: "neutral",
+  chat_note: "neutral",
+  observed_pick: "good",
+  other: "neutral",
+};
+
+/** Report metadata for events logged through /api/agent/report or /api/agent/pick (payload.report_kind). */
+function reportOf(e: AgentEvent): { kind: string; source: string | null; details: unknown } | null {
+  const p = e.payload;
+  if (!p || typeof p !== "object" || Array.isArray(p)) return null;
+  const o = p as Record<string, unknown>;
+  if (typeof o.report_kind !== "string") return null;
+  return { kind: o.report_kind, source: typeof o.source === "string" ? o.source : null, details: o.details ?? null };
+}
+
+function ReportBadges({ e }: { e: AgentEvent }) {
+  const r = reportOf(e);
+  if (!r) return null;
+  return (
+    <>
+      <Badge tone={REPORT_TONE[r.kind] ?? "neutral"}>{r.kind.replace(/_/g, " ")}</Badge>
+      {r.source && <Badge title="where Muse saw it">{r.source}</Badge>}
+    </>
+  );
+}
+
 function DecisionCard({ d }: { d: Decision }) {
   const dis = d.agrees_with_model === false;
   return (
@@ -98,8 +129,14 @@ export default async function ActivityPage() {
     ["draft_sim", "draft sim", 72 * 3600],
     ["season_sim", "season sim", 72 * 3600],
   ];
-  const stuck = runs.filter((r) => r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
+  // muse's daily run is a passive log (heartbeat only on reports), so it is never "stuck"
+  const stuck = runs.filter((r) => r.agent !== "muse" && r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
   const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
+  const museRuns = new Set(runs.filter((r) => r.agent === "muse").map((r) => r.run_id));
+  const museReports = ((evR.data as AgentEvent[]) ?? [])
+    .filter((e) => museRuns.has(e.run_id) && reportOf(e))
+    .sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""))
+    .slice(0, 8);
   const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, evR.error].filter(Boolean).map((e) => e!.message);
 
   return (
@@ -178,6 +215,29 @@ export default async function ActivityPage() {
         </section>
       )}
 
+      {museReports.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-muted">League intel from Muse</h2>
+          <ul className="overflow-hidden rounded-xl border border-line bg-panel">
+            {museReports.map((e) => {
+              const r = reportOf(e)!;
+              return (
+                <li key={e.event_id} className="border-t border-line px-4 py-2.5 first:border-t-0">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <ReportBadges e={e} />
+                    <span className="ml-auto text-muted">
+                      <Ago ts={e.ts} />
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[14px] leading-snug whitespace-pre-wrap">{e.message}</div>
+                  {r.details != null && <JsonView value={r.details} label="details" />}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* run timeline */}
       <section className="overflow-hidden rounded-xl border border-line bg-panel">
         {runs.length === 0 ? (
@@ -241,7 +301,14 @@ export default async function ActivityPage() {
                               <div className="flex items-start gap-1.5">
                                 <KindIcon kind={e.kind} />
                                 <span className="num shrink-0 text-muted">{shortTime(e.ts)}</span>
-                                <span className={`min-w-0 flex-1 ${e.kind === "decision" ? "font-medium" : ""}`}>{e.message}</span>
+                                <span className={`min-w-0 flex-1 ${e.kind === "decision" ? "font-medium" : ""}`}>
+                                  {reportOf(e) && (
+                                    <span className="mr-1.5 inline-flex gap-1 align-middle">
+                                      <ReportBadges e={e} />
+                                    </span>
+                                  )}
+                                  {e.message}
+                                </span>
                               </div>
                               {e.payload != null && (
                                 <div className="pl-6">
