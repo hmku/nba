@@ -75,3 +75,14 @@ def test_sanity_top_players(proj):
 def test_age_curve_monotone_after_peak():
     vals = [P.age_mult(a) for a in range(27, 41)]
     assert all(b <= a for a, b in zip(vals, vals[1:], strict=False))
+
+
+def test_overridden_players_survive_the_volume_cut(proj):
+    """Every player in player_overrides must get a row, even if below max_rows by volume."""
+    ov = set(P.load_manual("player_overrides_2026_27.csv")["player_id"])
+    assert ov <= set(proj["player_id"])
+    small, notes = P.build(P.Params(max_rows=50))
+    assert ov <= set(small["player_id"])
+    assert len(small) < len(proj)
+    rescued = [k for k, v in notes.items() if any("volume cut" in n for n in v)]
+    assert rescued and set(rescued) <= ov

@@ -419,8 +419,18 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
     df["gp"] = df["gp"].clip(params.gp_min, 82)
 
     # keep the most fantasy-relevant rows: rank by simple volume proxy
+    # Players with a manual override are always kept: someone deliberately projected them (often
+    # injured players whose low expected gp would otherwise push them below the cut).
     df["_rel"] = df["mpg"] * df["gp"].clip(lower=20)
-    df = df.sort_values(["_rel", "player_id"], ascending=[False, True]).head(params.max_rows)
+    df = df.sort_values(["_rel", "player_id"], ascending=[False, True])
+    forced = set(load_manual("player_overrides_2026_27.csv").get("player_id", []))
+    below = df.iloc[params.max_rows :]
+    rescued = below[below["player_id"].isin(forced)]
+    for pid in rescued["player_id"]:
+        notes.setdefault(pid, []).append(
+            f"kept despite max_rows={params.max_rows} volume cut (manual override)"
+        )
+    df = pd.concat([df.head(params.max_rows), rescued])
 
     num = [
         "age",
