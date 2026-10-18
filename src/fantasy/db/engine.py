@@ -32,9 +32,13 @@ def db_url() -> str:
     return f"sqlite:///{DEFAULT_SQLITE}"
 
 
-@lru_cache(maxsize=4)
 def get_engine(url: str | None = None) -> Engine:
-    engine = create_engine(url or db_url(), future=True, pool_pre_ping=True)
+    return _engine(url or db_url())
+
+
+@lru_cache(maxsize=8)
+def _engine(url: str) -> Engine:
+    engine = create_engine(url, future=True, pool_pre_ping=True)
     if engine.dialect.name == "sqlite":
         metadata.create_all(engine)  # sqlite is self-initialising; postgres uses migrations
     return engine

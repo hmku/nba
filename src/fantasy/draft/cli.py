@@ -1,0 +1,269 @@
+"""`fantasy draft ...` — live draft tooling. All commands print JSON with --json."""
+
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+from typing import Annotated
+
+import typer
+
+from fantasy.draft import store
+from fantasy.draft.names import NameResolutionError, resolve_player
+from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, OptimizerParams
+from fantasy.draft.order import draft_order, picks_for_slot
+from fantasy.league.settings import LeagueSettings, load_settings
+from fantasy.model.lines import load_projections
+from fantasy.model.valuation import ValuationParams, run_valuation
+
+app = typer.Typer(no_args_is_help=True, help="Live draft: state, picks, recommendations, simulation.")
+
+JsonOpt = Annotated[bool, typer.Option("--json", help="Machine-readable output")]
+DraftOpt = Annotated[str | None, typer.Option("--draft-id", envvar="FANTASY_DRAFT_ID", help="Default: latest non-mock draft")]
+ProjOpt = Annotated[Path | None, typer.Option("--projections", help="Projections CSV (default data/processed)")]
+
+
+def _emit(obj: dict, as_json: bool, text: str | None = None) -> None:
+    if as_json:
+        typer.echo(json.dumps(store._clean(obj), indent=2))
+    else:
+        typer.echo(text if text is not None else json.dumps(store._clean(obj), indent=2))
+
+
+def _fail(msg: str, as_json: bool, code: int = 1, **extra: object) -> None:
+    if as_json:
+        typer.echo(json.dumps({"ok": False, "error": msg, **extra}))
+    else:
+        typer.echo(f"error: {msg}", err=True)
+    raise typer.Exit(code)
+
+
+def _settings_for(draft: dict | None) -> LeagueSettings:
+    s = load_settings()
+    if draft:
+        s = s.model_copy(update={"num_teams": draft["num_teams"], "my_slot": draft["my_slot"],
+                                 "draft_order_type": draft["order_type"]})
+    return s
+
+
+def _load_draft(draft_id: str | None, as_json: bool) -> dict:
+    d = store.get_draft(draft_id)
+    if not d:
+        _fail(f"draft not found: {draft_id or '(none exist)'} — run `fantasy draft init`", as_json)
+    assert d is not None
+    return d
+
+
+def _context(settings: LeagueSettings, projections: Path | None) -> tuple[DraftContext, str]:
+    proj = load_projections(projections)
+    vp = ValuationParams()
+    run_id = None
+    try:
+        from dataclasses import asdict
+
+        params = {**asdict(vp), "categories": settings.categories}
+        run_id = store.find_valuation_run(proj.sha256, params)
+        if run_id is None:
+            run = run_valuation(proj, settings, vp)
+            run_id = store.save_valuation(run, proj.df)
+            ctx = DraftContext(proj, settings, vp, values=run.values)
+            return ctx, run_id
+    except Exception as e:  # DB trouble must never block a live pick
+        print(f"warning: could not record valuation run: {e}", file=sys.stderr)
+    return DraftContext(proj, settings, vp), run_id or "unsaved"
+
+
+@app.command()
+def init(
+    draft_id: Annotated[str, typer.Option("--draft-id", help="e.g. nba.l.44495-2026 or mock-001")],
+    mock: Annotated[bool, typer.Option("--mock")] = False,
+    slot: Annotated[int | None, typer.Option("--slot", help="My draft slot (default from settings)")] = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Create a draft record (idempotent)."""
+    s = load_settings()
+    row = store.create_draft(draft_id, s, is_mock=mock, my_slot=slot)
+    picks = picks_for_slot(row["my_slot"], row["num_teams"], row["num_rounds"], row["order_type"])
+    _emit({"ok": True, "draft": row, "my_picks": picks}, as_json,
+          f"draft {draft_id} ({row['order_type']}, {row['num_teams']} teams × {row['num_rounds']} rounds); my picks: {picks}")
+
+
+@app.command()
+def order(
+    slot: Annotated[int, typer.Option("--slot")] = 1,
+    teams: Annotated[int, typer.Option("--teams")] = 12,
+    rounds: Annotated[int, typer.Option("--rounds")] = 13,
+    order_type: Annotated[str, typer.Option("--type")] = "snake_3rr",
+    as_json: JsonOpt = False,
+) -> None:
+    """Show pick numbers for a slot under an order type (snake | snake_3rr)."""
+    picks = picks_for_slot(slot, teams, rounds, order_type)
+    _emit({"slot": slot, "order_type": order_type, "picks": picks}, as_json, f"slot {slot} ({order_type}): {picks}")
+
+
+@app.command()
+def pick(
+    player: Annotated[str, typer.Argument(help="Player name as shown on Yahoo, or player_id")],
+    overall: Annotated[int | None, typer.Option("--overall", help="Overall pick number (default: next open pick)")] = None,
+    source: Annotated[str, typer.Option("--source", help="yahoo_sync|browser|manual|agent")] = "manual",
+    force: Annotated[bool, typer.Option("--force", help="Overwrite a conflicting pick")] = False,
+    draft_id: DraftOpt = None,
+    projections: ProjOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Record an observed pick. Idempotent; refuses conflicts unless --force (exit 2)."""
+    d = _load_draft(draft_id, as_json)
+    proj = load_projections(projections)
+    values = proj.df
+    try:
+        pid = resolve_player(player, values)
+        name = str(values.loc[pid, "name"])
+    except NameResolutionError as e:
+        if not force:
+            _fail(str(e), as_json, code=2, candidates=e.candidates)
+        pid, name = f"unknown:{player.strip().lower().replace(' ', '-')}", player.strip()
+    taken = {p["overall_pick"] for p in store.get_picks(d["draft_id"])}
+    n_total = d["num_teams"] * d["num_rounds"]
+    ov = overall or next((k for k in range(1, n_total + 1) if k not in taken), None)
+    if ov is None:
+        _fail("draft is complete", as_json)
+    try:
+        row = store.record_pick(d, ov, pid, name, source, force=force)
+    except store.PickConflict as e:
+        _fail(str(e), as_json, code=2)
+    _emit({"ok": True, "pick": row}, as_json, f"#{ov}: {name} ({pid}) [{row['status']}]")
+
+
+@app.command()
+def undo(overall: int, draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
+    """Remove a recorded pick (to correct mistakes)."""
+    d = _load_draft(draft_id, as_json)
+    n = store.undo_pick(d["draft_id"], overall)
+    _emit({"ok": n > 0, "removed": n}, as_json, f"removed {n} pick(s)")
+
+
+@app.command()
+def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
+    """Current draft state: picks made, on the clock, my roster and upcoming picks."""
+    d = _load_draft(draft_id, as_json)
+    picks = store.get_picks(d["draft_id"])
+    order_ = draft_order(d["num_teams"], d["num_rounds"], d["order_type"])
+    taken = {p["overall_pick"]: p for p in picks}
+    current = next((p.overall for p in order_ if p.overall not in taken), None)
+    mine = [p.overall for p in order_ if p.slot == d["my_slot"]]
+    out = {
+        "draft_id": d["draft_id"], "status": d["status"], "picks_made": len(picks),
+        "on_the_clock": None if current is None else {"overall": current, "slot": order_[current - 1].slot,
+                                                      "round": order_[current - 1].round,
+                                                      "is_me": order_[current - 1].slot == d["my_slot"]},
+        "my_slot": d["my_slot"], "my_picks": mine,
+        "my_upcoming": [p for p in mine if p not in taken],
+        "my_roster": [taken[p] for p in mine if p in taken],
+        "recent_picks": picks[-12:],
+        "gaps": [p for p in range(1, (max(taken) if taken else 0)) if p not in taken],
+    }
+    if as_json:
+        _emit(out, True)
+        return
+    clock = out["on_the_clock"]
+    typer.echo(f"{d['draft_id']} [{d['status']}] picks made {len(picks)}; on the clock: {clock}")
+    typer.echo("my roster: " + ", ".join(f"#{p['overall_pick']} {p['player_name']}" for p in out["my_roster"]))
+    typer.echo(f"my upcoming picks: {out['my_upcoming']}")
+    if out["gaps"]:
+        typer.echo(f"WARNING missing picks (not yet recorded): {out['gaps']}")
+
+
+@app.command()
+def recommend(
+    draft_id: DraftOpt = None,
+    projections: ProjOpt = None,
+    strategy: Annotated[str | None, typer.Option("--strategy", help="Force a strategy (e.g. punt_ft); default scans")] = None,
+    objective: Annotated[str, typer.Option("--objective", help="cat_wins | matchup")] = "cat_wins",
+    top: Annotated[int, typer.Option("--top", help="Recommendations to print in text mode")] = 8,
+    save: Annotated[bool, typer.Option("--save/--no-save", help="Store in draft_recommendations")] = True,
+    as_json: JsonOpt = False,
+) -> None:
+    """Recommend my next pick given all recorded picks. Deterministic for a given state."""
+    d = _load_draft(draft_id, as_json)
+    s = _settings_for(d)
+    t0 = time.time()
+    ctx, run_id = _context(s, projections)
+    picks = store.get_picks(d["draft_id"])
+    state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
+    opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective))
+    rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+    rec["compute_seconds"] = round(time.time() - t0, 2)
+    gaps = [p for p in range(1, (max(state.taken) if state.taken else 0)) if p not in state.taken]
+    if gaps:
+        rec["warnings"].append(f"Picks {gaps} not recorded — availability may be wrong; sync the board first.")
+    if save:
+        try:
+            rec["rec_id"] = store.save_recommendation(rec)
+        except Exception as e:
+            rec["warnings"].append(f"could not save recommendation: {e}")
+    if as_json:
+        _emit(rec, True)
+        return
+    typer.echo(f"Pick #{rec['for_pick']} (on the clock: #{rec.get('on_the_clock', {}).get('overall')}); "
+               f"strategy {rec['strategy']['name']} — {rec['strategy']['notes']}")
+    for i, r in enumerate(rec["recommendations"][:top], 1):
+        typer.echo(f"{i:>2}. {r['name']:<26} {'/'.join(r['positions']):<9} score {r['score']:.3f} "
+                   f"({r['marginal_value']:+.3f})  avail@next {r['prob_available_next']:.0%}  — {r['reason']}")
+    for w in rec["warnings"]:
+        typer.echo(f"WARNING: {w}")
+
+
+@app.command()
+def watch(
+    draft_id: DraftOpt = None,
+    projections: ProjOpt = None,
+    interval: Annotated[float, typer.Option("--interval")] = 3.0,
+) -> None:
+    """Poll for new picks (e.g. entered on the dashboard) and publish a fresh recommendation each time."""
+    d = _load_draft(draft_id, False)
+    s = _settings_for(d)
+    ctx, run_id = _context(s, projections)
+    opt = DraftOptimizer(ctx)
+    last: tuple | None = None
+    typer.echo(f"watching {d['draft_id']} every {interval}s (Ctrl-C to stop)")
+    while True:
+        picks = store.get_picks(d["draft_id"])
+        key = tuple((p["overall_pick"], p["player_id"]) for p in picks)
+        if key != last:
+            state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
+            rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+            store.save_recommendation(rec)
+            top = rec["recommendations"][0]["name"] if rec["recommendations"] else "-"
+            typer.echo(f"[{time.strftime('%H:%M:%S')}] {len(picks)} picks → for #{rec.get('for_pick')}: {top}")
+            last = key
+            if rec.get("for_pick") is None:
+                typer.echo("draft complete for my slot")
+                return
+        time.sleep(interval)
+
+
+@app.command()
+def simulate(
+    sims: Annotated[int, typer.Option("--sims")] = 5,
+    seed: Annotated[int, typer.Option("--seed")] = 0,
+    slot: Annotated[int | None, typer.Option("--slot")] = None,
+    noise: Annotated[float, typer.Option("--noise", help="Opponent ADP noise multiplier")] = 1.0,
+    strategy: Annotated[str | None, typer.Option("--strategy")] = None,
+    projections: ProjOpt = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Monte Carlo mock drafts: opponents draft by noisy ADP, I draft with the optimizer."""
+    from fantasy.draft.simulate import simulate_drafts
+
+    s = load_settings()
+    if slot:
+        s = s.model_copy(update={"my_slot": slot})
+    proj = load_projections(projections)
+    ctx = DraftContext(proj, s)
+    res = simulate_drafts(ctx, n_sims=sims, seed=seed, noise=noise, strategy=strategy)
+    if as_json:
+        _emit(res, True)
+        return
+    typer.echo(json.dumps(store._clean(res["summary"]), indent=2))
