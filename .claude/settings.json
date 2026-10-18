@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(fantasy:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:*)"
+    ],
+    "ask": [
+      "Bash(fantasy approval decide:*)",
+      "Bash(fantasy publish:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_start.sh",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

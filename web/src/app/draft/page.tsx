@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
-import { defaultDraftId, loadDraftLive, loadDrafts, loadValues } from "@/lib/data";
+import { defaultDraftId, loadDraftLive, loadDrafts, loadValues, slimValues } from "@/lib/data";
 import DraftClient from "./DraftClient";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
       initialDrafts={drafts}
       initialDraftId={draftId}
       initialLive={live}
-      initialValues={values}
+      initialValues={slimValues(values)}
       loadError={error ?? null}
     />
   );

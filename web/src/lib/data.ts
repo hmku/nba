@@ -170,3 +170,15 @@ export async function loadProjections(db: SupabaseClient): Promise<{ run: ModelR
   const rows = await pagedByRun<Projection>(db, "projections", run.run_id, "player_id");
   return { run, rows };
 }
+
+/** Shrink a values bundle for serialization to the client (only referenced players, minimal extra). */
+export function slimValues(v: ValuesBundle): ValuesBundle {
+  const players: Record<string, Player> = {};
+  const values = v.values.map((pv) => {
+    const p = v.players[pv.player_id];
+    if (p) players[pv.player_id] = { ...p, injury_note: null };
+    const ex = (pv.extra ?? {}) as Record<string, unknown>;
+    return { ...pv, extra: p ? null : { name: ex.name ?? null, team: ex.team ?? null } };
+  });
+  return { ...v, values, players };
+}

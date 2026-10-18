@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { anonClient } from "@/lib/supabase";
-import { loadDraftLive, loadDrafts, loadValues, latestRun, type DraftLive, type ValuesBundle } from "@/lib/data";
+import { loadDraftLive, loadDrafts, loadValues, latestRun, slimValues, type DraftLive, type ValuesBundle } from "@/lib/data";
 import type { Draft, DraftPick, RecItem, RecPayload, AgentEvent } from "@/lib/types";
 import { pickInfo, picksForSlot } from "@/lib/draftOrder";
 import { CATS, CAT_LABEL, POSITIONS, heatStyle } from "@/lib/categories";
@@ -70,9 +70,10 @@ export default function DraftClient({ initialDrafts, initialDraftId, initialLive
       if (document.visibilityState !== "visible") return;
       const db = anonClient();
       const run = await latestRun(db, "valuation").catch(() => null);
+      // reload when a new valuation run appears (retry each check while it has no rows yet)
       if (run && run.run_id !== values.run?.run_id) {
         const v = await loadValues(db);
-        if (v.values.length) setValues(v);
+        if (v.values.length && v.run?.run_id !== values.run?.run_id) setValues(slimValues(v));
       }
       const d = await loadDrafts(db);
       if (!d.error) setDrafts(d.drafts);
@@ -993,7 +994,7 @@ function AvailableTable({
   }, [rows, q, pos, sort]);
 
   const th = (k: SortKey, label: string, cls = "") => (
-    <th className={`cursor-pointer select-none ${cls} ${sort === k ? "text-accent!" : ""}`} onClick={() => setSort(k)}>
+    <th key={k} className={`cursor-pointer select-none ${cls} ${sort === k ? "text-accent!" : ""}`} onClick={() => setSort(k)}>
       {label}
       {sort === k ? (k === "adp" || k === "rank" ? " ↑" : " ↓") : ""}
     </th>
