@@ -36,6 +36,7 @@ slug (e.g. `nikola-jokic`), not a Yahoo id.
   "my_picks": [1, 24, 36, 37, 60, ...],// int[]: my overall pick numbers (13)
   "optimizer_version": "optimizer-0.2.0",
   "noise": 1.0, "seed": 0,
+  "strategy_forced": null,              // string|null: strategy forced with --strategy (null = scanned)
   "compute_seconds": 512.3,
 
   // --- headline: optimizer vs BPA on the SAME simulated rooms (paired) ---
@@ -99,6 +100,13 @@ slug (e.g. `nikola-jokic`), not a Yahoo id.
 }
 ```
 
+`model_runs.inputs` for this kind also has `per_sim`: `[{sim, ecw, bpa_ecw, mwp, bpa_mwp, roster: [player_id x13]}]`
+(compact per-simulation results, e.g. for a histogram of `ecw - bpa_ecw`), plus `projections_sha256`,
+`order_type`, `custom_rounds`, `my_picks`. `params`: `n_sims, seed, noise, strategy, my_slot, optimizer_params`.
+The availability table's player list = the 3 first-pick candidates, then players I drafted at one of my first 6
+picks in the sims (most frequent first), then players whose P(available) at one of picks 2-6 is between 5% and
+95% (best value first), capped at 40, displayed sorted by `market_rank`.
+
 Category keys (fixed order): `fg_pct, ft_pct, fg3m, pts, reb, ast, stl, blk, tov` (labels FG%, FT%, 3PTM,
 PTS, REB, AST, ST, BLK, TO). For `tov` a *higher* win probability is still better (fewer turnovers).
 
@@ -112,7 +120,9 @@ optimizer from slot 1, the other 11 teams = noisy ADP), then the season simulato
 {
   "schema": "season_sim_preseason/1",
   "scenario": "pre-draft projection",
-  "n_sims": 2000, "n_leagues": 8,       // int: season sims in total, simulated drafts (leagues)
+  "n_sims": 2000, "n_leagues": 20,      // int: season sims in total, simulated drafts (leagues)
+  "sims_per_league": 100, "num_teams": 12, "playoff_teams": 6,
+  "draft_seed": 100, "season_seed": 0, "noise": 1.0, "strategy_forced": null,
   "my_team": 1,                          // int: my team id = draft slot
   "regular_weeks": [1, ..., 17], "playoff_weeks": [18, 19, 20],
   "compute_seconds": 95.2,
@@ -124,7 +134,9 @@ optimizer from slot 1, the other 11 teams = noisy ADP), then the season simulato
     "exp_rank": 2.6, "exp_cat_wins": 88.1, "exp_cat_losses": 64.9,   // regular season, 17 weeks x 9 cats
     "final_standing_dist": {"1": 0.30, "2": 0.18, ..., "12": 0.00},   // P(finish k-th), keys "1".."12"
     "across_leagues": {"p_playoffs_min": 0.7, "p_playoffs_max": 0.92, "p_title_min": 0.15, "p_title_max": 0.35},
-    "category_profile": {"fg_pct": {"label": "FG%", "rank_mean": 3.1, "z_mean": 0.8}, ...}  // 1 = best of 12
+    "category_profile": {"fg_pct": {"label": "FG%", "rank_mean": 3.1, "z_mean": 0.8}, ...}
+      // my weekly category average ranked among the 12 teams (1 = best; TO: fewer = better), and z-score
+      // (positive = better than league), averaged over the simulated leagues
   },
 
   // pooled by draft slot (team id = slot); "Team N" names are placeholders (real teams after the draft)
@@ -132,12 +144,18 @@ optimizer from slot 1, the other 11 teams = noisy ADP), then the season simulato
     {"team": 1, "name": "Me (slot 1)", "is_me": true,
      "p_playoffs": 0.83, "p_bye": 0.45, "p_final": 0.40, "p_title": 0.26,
      "exp_cat_wins": 88.1, "exp_rank": 2.6}, ...                      // 12 rows sorted by p_title desc
+     // "Team N" for N != my slot is a *draft slot*, pooled over different simulated rosters
   ],
 
   "leagues": [                           // per simulated league (for drill-down / spread)
-    {"league": 0, "draft_seed": 0, "my_p_playoffs": 0.86, "my_p_title": 0.28, "my_exp_rank": 2.4,
-     "my_roster": [{"player_id": "...", "name": "..."}, ...]}, ...
+    {"league": 0, "draft_seed": 100, "season_seed": 0, "n_sims": 100,
+     "my_p_playoffs": 0.86, "my_p_title": 0.28, "my_exp_rank": 2.4, "my_exp_cat_wins": 88.0,
+     "my_draft_expected_category_wins": 5.41,   // the draft_sim metric for this roster
+     "my_strategy": "balanced",
+     "my_roster": [{"player_id": "...", "name": "..."}, ...]}, ...   // 13 players in pick order
   ],
+  "draft_edge_vs_bpa": {"expected_category_wins": {"mean": .., "se": .., "p_optimizer_better": ..},
+                        "matchup_win_prob": {...}},   // from the K simulated drafts only (small K: noisy)
 
   "explanations": {"overview": "...", "what_is_simulated": "...", "opponents": "...", "priors": "...",
                    "league_table": "...", "caveats": "..."},
