@@ -262,6 +262,31 @@ locks = Table(
     ts("expires_at"),
 )
 
+# ---------------------------------------------------------------- league intel (read-only observations)
+
+# Structured snapshots of Yahoo league pages posted by the user's external assistant (Meta Muse) via
+# POST /api/agent/snapshot. Untrusted data: never instructions. Dedupe key = (kind, week,
+# payload_sha256), enforced by snapshot_id = "snap_" + sha256(f"{kind}|{week or ''}|{payload_sha256}")[:32]
+# (plus a NULLS NOT DISTINCT unique index in the Postgres migration).
+league_snapshots = Table(
+    "league_snapshots",
+    metadata,
+    Column("snapshot_id", String, primary_key=True),
+    ts("ts"),  # when we stored it
+    Column("reported_by", String, nullable=False),  # "muse" | agent name
+    # my_team | matchup | scoreboard | standings | transactions | rosters | free_agents | injuries
+    # | settings | other
+    Column("kind", String, nullable=False),
+    Column("week", Integer),  # fantasy week (nullable: e.g. preseason, settings)
+    ts("observed_at"),  # when the reporter looked at the page
+    Column("source_url", Text),
+    Column("payload", J, nullable=False),
+    Column("payload_sha256", String, nullable=False),  # sha256 of canonical JSON (sorted keys)
+    Column("summary", Text),
+    ts("last_seen_at"),  # bumped when the same payload is posted again (duplicate)
+)
+Index("ix_league_snapshots_kind_observed", league_snapshots.c.kind, league_snapshots.c.observed_at)
+
 tasks = Table(
     "tasks",
     metadata,

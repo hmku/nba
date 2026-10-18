@@ -215,3 +215,18 @@ export interface DataSnapshot {
   meta: Json | null;
   fetched_at: string | null;
 }
+
+/** league_snapshots: read-only observations of Yahoo league pages posted by Meta Muse. */
+export interface LeagueSnapshot {
+  snapshot_id: string;
+  ts: string | null;
+  reported_by: string;
+  kind: string;
+  week: number | null;
+  observed_at: string | null;
+  source_url: string | null;
+  payload: Json;
+  payload_sha256: string;
+  summary: string | null;
+  last_seen_at: string | null;
+}

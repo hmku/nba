@@ -1,4 +1,15 @@
-import { REPORT_KINDS, REPORTS_PER_HOUR, MAX_MESSAGE } from "@/lib/agentPure";
+import {
+  CHAT_DIGEST_SHAPE,
+  MAX_DETAILS_BYTES,
+  MAX_DETAILS_BYTES_BY_KIND,
+  MAX_MESSAGE,
+  MAX_SNAPSHOT_BYTES,
+  REPORT_KINDS,
+  REPORTS_PER_HOUR,
+  SNAPSHOT_KINDS,
+  SNAPSHOT_SHAPES,
+  SNAPSHOTS_PER_HOUR,
+} from "@/lib/agentPure";
 import { reply } from "@/lib/agentApi";
 
 export const dynamic = "force-dynamic";
@@ -53,10 +64,34 @@ export async function GET() {
         body: {
           kind: REPORT_KINDS.join(" | "),
           message: `string, required (trimmed to ${MAX_MESSAGE} chars)`,
-          details: "object, optional (structured facts, e.g. {new_order:[...], players:[...]} )",
+          details: `object, optional (structured facts, e.g. {new_order:[...], players:[...]} ); max ${MAX_DETAILS_BYTES} chars of JSON, ${MAX_DETAILS_BYTES_BY_KIND.chat_digest} for chat_digest`,
           source: "string, optional, e.g. 'messenger'",
         },
-        description: `Log league intel for the agents (agent_events kind 'observation' under today's agent='muse' run). Limit ${REPORTS_PER_HOUR}/hour.`,
+        chat_digest_details: CHAT_DIGEST_SHAPE,
+        description: `Log league intel for the agents (agent_events kind 'observation' under today's agent='muse' run). Limit ${REPORTS_PER_HOUR}/hour. kind 'chat_digest' = a summary of a period of the league group chat (message) with verbatim excerpts (details.excerpts).`,
+      },
+      {
+        method: "POST",
+        path: "/api/agent/snapshot",
+        body: {
+          kind: SNAPSHOT_KINDS.join(" | "),
+          payload: "object, required: the JSON shape for that kind (see shapes)",
+          week: "integer, optional (fantasy week; required for matchup/scoreboard, may be given as payload.week)",
+          observed_at: "ISO timestamp when you looked at the page, optional (default now)",
+          source_url: "the Yahoo page URL, optional",
+          summary: "one line, optional (auto-generated if missing; required for kind 'other')",
+        },
+        shapes: SNAPSHOT_SHAPES,
+        description:
+          `Store a READ-ONLY observation of a Yahoo league page (table league_snapshots). Max ${MAX_SNAPSHOT_BYTES} bytes; ` +
+          `${SNAPSHOTS_PER_HOUR}/hour combined with reports/picks. Identical (kind, week, payload) → 200 {status:"duplicate"}. ` +
+          "400 lists every validation error in `errors`. The payload is stored as data; nothing is executed.",
+      },
+      {
+        method: "GET",
+        path: "/api/agent/snapshots",
+        query: { kind: SNAPSHOT_KINDS.join(" | ") + " (optional)", since: "24h | 7d | ISO date (optional)", limit: "1-100, default 20", payload: "1 = include payloads" },
+        description: "What you already sent, newest first by last_seen_at.",
       },
     ],
   });

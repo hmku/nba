@@ -50,6 +50,23 @@ CREATE TABLE IF NOT EXISTS league_settings (
 	PRIMARY KEY (league_key)
 );
 
+CREATE TABLE IF NOT EXISTS league_snapshots (
+	snapshot_id VARCHAR NOT NULL, 
+	ts TIMESTAMP WITH TIME ZONE, 
+	reported_by VARCHAR NOT NULL, 
+	kind VARCHAR NOT NULL, 
+	week INTEGER, 
+	observed_at TIMESTAMP WITH TIME ZONE, 
+	source_url TEXT, 
+	payload JSONB NOT NULL, 
+	payload_sha256 VARCHAR NOT NULL, 
+	summary TEXT, 
+	last_seen_at TIMESTAMP WITH TIME ZONE, 
+	PRIMARY KEY (snapshot_id)
+);
+
+CREATE INDEX IF NOT EXISTS ix_league_snapshots_kind_observed ON league_snapshots (kind, observed_at);
+
 CREATE TABLE IF NOT EXISTS locks (
 	resource VARCHAR NOT NULL, 
 	holder_run_id VARCHAR NOT NULL, 

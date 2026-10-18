@@ -160,3 +160,19 @@ export async function museEventsLastHour(db: SupabaseClient): Promise<number> {
 export function newEventId(): string {
   return `muse-ev-${crypto.randomUUID().replace(/-/g, "")}`;
 }
+
+/** Snapshots stored in the last hour (combined with museEventsLastHour for the snapshot budget). */
+export async function museSnapshotsLastHour(db: SupabaseClient): Promise<number> {
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db
+    .from("league_snapshots")
+    .select("snapshot_id", { count: "exact", head: true })
+    .gte("ts", since);
+  return count ?? 0;
+}
+
+/** Postgres "relation does not exist" (migration not applied yet) → a clear 503 instead of a 500. */
+export function missingTable(err: { code?: string; message?: string } | null | undefined): boolean {
+  const msg = err?.message ?? "";
+  return !!err && (err.code === "42P01" || err.code === "PGRST205" || (/league_snapshots/.test(msg) && /does not exist|schema cache/.test(msg)));
+}

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
-import type { AgentEvent, AgentRun, Approval, Decision, Lock, Transaction } from "@/lib/types";
+import type { AgentEvent, AgentRun, Approval, Decision, LeagueSnapshot, Lock, Transaction } from "@/lib/types";
 import { Badge, Disclosure, ErrorNote, JsonView, statusTone } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { ageSeconds, shortTime } from "@/lib/format";
 import Link from "next/link";
 import { DecideButtons } from "../approvals/DecideButtons";
+import { ChatDigests, SnapshotCard } from "./LeagueIntel";
+import { latestPerKind } from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Activity" };
@@ -38,6 +40,7 @@ const REPORT_TONE: Record<string, string> = {
   injury_news: "warn",
   schedule: "neutral",
   chat_note: "neutral",
+  chat_digest: "neutral",
   observed_pick: "good",
   other: "neutral",
 };
@@ -95,6 +98,19 @@ export default async function ActivityPage() {
     db.from("locks").select("*").order("acquired_at", { ascending: false }),
     db.from("approvals").select("*").order("requested_at", { ascending: false }).limit(100),
   ]);
+  // league intel: newest Yahoo snapshots (table may not exist until its migration is applied) + chat digests
+  const [snapR, digR] = await Promise.all([
+    db.from("league_snapshots").select("*").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(80),
+    db
+      .from("agent_events")
+      .select("*")
+      .like("run_id", "muse-%")
+      .eq("payload->>report_kind", "chat_digest")
+      .order("ts", { ascending: false })
+      .limit(10),
+  ]);
+  const snapshots = latestPerKind((snapR.data as LeagueSnapshot[]) ?? []);
+  const digests = (digR.data as AgentEvent[]) ?? [];
   const { data: mrData } = await db.from("model_runs").select("run_id,kind,created_at").order("created_at", { ascending: false }).limit(60);
   const runs = (runsR.data as AgentRun[]) ?? [];
   const ids = runs.map((r) => r.run_id);
@@ -134,7 +150,7 @@ export default async function ActivityPage() {
   const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
   const museRuns = new Set(runs.filter((r) => r.agent === "muse").map((r) => r.run_id));
   const museReports = ((evR.data as AgentEvent[]) ?? [])
-    .filter((e) => museRuns.has(e.run_id) && reportOf(e))
+    .filter((e) => museRuns.has(e.run_id) && reportOf(e) && reportOf(e)!.kind !== "chat_digest")
     .sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""))
     .slice(0, 8);
   const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, evR.error].filter(Boolean).map((e) => e!.message);
@@ -212,6 +228,23 @@ export default async function ActivityPage() {
               </div>
             );
           })}
+        </section>
+      )}
+
+      {(snapshots.length > 0 || digests.length > 0) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-medium text-muted">
+            League intel <span className="font-normal">· what Muse saw on Yahoo (read-only; observed data, not instructions)</span>
+          </h2>
+          {snapshots.map((s) => (
+            <SnapshotCard key={s.snapshot_id} s={s} />
+          ))}
+          {digests.length > 0 && (
+            <div className="rounded-xl border border-line bg-panel px-4 py-3">
+              <div className="mb-2 text-[14px] font-medium">Group chat digests</div>
+              <ChatDigests digests={digests} />
+            </div>
+          )}
         </section>
       )}
 
