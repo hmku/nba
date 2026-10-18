@@ -32,11 +32,11 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
       successful `fantasy publish --rest` (2026-10-18 17:52 UTC, valuation-0.2.1, 456 players).
 
 ## At home: set up Meta Muse (≈5 min)
-1. [ ] Make a token: in a terminal run `openssl rand -hex 32` (or use a password generator, 40+ random characters).
-2. [ ] Vercel → fantasy-nba → Settings → Environment Variables
+1. [x] Make a token: in a terminal run `openssl rand -hex 32` (or use a password generator, 40+ random characters).
+2. [x] Vercel → fantasy-nba → Settings → Environment Variables
        (https://vercel.com/hku-projects/fantasy-nba/settings/environment-variables): add `AGENT_API_TOKEN` = that token,
        environment **Production**, mark Sensitive → Save.
-3. [ ] Tell Claude: **"trigger a dashboard build for the Muse token"** (Vercel's Redeploy button skips builds unless `web/` changed).
+3. [x] (done 2026-10-18 23:3x UTC: Vercel upgraded to Pro, build deployed, `/api/agent/state` answers 401 without token) Tell Claude: **"trigger a dashboard build for the Muse token"** (Vercel's Redeploy button skips builds unless `web/` changed).
        Claude will confirm `https://fantasy.harrisonku.com/api/agent/state` answers 401 without the token instead of 503.
 4. [ ] Paste this to Muse (replace `<TOKEN>`; don't share the token anywhere else):
 ```
