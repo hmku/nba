@@ -37,4 +37,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 > Note: Vercel skips builds whose commit doesn't change `web/` (ignored build step), and that also
 > applies to "Redeploy" from the Vercel UI. After changing environment variables, push a commit that
-> touches `web/` (or ask an agent to) so the new values take effect.
+> touches `web/` (or ask an agent to) so the new values take effect. Last env-triggered build: 2026-10-18 (DASHBOARD_PASSPHRASE).
