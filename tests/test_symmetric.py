@@ -160,6 +160,16 @@ def test_cli_symmetric_summary_only(exp, tmp_path):
     assert body["ok"] and body["n_seeds"] == 2 and body["table"]
 
 
+def test_market_informed_opponents_room(exp):
+    r = exp.run_seed(1, ["C3m"])
+    rosters = r["rooms"]["C3m"]["rosters"]
+    assert len({p for ps in rosters.values() for p in ps}) == 52
+    smart = smart_order(1, 4, 1)[:3]
+    views = exp.views(1, market=True)
+    # a market-informed opponent's first pick is its own optimizer's choice, made from its market view
+    assert set(smart) == {2, 3, 4} and len(views) == 4
+
+
 def test_experiment_rejects_unknown_room(exp):
     with pytest.raises(ValueError):
         exp.drafters("Z", 0, {})

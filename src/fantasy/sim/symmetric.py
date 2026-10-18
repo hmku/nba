@@ -20,6 +20,8 @@ keeping the starting lineup completable, as the BPA baseline of fantasy.draft.si
   A_sym    every team (me too) opt_bal on its own perturbed view - fully symmetric, isolates slot value
   A_bpa    every team bpa on its own perturbed view (fast proxy for A_sym)
   A_full   (subset of seeds) every team full-scan opt on its own view (checks the opt_bal proxy)
+  C3m/C11m me opt (exact), 3 / 11 opponents opt_bal on perturbed *market-implied* views (smart opponents
+           who disagree with us the way the market does), rest ADP
 
 Every room is graded by the season simulator under one or more "truths": `ours` (our projections, as
 today), `market` (market-implied projections, fantasy.sim.market_truth) and `blend` (50/50).
@@ -47,6 +49,8 @@ from fantasy.sim.league import LeagueState
 
 ROOMS = ["adp_all", "B", "C3", "C6", "C11", "A_sym", "A_bpa"]
 SUBSET_ROOMS = ["A_full"]
+# opponents who are as smart as us but believe the MARKET: optimizer on perturbed market-implied projections
+MARKET_ROOMS = ["C3m", "C11m"]
 PERTURB_DEFAULT = {"vol_sd": 0.08, "stat_sd": 0.08, "fg_pct_sd": 0.015, "ft_pct_sd": 0.03}
 
 
@@ -154,6 +158,7 @@ class Experiment:
     noise: float = 1.0
     perturb: dict = field(default_factory=dict)
     my_full_params: OptimizerParams = field(default_factory=OptimizerParams)
+    market_proj: ProjectionSet | None = None  # needed for the C*m rooms
 
     def __post_init__(self) -> None:
         self.base = DraftContext(self.proj, self.settings)
@@ -161,8 +166,11 @@ class Experiment:
         self.T = self.settings.num_teams
         self.me = self.settings.my_slot
 
-    def views(self, seed: int) -> dict[int, DraftContext]:
-        return {t: DraftContext(perturb_projections(self.proj, seed, t, self.perturb), self.settings)
+    def views(self, seed: int, market: bool = False) -> dict[int, DraftContext]:
+        src = self.market_proj if market else self.proj
+        if src is None:
+            raise ValueError("market rooms need Experiment.market_proj")
+        return {t: DraftContext(perturb_projections(src, seed, t, self.perturb), self.settings)
                 for t in range(1, self.T + 1)}
 
     def drafters(self, room: str, seed: int, views: dict[int, DraftContext]) -> dict[int, Drafter]:
@@ -175,8 +183,8 @@ class Experiment:
             return {}
         if room == "B":
             return {self.me: me_exact}
-        if room in ("C3", "C6", "C11"):
-            k = int(room[1:])
+        if room in ("C3", "C6", "C11", "C3m", "C11m"):
+            k = int(room[1:].rstrip("m"))
             return {self.me: me_exact, **{t: bal(t) for t in smart_order(seed, self.T, self.me)[:k]}}
         if room == "A_sym":
             return {t: bal(t) for t in range(1, self.T + 1)}
@@ -203,12 +211,13 @@ class Experiment:
 
     def run_seed(self, seed: int, rooms: list[str]) -> dict:
         t0 = time.perf_counter()
-        views = self.views(seed)
+        own = self.views(seed) if any(r not in MARKET_ROOMS for r in rooms) else {}
+        mkt = self.views(seed, market=True) if any(r in MARKET_ROOMS for r in rooms) else {}
         order = noisy_market_order(self.base, seed, self.noise)
         out: dict = {"seed": seed, "rooms": {}, "seconds": {}}
         for room in rooms:
             t1 = time.perf_counter()
-            rosters = run_room(self.base, self.drafters(room, seed, views), order)
+            rosters = run_room(self.base, self.drafters(room, seed, mkt if room in MARKET_ROOMS else own), order)
             t2 = time.perf_counter()
             out["rooms"][room] = {"rosters": {str(t): r for t, r in rosters.items()}, "grade": self.grade(rosters, seed)}
             out["seconds"][room] = {"draft": round(t2 - t1, 2), "season": round(time.perf_counter() - t2, 2)}
@@ -237,16 +246,15 @@ def build_experiment(
     team_ids = list(range(1, settings.num_teams + 1))
     ours = build_context(proj, settings, team_ids, nba_schedule_file=nba_schedule_file, nba=nba)
     ctxs = {"ours": ours}
-    diag: dict = {}
+    mt = market_implied_projections(proj, settings)
+    diag = mt.diagnostics
     if "market" in truths or "blend" in truths:
-        mt = market_implied_projections(proj, settings)
-        diag = mt.diagnostics
         if "market" in truths:
             ctxs["market"] = build_context(mt.proj, settings, team_ids, nba=ours.nba)
         if "blend" in truths:
             ctxs["blend"] = build_context(blend_projections(proj, mt, blend_weight), settings, team_ids, nba=ours.nba)
     exp = Experiment(proj=proj, settings=settings, truths={k: ctxs[k] for k in truths}, n_season_sims=n_season_sims,
-                     noise=noise, perturb=perturb or {})
+                     noise=noise, perturb=perturb or {}, market_proj=mt.proj)
     return exp, diag
 
 
@@ -318,12 +326,13 @@ def _ms(x: np.ndarray) -> dict:
 def _paired(results: list[dict], a: tuple[str, str], b: tuple[str, str], metric: str, slot: int) -> dict:
     """Mean and paired SE of metric(a) - metric(b) for `slot`, over seeds that have both."""
     xs = [(r["rooms"][a[0]]["grade"][a[1]][metric][slot - 1] - r["rooms"][b[0]]["grade"][b[1]][metric][slot - 1])
-          for r in results if a[0] in r["rooms"] and b[0] in r["rooms"]]
+          for r in results if a[0] in r["rooms"] and b[0] in r["rooms"]
+          and a[1] in r["rooms"][a[0]]["grade"] and b[1] in r["rooms"][b[0]]["grade"]]
     return _ms(np.array(xs, dtype=float)) if xs else {"mean": None, "se": None, "n": 0}
 
 
 def summarize(results: list[dict], my_slot: int = 1) -> dict:
-    rooms = [r for r in ROOMS + SUBSET_ROOMS if any(r in x["rooms"] for x in results)]
+    rooms = [r for r in ROOMS + SUBSET_ROOMS + MARKET_ROOMS if any(r in x["rooms"] for x in results)]
     truths = sorted({t for x in results for r in x["rooms"].values() for t in r["grade"]})
     metrics = ("p_playoffs", "p_title", "exp_rank")
     j = my_slot - 1
@@ -331,7 +340,7 @@ def summarize(results: list[dict], my_slot: int = 1) -> dict:
                     for truth in truths if _metric(results, room, truth, "p_title").size}
              for room in rooms}
     by_slot = {}
-    for room in ("A_sym", "A_bpa", "A_full", "adp_all", "C11"):
+    for room in ("A_sym", "A_bpa", "A_full", "adp_all", "C11", "C11m"):
         if room not in rooms:
             continue
         by_slot[room] = {}
@@ -357,6 +366,10 @@ def summarize(results: list[dict], my_slot: int = 1) -> dict:
         "B_minus_A_sym_blend": (("B", "blend"), ("A_sym", "blend")),
         "B_minus_adp_all_market": (("B", "market"), ("adp_all", "market")),
         "C11_minus_A_sym_market": (("C11", "market"), ("A_sym", "market")),
+        "B_minus_C3m": (("B", "ours"), ("C3m", "ours")),
+        "B_minus_C11m": (("B", "ours"), ("C11m", "ours")),
+        "B_minus_C3m_market": (("B", "market"), ("C3m", "market")),
+        "B_minus_C11m_market": (("B", "market"), ("C11m", "market")),
     }
     for name, (a, b) in pairs.items():
         if a[1] in truths and b[1] in truths:
