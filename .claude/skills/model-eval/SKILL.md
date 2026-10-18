@@ -19,7 +19,11 @@ fantasy draft simulate --sims 40 --seed 1 --slot 6 --json          # other slots
 fantasy draft simulate --sims 40 --seed 1 --noise 1.5 --json       # noisier opponents (ADP sd x1.5)
 fantasy draft simulate --sims 40 --seed 1 --strategy punt_ft --json  # force a strategy
 ```
-`summary`: `optimizer.expected_category_wins_mean/_sd`, `optimizer.matchup_win_prob_mean`,
+Each run is recorded in `model_runs` (kind `draft_sim`, display-ready `summary` schema `draft_sim/1`,
+documented in `docs/research/dashboard_data.md`; the dashboard shows the latest) unless `--no-save` -
+use `--no-save` for experiments. `summary` also has `edge.{expected_category_wins,matchup_win_prob}`
+{mean, se, p_optimizer_better, p_tie}, `picks_distribution`, `availability`, `category_win_probs`,
+`example_rosters`, `explanations`. Legacy fields: `optimizer.expected_category_wins_mean/_sd`, `optimizer.matchup_win_prob_mean`,
 `baseline_bpa.*` (same simulated room, my team takes best available by value), `edge_category_wins`
 (optimizer - BPA, paired), `first_pick_counts`, `strategy_counts`; `sims[]` has each roster and per-cat
 win probs. Compute a paired SE from `sims[]` (`expected_category_wins` vs

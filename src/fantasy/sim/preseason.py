@@ -86,7 +86,9 @@ def preseason(
     names = sctx.values["name"]
     pooled: dict[str, list[np.ndarray]] = {k: [] for k in ("playoff", "champ", "final", "rank", "cw", "cl")}
     leagues_out, profiles = [], []
-    warnings: list[str] = list(warnings_split) + list(drafts["summary"]["warnings"])
+    warnings: list[str] = list(warnings_split)
+    if n_leagues < 30:
+        warnings.append(f"draft_edge_vs_bpa comes from only {n_leagues} simulated drafts (noisy); see the draft_sim run.")
     if n_leagues < 10:
         warnings.append(f"Only {n_leagues} simulated leagues: the SEs (clustered by league) are themselves rough.")
     n_po = None

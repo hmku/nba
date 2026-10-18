@@ -45,8 +45,9 @@ slug (e.g. `nikola-jokic`), not a Yahoo id.
   "baseline_bpa": {"expected_category_wins_mean": 5.33, "expected_category_wins_sd": 0.13,
                    "matchup_win_prob_mean": 0.75, "matchup_win_prob_sd": 0.06},
   "edge": {
-    "expected_category_wins": {"mean": 0.074, "se": 0.006, "p_optimizer_better": 0.86},
-    "matchup_win_prob":       {"mean": 0.021, "se": 0.003, "p_optimizer_better": 0.80}
+    "expected_category_wins": {"mean": 0.074, "se": 0.006, "p_optimizer_better": 0.86, "p_tie": 0.02},
+    "matchup_win_prob":       {"mean": 0.021, "se": 0.003, "p_optimizer_better": 0.80, "p_tie": 0.02}
+    // p_tie = share of sims where both rules gave equally scored (usually identical) rosters
   },
   // legacy flat fields kept for the CLI: edge_category_wins, edge_category_wins_se, first_pick_counts
 
@@ -61,7 +62,8 @@ slug (e.g. `nikola-jokic`), not a Yahoo id.
     ...                                 // one entry per element of my_picks
   ],
 
-  // --- availability model (analytic, not simulated): P(player still on the board at my pick) ---
+  // --- availability model (analytic, not simulated): P(the OTHER teams haven't taken him by my pick) ---
+  // (ignores that I may have taken him myself at an earlier pick; uses the run's noise multiplier)
   "availability": {
     "picks": [1, 24, 36, 37, 60, 61],  // my first 6 picks (columns)
     "players": [                        // ~40 key targets, sorted by market rank (ADP order)
@@ -162,6 +164,9 @@ optimizer from slot 1, the other 11 teams = noisy ADP), then the season simulato
   "warnings": ["..."]
 }
 ```
+
+`sim preseason` refuses `--schedule` (Yahoo schedules are keyed by Yahoo team id, simulated leagues by
+draft slot), so pre-draft matchups are always a round robin.
 
 Other `season_sim` rows (`params.command` = `season` / `compare` / `draft-check`) keep the shapes in
 `docs/research/season_simulator.md` / `src/fantasy/sim/report.py` and have no `scenario` field.

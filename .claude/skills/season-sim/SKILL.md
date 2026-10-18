@@ -15,6 +15,7 @@ before quoting numbers to the user). Code: `src/fantasy/sim/`. Version `SIM_VERS
 | Season outlook (league table, my weekly matchups, opponents' profiles) | `fantasy sim season --draft-id <id> [--complete-rosters] [--my-plan optimizer] [--team N] --json` |
 | One week's matchup by category | `fantasy sim matchup --week 9 --draft-id <id> [--opponent N] --json` |
 | Roster change (add/drop; waiver/trade hook) | `fantasy sim compare --draft-id <id> --add "Naz Reid" --drop saddiq-bey --json` (comma-separated lists; `--team N` for other teams, e.g. both sides of a trade = two compares) |
+| Pre-draft season projection (dashboard) | `fantasy sim preseason --leagues 20 --sims 2000 --json` (simulated drafts: me = optimizer, others noisy ADP; pooled by slot; SEs clustered by league; kind `season_sim`, `summary.scenario = "pre-draft projection"`, schema in `docs/research/dashboard_data.md`) |
 | Mid-draft advisory | `fantasy sim draft-check --draft-id <id> --candidates "A,B,C" [--sims 800 --completions 4] --json` |
 | Calendar / games per week / matchups | `fantasy sim schedule [--out schedule.json]` (writes a JSON template for Yahoo's real schedule) |
 | Refresh NBA schedule (network, 7 polite requests) | `fantasy sim fetch-schedule` → `data/raw/bbref_schedule/` + provenance |
