@@ -86,3 +86,16 @@ def test_overridden_players_survive_the_volume_cut(proj):
     assert len(small) < len(proj)
     rescued = [k for k, v in notes.items() if any("volume cut" in n for n in v)]
     assert rescued and set(rescued) <= ov
+
+
+def test_data_top_json_shape():
+    import json
+
+    from typer.testing import CliRunner
+
+    from fantasy.cli import app
+
+    res = CliRunner().invoke(app, ["data", "top", "--n", "3", "--json"])
+    assert res.exit_code == 0, res.output
+    out = json.loads(res.stdout)
+    assert out["ok"] is True and len(out["players"]) == 3 and "player_id" in out["players"][0]
