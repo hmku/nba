@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireWriter } from "@/lib/guard";
 import { customRoundsOf, pickInfo } from "@/lib/draftOrder";
+import { syncDraftStatus } from "@/lib/draftStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
   };
   const { error } = await db.from("draft_picks").upsert(row, { onConflict: "draft_id,overall_pick" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await db.from("drafts").update({ updated_at: new Date().toISOString() }).eq("draft_id", draftId);
+  await syncDraftStatus(db, draft); // pending -> live; complete when the board is full
   return NextResponse.json({ ok: true, pick: row });
 }
 
@@ -82,5 +83,7 @@ export async function DELETE(req: Request) {
     .select();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data?.length) return NextResponse.json({ error: "No manual pick at that number" }, { status: 404 });
+  const { data: draft } = await w.db.from("drafts").select("*").eq("draft_id", draftId).maybeSingle();
+  if (draft) await syncDraftStatus(w.db, draft); // complete -> live after an undo
   return NextResponse.json({ ok: true });
 }

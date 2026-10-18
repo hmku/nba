@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import Engine, delete, insert, select, update
+from sqlalchemy import Engine, delete, func, insert, select, update
 
 from fantasy.db.engine import get_engine
 from fantasy.db.schema import (
@@ -98,10 +98,34 @@ def set_draft_order(draft_id: str, custom_rounds: list[list[int]], engine: Engin
             order_type="custom", config=config, updated_at=_now()))
 
 
-def set_draft_status(draft_id: str, status: str, engine: Engine | None = None) -> None:
+def status_for(current: str | None, n_picks: int, n_total: int) -> str:
+    """Lifecycle rule (mirrored in web/src/lib/draftStatus.ts): ``complete`` once every pick is on the
+    board, ``live`` while some are (or after an undo from complete), else unchanged (``pending``)."""
+    if n_total > 0 and n_picks >= n_total:
+        return "complete"
+    if n_picks > 0 or current == "complete":
+        return "live"
+    return current or "pending"
+
+
+def _sync_status(conn: Any, draft_id: str) -> str | None:
+    row = conn.execute(select(drafts).where(drafts.c.draft_id == draft_id)).mappings().first()
+    if row is None:
+        return None
+    n = conn.execute(select(func.count()).select_from(draft_picks)
+                     .where(draft_picks.c.draft_id == draft_id)).scalar_one()
+    new = status_for(row["status"], int(n), int(row["num_teams"]) * int(row["num_rounds"]))
+    if new != row["status"]:
+        conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(status=new, updated_at=_now()))
+    return new
+
+
+def sync_draft_status(draft_id: str, engine: Engine | None = None) -> str | None:
+    """Recompute ``drafts.status`` from the recorded picks (idempotent; no write when unchanged).
+    Returns the status, or None for an unknown draft."""
     eng = engine or get_engine()
     with eng.begin() as conn:
-        conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(status=status, updated_at=_now()))
+        return _sync_status(conn, draft_id)
 
 
 def get_picks(draft_id: str, engine: Engine | None = None) -> list[dict]:
@@ -144,8 +168,7 @@ def record_pick(
         row = {"draft_id": draft["draft_id"], "overall_pick": overall, "round": info.round, "team_slot": info.slot,
                "player_id": player_id, "player_name": player_name, "source": source, "created_at": _now()}
         conn.execute(insert(draft_picks).values(**row))
-        if draft.get("status") == "pending":
-            conn.execute(update(drafts).where(drafts.c.draft_id == draft["draft_id"]).values(status="live", updated_at=_now()))
+        _sync_status(conn, draft["draft_id"])  # pending -> live, and -> complete when the board is full
     return {**row, "status": "recorded"}
 
 
@@ -154,6 +177,8 @@ def undo_pick(draft_id: str, overall: int, engine: Engine | None = None) -> int:
     with eng.begin() as conn:
         res = conn.execute(delete(draft_picks).where(
             draft_picks.c.draft_id == draft_id, draft_picks.c.overall_pick == overall))
+        if res.rowcount:
+            _sync_status(conn, draft_id)  # complete -> live
     return res.rowcount or 0
 
 

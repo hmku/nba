@@ -239,6 +239,10 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
     """Current draft state: picks made, on the clock, my roster and upcoming picks."""
     d = _load_draft(draft_id, as_json)
     picks = store.get_picks(d["draft_id"])
+    try:  # heal rows recorded before the lifecycle fix (status stayed 'live' on a full board); never block
+        d["status"] = store.sync_draft_status(d["draft_id"]) or d["status"]
+    except Exception as e:  # noqa: BLE001
+        print(f"warning: could not sync draft status: {e}", file=sys.stderr)
     order_ = order_for_draft(d)
     taken = {p["overall_pick"]: p for p in picks}
     current = (max(taken, default=0) + 1) if (max(taken, default=0) < len(order_)) else None

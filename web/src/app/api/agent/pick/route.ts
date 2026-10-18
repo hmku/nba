@@ -13,6 +13,7 @@ import {
 } from "@/lib/agentApi";
 import { REPORTS_PER_HOUR, defaultOverall, resolvePlayer, slugify, validatePick } from "@/lib/agentPure";
 import { customRoundsOf, pickInfo } from "@/lib/draftOrder";
+import { syncDraftStatus } from "@/lib/draftStatus";
 import type { DraftPick } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -103,10 +104,7 @@ export async function POST(req: Request) {
     if (error.code === "23505") return fail(`Conflict: pick ${overall} was recorded concurrently; re-read state`, 409);
     return fail(error.message, 500);
   }
-  await db
-    .from("drafts")
-    .update({ updated_at: now, ...(draft.status === "pending" ? { status: "live" } : {}) })
-    .eq("draft_id", draft.draft_id);
+  await syncDraftStatus(db, draft, now); // pending -> live; complete when the board is full
 
   const { runId, error: rErr } = await ensureMuseRun(db);
   if (!rErr)

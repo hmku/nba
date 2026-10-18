@@ -1,0 +1,77 @@
+{
+ "_doc": "Draft lifecycle rule shared by fantasy.draft.store.status_for and web/src/lib/draftStatus.ts",
+ "cases": [
+  {
+   "current": "pending",
+   "n_picks": 0,
+   "n_total": 4,
+   "expected": "pending"
+  },
+  {
+   "current": null,
+   "n_picks": 0,
+   "n_total": 4,
+   "expected": "pending"
+  },
+  {
+   "current": "pending",
+   "n_picks": 1,
+   "n_total": 4,
+   "expected": "live"
+  },
+  {
+   "current": "live",
+   "n_picks": 3,
+   "n_total": 4,
+   "expected": "live"
+  },
+  {
+   "current": "live",
+   "n_picks": 4,
+   "n_total": 4,
+   "expected": "complete"
+  },
+  {
+   "current": "complete",
+   "n_picks": 4,
+   "n_total": 4,
+   "expected": "complete"
+  },
+  {
+   "current": "complete",
+   "n_picks": 3,
+   "n_total": 4,
+   "expected": "live"
+  },
+  {
+   "current": "complete",
+   "n_picks": 0,
+   "n_total": 4,
+   "expected": "live"
+  },
+  {
+   "current": "live",
+   "n_picks": 0,
+   "n_total": 4,
+   "expected": "live"
+  },
+  {
+   "current": "pending",
+   "n_picks": 5,
+   "n_total": 4,
+   "expected": "complete"
+  },
+  {
+   "current": "pending",
+   "n_picks": 156,
+   "n_total": 156,
+   "expected": "complete"
+  },
+  {
+   "current": "live",
+   "n_picks": 155,
+   "n_total": 156,
+   "expected": "live"
+  }
+ ]
+}
