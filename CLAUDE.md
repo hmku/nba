@@ -29,7 +29,8 @@ See `docs/ARCHITECTURE.md`. Python package `src/fantasy/` (league, data, model, 
 dashboard `web/` (Next.js → Vercel); DB schema `src/fantasy/db/schema.py` → `supabase/migrations/`.
 Research notes: `docs/research/`. Runbooks: `docs/runbooks/`.
 Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval,
-agent-run, handoff, in-season-ops (Phase 2 placeholder). Subagents (`.claude/agents/`): quant-reviewer,
+agent-run, handoff, in-season-ops (Phase 2 placeholder),
+league-loop (in-season Muse READ -> Claude THINK -> user APPROVE -> EXECUTE -> VERIFY loop; design in `docs/research/league_loop.md`). Subagents (`.claude/agents/`): quant-reviewer,
 data-auditor, draft-shadow (all read-only).
 
 ## Key commands (all accept `--json`; prefer JSON when acting on output)
