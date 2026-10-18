@@ -1,0 +1,62 @@
+---
+name: season-sim
+description: League-aware season simulator (`fantasy sim ...`) - P(playoffs)/P(title) for every team from the actual rosters, my weekly H2H matchup odds and per-category gaps vs a specific opponent, opponents' category strengths, the effect of an add/drop on playoff/title odds, and a mid-draft advisory comparing candidates by season outcome. Use when asked about playoff or title chances, "how do I match up against X / in week N", which categories to target, whether a roster change or pickup helps, after the draft to assess the league, or to sanity-check draft candidates by season outcome. Not for live 60 s pick decisions (use `fantasy draft recommend`).
+---
+
+# Season simulator
+
+Model, priors and limitations: `docs/research/season_simulator.md` (read the Limitations section
+before quoting numbers to the user). Code: `src/fantasy/sim/`. Version `SIM_VERSION` in
+`src/fantasy/sim/__init__.py` (bump it when the model changes; add tests in `tests/test_sim.py`).
+
+## Commands (all take `--json`; `--sims` default 2000, `--seed` default 0 → deterministic)
+| Purpose | Command |
+|---|---|
+| Season outlook (league table, my weekly matchups, opponents' profiles) | `fantasy sim season --draft-id <id> [--complete-rosters] [--my-plan optimizer] [--team N] --json` |
+| One week's matchup by category | `fantasy sim matchup --week 9 --draft-id <id> [--opponent N] --json` |
+| Roster change (add/drop; waiver/trade hook) | `fantasy sim compare --draft-id <id> --add "Naz Reid" --drop saddiq-bey --json` (comma-separated lists; `--team N` for other teams, e.g. both sides of a trade = two compares) |
+| Mid-draft advisory | `fantasy sim draft-check --draft-id <id> --candidates "A,B,C" [--sims 800 --completions 4] --json` |
+| Calendar / games per week / matchups | `fantasy sim schedule [--out schedule.json]` (writes a JSON template for Yahoo's real schedule) |
+| Refresh NBA schedule (network, 7 polite requests) | `fantasy sim fetch-schedule` → `data/raw/bbref_schedule/` + provenance |
+Rosters: `--draft-id` (default: latest non-mock draft, or `$FANTASY_DRAFT_ID`) or `--league-file rosters.json`
+(`{"my_team": 1, "teams": {"1": {"name": "...", "players": [player_ids]}, ...}}`). Schedule:
+`--schedule yahoo_schedule.json` (`{"source": "...", "weeks": [{"week": 1, "start": "2026-10-20", "end":
+"2026-10-25", "matchups": [[1, 7], ...]}, ...]}`); default is a round robin with derived dates.
+Other knobs: `--week1-end`, `--no-merge-allstar`, `--playoff-teams`, `--playoff-weeks 18,19,20`,
+`--no-streaming`, `--projections`, `--nba-schedule`. `season`, `compare`, `draft-check` record a
+`model_runs` row (kind `season_sim`, summary JSON) unless `--no-save`; use `--no-save` and a scratch DB
+for experiments.
+
+## Interpreting outputs
+- `my_team.p_playoffs` / `p_title` with `_se` (binomial SE over sims; it excludes model/prior error).
+  `final_standing_dist`: P(finishing 1st..12th). `exp_cat_wins` over the regular season (17 weeks × 9).
+- `my_team.weekly_matchups[]`: scheduled opponent, `p_win`/`p_tie`/`p_loss` (matchup = more categories),
+  `exp_cats_won`, per-category `cat_win_probs`, and `my_player_games` vs `opp_player_games`
+  (schedule-aware games that week, incl. streamers) — the games gap explains many weekly swings.
+- `my_team.vs_opponents_all_play`: if I played team X in a random regular-season week: matchup win
+  prob and per-category win rate (ties as 0.5). `team_profiles[t]`: weekly category means, rank (1 =
+  best; TO lower is better), z, `strengths` / `weaknesses` — use for trade targeting (teams strong in
+  what I lack and weak in what I have surplus of).
+- `league_table[]`: every team's P(playoffs), P(bye) (top-2 seeds), P(final), P(title), exp rank.
+- `compare`: `delta` with paired `delta_se` (common random numbers); |delta| < 2·SE is noise.
+- `draft-check`: per candidate P(playoffs)/P(title) and `*_diff_vs_first` ± `*_diff_se` (paired).
+  It is advisory: ~3-4 s at 800 sims plus ~2 s start-up, so only use it when there is time (not on a
+  60 s clock unless already prepared before the pick comes up); the live pick loop stays
+  `fantasy draft recommend`.
+
+## Caveats to state when reporting
+1. **Optimistic for my team**: same projections as the optimizer; opponents drafted by ADP and never
+   manage rosters. Prefer relative statements ("dropping X costs ~1.4 pp playoff odds") over absolute
+   ones ("95% playoffs").
+2. Mid-draft without `--complete-rosters` compares partial rosters (warned). With it, players marked
+   `projected_players` are expected picks, not real.
+3. Calendar/playoff weeks unverified until Yahoo's schedule JSON is loaded (warning in output).
+4. Priors (`SimParams`) are uncalibrated; P(title) moves ±5 pp across reasonable priors (research note).
+
+## Post-draft setup (needs a local session with the browser, `yahoo-browser` skill)
+1. Read every team's roster from Yahoo (league → each team page) → `rosters.json` with player ids
+   resolved via `fantasy.draft.names.resolve_player` (team ids: pick one id scheme, e.g. Yahoo team ids,
+   and use it in both files).
+2. Read the league schedule (Yahoo "Schedule"/matchups page per week, or the API `league/{lk}/scoreboard;week=N`)
+   and the week dates → `schedule.json` (start from `fantasy sim schedule --out schedule.json`).
+3. `fantasy sim season --league-file rosters.json --schedule schedule.json --json`.
