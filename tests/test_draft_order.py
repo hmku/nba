@@ -1,4 +1,6 @@
+import json
 from collections import Counter
+from pathlib import Path
 
 import pytest
 
@@ -50,3 +52,13 @@ def test_custom_order_matches_formula_and_validates():
     assert picks_for_slot(1, 12, 13, "custom", only_r3)[:5] == [1, 24, 36, 48, 49]
     with pytest.raises(ValueError):
         draft_order(12, 13, "custom", rounds[:-1])
+
+
+PARITY = Path(__file__).parent / "fixtures" / "draft_order_parity.json"
+
+
+@pytest.mark.parametrize("case", json.loads(PARITY.read_text())["cases"], ids=lambda c: c["name"])
+def test_matches_cross_language_fixture(case):
+    """Same fixture is checked by web/tests/draftOrder.test.mjs (the dashboard's TS mirror)."""
+    order = draft_order(case["num_teams"], case["num_rounds"], case["order_type"], case["custom_rounds"])
+    assert [p.slot for p in order] == case["slots"]
