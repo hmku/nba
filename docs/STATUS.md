@@ -13,7 +13,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 | Draft ops | `draft init/board/pick/undo/recommend/watch/simulate/queue/set-order/prepare-pick/confirm-pick`; txn ledger + locks + policy enforced for picks. |
 | Agent ops | Runs/events/decisions, lease locks, approvals, idempotent txn ledger, tasks, `status`, `publish`. |
 | Yahoo | Read-only OAuth API client (untested against live Yahoo). Picks only possible via browser. League settings **verified 2026-10-18 from the Yahoo settings page** (screenshots; `data/manual/league_settings.json`): 9 cats, 12 teams, 3 BN + **3 IL** (not 4), 6 adds/week, playoffs 6 teams weeks 18-20 = Mar 1-21, 2027 (re-seeded, ties → higher seed). **Still unverified: draft order (3RR) and my slot.** See `docs/handoffs/2026-10-18-league-settings.md`. |
-| Dashboard | Next.js on Vercel reading Supabase (see `docs/runbooks/dashboard.md`). |
+| Dashboard | Next.js on Vercel reading Supabase (see `docs/runbooks/dashboard.md`). Pre-draft data online: `draft_sim` (`fantasy draft simulate`, saved by default) and `season_sim` with `scenario: "pre-draft projection"` (`fantasy sim preseason`); schemas in `docs/research/dashboard_data.md`. |
 | DB | Supabase `fantasy-nba` (ref `bdzpkdkhlzjzddkptjex`), schema from `src/fantasy/db/schema.py`. Local agents need `FANTASY_DB_URL` (user must supply). |
 
 ## Next priorities (see `fantasy task list` for the full backlog)
