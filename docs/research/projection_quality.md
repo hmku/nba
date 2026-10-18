@@ -7,6 +7,12 @@ scripts (not committed) were in the session scratchpad `proj/` (`bt.py` builds t
 panels, `an1.py`–`an6.py` produce the tables, `cmp.py` the 2026-27 comparison, `mock.py` the mock
 drafts). Projections `baseline-0.2.1`, valuation `valuation-0.2.1`, optimizer `optimizer-0.2.0`._
 
+> **Adopted 2026-10-19.** The 50/50 ours/ESPN per-game blend with our GP is now the default draft projections
+> (`data/processed/projections_2026_27.csv`, `projections-2026-27-0.3.0`, `blend-0.2.0`; valuation `valuation-0.2.2`).
+> Configured in `data/manual/projection_blend.json` and rebuilt by plain `fantasy data build-projections`. The unblended model
+> is kept as `data/processed/projections_2026_27.base.csv` (`--blend none` makes it the default again). The default file is
+> byte-identical to the blend evaluated below (sha256 `6acf9cce…`). Handoff: `docs/handoffs/2026-10-19-blend-adoption.md`.
+
 ## TL;DR
 
 1. **The statistical core is sound (fitted).** Backtested out of sample on 2017-18 to 2025-26 (9 target
@@ -231,10 +237,11 @@ the external sources should get weight: our priors are deliberately conservative
 - GP and gp_sd stay ours by default (`--blend-gp` can override, which we do not recommend: ESPN GP is about +11 games
   optimistic, see below). Player set, team, status, positions, ADP and playoff_mult stay ours, so our manual decisions
   (inactive, injuries, trades) win.
-- CLI: `fantasy data build-projections --blend default` (= `ours=0.5,espn=0.5`) writes
-  `data/processed/projections_2026_27.blend.csv` plus `.blend.meta.json` (weights, input hashes, coverage, ignored
-  external players). **The default projections file is not changed.** Other weights:
-  `--blend "ours=0.5,espn=0.25,fantasypros=0.25"`.
+- CLI (since the 2026-10-19 adoption, `blend-0.2.0`): `fantasy data build-projections` writes the unblended model to
+  `data/processed/projections_2026_27.base.csv` and the blend from `data/manual/projection_blend.json` to the default
+  `projections_2026_27.csv` (meta: weights, input hashes, coverage, ignored external players). `--blend none` gives the
+  unblended default, `--blend "ours=0.5,espn=0.25,fantasypros=0.25"` other weights, and `--blend-output <path>` writes a
+  blend elsewhere while keeping the default unblended. (Under `blend-0.1.0` the blend went to a separate `.blend.csv` instead.)
 
 ### Evidence for the weights (fitted, ESPN historical projections)
 Seasons 2018-19, 2020-21, 2021-22, 2023-24, 2024-25, 2025-26. 2022-23 is excluded because ESPN's stored projection there is an

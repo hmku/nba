@@ -6,6 +6,9 @@ optimizer `optimizer-0.2.0`, valuation `valuation-0.2.1`, projections `data/proc
 as of commit cc75484. Every number below is **fitted by simulation** from this experiment (100 draft seeds,
 500 season sims per league per truth) unless marked as a prior._
 
+> Note (2026-10-19): this analysis, and the scenario range in `web/src/content/optimism.json`, predate the 2026-10-19
+> switch of the default projections to the 50/50 ours/ESPN blend (`projection_quality.md`). They were not recomputed.
+
 ## Plain-language answer
 
 The dashboard's pre-draft number for slot 1 (≈ 96% playoffs / 55% title) comes from one scenario: **we

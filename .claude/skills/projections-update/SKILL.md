@@ -6,8 +6,12 @@ description: Update player data and the 2026-27 projections - refresh cached raw
 # Projections update
 
 Output contract: `data/processed/projections_2026_27.csv` (one row per player, **per-game means**,
-columns in `docs/ARCHITECTURE.md`) + `projections_2026_27.meta.json` (model version, params, input
-hashes/URLs, per-player notes). Code: `src/fantasy/model/projections.py` (`MODEL_VERSION`,
+columns in `docs/ARCHITECTURE.md`) + `projections_2026_27.meta.json`. **Since 2026-10-19 this default
+file is the 50/50 ours/ESPN blend** (per-game stats blended, GP ours; `docs/research/projection_quality.md`),
+configured in `data/manual/projection_blend.json`. The unblended model is
+`projections_2026_27.base.csv` + `.base.meta.json` (model version, params, input hashes/URLs,
+per-player notes); the default meta records `projections_version`, blend weights and the shas of
+the base file and `data/raw/espn/projections_2026_27.csv`. Code: `src/fantasy/model/projections.py` (`MODEL_VERSION`,
 `Params`, `AGE_CURVE`, `MPG_GROWTH`); ingestion `src/fantasy/data/`. Source notes and licensing:
 `docs/research/data_sources.md`. Data handoff: `docs/handoffs/2026-10-18-data-projections.md`.
 
@@ -45,11 +49,17 @@ row per player (update in place). Percentages are never inputs - edit makes/atte
 
 ## 3. Rebuild (deterministic, no network)
 ```bash
-fantasy data build-projections --json
+fantasy data build-projections --json          # base model -> .base.csv, then the configured blend -> default csv
+fantasy data build-projections --blend none    # default = unblended baseline (emergency fallback)
+fantasy data fetch-external --source espn      # refresh ESPN's 2026-27 numbers (cached; --refresh to re-download)
 ```
-JSON: `model_version`, `rows` (expect ~450, `Params.max_rows`), `sha256`, `source_counts`
-(`bbref_baseline`, `bbref_baseline+manual`, `manual_rookie_prior`), `inputs[]` (path, sha256, url,
-fetched_at). Same inputs -> same sha256 (`git diff data/processed` empty).
+JSON: `base` (`model_version`, `rows` ~450 = `Params.max_rows`, `sha256`, `source_counts`:
+`bbref_baseline`, `bbref_baseline+manual`, `manual_rookie_prior`), `inputs[]` (path, sha256, url,
+fetched_at), `default` (`projections_version`, `model_version` e.g. `baseline-0.2.1+blend-0.2.0`,
+`sha256`, `weights`, `inputs` = base + ESPN shas, `ignored_external` = ESPN players we do not project).
+Same inputs -> same sha256 (`git diff data/processed` empty). Manual overrides act on the base and so
+flow into the blend; blended players have `source` ending in `+blend`. Note an override's per-game
+stats get averaged with ESPN's (an injury `games_missed`/`gp` change is not: GP stays ours).
 
 ## 4. Sanity checks
 ```bash
@@ -70,6 +80,8 @@ git diff --stat data/processed     # what moved
 ## 5. Tests & versioning
 - `pytest tests/test_projections.py tests/test_ids.py` then full `pytest`, `ruff check src tests`.
   Tests use synthetic data; never hit the network in tests.
+- **Blend weights** (`data/manual/projection_blend.json`): a model decision - backtest first
+  (`projection_quality.md`), bump `PROJECTIONS_VERSION` in `src/fantasy/model/blend.py`, and get the lead's OK.
 - **Data-only changes** (manual CSVs, re-fetch): no version bump; the input hashes in `meta.json` and
   the projections sha256 recorded in each valuation run (`inputs.projections_sha256`) version them.
 - **Code/param changes** to the projection model: bump `MODEL_VERSION` in
@@ -78,7 +90,7 @@ git diff --stat data/processed     # what moved
 - Ask the `quant-reviewer` subagent to review non-trivial model changes.
 
 ## 6. Record & commit
-Commit only `data/manual/<files you changed>`, `data/processed/projections_2026_27.*` (and code you
+Commit only `data/manual/<files you changed>`, `data/processed/projections_2026_27.*` (incl. `.base.*`; and code you
 own) - others edit `data/` concurrently, so `git status` first and never `git add -A`. Note sources
 and confidence in the handoff. If a dashboard/production DB is in use, the new valuation run reaches it
 only when `values build` ran against Supabase (or via `fantasy publish`).
