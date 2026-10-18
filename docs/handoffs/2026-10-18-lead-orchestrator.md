@@ -9,6 +9,7 @@ quantitative claim must be labelled fitted/sourced/prior (CLAUDE.md Evidence sta
 | Tech-debt fixes (plan in docs/research/tech_debt.md) + 3 bugs from E2E xfails (draft complete status, `--overall 0`, out-of-range overall) | local subagent in worktree `.claude/worktrees/agent-…` | docs/handoffs/2026-10-19-tech-debt-fixes.md | Then launch **two independent review passes** over its diff (draft path; sim/model), fix findings, re-review. Draft-path code freeze 2026-10-19 22:00 UTC. |
 | Sim calibration vs 2010–24 box scores (priors vol_sd/stat_sd/fg/ft sds, GAME_CV, correlations, opponent/pace effects, injury spells) | local subagent | docs/research/sim_calibration.md, docs/handoffs/2026-10-18-sim-calibration.md | Relay evidence to user (old → fitted ± SE; % weekly variance from opponent/pace). Any GAME_CV change touching the draft valuation must be reported before adoption. |
 | Value-model + rollout draft search (user's AlphaGo idea) | local subagent | docs/research/value_search.md (+ handoff, already partly pushed) | Relay validation table (ADP rooms, symmetric rooms, market truth). Adopt as default only if it beats optimizer z≥2 and doesn't lose in stress tests; else opt-in/advisory. |
+| **Draft policy decision** (value-search found plain BPA beats the rollout optimizer when graded by the full season sim; independent reproduction + candidate fixes + `--policy` flag) | local subagent | docs/research/draft_policy.md, docs/handoffs/2026-10-19-draft-policy.md | Relay recommendation to user and get explicit OK before switching the default policy (before 2026-10-19 22:00 UTC freeze). Value search itself: NOT adopted as default; ships as advisory block + `--search value` opt-in. |
 | Blend adoption (50/50 ours+ESPN projections, user-approved) + republish values/draft_sim/preseason to Supabase | cloud session `session_016oxnNqceQcNe5X73q49MaK` | docs/handoffs/2026-10-19-blend-adoption.md | Check-in scheduled 22:26 UTC (trigger trig_01RmiJtv6QeJqFoAAPfFZY9B): verify Supabase rows, tests; tell user picks 1/24/36. If blocked on a permission prompt, tell the user to approve. |
 
 ## Done today (see docs/handoffs/*)
@@ -30,3 +31,5 @@ Supabase REST publish (network secret) ; demo rows removed.
 - This container cannot reach Supabase Postgres or REST; use the Supabase MCP for reads, cloud sessions for REST writes.
 - Vercel skips builds unless `web/` changed (Redeploy too) — trigger env-var changes with a web/ commit.
 - Stop hook requires committing/pushing everything: commit WIP snapshots, but never commit `.claude/worktrees/` (ignored).
+
+- Before the draft, in this container: `pip install -e .` from /home/user/nba (editable install currently points at the tech-debt worktree).
