@@ -5,10 +5,11 @@ W fantasy weeks, D fantasy days, S raw stats.
 
 Per player and sim (random streams keyed by (seed, player id) so roster changes keep common random
 numbers for everyone else):
-1. Season-level projection error (prior, uncalibrated): a volume factor exp(N(0, vol_sd)) on all
-   counting stats and attempts, a per-stat factor exp(N(0, stat_sd)) on FGA, FTA, 3PM, REB, AST,
-   STL, BLK, TO, and additive shifts on FG% (sd fg_pct_sd) and FT% (sd ft_pct_sd). Makes =
-   attempts x shifted percentage; PTS = 2*FGM + 3PM + FTM, rescaled to the projected PTS.
+1. Season-level projection error (fitted, docs/research/sim_calibration.md): a volume factor
+   exp(N(0, vol_sd)) on all counting stats and attempts, a per-stat factor exp(N(0, stat_sds[s])) on FGA,
+   FTA, 3PM, REB, AST, STL, BLK, TO (or one `stat_sd` for all), and additive shifts on FG% (sd fg_pct_sd)
+   and FT% (sd ft_pct_sd). Makes = attempts x shifted percentage; PTS = 2*FGM + 3PM + FTM, rescaled to the
+   projected PTS.
 2. Availability: games-played fraction f ~ Beta with mean gp/82 and sd gp_sd/82. The missed share
    1-f is split into injury *spells* (share 1 - rest_share: one spell, or two with probability
    two_spell_prob, placed uniformly without overlap on the NBA-season timeline; players listed
@@ -24,9 +25,12 @@ numbers for everyone else):
    adds_per_week x games_per_add x stream_usage = 6 x 2 x 0.5 = 6), limited by its open starting
    slot-days that week. Replacement line = valuation's replacement level.
 5. Weekly team totals: given the counted games k, team attempts/counting stats ~ Normal with mean
-   sum(k * mean) and variance sum(k * (GAME_CV * mean)^2) (noise drawn at team level, keyed by team
-   id); makes | attempts ~ Normal(p_team * A, binomial + mix variance); counts are rounded to integers
-   and percentages to 3 decimals, so ties happen (ties count 0.5).
+   sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the fitted
+   var = a * mean + b * mean^2 (`game_var="fitted"`, sim.calibration.GAME_VAR) or the constant-CV prior
+   (GAME_CV * mean)^2 (`game_var="cv"`). Noise is drawn at team level, keyed by team id; with
+   `noise_corr` the 10 standard-normal draws are correlated with the fitted within-game correlation
+   (sim.calibration.NOISE_CORR). Makes | attempts ~ Normal(p_team * A, binomial + mix variance); counts are
+   rounded to integers and percentages to 3 decimals, so ties happen (ties count 0.5).
 6. H2H: per week each scheduled pair compares the 9 categories (TO: lower wins). Standings rank by
    category wins + 0.5 * ties (Yahoo H2H categories), random tie-break. Top `playoff_teams` make a
    bracket (top seeds get byes when the bracket is not full); with `settings.playoff_reseed` (league
@@ -47,6 +51,7 @@ import pandas as pd
 
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import GAME_CV, SEASON_GAMES, STATS
+from fantasy.sim import calibration as cal
 from fantasy.sim.league import LeagueState
 from fantasy.sim.schedule import FantasyWeek, MatchupSchedule, NBASchedule
 
@@ -59,11 +64,16 @@ NOISE_STATS = ["fga", "fgm", "fta", "ftm", "fg3m", "reb", "ast", "stl", "blk", "
 class SimParams:
     n_sims: int = 2000
     seed: int = 0
-    # season-level projection error (priors; calibrate with T-010 backtest residuals)
-    vol_sd: float = 0.08
-    stat_sd: float = 0.08
-    fg_pct_sd: float = 0.015
-    ft_pct_sd: float = 0.03
+    # season-level projection error (fitted out of sample, docs/research/sim_calibration.md; the
+    # season-sim-0.3.0 priors were 0.08 / 0.08 / 0.015 / 0.03)
+    vol_sd: float = cal.VOL_SD
+    stat_sd: float | None = None  # one sd for all 8 factor stats; None = per-stat `stat_sds`
+    stat_sds: dict[str, float] = field(default_factory=lambda: dict(cal.STAT_SD))
+    fg_pct_sd: float = cal.FG_PCT_SD
+    ft_pct_sd: float = cal.FT_PCT_SD
+    # weekly noise: "fitted" = var a*m + b*m^2 (cal.GAME_VAR); "cv" = lines.GAME_CV (season-sim-0.3.0 prior)
+    game_var: str = "fitted"
+    noise_corr: bool = True  # correlate the team-level weekly noise across stats (cal.NOISE_CORR)
     # availability (priors)
     rest_share: float = 0.25  # share of missed games that are scattered one-game absences
     two_spell_prob: float = 0.5
@@ -182,6 +192,22 @@ class SeasonSimulator:
         po = set(self.playoff_weeks)
         self.po_days = np.array([w.week in po for w in calendar for _ in w.days()], dtype=bool)
         self.fday_offset = np.array([(d - self.season_start).days for d in self.fdays], dtype=float)
+        if self.p.stat_sd is not None:
+            self._stat_sd_vec = np.full(len(FACTOR_STATS), float(self.p.stat_sd))
+        else:
+            self._stat_sd_vec = np.array([float(self.p.stat_sds.get(s, 0.0)) for s in FACTOR_STATS])
+        if self.p.game_var not in ("fitted", "cv"):
+            raise ValueError(f"game_var must be 'fitted' or 'cv', got {self.p.game_var!r}")
+        self._chol = np.linalg.cholesky(np.array(cal.NOISE_CORR)) if self.p.noise_corr else None
+        assert cal.NOISE_ORDER == NOISE_STATS
+
+    def game_variance(self, m: np.ndarray) -> np.ndarray:
+        """Per-game variance of each raw stat (last axis = STATS) for season mean m, given the player plays."""
+        if self.p.game_var == "cv":
+            return (m * np.array([GAME_CV[s] for s in STATS])) ** 2
+        a = np.array([cal.GAME_VAR[s][0] for s in STATS])
+        b = np.array([cal.GAME_VAR[s][1] for s in STATS])
+        return np.maximum(a * m + b * m * m, 0.0)
 
     # ------------------------------------------------------------------ player draws
     def _player_arrays(self, pids: list[str]) -> dict[str, np.ndarray]:
@@ -211,7 +237,7 @@ class SeasonSimulator:
             team_rows[j] = self.team_row.get(team, len(self.team_row))
             # --- season-level production error
             vol = np.exp(rng.normal(0, self.p.vol_sd, N))
-            fac = np.exp(rng.normal(0, self.p.stat_sd, (N, len(fi))))
+            fac = np.exp(rng.normal(0, self._stat_sd_vec, (N, len(fi))))
             fg_shift = rng.normal(0, self.p.fg_pct_sd, N)
             ft_shift = rng.normal(0, self.p.ft_pct_sd, N)
             m = np.broadcast_to(base, (N, len(STATS))).copy()
@@ -282,7 +308,8 @@ class SeasonSimulator:
         mu = np.concatenate([arr["mu"], np.zeros((N, 1, len(STATS)))], axis=1)  # pad row
         health = arr["health"]
         muTR = mu[:, idx, :]  # (N, T, R, S)
-        cv = np.array([GAME_CV[s] for s in STATS])
+        var_g = self.game_variance(muTR)  # (N, T, R, S) per-game variance
+        a_idx = {"fga": SI["fga"], "fta": SI["fta"]}
         rep = (self.replacement[STATS].to_numpy(dtype=float) if self.replacement is not None
                else np.zeros(len(STATS)))
 
@@ -302,8 +329,10 @@ class SeasonSimulator:
             open_slots = ((self.active - n_play) * any_game[None, None, :]).sum(axis=2)
             g_s = np.minimum(self.stream_cap, open_slots).astype(np.float64)  # (N, T)
             E = np.einsum("ntr,ntrs->nts", k, muTR) + g_s[..., None] * rep
-            V = np.einsum("ntr,ntrs->nts", k, (muTR * cv) ** 2) + g_s[..., None] * (rep * cv) ** 2
+            V = np.einsum("ntr,ntrs->nts", k, var_g) + g_s[..., None] * self.game_variance(rep)
             Z = np.stack([rng.standard_normal((N, len(NOISE_STATS))) for rng in team_rngs], axis=1)  # (N,T,10)
+            if self._chol is not None:
+                Z = Z @ self._chol.T
             vals: dict[str, np.ndarray] = {}
             for s in ("fg3m", "reb", "ast", "stl", "blk", "tov"):
                 vals[s] = np.maximum(0.0, E[..., SI[s]] + np.sqrt(V[..., SI[s]]) * Z[..., noise_i[s]])
@@ -314,9 +343,8 @@ class SeasonSimulator:
                 a_p = muTR[..., SI[den]]
                 with np.errstate(divide="ignore", invalid="ignore"):
                     pp = np.where(a_p > 0, muTR[..., SI[num]] / a_p, 0.0)
-                ca = GAME_CV[den] * a_p
                 binv = np.einsum("ntr,ntr->nt", k, a_p * pp * (1 - pp))
-                mix = np.einsum("ntr,ntr->nt", k, ca**2 * (pp - p_team[..., None]) ** 2)
+                mix = np.einsum("ntr,ntr->nt", k, var_g[..., a_idx[den]] * (pp - p_team[..., None]) ** 2)
                 prep = rep[SI[num]] / rep[SI[den]] if rep[SI[den]] > 0 else 0.0
                 binv = binv + g_s * rep[SI[den]] * prep * (1 - prep)
                 scale = np.where(EA > 0, A / np.maximum(EA, 1e-9), 0.0)

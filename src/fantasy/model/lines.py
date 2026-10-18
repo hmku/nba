@@ -14,6 +14,7 @@ docs/research/availability_model.md.
 from __future__ import annotations
 
 import hashlib
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,11 +32,21 @@ GAMES_PER_WEEK = 3.5  # 82 games over ~23.5 matchup weeks
 PLAYOFF_CALENDAR_SHARE = 3 / 20
 
 # Per-game coefficient of variation for each raw stat (within-player game-to-game noise).
-# Heuristic priors; calibrate against game logs (task: backtesting).
-GAME_CV: dict[str, float] = {
+# GAME_CV_PRIOR: heuristic priors, still the draft default (draft-path freeze 2026-10-19).
+# GAME_CV_FITTED: pooled CV of rostered players (>= 24 mpg) from 2010-24 box scores, bootstrap SE <= 0.03
+# (docs/research/sim_calibration.md). Opt in with FANTASY_GAME_CV=fitted (read at import; affects the
+# valuation's G-scores and the draft optimizer's category model). The season simulator has its own fitted
+# variance function (fantasy.sim.calibration).
+GAME_CV_PRIOR: dict[str, float] = {
     "fgm": 0.38, "fga": 0.30, "ftm": 0.60, "fta": 0.55, "fg3m": 0.75, "pts": 0.35,
     "reb": 0.42, "ast": 0.48, "stl": 0.85, "blk": 0.95, "tov": 0.58,
 }
+GAME_CV_FITTED: dict[str, float] = {
+    "fgm": 0.442, "fga": 0.316, "ftm": 0.746, "fta": 0.702, "fg3m": 0.761, "pts": 0.416,
+    "reb": 0.449, "ast": 0.512, "stl": 0.972, "blk": 1.038, "tov": 0.680,
+}
+GAME_CV_SOURCE = "fitted" if os.environ.get("FANTASY_GAME_CV", "").strip().lower() == "fitted" else "prior"
+GAME_CV: dict[str, float] = dict(GAME_CV_FITTED if GAME_CV_SOURCE == "fitted" else GAME_CV_PRIOR)
 
 
 @dataclass(frozen=True)
