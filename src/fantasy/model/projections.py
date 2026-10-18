@@ -136,7 +136,7 @@ def _pos_group(pos: str) -> str:
 def derive_positions(pbp: pd.DataFrame, weights: dict[int, float]) -> dict[str, str]:
     """Yahoo-style eligibility approximated from bbref play-by-play position minutes.
 
-    A player is eligible at a position if >= 20% of his (season-weighted) minutes were played
+    A player is eligible at a position if >= 10% of his (season-weighted) minutes were played
     there, plus his bbref listed position. Yahoo is usually at least this generous; manual
     overrides in data/manual/positions_overrides.csv take precedence.
     """
@@ -151,7 +151,7 @@ def derive_positions(pbp: pd.DataFrame, weights: dict[int, float]) -> dict[str, 
         if wsum > 0:
             for pos, col in pct_cols.items():
                 share = (pd.to_numeric(grp[col], errors="coerce").fillna(0) * grp["w"]).sum() / wsum
-                if share >= 20:
+                if share >= 10:
                     elig.add(pos)
         for lp in listed.split("-"):
             if lp in POSITIONS:
@@ -322,7 +322,8 @@ def _apply_manual(df: pd.DataFrame, notes: dict[str, list[str]]) -> pd.DataFrame
                 df.at[pid, s] = float(df.at[pid, s]) * um
         if r.get("note"):
             notes.setdefault(pid, []).append(r["note"])
-        df.at[pid, "source"] = df.at[pid, "source"] + "+manual"
+        if not str(df.at[pid, "source"]).endswith("+manual"):
+            df.at[pid, "source"] = df.at[pid, "source"] + "+manual"
 
     # --- ADP
     adp = load_manual("adp_yahoo_2026_27.csv")

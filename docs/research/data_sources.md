@@ -46,5 +46,5 @@ treat as medium confidence and re-verify key players on Yahoo before/during the 
 - Full-table external 2026-27 projections (Hashtag Basketball, FantasyPros, ESPN): pages unreachable
   from both the container and WebFetch, so no external projection blend in v1.
 - Official Yahoo position eligibility: approximated from bbref play-by-play position shares
-  (>= 20% of 2024-25/2025-26 weighted minutes, plus listed position). Override in
+  (>= 10% of 2024-25/2025-26 weighted minutes, plus listed position). Override in
   `data/manual/positions_overrides.csv`.

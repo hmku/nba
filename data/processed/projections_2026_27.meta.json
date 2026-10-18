@@ -3,15 +3,15 @@
   "season": "2026-27",
   "output": "data/processed/projections_2026_27.csv",
   "rows": 450,
-  "sha256": "99211979634ab3b15f5d4ee501ff8594c7da94cfd2807b1814cfad7d0c827f04",
+  "sha256": "287852860e691550235e7a45207492c8468734dcdfb7ca45eb9a1a60374127f7",
   "sources": [
     "bbref_baseline",
     "bbref_baseline+manual",
     "manual_rookie_prior"
   ],
   "source_counts": {
-    "bbref_baseline": 390,
-    "bbref_baseline+manual": 49,
+    "bbref_baseline": 350,
+    "bbref_baseline+manual": 89,
     "manual_rookie_prior": 11
   },
   "params": {
@@ -50,14 +50,26 @@
       "fetched_at": "2026-10-18T13:36:20Z"
     },
     {
+      "path": "data/manual/adp_yahoo_2026_27.csv",
+      "sha256": "41884004d460bdcff39a473fda61a53cc58716304ac94ffd6cc542bb15698b8f",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
       "path": "data/manual/inactive_2026_27.csv",
-      "sha256": "a5ad60c98d1c6a1e170a8fb68661e0ad8f71f96bb31038b94cb7c3d3b1cc2fd2",
+      "sha256": "3d901043ce3c6fe0893b3f61cb55f1286c101746cd1d71a3026fadf8da53afdf",
       "url": "manual",
       "fetched_at": null
     },
     {
       "path": "data/manual/player_overrides_2026_27.csv",
-      "sha256": "3329c278a51deec9419d157a52562e986396fcb0d0fc3b522857cd8c68b64165",
+      "sha256": "0233c498fa13e8eac973dc457212a28cab92fb4558141e242dbde008770885bf",
+      "url": "manual",
+      "fetched_at": null
+    },
+    {
+      "path": "data/manual/positions_overrides.csv",
+      "sha256": "243b3d0a6235c4a18bb0a3e3e6694f8cd98e88dd066c43ea47cfb04765a1976d",
       "url": "manual",
       "fetched_at": null
     },
@@ -69,11 +81,32 @@
     }
   ],
   "notes": {
+    "aaron-wiggins": [
+      "traded OKC->ATL"
+    ],
     "aj-dybantsa": [
       "rookie/no NBA history: manual conservative prior"
     ],
+    "andre-drummond": [
+      "added by NYK"
+    ],
+    "anfernee-simons": [
+      "added by PHI"
+    ],
+    "anthony-davis": [
+      "acquired by WAS at 2025-26 deadline"
+    ],
+    "bennedict-mathurin": [
+      "added by NOP"
+    ],
     "bobby-portis": [
       "traded MIL->MIA in Giannis deal"
+    ],
+    "bogdan-bogdanovic": [
+      "added by HOU"
+    ],
+    "brandon-ingram": [
+      "traded TOR->LAC"
     ],
     "brayden-burries": [
       "rookie/no NBA history: manual conservative prior"
@@ -102,17 +135,38 @@
     "darryn-peterson": [
       "rookie/no NBA history: manual conservative prior"
     ],
+    "deandre-ayton": [
+      "added by WAS"
+    ],
+    "demar-derozan": [
+      "waived by SAC; signed DEN"
+    ],
+    "dennis-schroder": [
+      "added by CHO"
+    ],
+    "dorian-finney-smith": [
+      "added by CHO"
+    ],
     "fred-vanvleet": [
       "missed 2025-26"
     ],
     "gary-harris": [
       "six-team deal"
     ],
+    "georges-niang": [
+      "added by GSW"
+    ],
     "giannis-antetokounmpo": [
       "traded MIL->MIA (June 2026)"
     ],
+    "gradey-dick": [
+      "traded TOR->LAC"
+    ],
     "grayson-allen": [
       "traded PHO->CHO"
+    ],
+    "isaiah-joe": [
+      "traded OKC->DET"
     ],
     "isaiah-stewart": [
       "six-team deal"
@@ -123,17 +177,35 @@
     "jaime-jaquez-jr": [
       "traded MIA->MIL; projected starter"
     ],
+    "jalen-duren": [
+      "re-signed DET 5yr/$200M (Oct 1)"
+    ],
+    "jaxson-hayes": [
+      "added by UTA"
+    ],
     "jaylen-brown": [
       "on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron"
+    ],
+    "jayson-tatum": [
+      "full season after Achilles return (16 games in 2025-26)"
     ],
     "jerami-grant": [
       "traded POR->MEM"
     ],
+    "jeremy-sochan": [
+      "added by POR"
+    ],
     "john-collins": [
       "six-team deal"
     ],
+    "jonathan-kuminga": [
+      "signed MIN (2yr)"
+    ],
     "josh-green": [
       "traded CHO->MIN"
+    ],
+    "josh-okogie": [
+      "added by UTA"
     ],
     "julius-randle": [
       "traded MIN->BRK (4-team deal)"
@@ -141,11 +213,26 @@
     "kasparas-jakucionis": [
       "traded MIA->MIL"
     ],
+    "kawhi-leonard": [
+      "traded LAC->TOR for Brandon Ingram"
+    ],
     "keaton-wagler": [
       "rookie/no NBA history: manual conservative prior"
     ],
     "kelel-ware": [
       "traded MIA->MIL"
+    ],
+    "kelly-oubre-jr": [
+      "left PHI; destination not confirmed"
+    ],
+    "kentavious-caldwell-pope": [
+      "added by PHI"
+    ],
+    "keon-ellis": [
+      "added by BRK"
+    ],
+    "kevon-looney": [
+      "added by LAL"
     ],
     "khris-middleton": [
       "six-team deal"
@@ -153,8 +240,14 @@
     "kingston-flemings": [
       "rookie/no NBA history: manual conservative prior"
     ],
+    "klay-thompson": [
+      "FA signing"
+    ],
     "kris-murray": [
       "traded POR->MEM"
+    ],
+    "kyle-anderson": [
+      "added by TOR"
     ],
     "kyrie-irving": [
       "missed 2025-26; age 34"
@@ -168,8 +261,23 @@
     "luguentz-dort": [
       "traded OKC->ATL (3-team)"
     ],
+    "luke-kennard": [
+      "added by PHO"
+    ],
     "marcus-sasser": [
       "six-team deal"
+    ],
+    "marcus-smart": [
+      "added by HOU"
+    ],
+    "mark-williams": [
+      "re-signed PHO"
+    ],
+    "marvin-bagley-iii": [
+      "added by DEN"
+    ],
+    "mike-conley": [
+      "FA addition"
     ],
     "mikel-brown-jr": [
       "rookie/no NBA history: manual conservative prior"
@@ -189,11 +297,26 @@
     "nic-claxton": [
       "traded BRK->CHI"
     ],
+    "nick-richards": [
+      "addition"
+    ],
+    "nikola-vucevic": [
+      "added by ORL"
+    ],
     "norman-powell": [
       "FA signing"
     ],
+    "paul-george": [
+      "traded PHI->BOS for Jaylen Brown"
+    ],
+    "peyton-watson": [
+      "sign-and-trade DEN->CLE"
+    ],
     "quentin-grimes": [
       "FA signing"
+    ],
+    "quinten-post": [
+      "added by MEM"
     ],
     "royce-oneale": [
       "traded PHO->CHO"
@@ -210,6 +333,15 @@
     "taurean-prince": [
       "six-team deal"
     ],
+    "tim-hardaway-jr": [
+      "FA signing"
+    ],
+    "tobias-harris": [
+      "added by SAS"
+    ],
+    "tre-mann": [
+      "added by WAS"
+    ],
     "tyler-herro": [
       "traded MIA->MIL; bigger role"
     ],
@@ -217,7 +349,8 @@
       "missed 2025-26; projected from 2023-25"
     ],
     "walker-kessler": [
-      "traded UTA->LAL; jammed pinkie not expected to cost games"
+      "traded UTA->LAL; jammed pinkie not expected to cost games",
+      "2025-26 games lost to one-off shoulder surgery; healthy now"
     ],
     "yaxel-lendeborg": [
       "rookie/no NBA history: manual conservative prior"
