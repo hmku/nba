@@ -31,7 +31,14 @@ import pandas as pd
 from scipy.stats import spearmanr
 
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.lines import GAME_CV, GAMES_PER_WEEK, STATS, ProjectionSet, availability, effective_lines
+from fantasy.model.lines import (
+    GAME_CV,
+    GAMES_PER_WEEK,
+    STATS,
+    ProjectionSet,
+    availability,
+    effective_lines,
+)
 from fantasy.model.valuation import ValuationParams, compute_values
 
 

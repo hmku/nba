@@ -406,3 +406,54 @@ def preseason(
     for r in summary["league_table"]:
         text.append(f"  {r['name']:<14} P(po) {r['p_playoffs']:6.1%}  P(title) {r['p_title']:6.1%}  rank {r['exp_rank']:.1f}")
     _emit({"ok": True, "sim_version": SIM_VERSION, "run_id": run_id, **summary}, as_json, "\n".join(text))
+
+
+@app.command()
+def symmetric(
+    drafts: Annotated[int, typer.Option("--drafts", help="Draft seeds (each plays every room)")] = 100,
+    sims: Annotated[int, typer.Option("--sims", help="Season sims per league per truth")] = 500,
+    workers: Annotated[int, typer.Option("--workers", help="Parallel processes")] = 1,
+    full_subset: Annotated[int, typer.Option("--full-subset", help="Also run A_full (all 12 full-scan optimizers) on the first N seeds")] = 0,
+    truths: Annotated[str, typer.Option("--truths", help="Comma list of ours,market,blend")] = "ours,market,blend",
+    out: Annotated[Path, typer.Option("--out", help="Per-seed results (JSON lines; resumable)")] = Path("var/symmetric.jsonl"),
+    summary_only: Annotated[bool, typer.Option("--summary-only", help="Only summarize an existing --out file")] = False,
+    slot: Annotated[int | None, typer.Option("--slot", help="My draft slot (default: settings)")] = None,
+    nba_schedule: NbaOpt = None, projections: ProjOpt = None, as_json: JsonOpt = False,
+) -> None:
+    """Optimism decomposition (docs/research/optimism_decomposition.md): play the same draft seeds in rooms
+    where 0, 3, 6, 11 or all opponents draft with our optimizer, and grade them under our projections and a
+    market-implied truth. Reports my-slot P(playoffs)/P(title) per room with paired SEs and slot values."""
+    from fantasy.sim.symmetric import (
+        build_experiment,
+        decomposition_table,
+        run_experiment,
+        summarize,
+    )
+    from fantasy.sim.symmetric import merged_results as _merged
+
+    settings = load_settings()
+    if slot:
+        settings = settings.model_copy(update={"my_slot": slot})
+    if summary_only:
+        if not out.exists():
+            _fail(f"{out} does not exist", as_json, code=2)
+        results = _merged(out)
+        diag = None
+    else:
+        tr = tuple(t.strip() for t in truths.split(",") if t.strip())
+        bad = [t for t in tr if t not in ("ours", "market", "blend")] or ([] if "ours" in tr else ["ours missing"])
+        if bad:
+            _fail(f"bad --truths: {bad}", as_json, code=2)
+        exp, diag = build_experiment(load_projections(projections), settings, truths=tr, n_season_sims=sims,
+                                     nba_schedule_file=nba_schedule)
+        results = run_experiment(exp, list(range(drafts)), out, workers=workers, subset_seeds=set(range(full_subset)))
+    summary = summarize(results, my_slot=settings.my_slot)
+    table = decomposition_table(summary)
+    text = [f"optimism decomposition: slot {settings.my_slot}, {summary['n_seeds']} draft seeds ({out})",
+            table.to_string(index=False)]
+    for k, v in summary["paired_diffs"].items():
+        if v["p_title"]["n"]:
+            text.append(f"  {k:<26} dP(po) {v['p_playoffs']['mean']:+.3f} ±{v['p_playoffs']['se']:.3f}  "
+                        f"dP(title) {v['p_title']['mean']:+.3f} ±{v['p_title']['se']:.3f}  (n={v['p_title']['n']})")
+    _emit({"ok": True, "sim_version": SIM_VERSION, "market_truth": diag, **summary,
+           "table": table.to_dict(orient="records")}, as_json, "\n".join(text))
