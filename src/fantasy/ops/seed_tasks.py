@@ -56,6 +56,25 @@ SEED: list[tuple[int, str, str, str]] = [
      "Yahoo draft results (incl. our league's 2026 draft) and check rookie/injured-star/position-run deviations."),
     (2, "model", "Positional scarcity in valuation",
      "Replacement level by position eligibility; currently handled only via roster feasibility in the optimizer."),
+    # tech-debt plan (docs/research/tech_debt.md, after the draft; each step verified by the golden diff)
+    (1, "infra", "Keep main green: WIP snapshots off main",
+     "Auto WIP-snapshot commits land on main with failing tests/ruff (tech_debt.md F1). Point them at wip/* "
+     "branches; fix tests that hard-code CLI choice lists (e.g. draft --objective)."),
+    (2, "infra", "Unify CLI JSON output and error codes",
+     "One fantasy/cli_common.py (emit/fail/check_choice/parse_punt/json_safe) for data/values/settings/sim/draft; "
+     "machine error codes + ops exit codes everywhere; update skills and web callers first (tech_debt.md F6/F8)."),
+    (2, "model", "One opponent-draft sampler for all simulators",
+     "draft/simulate, sim/league and sim/symmetric each sample noisy ADP; sim/league ignores sd_mult for "
+     "no-ADP players. Share one helper, bump SIM_VERSION, record before/after (tech_debt.md F4)."),
+    (2, "draft", "Mark drafts complete when the board is full",
+     "store.set_draft_status has no caller, so drafts stay 'active' forever; dashboard/agent API count picks "
+     "instead (tech_debt.md F5)."),
+    (2, "draft", "Make `fantasy draft watch` survive DB errors",
+     "One failed save_recommendation kills the watch loop; catch, warn and keep polling; add --max-iterations "
+     "for tests (tech_debt.md F13)."),
+    (3, "infra", "Split draft/cli.py and projections._apply_manual",
+     "draft/cli.py is 574 lines (prepare_pick 57 statements); _apply_manual has complexity 26. Split without "
+     "behaviour change, golden diff + projections sha identical (tech_debt.md F12)."),
 ]
 
 

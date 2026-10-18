@@ -23,6 +23,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 2. P1 after the draft: Yahoo roster sync (T-004), daily lineup optimizer (T-005), waivers (T-006), weekly matchup sim (T-007), calibration (T-016).
 3. P2: trade evaluator, backtesting, scheduled morning agent.
 4. Season simulator (`fantasy sim`, `season-sim-0.2.0`, skill `season-sim`) built: playoff weeks 18-20 = Mar 1-21 (verified end date; week 1 assumed Oct 20-Nov 1), re-seeding per settings; after the draft load Yahoo rosters + schedule/week dates as JSON (`--league-file`, `--schedule`), calibrate its priors (`SimParams`) with T-010/T-016; next: waiver/trade evaluation on top of `fantasy sim compare` (see `docs/handoffs/2026-10-18-season-sim.md`).
+5. Tech debt (after the draft): ordered plan in `docs/research/tech_debt.md` (backlog via `fantasy task seed`); first item: keep `main` green (research WIP snapshots currently push failing tests).
 
 ## Known limitations
 - Cloud sessions can now reach bbref / Yahoo public API / ESPN / CBS (stats.nba.com times out, cdn.nba.com 403s at origin).
