@@ -53,11 +53,11 @@ to the approval email.
 |---|---|
 | App registration | Apply first at https://sports.yahoo.com/developer/access/ (§0). After approval, create a new app at https://developer.yahoo.com/apps/create/ (signed in as the league member) |
 | Application type | Confidential client ("Web Application"), which is what working 2026 reports used. "Installed Application" was the old default |
-| Redirect URI field | required, must be **https**; register `https://localhost:8080` and **pass `--redirect-uri https://localhost:8080`** to our helper (its default is still `oob`) |
+| Redirect URI field | required, must be **https**; register `https://localhost:8080` (our helper's default since 2026-10-18; pass `--redirect-uri oob` only for a legacy oob app) |
 | Permissions | **Fantasy Sports → Read** (Read/Write is no longer granted; see §0) |
-| Authorize URL | `https://api.login.yahoo.com/oauth2/request_auth?client_id=…&redirect_uri=oob&response_type=code&language=en-us` |
-| Token URL | `POST https://api.login.yahoo.com/oauth2/get_token`, HTTP Basic `client_id:client_secret`, form `grant_type=authorization_code&code=…&redirect_uri=oob` |
-| Refresh | same URL, `grant_type=refresh_token&refresh_token=…&redirect_uri=oob` |
+| Authorize URL | `https://api.login.yahoo.com/oauth2/request_auth?client_id=…&redirect_uri=https://localhost:8080&response_type=code&language=en-us` |
+| Token URL | `POST https://api.login.yahoo.com/oauth2/get_token`, HTTP Basic `client_id:client_secret`, form `grant_type=authorization_code&code=…&redirect_uri=https://localhost:8080` |
+| Refresh | same URL, `grant_type=refresh_token&refresh_token=…&redirect_uri=https://localhost:8080` |
 | Access token lifetime | `expires_in: 3600` (1 h) |
 | Refresh token | long-lived (no documented expiry; invalidated if the user revokes the app or changes password). Yahoo may return a new one on refresh — persist it. |
 | `oob` | Used by `yahoo_oauth` 2.1.1 (Dec 2024) and yfpy 17 (Sep 2025), and still works for legacy apps. It is reportedly removed for new apps (Jun 2026, yfpy #79). For a new app, use `https://localhost:8080` and copy `code=` from the (dead) redirected URL. Our helper accepts the full URL. The `redirect_uri` in the token/refresh calls must match the one used to authorize. |

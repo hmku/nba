@@ -308,3 +308,9 @@ def test_run_interactive_auth_saves_tokens(tmp_path):
     data = json.loads(path.read_text())
     assert data["refresh_token"] == "FAKE_REFRESH_TOKEN_2"
     assert all("FAKE" not in m for m in msgs)  # tokens never printed
+
+
+def test_default_redirect_uri_is_https_localhost():
+    assert ya.DEFAULT_REDIRECT_URI == "https://localhost:8080"
+    url = yahoo_auth.build_authorize_url("cid")
+    assert "redirect_uri=https%3A%2F%2Flocalhost%3A8080" in url
