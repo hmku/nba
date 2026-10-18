@@ -33,3 +33,8 @@ Supabase REST publish (network secret) ; demo rows removed.
 - Stop hook requires committing/pushing everything: commit WIP snapshots, but never commit `.claude/worktrees/` (ignored).
 
 - Before the draft, in this container: `pip install -e .` from /home/user/nba (editable install currently points at the tech-debt worktree).
+
+## Update 2026-10-18 22:40 UTC
+- Blend adoption DONE + verified (Supabase: valuation-0.2.2 456 rows, draft_sim dsim-20261018222430-8e6d01, season_sim sim-20261018222640-4b5e92; tests green on main). Handoff docs/handoffs/2026-10-19-blend-adoption.md.
+- Container restart 22:30 killed local agents. Relaunched: tech-debt fixes (continues from worktree WIP 7e193ae "stored order"),
+  draft-policy reproduction (resumed), sim calibration (had silently died ~19:36; relaunched from scratchpad/calib partial results).
