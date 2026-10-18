@@ -3,9 +3,10 @@
 Next.js 15 (App Router, TypeScript, Tailwind v4) dashboard reading Supabase. Deployed on Vercel as
 project **fantasy-nba** (team hku-projects), git-connected to `hmku/nba` with root directory `web`.
 
-- Production URL: https://fantasy-nba-ruby.vercel.app (also `fantasy-nba-hku-projects.vercel.app`)
+- Production URL: https://fantasy.harrisonku.com (custom domain, Vercel DNS)
+- Fallback: https://fantasy-nba-ruby.vercel.app (also `fantasy-nba-hku-projects.vercel.app`)
 - Vercel Authentication (SSO) is on for `*.vercel.app` URLs: open them while logged in to Vercel
-  (team member), or add a custom domain / relax protection in Project → Settings → Deployment Protection.
+  (team member); the custom domain is exempt ("all except custom domains"). Or relax protection in Project → Settings → Deployment Protection.
 - Every push to `main` that touches `web/` deploys to production (ignored build step:
   `git diff --quiet HEAD^ HEAD -- .`).
 

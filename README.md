@@ -5,7 +5,7 @@ Autonomous-ish management of one Yahoo fantasy basketball team (league 44495, 12
 engine** (the `fantasy` CLI: projections, valuation, draft optimizer, simulation) used as tools by
 **Claude Code agents** that orchestrate, drive Yahoo in the browser, verify, and keep an audit trail;
 **Supabase Postgres** holds durable state; a **Next.js dashboard on Vercel** shows it
-(<https://fantasy-nba-ruby.vercel.app>, Vercel login required). Agents never re-derive valuations; they
+(<https://fantasy.harrisonku.com>; fallback <https://fantasy-nba-ruby.vercel.app>, Vercel login required). Agents never re-derive valuations; they
 run the tools and interpret the JSON.
 
 > Basketball primer for quants: H2H 9-cat means each week you play one opponent and win or lose each of
