@@ -126,7 +126,7 @@ def run_seed(job: tuple[int, list[str]]) -> dict:
             board = run_draft(ctx, {1: me, **opp})
             rosters = {t: [ctx.ids[r] for r in rows] for t, rows in board.rosters.items()}
             t2 = time.perf_counter()
-            res[name] = {"grade": _grade(rosters, truths, seed), "roster": rosters[1],
+            res[name] = {"grade": _grade(rosters, truths, seed), "roster": rosters[1], "league": rosters,
                          "draft_s": round(t2 - t1, 2), "grade_s": round(time.perf_counter() - t2, 2)}
             if name == "value_search":
                 res[name]["log"] = me.log

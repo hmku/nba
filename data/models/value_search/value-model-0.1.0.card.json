@@ -1,0 +1,277 @@
+{
+  "model_version": "value-model-0.1.0",
+  "search_version": "value-search-0.1.0",
+  "features_version": "vs-features-1",
+  "created_at": "2026-10-18T19:50:26.715178+00:00",
+  "git_sha": "b96d5e9",
+  "targets": [
+    "p_playoffs",
+    "p_title",
+    "e_rank",
+    "e_cat_wins"
+  ],
+  "feature_names": [
+    "cat_p_fg_pct",
+    "cat_p_ft_pct",
+    "cat_p_fg3m",
+    "cat_p_pts",
+    "cat_p_reb",
+    "cat_p_ast",
+    "cat_p_stl",
+    "cat_p_blk",
+    "cat_p_tov",
+    "ecw",
+    "mwp",
+    "mwp_sorted_0",
+    "mwp_sorted_1",
+    "mwp_sorted_2",
+    "mwp_sorted_3",
+    "mwp_sorted_4",
+    "mwp_sorted_5",
+    "mwp_sorted_6",
+    "mwp_sorted_7",
+    "mwp_sorted_8",
+    "mwp_sorted_9",
+    "mwp_sorted_10",
+    "opp_str_0",
+    "opp_str_1",
+    "opp_str_2",
+    "opp_str_3",
+    "opp_str_4",
+    "opp_str_5",
+    "opp_str_6",
+    "opp_str_7",
+    "opp_str_8",
+    "opp_str_9",
+    "opp_str_10",
+    "rank_str",
+    "gap_best",
+    "dz_fg_pct",
+    "dz_ft_pct",
+    "dz_fg3m",
+    "dz_pts",
+    "dz_reb",
+    "dz_ast",
+    "dz_stl",
+    "dz_blk",
+    "dz_tov",
+    "zsd_fg_pct",
+    "zsd_ft_pct",
+    "zsd_fg3m",
+    "zsd_pts",
+    "zsd_reb",
+    "zsd_ast",
+    "zsd_stl",
+    "zsd_blk",
+    "zsd_tov",
+    "gp_sum",
+    "gp_sd_rss",
+    "po_gp_sum",
+    "n_out",
+    "opp_gp_mean",
+    "opp_po_gp_mean",
+    "value_sum",
+    "opp_value_mean",
+    "value_top3",
+    "n_players",
+    "opp_value_max",
+    "min_cat_p",
+    "n_cats_above_half",
+    "cat_p_sd",
+    "e_matchups_won",
+    "mwp_top3"
+  ],
+  "learner": "sklearn HistGradientBoostingRegressor (squared error), numpy export",
+  "sklearn_version": "1.5.2",
+  "hyperparams": {
+    "max_iter": 400,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 40,
+    "l2_regularization": 1.0,
+    "early_stopping": false
+  },
+  "train_seed": 0,
+  "data": {
+    "path": "early.jsonl",
+    "league_seeds": [
+      100000,
+      100093
+    ],
+    "n_leagues": 94,
+    "n_rows": 1128,
+    "regimes": {
+      "adp": 48,
+      "mixed": 17,
+      "proxy": 10,
+      "sym": 19
+    },
+    "seasons_per_league": [
+      160
+    ]
+  },
+  "projections_sha256": "25ef6ca42a101c0bb348b3ada237ac5e33278c7fb57cf362598e7b81aa1dbb8b",
+  "metrics": {
+    "league_split_test": {
+      "p_playoffs": {
+        "all": {
+          "rmse": 0.06494592014008795,
+          "mae": 0.05083311519611207,
+          "r2": 0.9302512560769182,
+          "corr": 0.9660653966649873,
+          "bias": 0.001779639451549023,
+          "n": 108
+        },
+        "slot1": {
+          "rmse": 0.04584697084012819,
+          "mae": 0.034529172629666274,
+          "r2": 0.9220343338053987,
+          "corr": 0.9794131281146551,
+          "bias": 0.031092427160219243,
+          "n": 9
+        }
+      },
+      "p_title": {
+        "all": {
+          "rmse": 0.03812728663245171,
+          "mae": 0.024146889798570544,
+          "r2": 0.8740942900456358,
+          "corr": 0.9351803833145563,
+          "bias": 0.0006440491040026161,
+          "n": 108
+        },
+        "slot1": {
+          "rmse": 0.07588631062205697,
+          "mae": 0.05894986500320903,
+          "r2": 0.8285378932119648,
+          "corr": 0.9404660038216058,
+          "bias": 0.04310125521537592,
+          "n": 9
+        }
+      },
+      "e_rank": {
+        "all": {
+          "rmse": 0.44473519265917605,
+          "mae": 0.35454967920399805,
+          "r2": 0.9498998626062395,
+          "corr": 0.9750828832594989,
+          "bias": -0.01690871696525222,
+          "n": 108
+        },
+        "slot1": {
+          "rmse": 0.33009512159209037,
+          "mae": 0.25835700038748194,
+          "r2": 0.9559989281603459,
+          "corr": 0.985986626860347,
+          "bias": -0.1915371788986549,
+          "n": 9
+        }
+      },
+      "e_cat_wins": {
+        "all": {
+          "rmse": 2.254075021133829,
+          "mae": 1.8729841966617244,
+          "r2": 0.9526253042137878,
+          "corr": 0.9768344037226208,
+          "bias": 0.22049181847825303,
+          "n": 108
+        },
+        "slot1": {
+          "rmse": 2.2779362505066176,
+          "mae": 1.8415324998340625,
+          "r2": 0.9378696035074071,
+          "corr": 0.9823835892016095,
+          "bias": 1.4818563975991579,
+          "n": 9
+        }
+      }
+    },
+    "holdout": {
+      "p_playoffs": {
+        "all": {
+          "rmse": 0.04991811617390982,
+          "mae": 0.040296733518670726,
+          "r2": 0.9205871856324931,
+          "corr": 0.9596294080532808,
+          "bias": 0.0015218998267868362,
+          "n": 72
+        },
+        "slot1": {
+          "rmse": 0.03601239441367856,
+          "mae": 0.02888192242899082,
+          "r2": 0.9621143598524126,
+          "corr": 0.987068964987345,
+          "bias": 0.005098033658239011,
+          "n": 6
+        },
+        "mc_noise_rmse_at_train_seasons": 0.03696467585796908
+      },
+      "p_title": {
+        "all": {
+          "rmse": 0.026795660483018516,
+          "mae": 0.019198800752638256,
+          "r2": 0.9071015528658348,
+          "corr": 0.9563944169020249,
+          "bias": 0.005287725374700365,
+          "n": 72
+        },
+        "slot1": {
+          "rmse": 0.05618421332737957,
+          "mae": 0.04709688628954561,
+          "r2": 0.9156880676318585,
+          "corr": 0.9855749369647961,
+          "bias": 0.04538714342940813,
+          "n": 6
+        },
+        "mc_noise_rmse_at_train_seasons": 0.02071532331936179
+      },
+      "e_rank": {
+        "all": {
+          "rmse": 0.39309414909303847,
+          "mae": 0.3250485747909058,
+          "r2": 0.9305422089379841,
+          "corr": 0.9650267207572132,
+          "bias": -0.010377620334137897,
+          "n": 72
+        },
+        "slot1": {
+          "rmse": 0.37000889894064437,
+          "mae": 0.3421681188328844,
+          "r2": 0.9640162979286655,
+          "corr": 0.9827111144238104,
+          "bias": 0.03805882150588199,
+          "n": 6
+        }
+      },
+      "e_cat_wins": {
+        "all": {
+          "rmse": 1.8665360997784344,
+          "mae": 1.498833498948679,
+          "r2": 0.9301699150953798,
+          "corr": 0.9672505044165836,
+          "bias": 0.2982615735908738,
+          "n": 72
+        },
+        "slot1": {
+          "rmse": 1.8492532561749095,
+          "mae": 1.67761711902079,
+          "r2": 0.9702070646870302,
+          "corr": 0.9852351627519066,
+          "bias": 0.04859185295892606,
+          "n": 6
+        }
+      }
+    },
+    "holdout_n_leagues": 6,
+    "holdout_seasons": [
+      160
+    ]
+  },
+  "numpy_vs_sklearn_max_abs_diff": {
+    "p_playoffs": 2.1094237467877974e-15,
+    "p_title": 1.1102230246251565e-15,
+    "e_rank": 2.6645352591003757e-14,
+    "e_cat_wins": 2.5579538487363607e-13
+  },
+  "train_seconds": 6.2
+}
