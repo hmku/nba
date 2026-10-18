@@ -6,11 +6,12 @@ from sqlalchemy import update
 from fantasy.db.schema import agent_runs
 from fantasy.ops import ledger
 from fantasy.ops.common import InvalidStateError, NotFoundError, engine, now
+from fantasy.ops.testing import use_test_db
 
 
 @pytest.fixture(autouse=True)
 def _db(tmp_path, monkeypatch):
-    monkeypatch.setenv("FANTASY_DB_URL", f"sqlite:///{tmp_path / 'ops.db'}")
+    use_test_db(tmp_path, monkeypatch)
 
 
 def test_run_lifecycle():

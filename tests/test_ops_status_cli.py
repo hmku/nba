@@ -5,15 +5,17 @@ from sqlalchemy import create_engine, func, select
 from typer.testing import CliRunner
 
 from fantasy.cli import app
+from fantasy.db.engine import db_url
 from fantasy.db.schema import drafts, model_runs, tasks
 from fantasy.ops.common import engine, now
+from fantasy.ops.testing import use_test_db
 
 runner = CliRunner()
 
 
 @pytest.fixture(autouse=True)
 def _db(tmp_path, monkeypatch):
-    monkeypatch.setenv("FANTASY_DB_URL", f"sqlite:///{tmp_path / 'ops.db'}")
+    use_test_db(tmp_path, monkeypatch)
     monkeypatch.delenv("FANTASY_RUN_ID", raising=False)
     monkeypatch.delenv("FANTASY_PUBLISH_URL", raising=False)
 
@@ -108,14 +110,22 @@ def test_cli_exit_codes():
 
 def test_db_init_and_publish(tmp_path):
     code, out = cli("db", "init", "--json")
-    assert code == 0 and out["dialect"] == "sqlite"
+    assert code == 0
+    assert out["created"] is (out["dialect"] == "sqlite")
     cli("task", "seed")
     cli("run", "start", "--agent", "a")
     target = f"sqlite:///{tmp_path / 'target.db'}"
-    code, out = cli("publish", "--target", target, "--json")
+    src = ["--source", db_url()]
+    code, out = cli("publish", *src, "--target", target, "--json")
     assert code == 0 and out["rows"]["tasks"] == 12
-    code, out = cli("publish", "--json", env={"FANTASY_PUBLISH_URL": target})  # idempotent
+    code, out = cli("publish", *src, "--json", env={"FANTASY_PUBLISH_URL": target})  # idempotent
     assert code == 0
     with create_engine(target).connect() as conn:
         assert conn.execute(select(func.count()).select_from(tasks)).scalar() == 12
     assert cli("publish", "--json")[0] == 2  # no target
+    # a different task under an existing id in the target is skipped, not overwritten
+    with create_engine(target).begin() as conn:
+        conn.execute(tasks.update().where(tasks.c.task_id == "T-001").values(title="online"))
+    code, out = cli("publish", *src, "--target", target, "--json")
+    assert code == 0 and out["skipped"] == {"tasks": ["T-001"]}
+    assert "locks" not in out["rows"]

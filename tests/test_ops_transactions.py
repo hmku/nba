@@ -2,11 +2,12 @@ import pytest
 
 from fantasy.ops import approvals, ledger, locks, transactions
 from fantasy.ops.common import DuplicateError, InvalidStateError, NotAllowedError
+from fantasy.ops.testing import use_test_db
 
 
 @pytest.fixture(autouse=True)
 def _db(tmp_path, monkeypatch):
-    monkeypatch.setenv("FANTASY_DB_URL", f"sqlite:///{tmp_path / 'ops.db'}")
+    use_test_db(tmp_path, monkeypatch)
 
 
 @pytest.fixture

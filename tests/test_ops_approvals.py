@@ -7,11 +7,12 @@ from sqlalchemy import update
 from fantasy.db.schema import approvals as approvals_t
 from fantasy.ops import approvals, policy
 from fantasy.ops.common import InvalidStateError, NotFoundError, engine, now
+from fantasy.ops.testing import use_test_db
 
 
 @pytest.fixture(autouse=True)
 def _db(tmp_path, monkeypatch):
-    monkeypatch.setenv("FANTASY_DB_URL", f"sqlite:///{tmp_path / 'ops.db'}")
+    use_test_db(tmp_path, monkeypatch)
 
 
 @pytest.mark.parametrize(

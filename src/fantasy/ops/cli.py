@@ -19,7 +19,7 @@ from typing import Annotated, Any
 import typer
 
 from fantasy.ops import approvals, ledger, locks, seed_tasks, tasks, transactions
-from fantasy.ops.common import EXIT_USAGE, OpsError, jsonable
+from fantasy.ops.common import EXIT_ERROR, EXIT_USAGE, OpsError, jsonable
 
 RunId = Annotated[
     str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
@@ -80,6 +80,14 @@ def handled(fn: Callable) -> Callable:
             else:
                 typer.echo(f"error [usage]: {exc}", err=True)
             raise typer.Exit(EXIT_USAGE) from exc
+        except (typer.Exit, typer.Abort, KeyboardInterrupt):
+            raise
+        except Exception as exc:
+            if not as_json:
+                raise
+            msg = f"{type(exc).__name__}: {exc}"
+            typer.echo(json.dumps({"ok": False, "error": "error", "message": msg}))
+            raise typer.Exit(EXIT_ERROR) from exc
 
     return wrapper
 

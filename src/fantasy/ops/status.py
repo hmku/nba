@@ -8,7 +8,7 @@ from typing import Annotated, Any
 import typer
 from sqlalchemy import create_engine, func, select
 
-from fantasy.db.engine import db_url
+from fantasy.db.engine import DEFAULT_SQLITE, db_url
 from fantasy.db.schema import drafts, metadata, model_runs
 from fantasy.ops import approvals, ledger, locks, tasks, transactions
 from fantasy.ops.cli import JsonOut, emit, handled
@@ -125,8 +125,17 @@ def _render_text(s: dict[str, Any]) -> str:
 # ------------------------------------------------------------------ publish
 
 
-def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, int]:
-    """Upsert every row of every table from source into target (FK order)."""
+# Ephemeral state that must not be copied (an offline lease means nothing online).
+PUBLISH_SKIP = frozenset({"locks"})
+# Natural unique keys besides the PK: rows that would collide with a *different* target row
+# are skipped (reported), never overwritten -- e.g. offline task T-013 vs. online T-013.
+PUBLISH_UNIQUE = {"tasks": "title", "transactions": "idempotency_key"}
+
+
+def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any]:
+    """Upsert every row of every table from source into target (FK order, PK upsert)."""
+    if source_url == target_url:
+        raise ValueError("source and target are the same database")
     src = create_engine(source_url, future=True)
     dst = create_engine(target_url, future=True)
     if dst.dialect.name == "postgresql":
@@ -138,10 +147,29 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, int
     else:
         raise ValueError(f"unsupported target dialect {dst.dialect.name}")
     counts: dict[str, int] = {}
+    skipped: dict[str, list[str]] = {}
     with src.connect() as sconn, dst.begin() as dconn:
         for table in metadata.sorted_tables:
+            if table.name in PUBLISH_SKIP:
+                continue
             rows = [row_dict(r) for r in sconn.execute(select(table))]  # tz-aware UTC
             pk = [c.name for c in table.primary_key.columns]
+            uniq = PUBLISH_UNIQUE.get(table.name)
+            if uniq and rows:
+                (pkcol,) = pk
+                existing = {
+                    r[0]: r[1] for r in dconn.execute(select(table.c[pkcol], table.c[uniq]))
+                }
+                by_uniq = {v: k for k, v in existing.items()}
+                keep = []
+                for r in rows:
+                    clash_pk = by_uniq.get(r[uniq], r[pkcol]) != r[pkcol]
+                    clash_uniq = r[pkcol] in existing and existing[r[pkcol]] != r[uniq]
+                    if clash_pk or clash_uniq:
+                        skipped.setdefault(table.name, []).append(r[pkcol])
+                    else:
+                        keep.append(r)
+                rows = keep
             for i in range(0, len(rows), chunk):
                 batch = rows[i : i + chunk]
                 stmt = dialect_insert(table).values(batch)
@@ -153,7 +181,7 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, int
                 )
                 dconn.execute(stmt)
             counts[table.name] = len(rows)
-    return counts
+    return {"rows": counts, "skipped": skipped}
 
 
 # ------------------------------------------------------------------ registration
@@ -208,8 +236,13 @@ def register(app: typer.Typer) -> None:
         for prefix in ("postgres://", "postgresql://"):
             if target.startswith(prefix):
                 target = "postgresql+psycopg://" + target[len(prefix):]
-        src = source or db_url()
-        counts = publish(src, target)
-        emit({"source": _redact(src), "target": _redact(target), "rows": counts}, json_out,
-             "\n".join(f"{k}: {v}" for k, v in counts.items()))
+        if source:
+            src = source
+        else:  # the local sqlite DB: FANTASY_DB_URL if it is sqlite, else the default file
+            src = db_url() if db_url().startswith("sqlite") else f"sqlite:///{DEFAULT_SQLITE}"
+        res = publish(src, target)
+        text = "\n".join(f"{k}: {v}" for k, v in res["rows"].items())
+        if res["skipped"]:
+            text += f"\nSKIPPED (unique-key clash with different target row): {res['skipped']}"
+        emit({"source": _redact(src), "target": _redact(target), **res}, json_out, text)
 
