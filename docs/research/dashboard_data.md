@@ -9,7 +9,7 @@ Both live in Supabase table `model_runs` (one row per run):
 |---|---|---|
 | `run_id` | text PK | `dsim-YYYYmmddHHMMSS-xxxxxx` (draft sim) / `sim-…` (season sim) |
 | `kind` | text | `draft_sim` or `season_sim` |
-| `model_version` | text | `optimizer-0.2.0` (draft sim) / `season-sim-0.2.0` (season sim) |
+| `model_version` | text | `optimizer-0.2.0` (draft sim) / `season-sim-0.3.0` (season sim) |
 | `git_sha` | text | code version |
 | `params` | jsonb | run parameters (n_sims, seed, noise, slot, …) |
 | `inputs` | jsonb | provenance (projections path + sha256, order, …) |

@@ -148,7 +148,7 @@ export default function HowItWorks() {
 
       <Sec title="6 · Season simulation">
         <p>
-          A Monte Carlo of the whole season (<code>season-sim-0.2.0</code>): every team&apos;s roster, the real 2026-27 NBA
+          A Monte Carlo of the whole season (<code>season-sim-0.3.0</code>): every team&apos;s roster, the real 2026-27 NBA
           schedule (games per team per day), week-by-week H2H matchups, a daily 10-starter cap, streaming adds,
           standings and a re-seeded 6-team playoff bracket.
         </p>

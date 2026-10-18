@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from fantasy.draft.availability import adp_sd
+from fantasy.draft.availability import sample_market_positions, sd_mult_for
 from fantasy.draft.order import order_for_draft
 from fantasy.draft.roster import max_starting_matching
 from fantasy.league.settings import LeagueSettings
@@ -125,7 +125,9 @@ def complete_rosters(
     new = state.copy()
     taken = {p for ps in new.rosters.values() for p in ps}
     mrank = np.arange(1, len(market) + 1, dtype=float)
-    sampled = mrank + rng.normal(0, 1, len(mrank)) * adp_sd(mrank) * noise
+    # same opponent model as `draft simulate`: players without a market ADP are noisier (season-sim-0.3.0)
+    has_adp = values["adp"].reindex(market).notna().to_numpy() if "adp" in values.columns else True
+    sampled = sample_market_positions(mrank, rng, sd_mult_for(has_adp), noise)
     order = [market[i] for i in np.argsort(sampled, kind="stable")]
     slots = settings.starting_slots
     pos = {pid: list(values.loc[pid, "positions"]) if pid in values.index else [] for pid in order}

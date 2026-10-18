@@ -29,7 +29,8 @@ from datetime import UTC, datetime
 import numpy as np
 import pandas as pd
 
-from fantasy.draft.availability import prob_available
+from fantasy.draft.availability import NO_ADP_SD_MULT as NO_ADP_SD_MULT
+from fantasy.draft.availability import prob_available, sd_mult_for
 from fantasy.draft.order import Pick, draft_order
 from fantasy.draft.roster import max_starting_matching, unfilled_slots
 from fantasy.league.settings import LeagueSettings
@@ -37,7 +38,6 @@ from fantasy.model.catmodel import CategoryModel, build_arrays
 from fantasy.model.lines import ProjectionSet
 from fantasy.model.valuation import ValuationParams, compute_values, market_order
 
-NO_ADP_SD_MULT = 1.6
 # v0.2.0: expected-value rollouts (see docs/handoffs/2026-10-18-optimizer-diagnosis.md)
 OPTIMIZER_VERSION = "optimizer-0.2.0"
 
@@ -92,7 +92,7 @@ class DraftContext:
         mrank = {pid: i + 1 for i, pid in enumerate(self.market)}
         self.market_rank = np.array([mrank[p] for p in self.ids], dtype=float)
         # players without market ADP: their slot is a model-based guess, so widen the spread
-        self.sd_mult = np.where(values["adp"].notna().to_numpy(), 1.0, NO_ADP_SD_MULT)
+        self.sd_mult = sd_mult_for(values["adp"].notna().to_numpy())
         self.positions = [list(p) for p in values["positions"]]
         self.value = values["value"].to_numpy(dtype=float)
         self.order: list[Pick] = draft_order(settings.num_teams, settings.num_rounds, settings.draft_order_type, custom_rounds)

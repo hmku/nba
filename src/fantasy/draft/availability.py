@@ -15,10 +15,27 @@ from scipy.stats import norm
 
 SD_FLOOR = 2.5
 SD_SLOPE = 0.18
+NO_ADP_SD_MULT = 1.6  # players without a market ADP (valuation-rank stand-in) are noisier
 
 
 def adp_sd(adp: np.ndarray) -> np.ndarray:
     return SD_FLOOR + SD_SLOPE * np.asarray(adp, dtype=float)
+
+
+def sd_mult_for(has_adp: np.ndarray | list[bool]) -> np.ndarray:
+    """Per-player multiplier on `adp_sd`: 1 with a market ADP, NO_ADP_SD_MULT without."""
+    return np.where(np.asarray(has_adp, dtype=bool), 1.0, NO_ADP_SD_MULT)
+
+
+def sample_market_positions(
+    market_rank: np.ndarray, rng: np.random.Generator, sd_mult: np.ndarray | float = 1.0, noise: float = 1.0,
+) -> np.ndarray:
+    """One noisy market draft: position ~ Normal(market rank, adp_sd(rank) * sd_mult * noise).
+
+    The single opponent model shared by `draft simulate`, `sim` roster completion and the research rooms
+    (one rng.normal draw of len(market_rank)); sort ascending for the draft order."""
+    mr = np.asarray(market_rank, dtype=float)
+    return mr + rng.normal(0, 1, len(mr)) * adp_sd(mr) * sd_mult * noise
 
 
 def survival(pick: float, adp: np.ndarray, sd_mult: np.ndarray | float = 1.0) -> np.ndarray:

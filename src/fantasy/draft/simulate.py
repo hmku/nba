@@ -16,7 +16,7 @@ from collections import Counter
 
 import numpy as np
 
-from fantasy.draft.availability import adp_sd, prob_available
+from fantasy.draft.availability import prob_available, sample_market_positions
 from fantasy.draft.optimizer import (
     OPTIMIZER_VERSION,
     DraftContext,
@@ -201,8 +201,7 @@ def simulate_drafts(
     by_pick: list[Counter[str]] = [Counter() for _ in my_picks]
     taken_by_me: Counter[str] = Counter()
     for k in range(n_sims):
-        mr = ctx.market_rank
-        sampled = mr + rng.normal(0, 1, len(mr)) * adp_sd(mr) * ctx.sd_mult * noise
+        sampled = sample_market_positions(ctx.market_rank, rng, ctx.sd_mult, noise)
         mine, strat, board = _run_one(ctx, opt, sampled)
         base, _, _ = _run_one(ctx, None, sampled)
         ev, evb = ctx.model.evaluate_team(mine), ctx.model.evaluate_team(base)
