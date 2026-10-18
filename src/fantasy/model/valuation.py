@@ -18,7 +18,6 @@ made by fantasy.draft.optimizer, which evaluates whole rosters with the category
 
 from __future__ import annotations
 
-import subprocess
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -36,6 +35,7 @@ from fantasy.model.lines import (
     availability,
     effective_lines,
 )
+from fantasy.ops.common import git_sha  # noqa: F401  (re-exported: draft.store, sim.persist, ...)
 
 # 0.2.0: availability = fitted gp (projections baseline-0.2.0) with optional gp risk penalty and a
 # playoff-week tilt (playoff_weight); see docs/research/availability_model.md
@@ -137,11 +137,7 @@ def market_order(values: pd.DataFrame, adp_weight: float = 1.0) -> list[str]:
     return list(values.index[np.argsort(est, kind="stable")])
 
 
-def git_sha() -> str | None:
-    try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-    except Exception:
-        return None
+# git_sha: re-exported from fantasy.ops.common (one helper, full sha, resolved from the repo root).
 
 
 def valuation_params(vp: ValuationParams, settings: LeagueSettings) -> dict:

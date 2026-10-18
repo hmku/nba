@@ -7,6 +7,7 @@ than by the database so both backends compare them identically.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import math
@@ -17,7 +18,7 @@ from typing import Any, overload
 
 from sqlalchemy import Engine
 
-from fantasy.db.engine import db_url, get_engine
+from fantasy.db.engine import REPO_ROOT, db_url, get_engine
 
 # ------------------------------------------------------------------ exit codes (CLI contract)
 
@@ -107,10 +108,15 @@ def new_id(prefix: str = "") -> str:
     return f"{prefix}{uuid.uuid4().hex}"
 
 
+@functools.cache
 def git_sha() -> str | None:
+    """Full sha of the checkout this package runs from (resolved from the repo root, not the cwd);
+    None outside a git checkout. The one helper for model_runs/agent_runs/value-search provenance.
+    Cached per process (the code that is running does not change). No subprocess timeout: a timeout
+    makes Popen poll with time.sleep, which `draft watch` tests (and its backoff) patch."""
     try:
         out = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=5, check=False
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False, cwd=REPO_ROOT,
         )
     except (OSError, subprocess.SubprocessError):
         return None

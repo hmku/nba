@@ -90,8 +90,10 @@ Live room details:
   - **Draft board** (collapsed): your upcoming picks, the last 8 picks, and "Full board grid" (rounds ×
     slots, my column highlighted, current pick outlined, non-yahoo sources tagged).
   - **Available players** (collapsed, lazily rendered): search + position filter, sortable, cat heatmap.
-  - Draft order computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`):
-    `snake`, `snake_3rr` and `custom` (`drafts.config.custom_rounds`, honoured whenever valid).
+  - Draft order: read from `drafts.config.order_slots` (team slot of every overall pick, written by Python's
+    `fantasy draft init|set-order`; re-run `draft init` on an older draft to backfill it). Fallback when absent
+    or invalid: computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`): `snake`,
+    `snake_3rr` and `custom` (`drafts.config.custom_rounds`, honoured whenever valid).
 ### `/matchup`
 Latest `season_sim` row with `params.command = 'season'` and no `scenario` (i.e. `fantasy sim season` on real or
 mid-draft rosters) → `summary.my_team.weekly_matchups[]` (`week, start, end, opponent, opponent_name, p_win, p_tie,

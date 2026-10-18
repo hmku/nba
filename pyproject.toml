@@ -48,3 +48,6 @@ ignore = ["E501"]
 [tool.mypy]
 # CI type-checks the clean subset only (.github/workflows/ci.yml); grow it module by module.
 ignore_missing_imports = true
+# Report errors only in the listed modules: an import of a not-yet-clean module (draft/, model/, sim/)
+# must not turn the subset red. Imported modules are still analysed for types.
+follow_imports = "silent"

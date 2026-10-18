@@ -57,6 +57,28 @@ Label: **safe now** = done today (no behaviour change) · **after draft** = plan
 | `Test: cross-language draft order parity fixture` | `tests/fixtures/draft_order_parity.json` (generated from Python), checked by `tests/test_draft_order.py` and `web/tests/draftOrder.test.mjs`. | tests only; `npm run lint && npm run build && npm test` green |
 | `Docs: fix stale README/ARCHITECTURE ...` | F10 items. | docs only |
 
+## Plan status (2026-10-19, before the draft)
+
+The user asked for the plan to be done before the draft. Every step was golden-checked against `origin/main`
+(script in `docs/handoffs/2026-10-18-tech-debt.md`; per-commit results in `docs/handoffs/2026-10-19-tech-debt-fixes.md`).
+
+| Step | Status | Commit(s) |
+|---|---|---|
+| 1. Keep `main` green (F1) | **partly**: pytest + ruff (+ web checks) green at every push here. **Deferred:** moving the WIP-snapshot automation to a `wip/*` branch (orchestrator process; snapshots still land on main); `test_draft_cli_hardening::test_input_validation` still pins a literal objective list (passes today). | - |
+| 2. One CLI output/error module (F6, F8) | **done** (`fantasy.cli_common`; existing keys and exit codes kept, `code`/`message` added) | `9eaf969` |
+| 3. One opponent sampler (F4) | **done** (`season-sim-0.3.0`; changes sim numbers, before/after in the commit) | `0914116` |
+| 4. Draft lifecycle (F5) | **done** (complete when the board is full; e2e xfail removed) | `1233764`, `bb88c4b` |
+| -- `--overall 0` / out-of-range `--overall` (e2e xfails) | **done** (JSON usage error, exit 2) | `bb88c4b` |
+| 5. `draft watch` resilience (F13) | **done** | `2d88621` |
+| 6. Split `draft/cli.py` (F12) | **done** (`cli_board`/`cli_recommend`/`cli_pick`; `--help` byte-identical) | `a514acd` |
+| 7. Publish paths (F7, F15) | **done** (sqldump upserts; DDL snapshot test) | `44e7cb9` |
+| 8. Draft order single source (F3) | **done** (`drafts.config.order_slots` written by Python; web reads it, TS mirror = fallback) | `28c5f27` |
+| 9. Typing/tooling (F14) | **done for a clean subset**: CI runs mypy on `ops db data league cli cli_common`; ruff/mypy pinned; `pytest-cov`; `.env.example`; `follow_imports = "silent"` so imports of not-yet-clean modules cannot turn the step red. **Deferred:** the remaining 39 mypy errors in `draft/ model/ sim/ valuesearch/` (draft-path freeze, files owned by other agents). | `c452ac8` |
+| 10. Projections module split (F12) | **done** (projections sha identical) | `23936eb` |
+| 11. Name parity + web cleanups (F9, F16) | **done** (TS slugify/aliases mirror Python, 456-name fixture; unused exports removed). **Deferred:** `lib/categories.ts` still duplicates the Python category list. | `524c16e` |
+| 12. Unify `git_sha` (F8) | **done** (one helper in `ops.common`, full sha resolved from the repo root; `model_runs.git_sha` changes from short to full sha; the dashboard truncates both) | the commit "One git_sha ..." right after `524c16e` |
+| Other F8 duplicates (JSON-safe x4, NaN->"" x3, settings-from-draft-row, `--punt` parsing) | partly via step 2; rest **deferred** (low risk, draft path) | |
+
 ## Refactor plan (after the draft), in order
 
 Each step: one small PR-sized commit, golden diff (script above, extended with the new commands) +
