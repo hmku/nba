@@ -66,6 +66,12 @@ data-auditor, draft-shadow (all read-only).
 - Rehearsals always use `fantasy draft init --draft-id mock-N --mock` and `export FANTASY_DRAFT_ID=mock-N`.
 - Never run `fantasy approval decide` or `fantasy lock release --force` yourself — those are human actions.
 
+## Evidence standard (user requirement)
+- Every quantitative claim to the user must say where it comes from: **fitted** (data, method, sample, SE —
+  link the research note), **literature/source** (cite it), or **prior/guess** (say so explicitly).
+- Never present a prior as fact. New model parameters start as documented priors and get calibrated
+  (`docs/research/`), with out-of-sample checks where possible.
+
 ## Engineering conventions
 - Python ≥3.11, typed, small modules; ingestion (`data/`) separate from modeling (`model/`).
 - Percent categories are always computed from makes/attempts.
