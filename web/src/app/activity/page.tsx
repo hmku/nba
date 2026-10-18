@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
 import type { AgentEvent, AgentRun, Approval, Decision, Lock, Transaction } from "@/lib/types";
-import { Badge, Disclosure, Empty, ErrorNote, JsonView, statusTone } from "@/components/ui";
+import { Badge, Disclosure, ErrorNote, JsonView, statusTone } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { ageSeconds, shortTime } from "@/lib/format";
@@ -181,7 +181,25 @@ export default async function ActivityPage() {
       {/* run timeline */}
       <section className="overflow-hidden rounded-xl border border-line bg-panel">
         {runs.length === 0 ? (
-          <Empty>No agent runs yet.</Empty>
+          <div className="px-5 py-6 text-center">
+            <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-panel-2 text-lg text-muted">≋</div>
+            <div className="mt-3 text-[15px] font-semibold">No agent activity yet</div>
+            <div className="mx-auto mt-1.5 max-w-md text-left text-[13.5px] leading-relaxed text-muted">
+              <p>This is the agents&apos; logbook. Once they start working (draft night, then daily in-season checks) you&apos;ll see:</p>
+              <ul className="mt-2 space-y-1">
+                <li>· <span className="text-fg">Runs</span> — one line per agent session (what it was doing, status, when); tap for its events.</li>
+                <li>
+                  · <span className="text-fg">Decisions vs the model</span> — what the model recommended and what the agent chose;
+                  disagreements are tinted amber with the rationale.
+                </li>
+                <li>
+                  · <span className="text-fg">Approvals</span> — add/drops and trades always wait for you here (Approve / Reject) before
+                  anything changes on Yahoo.
+                </li>
+                <li>· <span className="text-fg">Transactions</span> — every Yahoo write, planned → submitted → verified.</li>
+              </ul>
+            </div>
+          </div>
         ) : (
           <ul>
             {runs.map((r) => {

@@ -39,25 +39,68 @@ export function AutoRefresh({ seconds = 15 }: { seconds?: number }) {
   return null;
 }
 
+type ThemeMode = "auto" | "light" | "dark";
+
+function readMode(): ThemeMode {
+  try {
+    const t = localStorage.getItem("theme");
+    return t === "light" || t === "dark" ? t : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** Apply a theme mode: auto = light 07:00–19:00 in the viewer's local time, dark otherwise. */
+export function applyTheme(mode: ThemeMode = readMode()) {
+  const h = new Date().getHours();
+  const dark = mode === "dark" || (mode === "auto" && (h < 7 || h >= 19));
+  document.documentElement.classList.toggle("dark", dark);
+}
+
+/** Re-evaluates the auto theme every 10 minutes and when the tab becomes visible. */
+export function ThemeAuto() {
+  useEffect(() => {
+    const tick = () => applyTheme();
+    const t = setInterval(tick, 10 * 60 * 1000);
+    const vis = () => document.visibilityState === "visible" && tick();
+    document.addEventListener("visibilitychange", vis);
+    window.addEventListener("fdash-theme", tick);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", vis);
+      window.removeEventListener("fdash-theme", tick);
+    };
+  }, []);
+  return null;
+}
+
+const NEXT_MODE: Record<ThemeMode, ThemeMode> = { auto: "light", light: "dark", dark: "auto" };
+const MODE_LABEL: Record<ThemeMode, string> = { auto: "◐ auto", light: "☀ light", dark: "☾ dark" };
+
+/** Cycles auto → light → dark (persisted in localStorage). */
 export function ThemeToggle() {
+  const [mode, setMode] = useState<ThemeMode>("auto");
+  useEffect(() => setMode(readMode()), []);
   const toggle = () => {
-    const el = document.documentElement;
-    const dark = !el.classList.contains("dark");
-    el.classList.toggle("dark", dark);
+    const next = NEXT_MODE[mode];
     try {
-      localStorage.setItem("theme", dark ? "dark" : "light");
+      if (next === "auto") localStorage.removeItem("theme");
+      else localStorage.setItem("theme", next);
     } catch {
       /* ignore */
     }
+    setMode(next);
+    applyTheme(next);
+    window.dispatchEvent(new Event("fdash-theme"));
   };
   return (
     <button
       onClick={toggle}
       className="rounded border border-line px-2 py-1 text-xs text-muted hover:text-fg"
-      aria-label="Toggle theme"
-      title="Toggle light/dark"
+      aria-label={`Theme: ${mode} (tap to change)`}
+      title="Theme: auto (light 7am–7pm) → light → dark"
     >
-      ◐
+      {MODE_LABEL[mode]}
     </button>
   );
 }

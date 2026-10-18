@@ -24,6 +24,10 @@
   primitives: ProbTrack, EdgeBar, ShareBar, MiniHist, CatStrip, CatLabel, EmptyState, ExplainMore), category family
   colours as CSS vars in `globals.css`, `CAT_COLOR`/`CAT_GLOSS`/`fmtCat` in `lib/categories.ts`.
 
+- **Theme** (user request): auto = light 07:00–19:00 local, dark otherwise; toggle in More cycles auto → light →
+  dark (localStorage). All tabs checked in light mode (`ui2/light-*.png`).
+- **Activity** empty state explains what will appear (mock agent rows are being deleted from Supabase).
+
 ## Verification
 - `npm run lint`, `npm run build` green.
 - Rendered against the scratchpad mock PostgREST (`mock/server.js` + `mock/sims.json`; `MOCK_POST=1` adds a

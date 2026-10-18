@@ -39,6 +39,10 @@ toggle. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `
 `/matchup` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
 `/agents` and `/approvals` redirect to `/activity`.
 
+**Theme**: default *auto* = light 07:00–19:00 in the viewer's local time, dark otherwise (inline `<head>` script
+avoids a flash; `ThemeAuto` re-evaluates every 10 min and on tab focus). More › Theme cycles auto → light → dark,
+persisted in `localStorage.theme` (absent = auto).
+
 Model-run readers live in `src/lib/sim.ts` (defensive: missing fields → section hidden, never a crash); shapes per
 `docs/research/dashboard_data.md`. Charts are dependency-free HTML/CSS primitives in `src/components/viz.tsx`
 (category colour = family: shooting %, scoring, big-man, guard, TO — always next to a text label).
@@ -107,7 +111,8 @@ draft, or the sim's draft post-draft; names from `drafts.config.team_names`), el
 note with one simulated roster for me.
 
 - `/activity`: health strip (age of latest projections / values / draft sim / season sim, ⚠ if stale → History;
-  stuck "running" runs with heartbeat >10m and expired locks shown in amber), pending approvals pinned at top (approve/reject with note → POST `/api/approvals`),
+  stuck "running" runs with heartbeat >10m and expired locks shown in amber); with no runs, an explanatory empty
+  state (runs, decisions vs model, approvals, transactions); pending approvals pinned at top (approve/reject with note → POST `/api/approvals`),
   then the agent run timeline, one line per run (status dot, agent, task, status, age; "≠ model" and
   error counts flagged; runs with a disagreement tinted amber). Tap to expand: summary, decisions,
   events (kind icons, payloads), transactions, ids. Held locks as one line; past approvals and
