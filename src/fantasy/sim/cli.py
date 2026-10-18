@@ -316,7 +316,9 @@ def compare(
 @app.command("draft-check")
 def draft_check_cmd(
     candidates: Annotated[str, typer.Option("--candidates", help="Comma-separated names or ids")],
-    draft_id: DraftOpt = None, sims: SimsOpt = 500, seed: SeedOpt = 0, schedule: SchedOpt = None,
+    draft_id: DraftOpt = None, sims: SimsOpt = 800, seed: SeedOpt = 0,
+    completions: Annotated[int, typer.Option("--completions", help="Independent completions of other rosters")] = 4,
+    schedule: SchedOpt = None,
     nba_schedule: NbaOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True,
     streaming: StreamOpt = True, save: SaveOpt = True, projections: ProjOpt = None, as_json: JsonOpt = False,
 ) -> None:
@@ -332,13 +334,13 @@ def draft_check_cmd(
         _fail("no candidates", as_json, code=2)
     params = _params(sims, seed, streaming)
     try:
-        rep = draft_check(st.draft, st.picks, st.ctx, cands, params)
+        rep = draft_check(st.draft, st.picks, st.ctx, cands, params, completions=completions)
     except ValueError as e:
         _fail(str(e), as_json, code=2)
     out = {"ok": True, "sim_version": SIM_VERSION, "draft_id": st.draft["draft_id"], **rep,
            "warnings": st.ctx.warnings + ["Advisory: completed rosters are expected picks; differences within ~2 SE are noise."]}
     out["run_id"] = _save(save, "draft-check", params, st, out)
-    lines = [f"pick {rep['for_pick']} ({rep['n_sims']} sims, {rep['compute_seconds']}s)"]
+    lines = [f"pick {rep['for_pick']} ({rep['n_sims']} sims over {rep['completions']} completions, {rep['compute_seconds']}s)"]
     for c in rep["candidates"]:
         lines.append(f"  {c['name']:<24} P(po) {c['p_playoffs']:.1%} ±{c['p_playoffs_se']:.1%}  P(title) {c['p_title']:.1%}  "
                      f"diff vs first {c['p_playoffs_diff_vs_first']:+.3f} ± {c['p_playoffs_diff_se'] or 0:.3f}")
