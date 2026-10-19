@@ -41,7 +41,9 @@ from fantasy.model.valuation import ValuationParams, compute_values, market_orde
 # v0.2.0: expected-value rollouts (see docs/handoffs/2026-10-18-optimizer-diagnosis.md)
 # v0.3.0: category model uses the one game-noise model (fantasy.model.noise, var = a*m + b*m^2) instead of
 #         constant per-game CVs (valuation-0.3.0)
-OPTIMIZER_VERSION = "optimizer-0.3.0"
+# v0.3.1: opt-in OptimizerParams(availability="sim", room=...) - Monte Carlo availability from the board
+#         (fantasy.draft.room_sim); default (availability="adp") output unchanged; payload gains "availability"
+OPTIMIZER_VERSION = "optimizer-0.3.1"
 
 DEFAULT_STRATEGIES: dict[str, list[str]] = {
     "balanced": [],
@@ -66,6 +68,11 @@ class OptimizerParams:
     strategies: dict[str, list[str]] = field(default_factory=lambda: dict(DEFAULT_STRATEGIES))
     strategy: str | None = None  # force a strategy; None = scan
     strategy_switch_margin: float = 0.03  # require this improvement over balanced to punt
+    # availability model: "adp" = analytic Normal(ADP) (fantasy.draft.availability, default) | "sim" = Monte
+    # Carlo of the room `room` from the current board (fantasy.draft.room_sim; opt-in, research)
+    availability: str = "adp"
+    room: str = "mixed"  # sim only: adp | mixed | sym
+    room_sims: int = 300
 
 
 class DraftContext:
@@ -145,6 +152,27 @@ class DraftOptimizer:
     def __init__(self, ctx: DraftContext, params: OptimizerParams | None = None) -> None:
         self.ctx = ctx
         self.params = params or OptimizerParams()
+        if self.params.availability not in ("adp", "sim"):
+            raise ValueError(f"unknown availability model {self.params.availability!r} (adp | sim)")
+        self._table: dict[int, np.ndarray] | None = None  # sim availability for the board being scored
+
+    def _pa(self, at_pick: int, current: int, idx: np.ndarray | None = None) -> np.ndarray:
+        """P(available at `at_pick` | on the board now), for all rows or rows `idx`."""
+        if self._table is not None and at_pick in self._table:
+            t = self._table[at_pick]
+            return t if idx is None else t[idx]
+        ctx = self.ctx
+        if idx is None:
+            return prob_available(at_pick, current, ctx.market_rank, ctx.sd_mult)
+        return prob_available(at_pick, current, ctx.market_rank[idx], ctx.sd_mult[idx])
+
+    def _sim_table(self, available: np.ndarray, current: int, targets: list[int], my_slot: int) -> dict[int, np.ndarray]:
+        from fantasy.draft.room_sim import simulate_availability
+
+        ctx, prm = self.ctx, self.params
+        return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, available,
+                                     [pk.slot for pk in ctx.order], current, targets, my_slot,
+                                     room=prm.room, n_sims=prm.room_sims)
 
     # ------------------------------------------------------------------ helpers
     def _objective(self, P: np.ndarray, w: np.ndarray) -> np.ndarray:
@@ -203,7 +231,7 @@ class DraftOptimizer:
         added: list[int] = []
         for j, p in enumerate(future_picks):
             remaining = future_picks[j + 1 :]
-            pa = prob_available(p, current_pick, ctx.market_rank, ctx.sd_mult) * not_mine
+            pa = self._pa(p, current_pick) * not_mine
             cand = np.flatnonzero(pa >= self.params.min_avail)
             if len(cand) == 0:
                 break
@@ -236,10 +264,9 @@ class DraftOptimizer:
         roster = list(roster)
         avail = available.copy()
         added: list[int] = []
-        mrank = self.ctx.market_rank
         for j, p in enumerate(future_picks):
             remaining = future_picks[j + 1 :]
-            pa = prob_available(p, current_pick, mrank, self.ctx.sd_mult)
+            pa = self._pa(p, current_pick)
             cand_mask = avail & (pa >= self.params.avail_threshold)
             cand = np.flatnonzero(cand_mask)
             if len(cand) == 0:
@@ -293,13 +320,15 @@ class DraftOptimizer:
                     "roster": self._roster_payload(state, my_all), "generated_at": _now()}
 
         decision_pick, later = future[0], future[1:]
+        self._table = (self._sim_table(available, current, future, state.my_slot)
+                       if prm.availability == "sim" else None)
         # candidates: best by value + best by market among available
         avail_idx = np.flatnonzero(available)
         by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
         by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
         if decision_pick > current:
             # not on the clock yet: only consider players with a real chance of lasting to my pick
-            p_dec = prob_available(decision_pick, current, ctx.market_rank[avail_idx], ctx.sd_mult[avail_idx])
+            p_dec = self._pa(decision_pick, current, avail_idx)
             avail_idx = avail_idx[p_dec >= 0.15]
             by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
             by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
@@ -345,8 +374,8 @@ class DraftOptimizer:
             c = r["row"]
             pid = ctx.ids[c]
             v = ctx.values.loc[pid]
-            p_next = float(prob_available(next_pick, current, ctx.market_rank[[c]], ctx.sd_mult[[c]])[0]) if next_pick else 0.0
-            p_dec = float(prob_available(decision_pick, current, ctx.market_rank[[c]], ctx.sd_mult[[c]])[0])
+            p_next = float(self._pa(next_pick, current, np.array([c]))[0]) if next_pick else 0.0
+            p_dec = float(self._pa(decision_pick, current, np.array([c]))[0])
             marginal = r["obj"] - (second_obj if r["obj"] == best_obj else best_obj)
             recs.append({
                 "player_id": pid,
@@ -387,6 +416,7 @@ class DraftOptimizer:
             "objective": prm.objective,
             "optimizer_version": OPTIMIZER_VERSION,
             "rollout_mode": prm.rollout_mode,
+            "availability": prm.availability if prm.availability == "adp" else f"sim:{prm.room}x{prm.room_sims}",
             "recommendations": recs,
             "strategy": {"name": chosen, "punt": strategies[chosen],
                          "notes": _strategy_note(chosen, strat_results), "scan": strat_results},

@@ -20,6 +20,9 @@ Ablation arms (lead/user request, 2026-10-19; which component of the optimizer l
                (per-player survival curves from independent simulated drafts of the same room type, seeds
                disjoint from the evaluation seeds; `rooms` subcommand)               -> isolates availability
   opt_matchup  the optimizer with objective P(win the weekly matchup) instead of expected category wins
+  opt_sim      the optimizer with availability="sim": Monte Carlo of the SAME room model W it is graded in
+               (fantasy.draft.room_sim; sym/symbpa -> room "sym", mixed -> "mixed", adp -> "adp")
+  opt_sim_matchup  opt_sim with the matchup objective
 Each league is graded under truth `ours` (the drafting projections), `market`
 (fantasy.sim.market_truth.market_implied_projections) and `mid` (their 50/50 blend_projections).
 
@@ -65,6 +68,8 @@ SPECS: dict[str, tuple[str, float, float]] = {
     "greedycat": ("greedycat", 0.0, 0.0),
     "opt_oracle": ("opt_oracle", 0.0, 0.0),
     "opt_matchup": ("opt_matchup", 0.0, 0.0),
+    "opt_sim": ("opt_sim", 0.0, 0.0),
+    "opt_sim_matchup": ("opt_sim_matchup", 0.0, 0.0),
 }
 N_SHARP = 3
 TRUTHS = ("ours", "market", "mid")  # mid = 50/50 ours / market-implied stat lines
@@ -105,8 +110,14 @@ class MyPolicy:
             self.log.append({"pick": overall, "chosen": ctx.ids[row], "bpa": bpa, "opt": None, "planned_next": None,
                              "planned_next_pick": None, "score_gain_opt_vs_bpa": None, "strategy": "greedycat"})
             return row
-        if name in ("opt_oracle", "opt_matchup"):
-            which = f"opt_oracle:{self.regime}" if name == "opt_oracle" else name
+        if name in ("opt_oracle", "opt_matchup", "opt_sim", "opt_sim_matchup"):
+            which = {"opt_oracle": f"opt_oracle:{self.regime}", "opt_matchup": name}.get(name, f"{name}:{self.regime}")
+            if which not in self.opts:
+                room = {"symbpa": "sym"}.get(self.regime, self.regime)
+                prm = self.opts["params"]
+                self.opts[which] = DraftOptimizer(ctx, OptimizerParams(
+                    strategy=prm.strategy, availability="sim", room=room,
+                    objective="matchup" if name == "opt_sim_matchup" else prm.objective))
             rec = self._rec(which, taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
         elif name == "value_search":

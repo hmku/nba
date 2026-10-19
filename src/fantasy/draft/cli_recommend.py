@@ -66,9 +66,15 @@ def recommend(
                                                  "optimizer #1 must gain over BPA")] = DEFAULT_MARGIN,
     policy_eps: Annotated[float, typer.Option("--policy-eps", help="bpa_need: value window for the need tiebreak")]
     = DEFAULT_EPS,
+    availability: Annotated[str, typer.Option("--availability", help="Optimizer availability model: adp (analytic "
+                                              "Normal(ADP), default) | sim (Monte Carlo of --room from the board)")]
+    = "adp",
+    room: Annotated[str, typer.Option("--room", help="--availability sim: room model mixed (3 sharp + 8 ADP "
+                                      "drafters) | adp | sym (docs/research/draft_policy.md)")] = "mixed",
     as_json: JsonOpt = False,
 ) -> None:
     """Recommend my next pick given all recorded picks. Deterministic for a given state."""
+    from fantasy.draft.room_sim import ROOMS
     from fantasy.valuesearch.model import OBJECTIVES as VALUE_OBJECTIVES
     from fantasy.valuesearch.search import DEFAULT_SEARCH, OPPONENT_MODELS, SEARCH_MODES
 
@@ -80,6 +86,8 @@ def recommend(
                   "--objective", as_json)
     check_choice(opponents, OPPONENT_MODELS, "--opponents", as_json)
     check_choice(policy, POLICIES, "--policy", as_json)
+    check_choice(availability, ["adp", "sim"], "--availability", as_json)
+    check_choice(room, list(ROOMS), "--room", as_json)
     if search == "value" and policy != "optimizer":
         fail("--search value re-ranks the optimizer's candidates; use it with --policy optimizer", as_json,
              EXIT_USAGE, valid=["optimizer"])
@@ -95,7 +103,8 @@ def recommend(
     ctx, run_id = _context(s, projections, d, vp)
     picks = store.get_picks(d["draft_id"])
     state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
-    opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective))
+    opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective, availability=availability,
+                                              room=room))
     rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
     # the policy decides the top pick (and records BPA / optimizer #1 side by side); value search, if any, then
     # advises relative to that order
