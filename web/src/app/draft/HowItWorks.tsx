@@ -24,7 +24,10 @@ function Sec({ title, children, open = false }: { title: string; children: React
   );
 }
 
-export default function HowItWorks() {
+// Fallback when no draft_sim run is readable; keep equal to OPTIMIZER_VERSION in src/fantasy/draft/optimizer.py.
+const OPTIMIZER_VERSION_FALLBACK = "optimizer-0.3.1";
+
+export default function HowItWorks({ optimizerVersion }: { optimizerVersion?: string | null }) {
   return (
     <div className="space-y-2.5">
       <div className="px-1">
@@ -115,7 +118,7 @@ export default function HowItWorks() {
           <li>
             For each candidate at the current pick, it imagines the rest of <i>my</i> draft: at each of my later picks it adds
             the <b>expected</b> pick — each ranked player weighted by the probability he is the best one still on the board —
-            then scores the finished 13-man roster with the category-win model (<code>optimizer-0.2.0</code>).
+            then scores the finished 13-man roster with the category-win model (<code>{optimizerVersion ?? OPTIMIZER_VERSION_FALLBACK}</code>{optimizerVersion ? ", per the latest draft simulation run" : ""}).
           </li>
           <li>
             <b>Availability</b>: a player&apos;s draft position ~ Normal(ADP, sd) with sd growing with ADP (2.5 + 0.18·ADP);
@@ -200,9 +203,11 @@ export default function HowItWorks() {
             Use the tools for <b>relative</b> comparisons: candidate A vs B, add vs drop, which categories to chase.
           </li>
           <li>
-            <b>Uncalibrated priors</b>: game-to-game variance, ADP spread, season-level error, injury-spell structure and
-            streaming recovery are informed guesses until backtesting (T-010) and calibration (T-016). P(title) moves ±4–7 pts
-            with them; P(playoffs) is robust.
+            <b>Game-to-game variance is fitted</b> (var = a·m + b·m² per stat, on 2010–24 box scores) and beats the old
+            constant-CV model out of sample on every stat; weekly variance is still under-stated by up to 46% for FGA, PTS,
+            FGM and REB at 24–30 mpg (docs/research/sim_calibration.md, section 8).{" "}
+            <b>Uncalibrated priors</b>: ADP spread, season-level error, injury-spell structure and streaming recovery are informed guesses until
+            backtesting (T-010) and calibration (T-016). P(title) moves ±4–7 pts with them; P(playoffs) is robust.
           </li>
           <li>
             Weekly variance ignores schedule variance and category correlation, so single-week win probabilities are

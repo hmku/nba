@@ -10,25 +10,38 @@ a raw stat in one game is a function of his per-game mean m,
     var(stat, m) = a_stat * m + b_stat * m^2      (clipped at 0)
 
 fitted by least squares on 2,451 rostered player-seasons (>= 24 mpg, >= 30 games, 2010-11..2023-24 box
-scores). b is ~0, so the variance is close to proportional to the mean (over-dispersed Poisson; FTA ~2.2
-because free throws come in pairs), not to the mean squared. Out of sample it beats the constant-CV model it
-replaced on every stat (higher game-level log-likelihood, weekly variance calibrated across minutes tiers).
+scores). The linear term dominates (over-dispersed Poisson; FTA's a is ~2.2 because free throws come in pairs), so
+the variance grows roughly with the mean, not with the mean squared. b is small per unit but NOT negligible at
+star volume: for pts at m = 32, a*m = 107 and b*m^2 = -29, so the variance is 78 (-27%). Out of sample, b adds
+little likelihood over a*m alone (<= 0.009 per game, every stat, both splits).
+
+Out of sample (docs/research/noise_oos_2026-10-19.py, sim_calibration.md section 8) it beats the constant-CV
+model it replaced on game-level log-likelihood for every stat in both splits. Weekly variance is NOT fully
+calibrated: mean weekly z^2 at 24-30 mpg is FGA 1.33 / 1.46 (split A / B), PTS 1.21 / 1.23, FGM 1.14 / 1.23,
+REB 1.05 / 1.23: the model under-states weekly variance of those stats by 14-46% in that tier (REB split A
+5%); the other stats are at 0.87-1.16, and the under-statement is larger at 15-24 mpg.
 The constant-CV models (GAME_CV_PRIOR, GAME_CV_FITTED, GAME_CV_POOLED) were deleted in noise-var-1.0;
 git history keeps them.
 
 Applied to *effective* per-scheduled-game lines (availability-blended, fantasy.model.lines.effective_lines),
-the linear term gives a * (avail * m) = avail * var(m): exactly the variance of a player who plays a share
-`avail` of the games. (The b * m^2 term is negligible; Bernoulli games-played variance is not modelled here.)
+the linear term gives a * (avail * m) = avail * a * m: exactly that term's variance for a player who plays a
+share `avail` of the games. The b * m^2 term evaluated at avail * m is not exact (it is scaled by avail^2, not
+avail), and Bernoulli games-played variance is not modelled here.
 
 Weekly aggregation: a team's weekly variance is the sum over its players of games * var(stat, m) (players
-independent). Within-game correlation across stats (sim.calibration.NOISE_CORR) is a simulator-only feature:
-the draft objective, expected category wins, is a sum of per-category marginal probabilities, so cross-stat
-correlation does not change it.
+independent). Within-game correlation across stats (sim.calibration.NOISE_CORR) is a simulator-only feature.
+It does not change expected category wins (the default draft objective), which is a sum of per-category
+marginal probabilities. It WOULD change catmodel.matchup_win_prob (P(more category wins than losses)), which
+assumes independent categories: the matchup win % the optimizer reports, and its objective="matchup" mode,
+ignore cross-category correlation.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
+import pandas as pd
 
 from fantasy.model.lines import STATS
 
@@ -78,4 +91,18 @@ def ratio_var(makes: np.ndarray, attempts: np.ndarray, p_ref: np.ndarray | float
     a = np.asarray(attempts, dtype=float)
     with np.errstate(divide="ignore", invalid="ignore"):
         p = np.where(a > 0, m / np.where(a > 0, a, 1.0), p_ref)
-    return a * p * (1 - p) + game_var(den, a) * (p - p_ref) ** 2
+    # clipped at 0: makes > attempts (p > 1, a bad projection row) would otherwise give a negative variance
+    return np.maximum(a * p * (1 - p) + game_var(den, a) * (p - p_ref) ** 2, 0.0)
+
+
+def check_finite(lines: pd.DataFrame, stats: Iterable[str], where: str) -> None:
+    """Raise ValueError naming the first player and stat whose value is NaN or +/-inf."""
+    cols = list(stats)
+    vals = lines[cols].to_numpy(dtype=float)
+    bad = ~np.isfinite(vals)
+    if bad.any():
+        i, j = np.argwhere(bad)[0]
+        raise ValueError(
+            f"{where}: non-finite projection for player {lines.index[i]!r}, stat {cols[j]!r} "
+            f"({vals[i, j]}); {int(bad.sum())} bad value(s) in total. Fix the projections before valuing."
+        )

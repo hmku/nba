@@ -10,8 +10,9 @@ Expected category wins = sum of P(win cat); matchup win prob = P(#wins > #losses
 Poisson-binomial distribution (categories treated as independent).
 
 Per-game variances come from the one game-noise model, fantasy.model.noise (var = a*m + b*m^2 per stat).
-Within-game cross-stat correlation is left to the season simulator: expected category wins is a sum of
-per-category marginals, which correlation does not change.
+Within-game cross-stat correlation is left to the season simulator. It does not change expected category wins
+(a sum of per-category marginals), but matchup_win_prob assumes independent categories, so correlated
+categories (e.g. PTS/FGM/FGA, or REB/BLK) would change it; the matchup win % here ignores that.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from scipy.stats import norm
 
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import GAMES_PER_WEEK, STATS
-from fantasy.model.noise import game_var_matrix, ratio_var
+from fantasy.model.noise import check_finite, game_var_matrix, ratio_var
 
 STAT_IDX = {s: i for i, s in enumerate(STATS)}
 USAGE = 0.85  # share of rostered players' games that make it into active lineups
@@ -44,6 +45,7 @@ class PlayerArrays:
 
 
 def build_arrays(lines: pd.DataFrame, settings: LeagueSettings) -> PlayerArrays:
+    check_finite(lines, STATS, "catmodel.build_arrays")
     S = lines[STATS].to_numpy(dtype=float)
     V = game_var_matrix(S)  # per-game variance, fantasy.model.noise
     ratio_cats = [c for c in settings.cats if c.kind == "ratio"]

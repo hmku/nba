@@ -321,16 +321,31 @@ minutes tier (1 = calibrated; > 1 = variance under-stated). Split A:
 
 What the table shows:
 - **The variance function wins on every stat, in both splits.** Split B: ΔLL vf−cv runs from +0.17 (STL) to
-  +0.75 (AST), every SE ≤ 0.03.
+  +0.75 (AST), every SE ≤ 0.031 (max 0.0304, split B).
 - **The gain is largest for 15-24 mpg players**, the streamers and bench players the old CV mishandled. The vf
   gain is still positive for 30+ mpg stars.
-- **vf vs `lin`:** the quadratic term adds almost nothing (|Δ| ≤ 0.009 per game). It is kept because it is the
-  model the simulator has used since 0.4.0, and its coefficients are unchanged.
+- **vf vs `lin`:** the quadratic term adds little likelihood (|Δ| ≤ 0.009 per game, every stat, both splits). It
+  is kept because it is the model the simulator has used since 0.4.0, and its coefficients are unchanged. b is
+  not negligible at star volume, though: PTS at m = 32 has a·m = 107 and b·m² = −29, so var = 78 (−27%).
 - **The `cv` weekly z² is inflated by tiny-mean players** (the mean of per-week ratios).
-- **Ratio of summed variances, a less extreme view** (game level, split A; scratchpad `calib/noise_tier.py`, not committed):
+- **Ratio of summed variances, a less extreme view** (game level, split A; script `docs/research/noise_tier_2026-10-19.py`):
   - the constant CV under-states variance by ×1.5-2.8 at 15-24 mpg and by ×0.9-1.6 at 24-30 mpg;
   - it over-states it by ~25% for 30+ mpg stars (ratio 0.69-0.98);
-  - vf is within ±7% at 24-30 and 30+ (REB 30+ 0.89).
+  - vf is within ±7% at 24-30 and 30+ (REB 30+ 0.89) **at game level**.
+- **Weekly variance is not calibrated at 24-30 mpg.** The weekly mean z² of vf (the table above, and split B) is:
+
+  | stat | split A | split B |
+  |---|---|---|
+  | FGA | 1.33 | 1.46 |
+  | PTS | 1.21 | 1.23 |
+  | FGM | 1.14 | 1.23 |
+  | REB | 1.05 | 1.23 |
+
+  So the model under-states those stats' weekly variance by 14-46% in that tier (REB split A only 5%); the other stats are at 0.87-1.16
+  (split B 3PM 0.87, AST 1.16). The game-level ratio is near 1 while weekly z² is not. A likely cause (a guess, not
+  tested) is within-week dependence: minutes/role swings that persist across a week's games, which a per-game
+  model summed over independent games does not capture. Also, the mean of per-week z² weights player-weeks
+  equally, whereas the ratio pools variance. At 30+ mpg weekly z² is 0.93-1.11 (A) and 0.89-1.06 (B).
 - **Remaining miss:** at 15-24 mpg vf under-states FGA by ×1.40, PTS ×1.23, REB ×1.23 and FGM ×1.18. That is
   minutes volatility for bench players.
   - Refitting on ≥ 15 mpg would fix it (×1.1-1.2) but worsens 30+ REB (0.84).

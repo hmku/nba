@@ -47,13 +47,15 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
   const view: View = rawView === "model" || rawView === "how" ? rawView : "room";
   const db = anonClient();
 
-  if (view === "how")
+  if (view === "how") {
+    const d = await latestSimRuns(db, "draft_sim", 1);
     return (
       <>
         <SubTabs view={view} id={id} />
-        <HowItWorks />
+        <HowItWorks optimizerVersion={d.runs[0]?.model_version ?? null} />
       </>
     );
+  }
 
   if (view === "model") {
     const [d, s] = await Promise.all([latestSimRuns(db, "draft_sim", 1), latestSimRuns(db, "season_sim", 20)]);

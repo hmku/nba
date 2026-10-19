@@ -66,6 +66,38 @@ def test_ratio_var():
     assert r[2] == 0.0
 
 
+def test_ratio_var_never_negative_when_makes_exceed_attempts():
+    # p = 1.5 > 1 would make the binomial term a*p*(1-p) negative; the result is clipped at 0
+    r = ratio_var(np.array([6.0, 30.0]), np.array([4.0, 4.0]), 0.99, "fta")
+    assert np.all(r >= 0.0) and np.all(np.isfinite(r))
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_build_arrays_rejects_non_finite_projection(proj_path, bad):
+    s = LeagueSettings()
+    eff = effective_lines(load_projections(proj_path).df, None)
+    pid = eff.index[3]
+    eff.loc[pid, "reb"] = bad
+    with pytest.raises(ValueError, match=rf"catmodel.build_arrays.*{re.escape(repr(pid))}.*'reb'"):
+        build_arrays(eff, s)
+
+
+@pytest.mark.parametrize("stat", ["fta", "blk"])  # a ratio-category denominator and a count category
+def test_cat_scores_rejects_non_finite_projection(proj_path, stat):
+    s = LeagueSettings()
+    eff = effective_lines(load_projections(proj_path).df, None)
+    pid = eff.index[7]
+    eff.loc[pid, stat] = np.nan
+    with pytest.raises(ValueError, match=rf"valuation._cat_scores.*{re.escape(repr(pid))}.*'{stat}'"):
+        _cat_scores(eff, eff.index[:120], s, kappa=1.0)
+
+
+def test_finite_checks_pass_on_valid_projections(proj_path):
+    s = LeagueSettings()
+    _, eff, _ = compute_values(load_projections(proj_path), s)
+    build_arrays(eff, s)  # does not raise
+
+
 # ---------------------------------------------------------------- every consumer uses it
 def test_no_constant_cv_path_left_in_src():
     src = Path(fantasy.__file__).resolve().parent

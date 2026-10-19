@@ -33,7 +33,7 @@ from fantasy.model.lines import (
     availability,
     effective_lines,
 )
-from fantasy.model.noise import NOISE_MODEL_VERSION, game_var, ratio_var
+from fantasy.model.noise import NOISE_MODEL_VERSION, check_finite, game_var, ratio_var
 from fantasy.ops.common import git_sha  # noqa: F401  (re-exported: draft.store, sim.persist, ...)
 
 # 0.2.0: availability = fitted gp (projections baseline-0.2.0) with optional gp risk penalty and a
@@ -67,6 +67,8 @@ class ValuationParams:
 def _cat_scores(
     eff: pd.DataFrame, pool: pd.Index, settings: LeagueSettings, kappa: float
 ) -> pd.DataFrame:
+    used = [s for c in settings.cats for s in ((c.stat,) if c.kind == "count" else (c.num, c.den)) if s]
+    check_finite(eff, dict.fromkeys(used), "valuation._cat_scores")
     out = {}
     for c in settings.cats:
         if c.kind == "count":
