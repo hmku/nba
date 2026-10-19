@@ -24,6 +24,8 @@ Ablation arms (lead/user request, 2026-10-19; which component of the optimizer l
                (fantasy.draft.room_sim; sym/symbpa -> room "sym", mixed -> "mixed", adp -> "adp")
   opt_sim_matchup  opt_sim with the matchup objective
   vs_sim       value search re-ranking the candidates of opt_sim (instead of the default optimizer's)
+  opt_sim_skip / opt_sim_plan / vs_sim_skip / vs_sim_plan   opt_sim / vs_sim with OptimizerParams.room_self =
+               skip | plan (the simulated me does not pre-commit the best-value player at my own picks)
 Each league is graded under truth `ours` (the drafting projections), `market`
 (fantasy.sim.market_truth.market_implied_projections) and `mid` (their 50/50 blend_projections).
 
@@ -54,7 +56,7 @@ from fantasy.draft.policy import (
     need_row,
 )
 
-EVAL_VERSION = "policy-eval-0.2.0"  # 0.2.0: ablation arms greedycat / opt_oracle / opt_matchup
+EVAL_VERSION = "policy-eval-0.2.0"  # 0.2.0: ablation arms greedycat / opt_oracle / opt_matchup (+ room_self arms)
 # policy spec name -> (policy name, margin, eps)
 SPECS: dict[str, tuple[str, float, float]] = {
     "optimizer": ("optimizer", 0.0, 0.0),
@@ -72,7 +74,14 @@ SPECS: dict[str, tuple[str, float, float]] = {
     "opt_sim": ("opt_sim", 0.0, 0.0),
     "opt_sim_matchup": ("opt_sim_matchup", 0.0, 0.0),
     "vs_sim": ("vs_sim", 0.0, 0.0),
+    # room-sim self-pick correction (OptimizerParams.room_self; draft_policy.md "Room-sim self-pick correction")
+    "opt_sim_skip": ("opt_sim_skip", 0.0, 0.0),
+    "opt_sim_plan": ("opt_sim_plan", 0.0, 0.0),
+    "vs_sim_skip": ("vs_sim_skip", 0.0, 0.0),
+    "vs_sim_plan": ("vs_sim_plan", 0.0, 0.0),
 }
+SIM_OPTS = ("opt_sim", "opt_sim_matchup", "opt_sim_skip", "opt_sim_plan")
+VS_SIM = {"vs_sim": "opt_sim", "vs_sim_skip": "opt_sim_skip", "vs_sim_plan": "opt_sim_plan"}
 N_SHARP = 3
 TRUTHS = ("ours", "market", "mid")  # mid = 50/50 ours / market-implied stat lines
 _E: dict = {}
@@ -90,10 +99,10 @@ class MyPolicy:
         self.params = PolicyParams(name=name, margin=margin, eps=eps)
         self.log: list[dict] = []
         self.vsp = None
-        if spec in ("value_search", "vs_sim"):
+        if spec == "value_search" or spec in VS_SIM:
             from fantasy.valuesearch.search import SearchParams, ValueSearchPolicy
 
-            op = self._sim_opt("opt_sim").params if spec == "vs_sim" else opts["params"]
+            op = self._sim_opt(VS_SIM[spec]).params if spec in VS_SIM else opts["params"]
             self.vsp = ValueSearchPolicy(vs, SearchParams(seed=seed), opt_params=op)
 
     def _sim_opt(self, name: str) -> DraftOptimizer:
@@ -102,8 +111,9 @@ class MyPolicy:
         if which not in self.opts:
             room = {"symbpa": "sym"}.get(self.regime, self.regime)
             prm = self.opts["params"]
+            room_self = {"opt_sim_skip": "skip", "opt_sim_plan": "plan"}.get(name, "best")
             self.opts[which] = DraftOptimizer(self.ctx, OptimizerParams(
-                strategy=prm.strategy, availability="sim", room=room,
+                strategy=prm.strategy, availability="sim", room=room, room_self=room_self,
                 objective="matchup" if name == "opt_sim_matchup" else prm.objective))
         return self.opts[which]
 
@@ -124,17 +134,17 @@ class MyPolicy:
             self.log.append({"pick": overall, "chosen": ctx.ids[row], "bpa": bpa, "opt": None, "planned_next": None,
                              "planned_next_pick": None, "score_gain_opt_vs_bpa": None, "strategy": "greedycat"})
             return row
-        if name in ("opt_oracle", "opt_matchup", "opt_sim", "opt_sim_matchup"):
+        if name in ("opt_oracle", "opt_matchup", *SIM_OPTS):
             which = {"opt_oracle": f"opt_oracle:{self.regime}", "opt_matchup": name}.get(name, f"{name}:{self.regime}")
-            if name in ("opt_sim", "opt_sim_matchup"):
+            if name in SIM_OPTS:
                 self._sim_opt(name)
             rec = self._rec(which, taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
-        elif name in ("value_search", "vs_sim"):
+        elif name == "value_search" or name in VS_SIM:
             row = self.vsp.pick(board, overall, slot)
-            if name == "vs_sim":
-                self._sim_opt("opt_sim")
-            rec = self._rec("opt" if name == "value_search" else f"opt_sim:{self.regime}", taken, slot)
+            if name in VS_SIM:
+                self._sim_opt(VS_SIM[name])
+            rec = self._rec("opt" if name == "value_search" else f"{VS_SIM[name]}:{self.regime}", taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
             d["player_id"] = ctx.ids[row]
         elif name in ("bpa", "bpa_need"):  # noqa: SIM114

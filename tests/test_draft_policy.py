@@ -234,6 +234,48 @@ def test_room_sim_adp_ranks_not_positions(ctx):
     assert float(t[24][top].sum()) == pytest.approx(40 - 23 + float((1 - t[24])[np.argsort(ctx.market_rank)[40:]].sum()), abs=1e-6)
 
 
+def test_room_sim_self_pick_modes(ctx):
+    """room_self research option: "skip" removes nobody at my picks, "plan" removes the planned row at my later
+    picks; the default ("best") is the same table as before."""
+    from fantasy.draft.room_sim import simulate_availability
+
+    av = np.ones(len(ctx.ids), dtype=bool)
+    slots = [pk.slot for pk in ctx.order]
+
+    def sim(**kw):
+        return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, av, slots, 1, [1, 24, 36], 1,
+                                     room="mixed", n_sims=200, **kw)
+
+    base, best, skip = sim(), sim(self_pick="best"), sim(self_pick="skip")
+    assert all(np.array_equal(base[p], best[p]) for p in base)
+    # a sleeper: our best value, market #100 -> the default's simulated me takes him at my own #1 in every run
+    sleeper = int(np.argsort(ctx.market_rank)[99])
+    val = ctx.value.copy()
+    val[sleeper] = val.max() + 1.0
+    adp = {m: simulate_availability(ctx.market_rank, ctx.sd_mult, val, av, slots, 1, [1, 24], 1, room="adp",
+                                    n_sims=200, self_pick=m) for m in ("best", "skip")}
+    assert adp["best"][24][sleeper] == 0.0 and adp["skip"][24][sleeper] > 0.9
+    assert (1 - skip[24]).sum() == pytest.approx(22, abs=1e-6)  # only the 22 opponent picks before #24
+    assert (1 - skip[36]).sum() == pytest.approx(33, abs=1e-6)
+    planned = int(np.argsort(ctx.market_rank)[60])  # a player the room rarely takes before #36
+    plan = sim(self_pick="plan", plan={24: planned})
+    assert np.array_equal(plan[24], skip[24])  # nothing of mine removed before #24
+    assert plan[36][planned] == 0.0 and (1 - plan[36]).sum() == pytest.approx(34, abs=1e-6)
+    with pytest.raises(ValueError):
+        sim(self_pick="bogus")
+
+
+def test_optimizer_room_self_option(ctx):
+    st = _state_at_24(ctx)
+    assert OptimizerParams().room_self == "best"
+    for mode in ("skip", "plan"):
+        rec = DraftOptimizer(ctx, OptimizerParams(strategy="balanced", room_self=mode, room_sims=100)).recommend(st)
+        assert rec["availability"] == f"sim:mixedx100:self={mode}"
+        assert rec["recommendations"][0]["player_id"] not in set(st.taken.values())
+    with pytest.raises(ValueError):
+        DraftOptimizer(ctx, OptimizerParams(room_self="bogus"))
+
+
 def test_optimizer_sim_availability_default_and_adp_reachable(ctx):
     st = _state_at_24(ctx)
     assert OptimizerParams().availability == "sim" and OptimizerParams().room == "mixed"  # default since 0.4.0
@@ -257,12 +299,13 @@ def test_harness_ablation_arms(ctx):
 
     room = sample_room_order(ctx, np.random.default_rng([1, 11]), 1.0)
     opts = {"params": BAL, "opt": DraftOptimizer(ctx, BAL)}
-    for spec in ("greedycat", "opt_sim", "opt_sim_matchup"):
+    for spec in ("greedycat", "opt_sim", "opt_sim_matchup", "opt_sim_skip"):
         pol = pe.MyPolicy(ctx, spec, opts, {}, regime="adp")
         board = run_draft(ctx, {1: pol, **{t: ADPPolicy(room) for t in range(2, 13)}})
         assert len(board.rosters[1]) == 13 and len(pol.log) == 13
     assert opts["opt_sim:adp"].params.availability == "sim" and opts["opt_sim:adp"].params.room == "adp"
     assert opts["opt_sim_matchup:adp"].params.objective == "matchup"
+    assert opts["opt_sim_skip:adp"].params.room_self == "skip" and opts["opt_sim:adp"].params.room_self == "best"
 
 
 def test_survival_table_and_oracle(ctx):

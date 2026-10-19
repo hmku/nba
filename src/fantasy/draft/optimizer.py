@@ -32,7 +32,7 @@ complementarity and positional feasibility.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 
 import numpy as np
@@ -85,6 +85,9 @@ class OptimizerParams:
     availability: str = "sim"
     room: str = "mixed"  # sim only: adp | mixed | sym
     room_sims: int = 300
+    # research option (docs/research/draft_policy.md, "Room-sim self-pick correction"): what the simulated me does
+    # at my own picks in the sim table: best (default, unchanged) | skip | plan (fantasy.draft.room_sim)
+    room_self: str = "best"
     # research options (docs/research/optimizer_placeholders.md); defaults keep optimizer-0.2.0 outputs identical
     filler: str = "market"  # market | board | available  (expected rollouts only)
     refine_passes: int = 0  # extra fixed-point passes with the previous pass's planned lines as filler
@@ -215,6 +218,8 @@ class DraftOptimizer:
         self.params = params or OptimizerParams()
         if self.params.availability not in ("adp", "sim"):
             raise ValueError(f"unknown availability model {self.params.availability!r} (adp | sim)")
+        if self.params.room_self not in ("best", "skip", "plan"):
+            raise ValueError(f"unknown room_self {self.params.room_self!r} (best | skip | plan)")
         self._table: dict[int, np.ndarray] | None = None  # sim availability for the board being scored
 
     def _pa(self, at_pick: int, current: int, idx: np.ndarray | None = None) -> np.ndarray:
@@ -228,13 +233,22 @@ class DraftOptimizer:
         return prob_available(at_pick, current, ctx.market_rank[idx], ctx.sd_mult[idx])
 
     def _sim_table(self, available: np.ndarray, current: int, targets: list[int], my_slot: int,
-                   skip_my_current: bool = False) -> dict[int, np.ndarray]:
+                   skip_my_current: bool = False, state: DraftState | None = None) -> dict[int, np.ndarray]:
         from fantasy.draft.room_sim import simulate_availability
 
         ctx, prm = self.ctx, self.params
+        if prm.room_self == "best":
+            return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, available,
+                                         [pk.slot for pk in ctx.order], current, targets, my_slot,
+                                         room=prm.room, n_sims=prm.room_sims, skip_my_current=skip_my_current)
+        plan = None
+        if prm.room_self == "plan" and state is not None:  # first pass with "skip" -> the top candidate's plan
+            first = DraftOptimizer(ctx, replace(prm, room_self="skip")).recommend(state)
+            plan = {pp["pick"]: ctx.pos[pp["player_id"]] for pp in first["planned_picks"]}
         return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, available,
                                      [pk.slot for pk in ctx.order], current, targets, my_slot,
-                                     room=prm.room, n_sims=prm.room_sims, skip_my_current=skip_my_current)
+                                     room=prm.room, n_sims=prm.room_sims, skip_my_current=skip_my_current,
+                                     self_pick=prm.room_self, plan=plan)
         self._filler_cache: dict[tuple, dict[int, Line]] = {}
 
     # ------------------------------------------------------------------ helpers
@@ -428,7 +442,7 @@ class DraftOptimizer:
                     "roster": self._roster_payload(state, my_all), "generated_at": _now()}
 
         decision_pick, later = future[0], future[1:]
-        self._table = (self._sim_table(available, current, future, state.my_slot)
+        self._table = (self._sim_table(available, current, future, state.my_slot, state=state)
                        if prm.availability == "sim" else None)
         # candidates: best by value + best by market among available
         avail_idx = np.flatnonzero(available)
@@ -484,7 +498,7 @@ class DraftOptimizer:
         # "if I pass on him now, is he there at my next pick?" from a table that skips my own current pick
         # (same seeds). Decision path, scores and ranking are unchanged.
         disp = self._table
-        if self._table is not None and my_turn and next_pick:
+        if self._table is not None and my_turn and next_pick and prm.room_self == "best":  # non-best: already skips
             disp = self._sim_table(available, current, future, state.my_slot, skip_my_current=True)
 
         def pa_disp(at: int, c: int) -> float:
@@ -542,7 +556,8 @@ class DraftOptimizer:
             "objective": prm.objective,
             "optimizer_version": OPTIMIZER_VERSION,
             "rollout_mode": prm.rollout_mode,
-            "availability": prm.availability if prm.availability == "adp" else f"sim:{prm.room}x{prm.room_sims}",
+            "availability": prm.availability if prm.availability == "adp" else f"sim:{prm.room}x{prm.room_sims}"
+                            + ("" if prm.room_self == "best" else f":self={prm.room_self}"),
             "recommendations": recs,
             "strategy": {"name": chosen, "punt": strategies[chosen],
                          "notes": _strategy_note(chosen, strat_results), "scan": strat_results},

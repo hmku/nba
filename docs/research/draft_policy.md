@@ -33,6 +33,11 @@ sample sizes and paired standard errors in every table) unless labelled prior/gu
   rule; #24 changes: default optimizer Kawhi Leonard → recommended config Bam Adebayo** (BPA by value: Kon
   Knueppel). Details §8.
 
+- **Room-sim self-pick correction (§11, 2026-10-19): not adopted.** Letting the simulated me skip its own
+  current pick (`room_self="skip"`) or take the rollout's planned player (`"plan"`) instead of pre-committing the
+  best-value player is not better in W_mixed/truth ours for vs_sim (skip −0.3 pp P(playoffs), z −2.0 with
+  value-model-0.1.0, a tie with 0.2.0; plan a tie under both); the options remain opt-in for research.
+
 ## 1. Code version and inputs
 Graded on main at `4716e7b` + this note's commit (room model incl. the fitted sharp-drafter market lean) (numerically identical to `b7faa1b`, checked: same optimizer payloads at
 6 boards and bit-identical season-sim grades): **valuation-0.3.0, optimizer-0.3.0 default path (0.3.1 adds the
@@ -334,3 +339,94 @@ python -m fantasy.draft.policy_eval summary --out res.jsonl
 ```
 Scratch analysis scripts (tables, fidelity, proxies, mechanism) were kept in the session scratchpad; the paired
 tables are `summary` output plus the vs-optimizer column.
+
+## 11. Room-sim self-pick correction (2026-10-19)
+_Research agent, 2026-10-19. Opt-in code only; **no default changed**. All numbers are **fitted by simulation**
+(paired policy-eval harness, graded by the full season simulator, 400 seasons per league; method as §2)._
+
+**The quirk (review finding).** In `room_sim.simulate_availability` the simulated me takes the best-value
+player at *every* one of my picks, including the current one. When I am on the clock this removes the
+top-value player in all 300 simulated rooms, so he gets P(available) = 0 at every later pick, whichever
+candidate the optimizer is scoring (e.g. scoring "take Bam now" assumes Kon Knueppel cannot be there at #36).
+At my intermediate picks the table also removes the best-value player while the rollout separately discounts
+its own planned pick (`not_mine`), so one of my picks is counted twice. (The displayed `prob_available_next`
+was fixed separately in 4940316 — display only; this section is about the *decision* table.)
+
+**Opt-in corrections** (`OptimizerParams(room_self=...)`, `simulate_availability(self_pick=...)`; policy-eval
+arms `opt_sim_skip|plan`, `vs_sim_skip|plan`):
+- `best` — default, byte-identical (8 boards' full payloads compared with `origin/main`).
+- `skip` — my picks remove nobody: the table is P(not taken by an *opponent*); the rollout owns all of my picks.
+- `plan` — skip at the decision pick; at my later picks remove the rollout's planned player (plan of the top
+  candidate from a first `skip` pass; falls back to best value in runs where he is already gone). ≈2× compute.
+
+**Results, truth `ours`, slot 1** (Δ = corrected − uncorrected in pp, paired SE, z). Main runs: value model
+`value-model-0.1.0` (frozen copy of `862cc74` + this change), seeds 0–199 (W_mixed) / 0–149 (W_adp, W_sym).
+
+| world (n) | arm | baseline P(po) / P(title) | ΔP(playoffs) skip | ΔP(title) skip | ΔP(playoffs) plan | ΔP(title) plan |
+|---|---|---|---|---|---|---|
+| **W_mixed (200)** | **vs_sim (default)** | 0.896 / 0.310 | **−0.34 ± 0.17 (−2.0)** | −0.06 ± 0.27 (−0.2) | −0.02 ± 0.14 (−0.1) | −0.22 ± 0.22 (−1.0) |
+| W_mixed (200) | opt_sim (fallback) | 0.899 / 0.294 | −0.98 ± 0.19 (−5.1) | +0.68 ± 0.29 (+2.3) | −0.51 ± 0.16 (−3.3) | +0.24 ± 0.25 (+1.0) |
+| W_adp (150) | vs_sim | 0.939 / 0.412 | −0.18 ± 0.14 (−1.3) | +0.41 ± 0.30 (+1.4) | −0.02 ± 0.13 (−0.1) | −0.17 ± 0.27 (−0.6) |
+| W_adp (150) | opt_sim | 0.936 / 0.399 | −0.12 ± 0.15 (−0.8) | +1.50 ± 0.35 (+4.4) | −0.06 ± 0.14 (−0.4) | +0.25 ± 0.29 (+0.9) |
+| W_sym (150) | vs_sim | 0.759 / 0.225 | +0.13 ± 0.27 (+0.5) | −0.17 ± 0.25 (−0.7) | +0.29 ± 0.30 (+1.0) | −0.41 ± 0.23 (−1.8) |
+| W_sym (150) | opt_sim | 0.775 / 0.219 | −0.38 ± 0.27 (−1.4) | −0.23 ± 0.23 (−1.0) | −0.34 ± 0.23 (−1.5) | −0.03 ± 0.23 (−0.1) |
+| **W_mixed (150), value-model-0.2.0** (current default artifact, main at `7f4bd68`) | **vs_sim (default)** | 0.902 / 0.322 | +0.04 ± 0.19 (+0.2) | +0.35 ± 0.28 (+1.3) | −0.11 ± 0.15 (−0.8) | +0.05 ± 0.25 (+0.2) |
+
+With value-model-0.2.0 (W_mixed, n = 150): truth mid skip +0.2 / +0.4 pp, plan −0.2 / +0.0; truth market skip
++0.4 / +0.5 pp (z 1.3 / 1.8), plan −0.1 / +0.0. Any different pick: skip 129/150, plan 114/150; pick #1 0/150.
+
+Robustness truths (Δ pp, P(playoffs) / P(title); z in parentheses where |z| ≥ 2):
+
+| world | vs_sim skip: mid | market | vs_sim plan: mid | market | opt_sim skip: mid | market | opt_sim plan: mid | market |
+|---|---|---|---|---|---|---|---|---|
+| W_mixed | −0.2 / +0.1 | +0.1 / +0.4 (2.0) | −0.1 / −0.4 | +0.1 / −0.4 (−2.0) | −0.4 / +1.3 (5.1) | +0.7 (2.4) / +1.7 (7.8) | −0.2 / +0.5 (2.5) | +0.2 / +0.8 (4.3) |
+| W_adp | −0.0 / +0.8 (2.6) | +0.6 (2.4) / +1.3 (4.7) | +0.0 / +0.1 | +0.1 / +0.3 | +0.5 (2.4) / +1.9 (6.0) | +1.7 (5.6) / +2.5 (8.9) | +0.2 / +0.5 (2.1) | +1.0 (4.1) / +0.9 (4.0) |
+| W_sym | +0.3 / +0.1 | +0.6 / +0.0 | +0.4 / +0.1 | +0.6 / −0.2 | +0.0 / +0.2 | +0.4 / +0.2 | +0.0 / +0.3 | +0.3 / +0.4 |
+
+**How often the pick changes.** Pick #1 never changes (0 of 500 paired drafts for every arm pair: Jokić
+dominates). The drafts are identical until my first differing pick, so the first divergence is the first board
+on which the corrected optimizer changes my pick:
+
+| pair | drafts with any different pick (mixed / adp / sym) | first divergence at #24 / #36–37 / later (W_mixed) |
+|---|---|---|
+| vs_sim skip vs vs_sim | 181/200 · 141/150 · 123/150 | 64 / 58 / 59 |
+| vs_sim plan vs vs_sim | 163/200 · 129/150 · 125/150 | 16 / 62 / 85 |
+| opt_sim skip vs opt_sim | 198/200 · 150/150 · 142/150 | 139 / 32 / 27 |
+| opt_sim plan vs opt_sim | 185/200 · 148/150 · 138/150 | 46 / 65 / 74 |
+
+On the deterministic market-order board (§8 style, opt_sim balanced): #24 Bam Adebayo → **Kawhi Leonard** under
+`skip` (the old default's reach) and Bam Adebayo under `plan`; #36 Derrick White → Desmond Bane (`skip`) / Derrick
+White (`plan`).
+
+**Mechanism.** With the top-value player no longer pre-committed, the optimizer believes he will often last
+(e.g. Kon Knueppel P(available at #36) 0 → 0.73 on the #24 board), so it takes a category-fit player now and
+plans to collect the value player later — i.e. it reaches more. In W_mixed (value-model-0.1.0) that costs value (value sum −0.10 ±
+0.05 for both `skip` arms; cat-model expected cat wins −0.011 ± 0.004 for opt_sim) and P(playoffs), and it buys
+P(title) and market-truth robustness — the same trade-off as the old default's reaches (§3, §5). With value-model-0.2.0 re-ranking the candidates the cost disappears (value sum +0.05 ± 0.06) — and so does any gain. The quirk was
+effectively a mild BPA-lean regulariser on an objective (expected cat wins) that tracks P(playoffs) less well
+than the value sum (§6). `plan` removes the double count without the over-optimism of `skip`, and lands within
+noise of the uncorrected table for vs_sim everywhere.
+
+**Recommendation: do not adopt; keep `room_self="best"` (default).** The user's rule is "adopt only if not
+worse, and better where it matters". In the cell that matters (W_mixed, truth `ours`, the recommended vs_sim):
+with value-model-0.1.0 `skip` is worse on P(playoffs) (−0.34 pp, z −2.0) with no P(title) gain; with the current
+default value-model-0.2.0 it is a tie (+0.04 / +0.35 pp, z 0.2 / 1.3). `plan` is a tie under both (|z| ≤ 1),
+at 2× compute. Neither is *better* where it matters, and the sign of `skip` flips with the value model. For the opt_sim fallback, `skip` trades −1.0 pp
+P(playoffs) (z −5.1) for +0.7 pp P(title) (z 2.3) — fails "not worse". The corrections' gains appear mainly
+under market truth (a stress test, §9) and in the casual W_adp room. The user-visible symptom (P = 0 shown for the
+top player) is already handled by the display-only fix. The options stay in the code for research.
+
+**Limitations.** Slot 1 only; balanced strategy (as §2); the main vs_sim runs used `value-model-0.1.0` (0.2.0
+became the default artifact during this work — the 0.2.0 recheck, vs_sim arms only, is the last row of the table);
+`plan` uses the top candidate's plan for every candidate's table (a per-candidate table would cost ~15× more).
+
+Reproduce (frozen copy of `src/` + `data/`):
+```bash
+export PYTHONPATH=src OMP_NUM_THREADS=1
+P=vs_sim,vs_sim_skip,vs_sim_plan,opt_sim,opt_sim_skip,opt_sim_plan
+VM="--value-model data/models/value_search/value-model-0.1.0.npz --opt-strategy balanced --workers 2"
+python -m fantasy.draft.policy_eval run --seeds 0:200 --slots 1 --regimes mixed --policies $P $VM --out mixed.jsonl
+python -m fantasy.draft.policy_eval run --seeds 0:150 --slots 1 --regimes adp,sym --policies $P $VM --out adpsym.jsonl
+python -m fantasy.draft.policy_eval run --seeds 0:150 --slots 1 --regimes mixed --policies vs_sim,vs_sim_skip,vs_sim_plan \
+  --value-model data/models/value_search/value-model-0.2.0.npz --opt-strategy balanced --workers 2 --out mixed_vm2.jsonl
+```

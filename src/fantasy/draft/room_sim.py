@@ -20,6 +20,16 @@ Room models (the same worlds the policy harness `fantasy.draft.policy_eval` grad
   mixed  N_SHARP sharp opponents on random seats, the rest noisy ADP (the user's description of the league).
 At my own picks the simulated me takes the best available by our value (so the number of players gone by
 each pick is right; the optimizer's rollouts separately discount the specific players I plan to take).
+
+`self_pick` (research option, `OptimizerParams(room_self=...)`; docs/research/draft_policy.md, "Room-sim self-pick
+correction"): the default "best" removes the best-value player at EVERY one of my picks, including the current
+one, so the top-value player gets P(available) = 0 at all later picks whichever candidate is being scored, and
+at my intermediate picks the table removes a player on top of the rollout's own discount (`not_mine`).
+  best  default (unchanged).
+  skip  my picks remove nobody: the table is P(not taken by an *opponent*); the rollout owns all of my picks.
+  plan  at my picks listed in `plan` (the picks after the decision) remove the planned row `plan[pick]` (from a
+        first "skip" pass of the optimizer), falling back to the best-value available player in runs where it is
+        gone; my other picks (the decision pick, or a planned row outside the simulated pool) remove nobody.
 """
 
 from __future__ import annotations
@@ -30,6 +40,7 @@ from scipy.special import ndtr, ndtri
 from fantasy.draft.availability import adp_sd
 
 ROOMS = ("adp", "mixed", "sym")
+SELF_PICKS = ("best", "skip", "plan")
 N_SHARP = 3
 # sharp view noise sd as a function of our value (fitted: sd of value(perturbed view) - value over 8 views,
 # by value band: 1.02 top-30, 0.84 30-80, 0.62 80-160, 0.44 160-300)
@@ -49,6 +60,7 @@ def simulate_availability(
     market_rank: np.ndarray, sd_mult: np.ndarray, value: np.ndarray, available: np.ndarray,
     order_slots: list[int], current: int, targets: list[int], my_slot: int, room: str = "mixed",
     n_sims: int = 300, seed: int = 0, n_sharp: int = N_SHARP, skip_my_current: bool = False,
+    self_pick: str = "best", plan: dict[int, int] | None = None,
 ) -> dict[int, np.ndarray]:
     """{pick p: P(row not taken by an opponent before p)} for every target pick p >= current.
 
@@ -58,6 +70,8 @@ def simulate_availability(
     (they do not depend on this flag or on `targets`); the optimizer's decision table keeps the default False."""
     if room not in ROOMS:
         raise ValueError(f"unknown room {room!r}; choose from {ROOMS}")
+    if self_pick not in SELF_PICKS:
+        raise ValueError(f"unknown self_pick {self_pick!r}; choose from {SELF_PICKS}")
     n = len(market_rank)
     out = {p: available.astype(float) for p in targets}
     later = [p for p in targets if p > current]
@@ -88,11 +102,21 @@ def simulate_availability(
     taken = np.zeros((n_sims, m), dtype=bool)
     lat_m = lat.copy()
     runs = np.arange(n_sims)
+    plan_rows = (plan or {}) if self_pick == "plan" else {}
     last = max(later)
     for k in range(current, last):
         if k in later:
             out[k][pool] = 1.0 - taken.mean(axis=0)
         slot = order_slots[k - 1]
+        if slot == my_slot and self_pick != "best":
+            hit = np.flatnonzero(pool == plan_rows.get(k, -1))  # "plan": the planned row, if simulated
+            if len(hit):  # my other picks (the decision pick; every pick under "skip") remove nobody
+                best = np.argmax(np.where(taken, -np.inf, value[pool][None, :]), axis=1)
+                pick = np.where(taken[:, hit[0]], best, hit[0])
+                taken[runs, pick] = True
+                lat_m[runs, pick] = np.inf
+                views[runs, :, pick] = -np.inf
+            continue
         if slot == my_slot:
             if skip_my_current and k == current:
                 continue
