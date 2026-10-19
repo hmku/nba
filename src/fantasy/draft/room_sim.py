@@ -48,11 +48,14 @@ def sharp_sd(value: np.ndarray) -> np.ndarray:
 def simulate_availability(
     market_rank: np.ndarray, sd_mult: np.ndarray, value: np.ndarray, available: np.ndarray,
     order_slots: list[int], current: int, targets: list[int], my_slot: int, room: str = "mixed",
-    n_sims: int = 300, seed: int = 0, n_sharp: int = N_SHARP,
+    n_sims: int = 300, seed: int = 0, n_sharp: int = N_SHARP, skip_my_current: bool = False,
 ) -> dict[int, np.ndarray]:
     """{pick p: P(row not taken by an opponent before p)} for every target pick p >= current.
 
-    `order_slots[k - 1]` is the slot on the clock at overall pick k; `available` marks rows on the board now."""
+    `order_slots[k - 1]` is the slot on the clock at overall pick k; `available` marks rows on the board now.
+    `skip_my_current=True` (display only): when the current pick is mine, the simulated me does not pick at it,
+    so the table answers "if I pass on this player now, is he still there at my next pick?". Same random draws
+    (they do not depend on this flag or on `targets`); the optimizer's decision table keeps the default False."""
     if room not in ROOMS:
         raise ValueError(f"unknown room {room!r}; choose from {ROOMS}")
     n = len(market_rank)
@@ -91,6 +94,8 @@ def simulate_availability(
             out[k][pool] = 1.0 - taken.mean(axis=0)
         slot = order_slots[k - 1]
         if slot == my_slot:
+            if skip_my_current and k == current:
+                continue
             pick = np.argmax(np.where(taken, -np.inf, value[pool][None, :]), axis=1)
             taken[runs, pick] = True
             lat_m[runs, pick] = np.inf

@@ -140,6 +140,9 @@ def _vs_latest_recommendation(
         warnings.append(f"Picks {gaps} not recorded — availability may be wrong; sync the board first.")
     if rec.get("for_pick") not in (None, overall):
         warnings.append(f"latest recommendation was for pick {rec.get('for_pick')}, not {overall}")
+    if rec and rec.get("as_of_pick") is not None and rec.get("as_of_pick") != max(taken, default=0):
+        warnings.append("latest recommendation is for an older board; re-run recommend "
+                        f"(recommendation as of pick {rec.get('as_of_pick')}, board at pick {max(taken, default=0)})")
     if rank_in_recs is None:
         warnings.append("chosen player is not in the latest recommendation list")
     return top, rank_in_recs, gaps, warnings

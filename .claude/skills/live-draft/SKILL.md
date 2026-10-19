@@ -78,6 +78,11 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
    - the player has fresh injury news (check the player card in the draft room) → note it, rerun excluding
      nobody — instead pick the next recommendation and record the disagreement;
    - top options are within ~0.03 score (model noise — treat as ties): prefer the one with *lower* `prob_available_next` (it won't come back).
+     **Back-to-back picks (36/37, 60/61, 84/85, 108/109, 132/133 for slot 1 under 3RR):** nobody picks in
+     between, so every candidate is available at the next pick (`prob_available_next` = 1.0 for all) and this
+     tie-break is irrelevant — take `recommendations[0]`.
+     (`prob_available_next` answers "if I pass on him now, is he there at my next pick?": it is computed with my
+     own current pick skipped. The ranking itself uses the optimizer's internal table, unchanged.)
 4. **Prepare (one call — logs decision vs model, plans txn, checks policy+lock, marks submitted):**
    `fantasy draft prepare-pick "<Name>" --overall N --rationale "<why>" --json`
    - `action: CLICK` (exit 0) → in the draft room search the exact name, check team/position match

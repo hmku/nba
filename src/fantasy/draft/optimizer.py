@@ -227,13 +227,14 @@ class DraftOptimizer:
             return prob_available(at_pick, current, ctx.market_rank, ctx.sd_mult)
         return prob_available(at_pick, current, ctx.market_rank[idx], ctx.sd_mult[idx])
 
-    def _sim_table(self, available: np.ndarray, current: int, targets: list[int], my_slot: int) -> dict[int, np.ndarray]:
+    def _sim_table(self, available: np.ndarray, current: int, targets: list[int], my_slot: int,
+                   skip_my_current: bool = False) -> dict[int, np.ndarray]:
         from fantasy.draft.room_sim import simulate_availability
 
         ctx, prm = self.ctx, self.params
         return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, available,
                                      [pk.slot for pk in ctx.order], current, targets, my_slot,
-                                     room=prm.room, n_sims=prm.room_sims)
+                                     room=prm.room, n_sims=prm.room_sims, skip_my_current=skip_my_current)
         self._filler_cache: dict[tuple, dict[int, Line]] = {}
 
     # ------------------------------------------------------------------ helpers
@@ -478,13 +479,26 @@ class DraftOptimizer:
         second_obj = rows[1]["obj"] if len(rows) > 1 else best_obj
         next_pick = later[0] if later else None
 
+        # Displayed availability. The decision table above lets the simulated me take the best-value player at
+        # my current pick (so he shows P = 0 at every later pick, even back-to-back); for display, answer
+        # "if I pass on him now, is he there at my next pick?" from a table that skips my own current pick
+        # (same seeds). Decision path, scores and ranking are unchanged.
+        disp = self._table
+        if self._table is not None and my_turn and next_pick:
+            disp = self._sim_table(available, current, future, state.my_slot, skip_my_current=True)
+
+        def pa_disp(at: int, c: int) -> float:
+            if disp is not None and at in disp:
+                return float(disp[at][c])
+            return float(self._pa(at, current, np.array([c]))[0])
+
         recs = []
         for r in rows:
             c = r["row"]
             pid = ctx.ids[c]
             v = ctx.values.loc[pid]
-            p_next = float(self._pa(next_pick, current, np.array([c]))[0]) if next_pick else 0.0
-            p_dec = float(self._pa(decision_pick, current, np.array([c]))[0])
+            p_next = pa_disp(next_pick, c) if next_pick else 0.0
+            p_dec = pa_disp(decision_pick, c)
             marginal = r["obj"] - (second_obj if r["obj"] == best_obj else best_obj)
             recs.append({
                 "player_id": pid,
