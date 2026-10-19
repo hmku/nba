@@ -38,3 +38,16 @@ Supabase REST publish (network secret) ; demo rows removed.
 - Blend adoption DONE + verified (Supabase: valuation-0.2.2 456 rows, draft_sim dsim-20261018222430-8e6d01, season_sim sim-20261018222640-4b5e92; tests green on main). Handoff docs/handoffs/2026-10-19-blend-adoption.md.
 - Container restart 22:30 killed local agents. Relaunched: tech-debt fixes (continues from worktree WIP 7e193ae "stored order"),
   draft-policy reproduction (resumed), sim calibration (had silently died ~19:36; relaunched from scratchpad/calib partial results).
+
+## Update 2026-10-19 ~03:30 UTC (user asleep; morning summary due)
+- Done on main: unified noise model (4bab13f, reviewed), noise doc fixes (1714ab9), review-2 fixes (1caefde),
+  draft-review fixes A1-A4/B1/B3/B5 (15e1f74, re-reviewed clean), REST ledger (f2f02ba), Muse intel (4989f44, verified live),
+  Supabase MCP pre-approved in .claude/settings.json (user request).
+- USER ACTION pending: run supabase/migrations/20261019120000_private_league_intel.sql in Supabase SQL editor
+  (MCP DROP statements time out - plugin's own confirmation). Then verify pg_policies.
+- Running: M1 manual-panel name resolution + minors (fix agent); draft-policy final (push ~10:00 UTC);
+  placeholder experiment; value-model grading.
+- Draft-policy INTERIM (W_mixed per user "Mixed", n=200 paired): default optimizer -2.6 pp P(playoffs) vs BPA (z -11);
+  culprit = analytic ADP availability model (availability="sim" closes the gap; GreedyCat ~ BPA so objective OK).
+  Best: `--search value --availability sim --room mixed`: +1.9 pp P(po), +1.4 pp P(title) vs default (z 8.7/4.7), >= BPA on title in every world, ~2 s.
+  Pick #24 changes Kawhi -> Bam Adebayo. NEEDS USER OK before 22:00 UTC freeze to make default.
