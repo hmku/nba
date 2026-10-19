@@ -6,7 +6,7 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
 ## Can do from your phone now
 - [x] **League settings screenshots** — received and recorded 2026-10-18 (`data/manual/league_settings.json`):
       categories, roster (3 IL, not 4), trades, waivers, playoffs (weeks 18-20, ending Sun Mar 21, 2027).
-  - [ ] **Draft order: user believes 1, 24, 36, 37, … is right (2026-10-18)** — laptop session still confirms on Yahoo before pick 1.
+  - [ ] **Draft order: user believes 1, 24, 36, 37, … is right (2026-10-18); Muse's read of Yahoo (2026-10-19 01:16 UTC) agrees: 3RR, slot 1** — laptop session still confirms on Yahoo before pick 1.
         Previously: — screenshot the Draft Order page if available (Yahoo → League →
         Draft Order / draft room), else it gets checked in the laptop session (draft-prep step 4). Confirm
         your picks are 1, 24, 36, 37, 60, 61, … (3rd-round reversal) and that you pick #1.
@@ -38,7 +38,7 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
        environment **Production**, mark Sensitive → Save.
 3. [x] (done 2026-10-18 23:3x UTC: Vercel upgraded to Pro, build deployed, `/api/agent/state` answers 401 without token) Tell Claude: **"trigger a dashboard build for the Muse token"** (Vercel's Redeploy button skips builds unless `web/` changed).
        Claude will confirm `https://fantasy.harrisonku.com/api/agent/state` answers 401 without the token instead of 503.
-4. [ ] Paste this to Muse (replace `<TOKEN>`; don't share the token anywhere else):
+4. [x] Paste this to Muse (replace `<TOKEN>`; don't share the token anywhere else):
 ```
 You're helping with my Yahoo fantasy basketball team. My Claude agents run the team; you are an observer.
 Read and follow https://fantasy.harrisonku.com/agent (instructions + API). Your API token is: <TOKEN>
@@ -57,7 +57,7 @@ Read and follow https://fantasy.harrisonku.com/agent (instructions + API). Your 
 - Never draft, add, drop, trade or change my lineup on Yahoo, never approve anything, and never post in the
   group chat for me, unless I explicitly ask you to in that moment.
 ```
-5. [ ] Ask Muse to send one test report (e.g. "chat_note: setup test"); check it appears on the dashboard's **Activity** tab
+5. [x] (2026-10-19 01:16 UTC: Muse wrote a settings snapshot, the round 1-3 draft order (3RR, slot 1) and an IL-rule report; verified in Supabase) Ask Muse to send one test report (e.g. "chat_note: setup test"); check it appears on the dashboard's **Activity** tab
        under "League intel from Muse".
        After the draft (once the `league_snapshots` migration is applied), ask Muse to do one read-only league check now;
        its snapshots (my roster, matchup, ...) appear on the **Activity** tab under "League intel".
