@@ -102,6 +102,11 @@ function Caveats() {
       </summary>
       <ul className="mt-1.5 space-y-1 text-[12.5px] leading-snug text-muted [&_li]:ml-4 [&_li]:list-disc">
         <li>
+          This range was computed on {optimism.source.date} ({shortSha}), before the ESPN blend, the calibrated
+          simulator, the unified noise model and tonight&apos;s draft policy (value search + simulated availability). It
+          has not been recomputed; the Model &amp; sims tab has the current-code projection.
+        </li>
+        <li>
           &quot;The market is right&quot; is built by rescaling each player&apos;s volume to match Yahoo ADP order; it keeps
           our category mix, percentages and games played, so even that scenario agrees with us on every player&apos;s
           category profile.
@@ -111,8 +116,8 @@ function Caveats() {
           moves the title odds by several points.
         </li>
         <li>
-          Every number comes from the season simulator, whose priors (game-to-game variance, injuries, streaming) are
-          uncalibrated. Neither our projections nor the market is the truth; the 50/50 blend is a convenience.
+          Every number comes from the season simulator. Its game-to-game noise and season-level projection error are
+          now fitted (docs/research/sim_calibration.md); streaming and opponent sharpness are still priors. Neither our projections nor the market is the truth; the 50/50 blend is a convenience.
         </li>
       </ul>
     </details>
