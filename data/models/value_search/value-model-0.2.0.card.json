@@ -1,0 +1,836 @@
+{
+  "model_version": "value-model-0.2.0",
+  "search_version": "value-search-0.1.0",
+  "features_version": "vs-features-1",
+  "created_at": "2026-10-19T14:13:56.033765+00:00",
+  "git_sha": "177675eb6ca8f1da0e88571a33d69b16ff50ff95",
+  "targets": [
+    "p_playoffs",
+    "p_title",
+    "e_rank",
+    "e_cat_wins"
+  ],
+  "feature_names": [
+    "cat_p_fg_pct",
+    "cat_p_ft_pct",
+    "cat_p_fg3m",
+    "cat_p_pts",
+    "cat_p_reb",
+    "cat_p_ast",
+    "cat_p_stl",
+    "cat_p_blk",
+    "cat_p_tov",
+    "ecw",
+    "mwp",
+    "mwp_sorted_0",
+    "mwp_sorted_1",
+    "mwp_sorted_2",
+    "mwp_sorted_3",
+    "mwp_sorted_4",
+    "mwp_sorted_5",
+    "mwp_sorted_6",
+    "mwp_sorted_7",
+    "mwp_sorted_8",
+    "mwp_sorted_9",
+    "mwp_sorted_10",
+    "opp_str_0",
+    "opp_str_1",
+    "opp_str_2",
+    "opp_str_3",
+    "opp_str_4",
+    "opp_str_5",
+    "opp_str_6",
+    "opp_str_7",
+    "opp_str_8",
+    "opp_str_9",
+    "opp_str_10",
+    "rank_str",
+    "gap_best",
+    "dz_fg_pct",
+    "dz_ft_pct",
+    "dz_fg3m",
+    "dz_pts",
+    "dz_reb",
+    "dz_ast",
+    "dz_stl",
+    "dz_blk",
+    "dz_tov",
+    "zsd_fg_pct",
+    "zsd_ft_pct",
+    "zsd_fg3m",
+    "zsd_pts",
+    "zsd_reb",
+    "zsd_ast",
+    "zsd_stl",
+    "zsd_blk",
+    "zsd_tov",
+    "gp_sum",
+    "gp_sd_rss",
+    "po_gp_sum",
+    "n_out",
+    "opp_gp_mean",
+    "opp_po_gp_mean",
+    "value_sum",
+    "opp_value_mean",
+    "value_top3",
+    "n_players",
+    "opp_value_max",
+    "min_cat_p",
+    "n_cats_above_half",
+    "cat_p_sd",
+    "e_matchups_won",
+    "mwp_top3"
+  ],
+  "learner": "sklearn HistGradientBoostingRegressor (squared error), numpy export",
+  "variant": "plain",
+  "lam": null,
+  "fe_targets": [],
+  "fe_rows": null,
+  "ridge": null,
+  "sklearn_version": "1.5.2",
+  "hyperparams": {
+    "max_iter": 400,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 40,
+    "l2_regularization": 1.0,
+    "early_stopping": false
+  },
+  "versions": {
+    "valuation": "valuation-0.3.0",
+    "season_sim": "season-sim-0.5.0",
+    "noise": "noise-var-1.0",
+    "optimizer": "optimizer-0.3.1",
+    "projections": "projections-2026-27-0.3.0"
+  },
+  "train_seed": 0,
+  "data": {
+    "path": "train_final.jsonl",
+    "generator": [
+      "v2"
+    ],
+    "league_seeds": [
+      400000,
+      400942
+    ],
+    "n_leagues": 3768,
+    "n_rooms": 942,
+    "n_rows": 45216,
+    "regimes": {
+      "adp": 924,
+      "mixed": 2168,
+      "sym": 676
+    },
+    "seasons_per_league": [
+      500
+    ],
+    "holdout": {
+      "generator": "v2",
+      "room_seeds": [
+        910000,
+        910099
+      ],
+      "n_rooms": 100,
+      "n_leagues": 400,
+      "seasons": 2000,
+      "k": 4
+    },
+    "train_room_seeds_note": "seeds 400000-400944 launched, 942 rooms completed (generation stopped by time)",
+    "seasons_per_league_note": "500 seasons, same season seed for the K completions of a room (common random numbers)"
+  },
+  "projections_sha256": "6acf9cce425b45e1f0021f267b9c4766e2c9cbb267ad3c883b8c835ea4a896bc",
+  "metrics": {
+    "league_split_test": {
+      "p_playoffs": {
+        "all": {
+          "rmse": 0.041250844842571924,
+          "mae": 0.03203913646822595,
+          "r2": 0.9662841676510657,
+          "corr": 0.9830160115029185,
+          "bias": -4.636634383494496e-05,
+          "n": 4512
+        },
+        "slot1": {
+          "rmse": 0.02440489579279473,
+          "mae": 0.01828111387587397,
+          "r2": 0.8925840608068132,
+          "corr": 0.9449454483465881,
+          "bias": -0.0007486069864804745,
+          "n": 376
+        },
+        "within_room_slot1": {
+          "corr": 0.6839923966277458,
+          "sign_agree": 0.7224489795918367,
+          "n": 282,
+          "n_nonzero": 245
+        }
+      },
+      "p_title": {
+        "all": {
+          "rmse": 0.02151025044608577,
+          "mae": 0.014662445808317033,
+          "r2": 0.9414801875870594,
+          "corr": 0.9703147759973814,
+          "bias": 5.265209823750106e-05,
+          "n": 4512
+        },
+        "slot1": {
+          "rmse": 0.037753527460347526,
+          "mae": 0.02996971819096273,
+          "r2": 0.8535344603315801,
+          "corr": 0.9248629315041098,
+          "bias": 0.0001754649820096685,
+          "n": 376
+        },
+        "within_room_slot1": {
+          "corr": 0.38162659787774633,
+          "sign_agree": 0.5910931174089069,
+          "n": 282,
+          "n_nonzero": 247
+        }
+      },
+      "e_rank": {
+        "all": {
+          "rmse": 0.3125627910906495,
+          "mae": 0.24645792626012233,
+          "r2": 0.9714368508826584,
+          "corr": 0.9856284127738595,
+          "bias": -0.0009010673074370721,
+          "n": 4512
+        },
+        "slot1": {
+          "rmse": 0.24686025332808428,
+          "mae": 0.1967410932521534,
+          "r2": 0.9032521029179054,
+          "corr": 0.950404476181443,
+          "bias": 0.003199140070416728,
+          "n": 376
+        },
+        "within_room_slot1": {
+          "corr": 0.7788595910814343,
+          "sign_agree": 0.7803921568627451,
+          "n": 282,
+          "n_nonzero": 255
+        }
+      },
+      "e_cat_wins": {
+        "all": {
+          "rmse": 1.5433920776987469,
+          "mae": 1.2199041394835999,
+          "r2": 0.9721931087092319,
+          "corr": 0.9860068502043811,
+          "bias": -0.0028818443694370076,
+          "n": 4512
+        },
+        "slot1": {
+          "rmse": 1.4491458681043414,
+          "mae": 1.1921344829966813,
+          "r2": 0.9111875132365305,
+          "corr": 0.9545672443094001,
+          "bias": -0.006400702232502402,
+          "n": 376
+        },
+        "within_room_slot1": {
+          "corr": 0.7779821905818989,
+          "sign_agree": 0.7529411764705882,
+          "n": 282,
+          "n_nonzero": 255
+        }
+      }
+    },
+    "holdout": {
+      "p_playoffs": {
+        "all": {
+          "rmse": 0.03679690122622304,
+          "mae": 0.028889430262056315,
+          "r2": 0.9710223583536233,
+          "corr": 0.98541660410346,
+          "bias": -0.00012333820198013356,
+          "n": 4800
+        },
+        "slot1": {
+          "rmse": 0.023729676663649904,
+          "mae": 0.017773257766053742,
+          "r2": 0.909095286963037,
+          "corr": 0.9537285103616763,
+          "bias": -0.0011300015295339053,
+          "n": 400
+        },
+        "mc_noise_rmse_at_train_seasons": 0.020163030939485925,
+        "within_room_slot1": {
+          "corr": 0.8630152394455843,
+          "sign_agree": 0.8320610687022901,
+          "n": 300,
+          "n_nonzero": 262
+        }
+      },
+      "p_title": {
+        "all": {
+          "rmse": 0.019323722344366166,
+          "mae": 0.012853889772152098,
+          "r2": 0.947084501895335,
+          "corr": 0.9731869587142354,
+          "bias": -0.00023788739147218499,
+          "n": 4800
+        },
+        "slot1": {
+          "rmse": 0.03673855926574723,
+          "mae": 0.028654738173586596,
+          "r2": 0.8283195579913766,
+          "corr": 0.9101257322544059,
+          "bias": -0.0002651920736143626,
+          "n": 400
+        },
+        "mc_noise_rmse_at_train_seasons": 0.011775588060333407,
+        "within_room_slot1": {
+          "corr": 0.6402667470086781,
+          "sign_agree": 0.6879699248120301,
+          "n": 300,
+          "n_nonzero": 266
+        }
+      },
+      "e_rank": {
+        "all": {
+          "rmse": 0.28645605187569945,
+          "mae": 0.22732240862011177,
+          "r2": 0.9740247620532426,
+          "corr": 0.9869295429299761,
+          "bias": 0.0005028821319032225,
+          "n": 4800
+        },
+        "slot1": {
+          "rmse": 0.24181999531105067,
+          "mae": 0.18676141127288506,
+          "r2": 0.9086089099249555,
+          "corr": 0.9536420561756398,
+          "bias": 0.02154864364438672,
+          "n": 400
+        },
+        "within_room_slot1": {
+          "corr": 0.8730566866085195,
+          "sign_agree": 0.8195488721804511,
+          "n": 300,
+          "n_nonzero": 266
+        }
+      },
+      "e_cat_wins": {
+        "all": {
+          "rmse": 1.4329329182149995,
+          "mae": 1.1338144486494255,
+          "r2": 0.973702493556055,
+          "corr": 0.9867646241065405,
+          "bias": -0.006190194802336591,
+          "n": 4800
+        },
+        "slot1": {
+          "rmse": 1.5450684513873219,
+          "mae": 1.1820234440633408,
+          "r2": 0.8992545379694723,
+          "corr": 0.9489384780753892,
+          "bias": -0.14726629381214085,
+          "n": 400
+        },
+        "within_room_slot1": {
+          "corr": 0.8688246540748632,
+          "sign_agree": 0.7752808988764045,
+          "n": 300,
+          "n_nonzero": 267
+        }
+      }
+    },
+    "holdout_n_leagues": 400,
+    "holdout_seasons": [
+      2000
+    ]
+  },
+  "train_seconds": 34.9,
+  "selection": {
+    "variants": {
+      "plain": {
+        "split_blend_wr": 0.678,
+        "holdout_blend_wr": 0.727
+      },
+      "fe_lam0.5": {
+        "split_blend_wr": 0.669,
+        "holdout_blend_wr": 0.728
+      },
+      "fel_lam1_ridge0.01": {
+        "split_blend_wr": 0.686,
+        "holdout_blend_wr": 0.734
+      }
+    },
+    "chosen": "plain",
+    "rule": "max split within-room blend corr; differences < ~1 SE (0.04) are ties -> simpler model"
+  },
+  "validation": {
+    "compared_to": "value-model-0.1.0",
+    "decision_quality": {
+      "harness": "fantasy.draft.policy_eval policy-eval-0.2.0, policy vs_sim (--search value --availability sim --room W), slot 1, 400-season grader, paired over seeds 0-199",
+      "results": {
+        "mixed/ours/p_playoffs": {
+          "n": 200,
+          "new": 0.90131,
+          "new_se": 0.00198,
+          "old": 0.89644,
+          "old_se": 0.00224,
+          "diff": 0.00488,
+          "se": 0.00175,
+          "same_roster": 0.025
+        },
+        "mixed/ours/p_title": {
+          "n": 200,
+          "new": 0.3218,
+          "new_se": 0.00317,
+          "old": 0.30998,
+          "old_se": 0.00319,
+          "diff": 0.01183,
+          "se": 0.0031,
+          "same_roster": 0.025
+        },
+        "mixed/ours/e_rank": {
+          "n": 200,
+          "new": 2.96172,
+          "new_se": 0.02104,
+          "old": 3.02768,
+          "old_se": 0.02314,
+          "diff": -0.06595,
+          "se": 0.01659,
+          "same_roster": 0.025
+        },
+        "mixed/mid/p_playoffs": {
+          "n": 200,
+          "new": 0.82971,
+          "new_se": 0.00274,
+          "old": 0.81998,
+          "old_se": 0.00281,
+          "diff": 0.00974,
+          "se": 0.00228,
+          "same_roster": 0.025
+        },
+        "mixed/mid/p_title": {
+          "n": 200,
+          "new": 0.24564,
+          "new_se": 0.00288,
+          "old": 0.2312,
+          "old_se": 0.00282,
+          "diff": 0.01444,
+          "se": 0.00268,
+          "same_roster": 0.025
+        },
+        "mixed/mid/e_rank": {
+          "n": 200,
+          "new": 3.63424,
+          "new_se": 0.02476,
+          "old": 3.73385,
+          "old_se": 0.02619,
+          "diff": -0.09961,
+          "se": 0.01896,
+          "same_roster": 0.025
+        },
+        "mixed/market/p_playoffs": {
+          "n": 200,
+          "new": 0.73335,
+          "new_se": 0.00361,
+          "old": 0.71755,
+          "old_se": 0.00377,
+          "diff": 0.0158,
+          "se": 0.0031,
+          "same_roster": 0.025
+        },
+        "mixed/market/p_title": {
+          "n": 200,
+          "new": 0.16321,
+          "new_se": 0.00273,
+          "old": 0.1492,
+          "old_se": 0.00247,
+          "diff": 0.01401,
+          "se": 0.00242,
+          "same_roster": 0.025
+        },
+        "mixed/market/e_rank": {
+          "n": 200,
+          "new": 4.49466,
+          "new_se": 0.0309,
+          "old": 4.65409,
+          "old_se": 0.03256,
+          "diff": -0.15943,
+          "se": 0.02553,
+          "same_roster": 0.025
+        },
+        "adp/ours/p_playoffs": {
+          "n": 200,
+          "new": 0.9416,
+          "new_se": 0.00137,
+          "old": 0.93865,
+          "old_se": 0.0015,
+          "diff": 0.00295,
+          "se": 0.00115,
+          "same_roster": 0.04
+        },
+        "adp/ours/p_title": {
+          "n": 200,
+          "new": 0.41605,
+          "new_se": 0.0037,
+          "old": 0.40937,
+          "old_se": 0.00366,
+          "diff": 0.00667,
+          "se": 0.00267,
+          "same_roster": 0.04
+        },
+        "adp/ours/e_rank": {
+          "n": 200,
+          "new": 2.2691,
+          "new_se": 0.01732,
+          "old": 2.30152,
+          "old_se": 0.01869,
+          "diff": -0.03243,
+          "se": 0.01135,
+          "same_roster": 0.04
+        },
+        "adp/mid/p_playoffs": {
+          "n": 200,
+          "new": 0.88381,
+          "new_se": 0.00201,
+          "old": 0.87866,
+          "old_se": 0.00224,
+          "diff": 0.00515,
+          "se": 0.00154,
+          "same_roster": 0.04
+        },
+        "adp/mid/p_title": {
+          "n": 200,
+          "new": 0.29407,
+          "new_se": 0.00332,
+          "old": 0.28508,
+          "old_se": 0.00328,
+          "diff": 0.009,
+          "se": 0.00239,
+          "same_roster": 0.04
+        },
+        "adp/mid/e_rank": {
+          "n": 200,
+          "new": 2.99946,
+          "new_se": 0.02121,
+          "old": 3.06029,
+          "old_se": 0.02308,
+          "diff": -0.06083,
+          "se": 0.0144,
+          "same_roster": 0.04
+        },
+        "adp/market/p_playoffs": {
+          "n": 200,
+          "new": 0.79153,
+          "new_se": 0.00304,
+          "old": 0.78135,
+          "old_se": 0.00314,
+          "diff": 0.01017,
+          "se": 0.00204,
+          "same_roster": 0.04
+        },
+        "adp/market/p_title": {
+          "n": 200,
+          "new": 0.18219,
+          "new_se": 0.00271,
+          "old": 0.17499,
+          "old_se": 0.0028,
+          "diff": 0.0072,
+          "se": 0.00219,
+          "same_roster": 0.04
+        },
+        "adp/market/e_rank": {
+          "n": 200,
+          "new": 3.96536,
+          "new_se": 0.02756,
+          "old": 4.06296,
+          "old_se": 0.02869,
+          "diff": -0.0976,
+          "se": 0.01804,
+          "same_roster": 0.04
+        },
+        "sym/ours/p_playoffs": {
+          "n": 200,
+          "new": 0.77711,
+          "new_se": 0.00349,
+          "old": 0.7596,
+          "old_se": 0.00366,
+          "diff": 0.01751,
+          "se": 0.00359,
+          "same_roster": 0.01
+        },
+        "sym/ours/p_title": {
+          "n": 200,
+          "new": 0.23377,
+          "new_se": 0.00291,
+          "old": 0.22465,
+          "old_se": 0.00286,
+          "diff": 0.00913,
+          "se": 0.00288,
+          "same_roster": 0.01
+        },
+        "sym/ours/e_rank": {
+          "n": 200,
+          "new": 4.1154,
+          "new_se": 0.03207,
+          "old": 4.29351,
+          "old_se": 0.03294,
+          "diff": -0.17811,
+          "se": 0.03203,
+          "same_roster": 0.01
+        },
+        "sym/mid/p_playoffs": {
+          "n": 200,
+          "new": 0.7305,
+          "new_se": 0.00355,
+          "old": 0.71808,
+          "old_se": 0.00361,
+          "diff": 0.01242,
+          "se": 0.00347,
+          "same_roster": 0.01
+        },
+        "sym/mid/p_title": {
+          "n": 200,
+          "new": 0.19298,
+          "new_se": 0.00247,
+          "old": 0.18692,
+          "old_se": 0.00248,
+          "diff": 0.00605,
+          "se": 0.00235,
+          "same_roster": 0.01
+        },
+        "sym/mid/e_rank": {
+          "n": 200,
+          "new": 4.54499,
+          "new_se": 0.03022,
+          "old": 4.6739,
+          "old_se": 0.03204,
+          "diff": -0.12891,
+          "se": 0.02942,
+          "same_roster": 0.01
+        },
+        "sym/market/p_playoffs": {
+          "n": 200,
+          "new": 0.67785,
+          "new_se": 0.00416,
+          "old": 0.66946,
+          "old_se": 0.00452,
+          "diff": 0.00839,
+          "se": 0.00411,
+          "same_roster": 0.01
+        },
+        "sym/market/p_title": {
+          "n": 200,
+          "new": 0.15235,
+          "new_se": 0.00278,
+          "old": 0.15286,
+          "old_se": 0.00304,
+          "diff": -0.00051,
+          "se": 0.003,
+          "same_roster": 0.01
+        },
+        "sym/market/e_rank": {
+          "n": 200,
+          "new": 5.01349,
+          "new_se": 0.03528,
+          "old": 5.09459,
+          "old_se": 0.03871,
+          "diff": -0.0811,
+          "se": 0.0347,
+          "same_roster": 0.01
+        }
+      }
+    },
+    "within_room_holdout": {
+      "all/p_playoffs": {
+        "n_rooms": 100,
+        "n_pairs": 300,
+        "corr_A": 0.863,
+        "corr_B": 0.8287,
+        "corr_diff": 0.0343,
+        "corr_diff_se": 0.0235,
+        "corr_A_se": 0.0185,
+        "corr_B_se": 0.0276,
+        "sign_A": 0.8321,
+        "sign_B": 0.771,
+        "sign_diff_se": 0.0311
+      },
+      "all/p_title": {
+        "n_rooms": 100,
+        "n_pairs": 300,
+        "corr_A": 0.6403,
+        "corr_B": 0.4666,
+        "corr_diff": 0.1737,
+        "corr_diff_se": 0.0519,
+        "corr_A_se": 0.0577,
+        "corr_B_se": 0.0764,
+        "sign_A": 0.688,
+        "sign_B": 0.6654,
+        "sign_diff_se": 0.0343
+      },
+      "all/blend": {
+        "n_rooms": 100,
+        "n_pairs": 300,
+        "corr_A": 0.7395,
+        "corr_B": 0.5955,
+        "corr_diff": 0.1439,
+        "corr_diff_se": 0.0471,
+        "corr_A_se": 0.0381,
+        "corr_B_se": 0.0653,
+        "sign_A": 0.7303,
+        "sign_B": 0.6966,
+        "sign_diff_se": 0.0355
+      },
+      "mixed/p_playoffs": {
+        "n_rooms": 61,
+        "n_pairs": 183,
+        "corr_A": 0.8145,
+        "corr_B": 0.7546,
+        "corr_diff": 0.0599,
+        "corr_diff_se": 0.0521,
+        "corr_A_se": 0.0376,
+        "corr_B_se": 0.0629,
+        "sign_A": 0.8025,
+        "sign_B": 0.7469,
+        "sign_diff_se": 0.0469
+      },
+      "mixed/p_title": {
+        "n_rooms": 61,
+        "n_pairs": 183,
+        "corr_A": 0.5597,
+        "corr_B": 0.4087,
+        "corr_diff": 0.151,
+        "corr_diff_se": 0.0775,
+        "corr_A_se": 0.0766,
+        "corr_B_se": 0.0928,
+        "sign_A": 0.7152,
+        "sign_B": 0.7091,
+        "sign_diff_se": 0.0431
+      },
+      "mixed/blend": {
+        "n_rooms": 61,
+        "n_pairs": 183,
+        "corr_A": 0.6622,
+        "corr_B": 0.5035,
+        "corr_diff": 0.1587,
+        "corr_diff_se": 0.0765,
+        "corr_A_se": 0.0614,
+        "corr_B_se": 0.0965,
+        "sign_A": 0.759,
+        "sign_B": 0.7229,
+        "sign_diff_se": 0.0435
+      },
+      "adp/p_playoffs": {
+        "n_rooms": 20,
+        "n_pairs": 60,
+        "corr_A": 0.8915,
+        "corr_B": 0.8143,
+        "corr_diff": 0.0773,
+        "corr_diff_se": 0.0955,
+        "corr_A_se": 0.0398,
+        "corr_B_se": 0.1218,
+        "sign_A": 0.898,
+        "sign_B": 0.8367,
+        "sign_diff_se": 0.0513
+      },
+      "adp/p_title": {
+        "n_rooms": 20,
+        "n_pairs": 60,
+        "corr_A": 0.8433,
+        "corr_B": 0.5848,
+        "corr_diff": 0.2585,
+        "corr_diff_se": 0.1203,
+        "corr_A_se": 0.1019,
+        "corr_B_se": 0.201,
+        "sign_A": 0.56,
+        "sign_B": 0.48,
+        "sign_diff_se": 0.094
+      },
+      "adp/blend": {
+        "n_rooms": 20,
+        "n_pairs": 60,
+        "corr_A": 0.8781,
+        "corr_B": 0.6654,
+        "corr_diff": 0.2127,
+        "corr_diff_se": 0.1213,
+        "corr_A_se": 0.0953,
+        "corr_B_se": 0.2,
+        "sign_A": 0.56,
+        "sign_B": 0.56,
+        "sign_diff_se": 0.1028
+      },
+      "sym/p_playoffs": {
+        "n_rooms": 19,
+        "n_pairs": 57,
+        "corr_A": 0.8962,
+        "corr_B": 0.8798,
+        "corr_diff": 0.0163,
+        "corr_diff_se": 0.0199,
+        "corr_A_se": 0.0231,
+        "corr_B_se": 0.0223,
+        "sign_A": 0.8627,
+        "sign_B": 0.7843,
+        "sign_diff_se": 0.036
+      },
+      "sym/p_title": {
+        "n_rooms": 19,
+        "n_pairs": 57,
+        "corr_A": 0.6354,
+        "corr_B": 0.5258,
+        "corr_diff": 0.1097,
+        "corr_diff_se": 0.079,
+        "corr_A_se": 0.0958,
+        "corr_B_se": 0.1277,
+        "sign_A": 0.7255,
+        "sign_B": 0.7059,
+        "sign_diff_se": 0.0571
+      },
+      "sym/blend": {
+        "n_rooms": 19,
+        "n_pairs": 57,
+        "corr_A": 0.8006,
+        "corr_B": 0.7667,
+        "corr_diff": 0.0339,
+        "corr_diff_se": 0.0295,
+        "corr_A_se": 0.0535,
+        "corr_B_se": 0.0584,
+        "sign_A": 0.8039,
+        "sign_B": 0.7451,
+        "sign_diff_se": 0.0569
+      }
+    },
+    "within_room_policy_leagues": {
+      "mixed_blend_corr": {
+        "old": 0.33,
+        "new": 0.473,
+        "diff_se": 0.035
+      },
+      "adp_blend_corr": {
+        "old": 0.276,
+        "new": 0.45,
+        "diff_se": 0.036
+      },
+      "sym_blend_corr": {
+        "old": 0.569,
+        "new": 0.662,
+        "diff_se": 0.021
+      },
+      "mixed_title_corr": {
+        "old": 0.219,
+        "new": 0.351,
+        "diff_se": 0.04
+      },
+      "adp_title_corr": {
+        "old": 0.233,
+        "new": 0.392,
+        "diff_se": 0.041
+      },
+      "sym_title_corr": {
+        "old": 0.359,
+        "new": 0.445,
+        "diff_se": 0.03
+      }
+    },
+    "adopted": true,
+    "doc": "docs/research/value_search.md#value-model-020-2026-10-19"
+  },
+  "code_note": "trained with the value-model-0.2.0 commit's src/fantasy/valuesearch (git_sha above = parent commit; training code was uncommitted at train time)"
+}

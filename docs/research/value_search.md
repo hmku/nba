@@ -4,7 +4,9 @@ AlphaGo-style idea (the user's): simulate many full 12-team leagues, label each 
 simulator, learn a fast **value model** (12 rosters → my P(playoffs), P(title), E[rank]), then at draft
 time search over the optimizer's top candidates with rollouts that complete the draft, scored by the
 value model. Code: `src/fantasy/valuesearch/` (`policies`, `features`, `model`, `search`, `datagen`,
-`train`, `validate`). Artifact: `data/models/value_search/value-model-0.1.0.npz` + `.card.json`.
+`train`, `validate`). Artifact: `data/models/value_search/value-model-0.2.0.npz` + `.card.json` (default since
+2026-10-19, section "Value model 0.2.0"; `value-model-0.1.0` kept for rollback via `FANTASY_VALUE_MODEL=value-model-0.1.0`).
+Sections 1–6 below describe 0.1.0.
 
 **Bottom line** (details and SEs below): the value model is accurate for *levels* (holdout R² 0.95–0.97
 vs 2,000-season simulator estimates), but value search did **not** pass the adoption rule against the
@@ -173,7 +175,7 @@ w.r.t. our projections and uncalibrated simulator priors; the optimism-decomposi
 - **In-sample**: training labels, validation (i)/(ii) and the search all use our projections and the
   same season simulator (then-uncalibrated `SimParams` and constant game-CV priors, calibrated since). (iii)
   is the only out-of-sample-style check and it is a proxy.
-- **Known mismatch (2026-10-19): noise model.** `value-model-0.1.0` was trained on rosters, values and labels
+- **Known mismatch (2026-10-19): noise model** (resolved by `value-model-0.2.0`, trained in the current world). `value-model-0.1.0` was trained on rosters, values and labels
   produced under the old constant-CV game noise (valuation-0.2.x, season-sim-0.4.0). Since valuation-0.3.0 /
   season-sim-0.5.0 both use the one fitted variance function (`fantasy.model.noise`). Its features (category
   model moments) are now computed under the new noise, so its scale is slightly off. It is advisory only and was
@@ -280,3 +282,211 @@ These agree with §5's 400-season numbers within their SEs.
   (opt-in, not default), nor the side finding that BPA is at least as good as the optimizer. Caveats: all of this is in the
   validation-era world (season-sim-0.2.0, our projections, uncalibrated priors at the time). The value model was
   trained there and has not been retrained for the current noise model or blended projections.
+
+## Value model 0.2.0 (2026-10-19)
+**Question (user's):** retrain the value model on everything that changed since 0.1.0 (50/50 ours+ESPN blended
+projections, the unified noise model `noise-var-1.0`, `valuation-0.3.0`, calibrated `season-sim-0.5.0`, the
+sim-availability optimizer that the recommended draft policy uses, mixed rooms as the primary world), attack its known
+weakness (poor resolution of *within-room* differences), and adopt it only if it validates better than 0.1.0.
+Everything below is **fitted by simulation** on main at `23e308b` (bit-identical to the code of the stored
+`draft_policy.md` runs: re-drafting vs_sim + 0.1.0 at 6 seeds in W_mixed / W_sym gave the stored leagues and grades exactly),
+projections sha256 `6acf9cce…`. Each run used a frozen copy of `src/` + `data/`.
+
+### Data (`datagen --gen v2`)
+- **Rooms = the policy-eval worlds** (`policy_eval.build_room`): noisy ADP (noise multiplier U(0.6, 1.6) for coverage)
+  plus "sharp" opponents = balanced optimizer on their own perturbed projection view. Regime weights: **W_mixed 55 %**
+  (3 sharp seats + 8 ADP), W_adp 25 %, W_sym 20 % (11 sharp).
+- **My slot 1 drafts with the optimizer with `availability="sim"` and the room it is in** (opt_sim; ≈0.05–0.2 s per
+  recommendation, so the room_sim proxy was not needed), with diversity (softmax over the top-5 scores, temperature
+  U(0, 0.03), 10 % uniform among the top 5).
+- **Paired completions:** at a random decision pick among my first 8 (picks 1–85), K = 4 candidates (the optimizer's #1
+  plus 3 drawn from its #2–#6) each complete the same room (same opponents and room order); my later picks are GreedyCat
+  (as value-search rollouts) or the same optimizer (½ / ½ per room). All 4 leagues get the **same season seed** (common
+  random numbers), labelled for all 12 teams with **500 seasons** (0.1.0: 160). 209 of 2,826 within-room pairs end with
+  the same 13 players (transpositions).
+- **Size:** 942 rooms = 3,768 leagues = 45,216 rows (seeds 400000–400944; 542 mixed / 231 ADP / 169 sym rooms), ≈2.0 s
+  drafting + 0.7 s labelling per league; 57 min wall on 3 workers. Stopped at 942 rooms from the learning curve (below)
+  to keep CPU for the decision-quality runs.
+- **Holdout:** 100 fresh rooms (seeds 910000–910099; 61 mixed / 20 ADP / 19 sym) × 4 completions = 400 leagues,
+  **2,000 seasons** each.
+
+**Learning curve** (plain refit on the first n rooms, scored on the holdout; my-team = slot-1 rows):
+
+| rooms | P(title) RMSE | P(title) RMSE, my team | within-room corr P(title), my team |
+|---|---|---|---|
+| 150 | 0.0206 | 0.0412 | 0.58 |
+| 300 | 0.0200 | 0.0397 | 0.59 |
+| 600 | 0.0198 | 0.0384 | 0.61 |
+| 942 (final) | 0.0193 | 0.0367 | 0.64 |
+
+Gains per doubling are ≈0.0005 RMSE overall and ≈0.002 for my team, about 1 SE of the holdout RMSE; more data would
+still help a little.
+
+### Model variants (target the within-room weakness)
+- **plain:** one HGB per target on the level labels, the same features (`vs-features-1`) and hyperparameters as 0.1.0.
+- **fe (pairwise, room fixed effects via trees):** plain + λ·h, where h is an HGB fitted to the within-(room, team)
+  demeaned residual of the plain model's 4-fold cross-fitted predictions, so it learns only what separates completions of
+  the same room; merged into the same tree ensemble (λ = 0.5; 1.0 and 1.5 were worse in a 200-room pilot).
+- **fel (pairwise, linear fixed effects):** the same correction as a within-estimator ridge regression of the demeaned
+  residual on the demeaned features (stored as a linear term). Fitting it on my-team rows only improved within-room
+  P(title) correlation in pilots (+0.09) but broke the level predictions for the other 11 teams (P(playoffs) RMSE 0.04 → 0.12),
+  so only the all-rows version was kept.
+
+Selection on a 10 % room split of the training data (94 rooms, 500-season labels), then the holdout. Rule: highest
+within-room correlation of the search objective (blend = 0.7·P(title) + 0.3·P(playoffs)) on the split; differences
+smaller than ≈1 SE (≈0.04) count as a tie and go to the simpler model. (I set the tie rule after the 600-room pilot,
+before the full-data comparison.)
+
+| variant | split: blend within-room corr | holdout: blend within-room corr | holdout P(title) RMSE (my team) | holdout P(playoffs) RMSE (my team) |
+|---|---|---|---|---|
+| plain | 0.678 | 0.727 | 0.0193 (0.0367) | 0.0370 (0.0239) |
+| fe, λ 0.5 | 0.669 | 0.728 | 0.0193 (0.0366) | 0.0369 (0.0239) |
+| fel, λ 1, ridge 0.01 | 0.686 | 0.734 | 0.0193 (0.0365) | 0.0368 (0.0249) |
+
+**Chosen: plain.** The pairwise corrections change within-room correlation by ≤ 0.01, far inside noise. The improvement
+over 0.1.0 comes from the paired, in-world training data (and 3× more seasons per label), not from the loss. The
+final artifact is the plain fit on all 942 rooms (seed 0); `train.py --variant fe|fel` stays available.
+
+### Level accuracy (holdout, 400 leagues × 12 teams, vs 2,000-season simulator; ± room-bootstrap SE)
+
+| target | rows | 0.1.0 RMSE / R² / bias | **0.2.0** RMSE / R² / bias |
+|---|---|---|---|
+| P(playoffs) | all | 0.0415 ± 0.0006 / 0.963 / −0.006 | **0.0368 ± 0.0006 / 0.971 / −0.000** |
+| P(playoffs) | my team | 0.0318 ± 0.0020 / 0.837 / −0.017 | **0.0237 ± 0.0017 / 0.909 / −0.001** |
+| P(title) | all | 0.0231 ± 0.0007 / 0.925 / +0.007 | **0.0193 ± 0.0005 / 0.947 / −0.000** |
+| P(title) | my team | 0.0460 ± 0.0030 / 0.731 / +0.005 | **0.0367 ± 0.0020 / 0.828 / −0.000** |
+| E[rank] | all | 0.316 ± 0.005 / 0.968 / +0.03 | **0.287 ± 0.004 / 0.974 / +0.00** |
+| E[rank] | my team | 0.296 ± 0.023 / 0.863 / +0.10 | **0.242 ± 0.017 / 0.909 / +0.02** |
+
+For scale: the Monte Carlo noise of one 500-season label is 0.020 (P(playoffs)) and 0.012 (P(title)) RMSE. 0.1.0's biases
+are the expected footprint of the world change (old noise model, old projections).
+
+### Within-room differences (my team)
+**(a) Holdout paired completions** (candidate k − candidate 0 in the same room, k = 1..3; 2,000-season simulator,
+common season seeds; ± room-bootstrap SE; sign agreement over pairs whose simulated difference is non-zero):
+
+| world | rooms / pairs | target | corr 0.1.0 | corr **0.2.0** | Δ corr | sign 0.1.0 → 0.2.0 |
+|---|---|---|---|---|---|---|
+| all | 100 / 300 | P(playoffs) | 0.83 ± 0.03 | **0.86 ± 0.02** | +0.03 ± 0.02 | 77 % → 83 % |
+| all | 100 / 300 | P(title) | 0.47 ± 0.08 | **0.64 ± 0.06** | **+0.17 ± 0.05** | 67 % → 69 % |
+| all | 100 / 300 | blend | 0.60 ± 0.07 | **0.74 ± 0.04** | **+0.14 ± 0.05** | 70 % → 73 % |
+| W_mixed | 61 / 183 | P(title) | 0.41 ± 0.09 | **0.56 ± 0.08** | +0.15 ± 0.08 | 71 % → 72 % |
+| W_mixed | 61 / 183 | blend | 0.50 ± 0.10 | **0.66 ± 0.06** | +0.16 ± 0.08 | 72 % → 76 % |
+| W_adp | 20 / 60 | P(title) | 0.59 ± 0.20 | **0.84 ± 0.10** | +0.26 ± 0.12 | 48 % → 56 % |
+| W_sym | 19 / 57 | P(title) | 0.53 ± 0.13 | **0.64 ± 0.10** | +0.11 ± 0.08 | 71 % → 73 % |
+
+This holdout comes from the new generator, so it is in-distribution for 0.2.0 and not for 0.1.0. Check (b) is independent of both.
+
+**(b) Policy leagues** (independent design): the stored `draft_policy.md` rooms, seeds 0–199 per world. In each room, 7
+policies drafted for me (BPA, optimizer, GreedyCat, value search, opt_sim, opt_sim_matchup, vs_sim + 0.1.0). Pairs are
+each policy − BPA, graded by the 400-season simulator with the same season seed. ± room-bootstrap SE, paired across models:
+
+| world | pairs | target | corr 0.1.0 | corr **0.2.0** | Δ corr (paired) | sign 0.1.0 → 0.2.0 |
+|---|---|---|---|---|---|---|
+| W_mixed | 1,200 | P(playoffs) | 0.56 ± 0.03 | **0.68 ± 0.02** | **+0.11 ± 0.03** | 72 % → 72 % |
+| W_mixed | 1,200 | P(title) | 0.22 ± 0.04 | **0.35 ± 0.04** | **+0.13 ± 0.04** | 60 % → 62 % |
+| W_mixed | 1,200 | blend | 0.33 ± 0.04 | **0.47 ± 0.04** | **+0.14 ± 0.04** | 61 % → 66 % |
+| W_adp | 1,001 | P(title) | 0.23 ± 0.04 | **0.39 ± 0.04** | **+0.16 ± 0.04** | 63 % → 67 % |
+| W_adp | 1,001 | blend | 0.28 ± 0.04 | **0.45 ± 0.04** | **+0.17 ± 0.04** | 63 % → 67 % |
+| W_sym | 1,000 | P(title) | 0.36 ± 0.04 | **0.45 ± 0.03** | **+0.09 ± 0.03** | 61 % → 62 % |
+| W_sym | 1,000 | blend | 0.57 ± 0.03 | **0.66 ± 0.02** | **+0.09 ± 0.02** | 69 % → 73 % |
+
+The 0.1.0 numbers reproduce the known weakness: title-difference correlation ≈ 0.2 in ADP-like rooms. 0.2.0 lifts it by
+0.09–0.17 in every world, and the gain is 3–5 SE. It is still far from perfect: P(title) sign agreement is only ≈ 62–67 % on
+these policy differences, which are small (the simulator's 400-season noise attenuates both models' correlations equally).
+
+### Decision quality (the adoption test)
+Paired policy-eval harness (`fantasy.draft.policy_eval`, `policy-eval-0.2.0`), slot 1, 3RR, 13 rounds, opponents per
+world, every final league graded by the full season simulator (400 seasons, same season seed for both arms). Arm A =
+`vs_sim` with `value-model-0.1.0` (the stored `draft_policy.md` runs, reproduced bit-for-bit above). Arm B = the same
+policy, rooms and seeds with `value-model-0.2.0`. The policy is `--search value --availability sim --room W` (default
+SearchParams: 6 candidates × 48 rollouts, z_min 1). Truth `ours` is primary; `mid` (50/50 ours / market-implied lines) and
+`market` are robustness truths. Means ± SE; differences are paired over seeds.
+
+| world | truth | n | metric | vs_sim + 0.1.0 | vs_sim + 0.2.0 | 0.2.0 − 0.1.0 (paired SE, z) |
+|---|---|---|---|---|---|---|
+| W_mixed | ours | 200 | P(playoffs) | 0.896 ± 0.002 | 0.901 ± 0.002 | +0.49 ± 0.17 pp (+2.8) |
+| W_mixed | ours | 200 | P(title) | 0.310 ± 0.003 | 0.322 ± 0.003 | +1.18 ± 0.31 pp (+3.8) |
+| W_mixed | ours | 200 | E[rank] | 3.028 ± 0.023 | 2.962 ± 0.021 | -0.066 ± 0.017 (-4.0) |
+| W_mixed | mid | 200 | P(playoffs) | 0.820 ± 0.003 | 0.830 ± 0.003 | +0.97 ± 0.23 pp (+4.3) |
+| W_mixed | mid | 200 | P(title) | 0.231 ± 0.003 | 0.246 ± 0.003 | +1.44 ± 0.27 pp (+5.4) |
+| W_mixed | mid | 200 | E[rank] | 3.734 ± 0.026 | 3.634 ± 0.025 | -0.100 ± 0.019 (-5.3) |
+| W_mixed | market | 200 | P(playoffs) | 0.718 ± 0.004 | 0.733 ± 0.004 | +1.58 ± 0.31 pp (+5.1) |
+| W_mixed | market | 200 | P(title) | 0.149 ± 0.002 | 0.163 ± 0.003 | +1.40 ± 0.24 pp (+5.8) |
+| W_mixed | market | 200 | E[rank] | 4.654 ± 0.033 | 4.495 ± 0.031 | -0.159 ± 0.026 (-6.2) |
+| W_adp | ours | 200 | P(playoffs) | 0.939 ± 0.001 | 0.942 ± 0.001 | +0.30 ± 0.11 pp (+2.6) |
+| W_adp | ours | 200 | P(title) | 0.409 ± 0.004 | 0.416 ± 0.004 | +0.67 ± 0.27 pp (+2.5) |
+| W_adp | ours | 200 | E[rank] | 2.302 ± 0.019 | 2.269 ± 0.017 | -0.032 ± 0.011 (-2.9) |
+| W_adp | mid | 200 | P(playoffs) | 0.879 ± 0.002 | 0.884 ± 0.002 | +0.51 ± 0.15 pp (+3.3) |
+| W_adp | mid | 200 | P(title) | 0.285 ± 0.003 | 0.294 ± 0.003 | +0.90 ± 0.24 pp (+3.8) |
+| W_adp | mid | 200 | E[rank] | 3.060 ± 0.023 | 2.999 ± 0.021 | -0.061 ± 0.014 (-4.2) |
+| W_adp | market | 200 | P(playoffs) | 0.781 ± 0.003 | 0.792 ± 0.003 | +1.02 ± 0.20 pp (+5.0) |
+| W_adp | market | 200 | P(title) | 0.175 ± 0.003 | 0.182 ± 0.003 | +0.72 ± 0.22 pp (+3.3) |
+| W_adp | market | 200 | E[rank] | 4.063 ± 0.029 | 3.965 ± 0.028 | -0.098 ± 0.018 (-5.4) |
+| W_sym | ours | 200 | P(playoffs) | 0.760 ± 0.004 | 0.777 ± 0.003 | +1.75 ± 0.36 pp (+4.9) |
+| W_sym | ours | 200 | P(title) | 0.225 ± 0.003 | 0.234 ± 0.003 | +0.91 ± 0.29 pp (+3.2) |
+| W_sym | ours | 200 | E[rank] | 4.294 ± 0.033 | 4.115 ± 0.032 | -0.178 ± 0.032 (-5.6) |
+| W_sym | mid | 200 | P(playoffs) | 0.718 ± 0.004 | 0.730 ± 0.004 | +1.24 ± 0.35 pp (+3.6) |
+| W_sym | mid | 200 | P(title) | 0.187 ± 0.002 | 0.193 ± 0.002 | +0.60 ± 0.24 pp (+2.6) |
+| W_sym | mid | 200 | E[rank] | 4.674 ± 0.032 | 4.545 ± 0.030 | -0.129 ± 0.029 (-4.4) |
+| W_sym | market | 200 | P(playoffs) | 0.669 ± 0.005 | 0.678 ± 0.004 | +0.84 ± 0.41 pp (+2.0) |
+| W_sym | market | 200 | P(title) | 0.153 ± 0.003 | 0.152 ± 0.003 | -0.05 ± 0.30 pp (-0.2) |
+| W_sym | market | 200 | E[rank] | 5.095 ± 0.039 | 5.013 ± 0.035 | -0.081 ± 0.035 (-2.3) |
+
+For context (truth `ours`, same seeds; vs the stored arms): vs_sim + 0.2.0 minus **BPA** is −0.23 ± 0.21 pp P(playoffs) /
++3.04 ± 0.33 pp P(title) in W_mixed (0.1.0: −0.72 / +1.86), +0.01 ± 0.12 / +3.22 ± 0.30 in W_adp (0.1.0: −0.29 / +2.56),
+and +0.41 ± 0.40 / +1.83 ± 0.30 in W_sym (0.1.0: −1.34 / +0.92). Minus **opt_sim** (no value search): +0.23 ± 0.19 /
++2.79 ± 0.33 pp (W_mixed), +0.52 ± 0.11 / +1.89 ± 0.31 (W_adp), +0.37 ± 0.37 / +1.58 ± 0.31 (W_sym). With 0.2.0, the
+recommended policy no longer gives up P(playoffs) to BPA in any world (all |Δ| ≤ 0.41 pp, |z| ≤ 1.1), while keeping a
++1.8 to +3.2 pp P(title) edge.
+
+Search behaviour in W_mixed: with 0.2.0, value search keeps opt_sim's #1 at 67 % of picks (0.1.0: 74 %). Mean draft time
+per simulated draft: 11.6 s vs 16.0 s (load-dependent; not a latency measurement).
+
+### Adoption
+Rule (from the task, set before the runs): adopt only if in W_mixed Δ P(title) ≥ −1 SE and Δ P(playoffs) ≥ −1 SE, the
+within-room difference correlation improves, and neither W_adp nor W_sym is significantly worse (z < −2).
+
+| check | result | pass? |
+|---|---|---|
+| W_mixed Δ P(title) ≥ −1 SE | **+1.18 ± 0.31 pp (z +3.8)** | yes |
+| W_mixed Δ P(playoffs) ≥ −1 SE | **+0.49 ± 0.17 pp (z +2.8)** | yes |
+| within-room correlation improves | blend +0.14 ± 0.05 (holdout pairs), +0.14 ± 0.04 (W_mixed policy leagues); P(title) +0.17 ± 0.05 / +0.13 ± 0.04 | yes |
+| W_adp not worse (z < −2) | +0.30 ± 0.11 pp P(playoffs) (z +2.6), +0.67 ± 0.27 pp P(title) (z +2.5) | yes |
+| W_sym not worse (z < −2) | +1.75 ± 0.36 pp P(playoffs) (z +4.9), +0.91 ± 0.29 pp P(title) (z +3.2) | yes |
+
+**Decision: adopted.** `value-model-0.2.0` is the default artifact (`DEFAULT_MODEL` in `src/fantasy/valuesearch/model.py`).
+It is loaded by every value-search path (`recommend --search value|advise`, the policy-eval harness when given no other
+model). No search, optimizer or policy default was changed here. Rollback without a code change:
+`FANTASY_VALUE_MODEL=value-model-0.1.0` (or a path to any `.npz`). 0.2.0 improves on 0.1.0 in every world × truth cell
+except W_sym under market truth, P(title) (−0.05 ± 0.30 pp, a tie).
+
+**Latency** (`fantasy draft recommend --search value --availability sim --room mixed`, real CLI on a mock draft, load
+average ≈ 3.5 from another agent's run): pick 1, 2.5 s wall (0.1.0: 2.1 s); pick 24, 2.0 s (0.1.0: 2.1 s). Value search
+alone takes 0.55–0.65 s. The two models pick the same players there (#1 Jokić, #24 Bam Adebayo). Both are well inside the 60 s clock.
+After rebasing onto the new default policy (`862cc74`), plain `fantasy draft recommend` (no flags) loads 0.2.0: 2.9 s wall at pick 1,
+2.1 s at pick 24 (`FANTASY_VALUE_MODEL=value-model-0.1.0`: 3.2 s / 2.4 s), with the same picks.
+
+### Caveats
+- **In-sample:** training labels, the holdout and truth `ours` all use our projections and the same season simulator. Truth
+  `mid`/`market` and the independent policy-league check are the only out-of-model checks, and they are stress tests,
+  not evidence about which projections are right.
+- The sharp opponents in training and evaluation are the same proxy (balanced optimizer on perturbed views), so W_mixed
+  and W_sym are "in-world" for 0.2.0. A real room that drafts differently is out-of-distribution for both models.
+- Value search's rollouts still complete my roster with GreedyCat and model opponents as noisy ADP. That part of the
+  search is unchanged. The search's other priors (blend weights, z_min = 1, N = 6, M = 48) were not re-tuned.
+- Data generation was stopped at 942 of 1,400 planned rooms (time). The learning curve was still rising slowly.
+- Slots other than 1 were not evaluated (the user drafts #1).
+
+### Reproduce
+```bash
+export PYTHONPATH=src OMP_NUM_THREADS=1
+python -m fantasy.valuesearch.datagen --gen v2 --n 100 --seed0 910000 --seasons 2000 --k 4 --workers 3 --out holdout.jsonl
+python -m fantasy.valuesearch.datagen --gen v2 --n 1400 --seed0 400000 --seasons 500 --k 4 --workers 3 --out train.jsonl  # stopped at 942 rooms
+python -m fantasy.valuesearch.train --data train.jsonl --holdout holdout.jsonl --variant plain --version value-model-0.2.0 \
+  --out data/models/value_search/value-model-0.2.0.npz
+python -m fantasy.draft.policy_eval run --seeds 0:200 --slots 1 --regimes mixed,adp,sym --policies vs_sim \
+  --value-model data/models/value_search/value-model-0.2.0.npz --opt-strategy balanced --out vm2.jsonl
+```
+Rollback: `FANTASY_VALUE_MODEL=value-model-0.1.0` (or a path) for any command
+that loads the default model.

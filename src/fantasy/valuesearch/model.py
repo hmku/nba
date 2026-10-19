@@ -11,6 +11,7 @@ draft-time inference is pure numpy (no sklearn, no pickle): `ValueModel.load(pat
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,7 +20,17 @@ import numpy as np
 from fantasy.league.settings import REPO_ROOT
 
 MODEL_DIR = REPO_ROOT / "data" / "models" / "value_search"
-DEFAULT_MODEL = MODEL_DIR / "value-model-0.1.0.npz"
+DEFAULT_MODEL = MODEL_DIR / "value-model-0.2.0.npz"  # 0.1.0 kept for rollback (MODEL_ENV)
+# rollback / override without a code change: FANTASY_VALUE_MODEL=value-model-0.1.0 (a version in MODEL_DIR) or a path
+MODEL_ENV = "FANTASY_VALUE_MODEL"
+
+
+def default_model_path() -> Path:
+    v = os.environ.get(MODEL_ENV, "").strip()
+    if not v:
+        return DEFAULT_MODEL
+    p = Path(v)
+    return p if (p.suffix == ".npz" or p.exists()) else MODEL_DIR / f"{v}.npz"
 TARGETS = ["p_playoffs", "p_title", "e_rank", "e_cat_wins"]
 OBJECTIVES = ("blend", "title", "playoffs", "rank")
 # blend = W_TITLE * P(title) + W_PLAYOFFS * P(playoffs): a prior, see docs/research/value_search.md
@@ -51,6 +62,8 @@ class TreeEnsemble:
     is_leaf: np.ndarray  # bool
     value: np.ndarray  # float
     depth: int
+    # optional linear term lin_w . X (value-model-0.2.0 "fel" variant: within-room fixed-effects correction)
+    lin_w: np.ndarray | None = None
 
     @classmethod
     def from_sklearn(cls, est) -> TreeEnsemble:  # noqa: ANN001
@@ -88,17 +101,41 @@ class TreeEnsemble:
             go_left = np.where(np.isnan(x), self.missing_left[t, node], x <= self.threshold[t, node])
             nxt = np.where(go_left, self.left[t, node], self.right[t, node])
             node = np.where(leaf, node, nxt)
-        return self.baseline + self.value[t, node].sum(axis=0)
+        out = self.baseline + self.value[t, node].sum(axis=0)
+        if self.lin_w is not None:
+            out = out + np.nan_to_num(X) @ self.lin_w
+        return out
+
+    @classmethod
+    def combine(cls, a: TreeEnsemble, b: TreeEnsemble, lam: float = 1.0) -> TreeEnsemble:
+        """One ensemble computing a(X) + lam * b(X) (trees concatenated, b's leaf values scaled)."""
+        n = max(a.feature.shape[1], b.feature.shape[1])
+
+        def cat(f: str, fill: float, scale: float = 1.0) -> np.ndarray:
+            xa, xb = getattr(a, f), getattr(b, f)
+            pa = np.full((xa.shape[0], n), fill, dtype=xa.dtype)
+            pb = np.full((xb.shape[0], n), fill, dtype=xb.dtype)
+            pa[:, : xa.shape[1]] = xa
+            pb[:, : xb.shape[1]] = xb * scale if f == "value" else xb
+            return np.concatenate([pa, pb])
+
+        if a.lin_w is not None or b.lin_w is not None:
+            raise ValueError("combine: linear terms not supported")
+        return cls(baseline=a.baseline + lam * b.baseline, feature=cat("feature", 0), threshold=cat("threshold", 0.0),
+                   left=cat("left", 0), right=cat("right", 0), missing_left=cat("missing_left", False),
+                   is_leaf=cat("is_leaf", True), value=cat("value", 0.0, lam), depth=max(a.depth, b.depth))
 
     def arrays(self, prefix: str) -> dict[str, np.ndarray]:
+        lin = {} if self.lin_w is None else {f"{prefix}__lin_w": self.lin_w}
         return {f"{prefix}__{k}": getattr(self, k) for k in
                 ("feature", "threshold", "left", "right", "missing_left", "is_leaf", "value")} | {
-            f"{prefix}__baseline": np.array(self.baseline), f"{prefix}__depth": np.array(self.depth)}
+            f"{prefix}__baseline": np.array(self.baseline), f"{prefix}__depth": np.array(self.depth)} | lin
 
     @classmethod
     def from_arrays(cls, z: dict, prefix: str) -> TreeEnsemble:
         g = {k: z[f"{prefix}__{k}"] for k in ("feature", "threshold", "left", "right", "missing_left", "is_leaf", "value")}
-        return cls(baseline=float(z[f"{prefix}__baseline"]), depth=int(z[f"{prefix}__depth"]), **g)
+        lw = z.get(f"{prefix}__lin_w")
+        return cls(baseline=float(z[f"{prefix}__baseline"]), depth=int(z[f"{prefix}__depth"]), lin_w=lw, **g)
 
 
 class ValueModel:
@@ -130,7 +167,7 @@ class ValueModel:
 
     @classmethod
     def load(cls, path: Path | str | None = None) -> ValueModel:
-        p = Path(path) if path else DEFAULT_MODEL
+        p = Path(path) if path else default_model_path()
         if not p.exists():
             raise FileNotFoundError(f"value model artifact not found: {p} (train with fantasy.valuesearch.train)")
         z = dict(np.load(p, allow_pickle=False))
@@ -144,10 +181,11 @@ HGB_PARAMS = {"max_iter": 400, "learning_rate": 0.05, "max_leaf_nodes": 15, "min
               "l2_regularization": 1.0, "early_stopping": False}
 
 
-def fit_hgb(X: np.ndarray, y: np.ndarray, seed: int = 0, **kw: object):  # noqa: ANN201
+def fit_hgb(X: np.ndarray, y: np.ndarray, seed: int = 0, sample_weight: np.ndarray | None = None,
+            **kw: object):  # noqa: ANN201
     from sklearn.ensemble import HistGradientBoostingRegressor
     from threadpoolctl import threadpool_limits
 
     params = HGB_PARAMS | {"random_state": seed} | kw
     with threadpool_limits(1):  # OpenMP oversubscription made training ~20x slower on a busy box
-        return HistGradientBoostingRegressor(**params).fit(X, y)
+        return HistGradientBoostingRegressor(**params).fit(X, y, sample_weight=sample_weight)

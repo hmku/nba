@@ -258,3 +258,46 @@ def test_watch_saves_what_recommend_returns(setup, proj_path, db_url, tmp_path, 
     assert w["availability"] == r["availability"] and w["for_pick"] == r["for_pick"] == 24
     assert [x["player_id"] for x in w["recommendations"]] == [x["player_id"] for x in r["recommendations"]]
     assert w["value_search"]["top_pick"] == r["value_search"]["top_pick"]
+
+
+def test_ensemble_combine_and_fe_variant():
+    pytest.importorskip("sklearn")
+    from fantasy.valuesearch.model import fit_hgb
+    from fantasy.valuesearch.train import fit_variant, within_room
+
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(300, 4))
+    a = TreeEnsemble.from_sklearn(fit_hgb(X, X[:, 0], max_iter=10, min_samples_leaf=10))
+    b = TreeEnsemble.from_sklearn(fit_hgb(X, X[:, 1] ** 2, max_iter=25, max_leaf_nodes=7, min_samples_leaf=10))
+    np.testing.assert_allclose(TreeEnsemble.combine(a, b, 0.7).predict(X), a.predict(X) + 0.7 * b.predict(X),
+                               atol=1e-12)
+    # paired toy data: 60 rooms x 3 candidates x 2 teams; label = room effect + 0.3 * x0
+    n_room, K, T = 60, 3, 2
+    g = np.repeat(np.arange(n_room), K * T)
+    cand = np.tile(np.repeat(np.arange(K), T), n_room)
+    team = np.tile(np.arange(T), n_room * K)
+    X = rng.normal(size=(len(g), 4))
+    y = rng.normal(size=n_room)[g] + 0.3 * X[:, 0]
+    Y = np.stack([y, y, y, y], axis=1)
+    paired = np.ones(len(g), dtype=bool)
+    kw = {"max_iter": 20, "min_samples_leaf": 5}
+    plain = fit_variant(X, Y, g, team, paired, "plain", hgb_kw=kw)
+    fe0 = fit_variant(X, Y, g, team, paired, "fe", lam=0.0, folds=2, hgb_kw=kw)
+    np.testing.assert_allclose(fe0["p_title"].predict(X), plain["p_title"].predict(X), atol=1e-12)
+    fe = fit_variant(X, Y, g, team, paired, "fe", lam=1.0, folds=2, hgb_kw=kw)
+    assert fe["e_rank"].feature.shape == plain["e_rank"].feature.shape  # only FE_TARGETS get the correction
+    wr = within_room(fe["p_title"].predict(X), y, g, team, cand)
+    assert wr["n"] == n_room * (K - 1) * T and wr["corr"] > 0.5
+    # identical differences -> perfect agreement
+    assert within_room(y, y, g, team, cand)["sign_agree"] == 1.0
+
+
+def test_default_model_path_env_override(monkeypatch, tmp_path):
+    from fantasy.valuesearch.model import DEFAULT_MODEL, MODEL_DIR, MODEL_ENV, default_model_path
+
+    monkeypatch.delenv(MODEL_ENV, raising=False)
+    assert default_model_path() == DEFAULT_MODEL
+    monkeypatch.setenv(MODEL_ENV, "value-model-0.1.0")
+    assert default_model_path() == MODEL_DIR / "value-model-0.1.0.npz"
+    monkeypatch.setenv(MODEL_ENV, str(tmp_path / "x.npz"))
+    assert default_model_path() == tmp_path / "x.npz"
