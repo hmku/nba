@@ -12,11 +12,11 @@ Room models (the same worlds the policy harness `fantasy.draft.policy_eval` grad
          (position ~ Normal(market rank, adp_sd * sd_mult), as `sample_market_positions`); the latent
          positions of players still available are drawn conditional on not having gone before the
          current pick (truncated Normal), and the room drafts by their *rank*.
-  sym    every opponent is "sharp": best available by its own noisy view of our values. The view noise
-         is a proxy for an optimizer drafting on independently perturbed projections
-         (`fantasy.sim.symmetric.perturb_projections`); its sd was fitted to the value spread of
-         perturbed views (SHARP_SD_*; docs/research/draft_policy.md has the fidelity check against
-         simulated symmetric rooms).
+  sym    every opponent is "sharp": best available by its own noisy view of our values, leaning towards
+         the market (SHARP_MARKET_WEIGHT). A cheap proxy for an optimizer drafting on independently
+         perturbed projections (`fantasy.sim.symmetric.perturb_projections`); the noise sd was fitted to
+         the value spread of perturbed views (SHARP_SD_*), the market lean to simulated symmetric rooms
+         (docs/research/draft_policy.md, availability fidelity table).
   mixed  N_SHARP sharp opponents on random seats, the rest noisy ADP (the user's description of the league).
 At my own picks the simulated me takes the best available by our value (so the number of players gone by
 each pick is right; the optimizer's rollouts separately discount the specific players I plan to take).
@@ -34,6 +34,10 @@ N_SHARP = 3
 # sharp view noise sd as a function of our value (fitted: sd of value(perturbed view) - value over 8 views,
 # by value band: 1.02 top-30, 0.84 30-80, 0.62 80-160, 0.44 160-300)
 SHARP_SD_A, SHARP_SD_B, SHARP_SD_MIN, SHARP_SD_MAX = 0.55, 0.08, 0.35, 1.2
+# sharp views lean towards the market: centre = (1 - w) * our value + w * (our value of the player's market-rank
+# slot). Fitted on 100 simulated symmetric rooms (seeds 10000-10099, disjoint from the evaluation seeds): mean
+# abs error of P(available) at my picks 24..108 over the top 150, 0.054 at w = 0 -> 0.033 at w = 0.25-0.5
+SHARP_MARKET_WEIGHT = 0.3
 POOL = 320  # players simulated: the best POOL by min(market rank, value rank); the rest never go this early
 
 
@@ -75,7 +79,9 @@ def simulate_availability(
     for r in range(n_sims):
         seats = rng.choice(others, k_sharp, replace=False) if k_sharp < len(others) else np.array(others)
         sharp_seat[r, seats] = np.arange(k_sharp)
-    views = value[pool][None, None, :] + rng.normal(0.0, 1.0, (n_sims, max(k_sharp, 1), m)) * sharp_sd(value[pool])
+    mval = np.sort(value)[::-1][np.clip(market_rank.astype(int) - 1, 0, n - 1)]
+    centre = (1 - SHARP_MARKET_WEIGHT) * value + SHARP_MARKET_WEIGHT * mval
+    views = centre[pool][None, None, :] + rng.normal(0.0, 1.0, (n_sims, max(k_sharp, 1), m)) * sharp_sd(value[pool])
     taken = np.zeros((n_sims, m), dtype=bool)
     lat_m = lat.copy()
     runs = np.arange(n_sims)

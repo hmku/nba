@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-10-18 (session 1, lead engineer). Update this file when state or priorities change._
+_Last updated: 2026-10-19 (draft-policy agent: priority 5 resolved, recommendation pending user approval). Update this file when state or priorities change._
 
 ## Where we are
 **Phase 1 (draft MVP) — built, needs real-world verification before the draft on 2026-10-19 22:00 ET.**
@@ -23,7 +23,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 2. P1 after the draft: Yahoo roster sync (T-004), daily lineup optimizer (T-005), waivers (T-006), weekly matchup sim (T-007), calibration (T-016).
 3. P2: trade evaluator, backtesting, scheduled morning agent.
 4. Season simulator (`fantasy sim`, `season-sim-0.2.0`, skill `season-sim`) built: playoff weeks 18-20 = Mar 1-21 (verified end date; week 1 assumed Oct 20-Nov 1), re-seeding per settings; after the draft load Yahoo rosters + schedule/week dates as JSON (`--league-file`, `--schedule`), calibrate its priors (`SimParams`) with T-010/T-016; next: waiver/trade evaluation on top of `fantasy sim compare` (see `docs/handoffs/2026-10-18-season-sim.md`).
-5. **Value search** (`value-search-0.1.0`, `docs/research/value_search.md`): learned season-outcome model + rollout search; NOT adopted as default (P(playoffs) gain z=1.6 < 2), shipped as an advisory `value_search` block in `recommend` (`--search value` opt-in). **Same 200-draft validation: BPA beats the current optimizer under the full season simulator** (symmetric rooms: -6.1 pp P(playoffs), -3.7 pp P(title), z < -8) - investigate before the draft.
+5. **Value search** (`value-search-0.1.0`, `docs/research/value_search.md`): learned season-outcome model + rollout search; NOT adopted as default (P(playoffs) gain z=1.6 < 2), shipped as an advisory `value_search` block in `recommend` (`--search value` opt-in). **Same 200-draft validation: BPA beats the current optimizer under the full season simulator** (symmetric rooms: -6.1 pp P(playoffs), -3.7 pp P(title), z < -8) - **resolved 2026-10-19 (`docs/research/draft_policy.md`): the analytic ADP availability model is the cause; opt-in `--availability sim --room mixed` fixes it. Recommended for tonight, pending user approval (default unchanged): `fantasy draft recommend --search value --availability sim --room mixed` (+1.9 pp P(playoffs), +1.4 pp P(title) vs the default in the mixed room, z 8.7 / 4.7).**
 5. Tech debt: the 12-step plan in `docs/research/tech_debt.md` is done before the draft except the deferred parts listed there (WIP snapshots still on main, mypy beyond the CI subset, remaining helper duplicates); drafts now store `config.order_slots` (re-run `fantasy draft init` on older drafts, then publish). See `docs/handoffs/2026-10-19-tech-debt-fixes.md`.
 
 ## Known limitations

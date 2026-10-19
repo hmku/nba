@@ -23,6 +23,7 @@ Ablation arms (lead/user request, 2026-10-19; which component of the optimizer l
   opt_sim      the optimizer with availability="sim": Monte Carlo of the SAME room model W it is graded in
                (fantasy.draft.room_sim; sym/symbpa -> room "sym", mixed -> "mixed", adp -> "adp")
   opt_sim_matchup  opt_sim with the matchup objective
+  vs_sim       value search re-ranking the candidates of opt_sim (instead of the default optimizer's)
 Each league is graded under truth `ours` (the drafting projections), `market`
 (fantasy.sim.market_truth.market_implied_projections) and `mid` (their 50/50 blend_projections).
 
@@ -70,6 +71,7 @@ SPECS: dict[str, tuple[str, float, float]] = {
     "opt_matchup": ("opt_matchup", 0.0, 0.0),
     "opt_sim": ("opt_sim", 0.0, 0.0),
     "opt_sim_matchup": ("opt_sim_matchup", 0.0, 0.0),
+    "vs_sim": ("vs_sim", 0.0, 0.0),
 }
 N_SHARP = 3
 TRUTHS = ("ours", "market", "mid")  # mid = 50/50 ours / market-implied stat lines
@@ -88,10 +90,22 @@ class MyPolicy:
         self.params = PolicyParams(name=name, margin=margin, eps=eps)
         self.log: list[dict] = []
         self.vsp = None
-        if spec == "value_search":
+        if spec in ("value_search", "vs_sim"):
             from fantasy.valuesearch.search import SearchParams, ValueSearchPolicy
 
-            self.vsp = ValueSearchPolicy(vs, SearchParams(seed=seed), opt_params=opts["params"])
+            op = self._sim_opt("opt_sim").params if spec == "vs_sim" else opts["params"]
+            self.vsp = ValueSearchPolicy(vs, SearchParams(seed=seed), opt_params=op)
+
+    def _sim_opt(self, name: str) -> DraftOptimizer:
+        """The availability="sim" optimizer for this room (room model W = the room graded in), memoised in opts."""
+        which = f"{name}:{self.regime}"
+        if which not in self.opts:
+            room = {"symbpa": "sym"}.get(self.regime, self.regime)
+            prm = self.opts["params"]
+            self.opts[which] = DraftOptimizer(self.ctx, OptimizerParams(
+                strategy=prm.strategy, availability="sim", room=room,
+                objective="matchup" if name == "opt_sim_matchup" else prm.objective))
+        return self.opts[which]
 
     def _rec(self, which: str, taken: dict[int, str], slot: int) -> dict:
         key = (which, slot, tuple(taken[k] for k in sorted(taken)))
@@ -112,17 +126,15 @@ class MyPolicy:
             return row
         if name in ("opt_oracle", "opt_matchup", "opt_sim", "opt_sim_matchup"):
             which = {"opt_oracle": f"opt_oracle:{self.regime}", "opt_matchup": name}.get(name, f"{name}:{self.regime}")
-            if which not in self.opts:
-                room = {"symbpa": "sym"}.get(self.regime, self.regime)
-                prm = self.opts["params"]
-                self.opts[which] = DraftOptimizer(ctx, OptimizerParams(
-                    strategy=prm.strategy, availability="sim", room=room,
-                    objective="matchup" if name == "opt_sim_matchup" else prm.objective))
+            if name in ("opt_sim", "opt_sim_matchup"):
+                self._sim_opt(name)
             rec = self._rec(which, taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
-        elif name == "value_search":
+        elif name in ("value_search", "vs_sim"):
             row = self.vsp.pick(board, overall, slot)
-            rec = self._rec("opt", taken, slot)
+            if name == "vs_sim":
+                self._sim_opt("opt_sim")
+            rec = self._rec("opt" if name == "value_search" else f"opt_sim:{self.regime}", taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
             d["player_id"] = ctx.ids[row]
         elif name in ("bpa", "bpa_need"):  # noqa: SIM114
