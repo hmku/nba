@@ -311,6 +311,7 @@ def save_draft_sim(res: dict, params: dict, inputs: dict, engine=None) -> str:  
 
     from fantasy.db.engine import get_engine
     from fantasy.db.schema import model_runs
+    from fantasy.model.lines import GAME_CV_SOURCE
     from fantasy.model.valuation import git_sha
     from fantasy.ops.common import json_safe as _clean
 
@@ -324,6 +325,6 @@ def save_draft_sim(res: dict, params: dict, inputs: dict, engine=None) -> str:  
     with eng.begin() as conn:
         conn.execute(insert(model_runs).values(
             run_id=run_id, kind="draft_sim", model_version=OPTIMIZER_VERSION, git_sha=git_sha(),
-            params=_clean({**params, "optimizer_params": opt_params}),
+            params=_clean({**params, "optimizer_params": opt_params, "game_cv": GAME_CV_SOURCE}),
             inputs=_clean({**inputs, "per_sim": compact}), summary=_clean(res["summary"]), created_at=now))
     return run_id

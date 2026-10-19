@@ -191,3 +191,23 @@ def test_confirm_pick_after_txn_mark_verified(P):
     assert code == 0 and res["pick"]["status"] == "unchanged"
     board = cli("draft", "board", *D, "--json")[1]
     assert board["my_roster"][0]["player_id"] == "player-002"
+
+
+def test_recommend_reuses_valuation_run(P, db_url):
+    # valuation runs are cached by (projections sha, valuation_params, MODEL_VERSION): a repeat
+    # `draft recommend` with the same inputs must not save a second run (+ ~456 player_values rows)
+    from sqlalchemy import func, select
+
+    from fantasy.db.engine import get_engine
+    from fantasy.db.schema import model_runs
+    from fantasy.model.lines import GAME_CV_SOURCE
+
+    cli("draft", "init", "--draft-id", "mock-c", "--mock")
+    for _ in range(2):
+        code, out = cli("draft", "recommend", "--draft-id", "mock-c", "--no-save", "--json", *P)
+        assert code == 0, out
+    with get_engine().connect() as conn:
+        rows = conn.execute(select(model_runs.c.params).where(model_runs.c.kind == "valuation")).all()
+        assert conn.execute(select(func.count()).select_from(model_runs)
+                            .where(model_runs.c.kind == "valuation")).scalar_one() == 1
+    assert rows[0][0]["game_cv"] == GAME_CV_SOURCE

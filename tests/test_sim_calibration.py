@@ -120,3 +120,26 @@ def test_noise_correlation_raises_category_correlation(ctx, league):
     assert _partial_corr(on, "reb", "ast") > _partial_corr(off, "reb", "ast") + 0.05
     # the means are unaffected
     assert abs(on.totals.mean() - off.totals.mean()) < 0.01 * abs(off.totals.mean())
+
+
+def test_bad_game_cv_env_fails_loudly():
+    code = "import fantasy.model.lines"
+    src = str(Path(fantasy.__file__).resolve().parents[1])
+    env = {**os.environ, "FANTASY_GAME_CV": "fited", "PYTHONPATH": src}
+    res = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
+    assert res.returncode != 0
+    assert "ValueError" in res.stderr and "FANTASY_GAME_CV" in res.stderr and "'fited'" in res.stderr
+    # accepted spellings
+    for ok in ("", "Fitted", " PRIOR "):
+        assert subprocess.run([sys.executable, "-c", code], env={**env, "FANTASY_GAME_CV": ok}).returncode == 0
+
+
+def test_valuation_run_params_record_game_cv(proj_path):
+    from fantasy.league.settings import LeagueSettings
+    from fantasy.model.lines import GAME_CV_SOURCE
+    from fantasy.model.valuation import ValuationParams, run_valuation, valuation_params
+
+    s, vp = LeagueSettings(), ValuationParams()
+    run = run_valuation(load_projections(proj_path), s, vp)
+    assert run.params["game_cv"] == GAME_CV_SOURCE
+    assert run.params == valuation_params(vp, s)

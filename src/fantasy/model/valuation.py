@@ -42,6 +42,9 @@ from fantasy.model.lines import (
 # 0.2.1: projections baseline-0.2.1 (playoff_mult refit on the Mar 1-21 fantasy playoff window)
 # 0.2.2: no formula change; default projections are now the 50/50 ours/ESPN blend
 #        (projections-2026-27-0.3.0, adopted 2026-10-19; docs/research/projection_quality.md)
+# 0.2.3: per-game CVs default to the fitted GAME_CV_FITTED (user decision 2026-10-18;
+#        docs/research/sim_calibration.md section 6); FANTASY_GAME_CV=prior reverts. Run params record
+#        "game_cv" (see valuation_params).
 MODEL_VERSION = "valuation-0.2.3"
 
 
@@ -141,6 +144,11 @@ def git_sha() -> str | None:
         return None
 
 
+def valuation_params(vp: ValuationParams, settings: LeagueSettings) -> dict:
+    """The params recorded on a valuation run; also the cache key used to find an existing run."""
+    return {**asdict(vp), "categories": settings.categories, "game_cv": GAME_CV_SOURCE}
+
+
 @dataclass
 class ValuationRun:
     run_id: str
@@ -161,8 +169,7 @@ def run_valuation(
         run_id=f"val-{now:%Y%m%d%H%M%S}-{uuid.uuid4().hex[:6]}",
         created_at=now.isoformat(),
         model_version=MODEL_VERSION,
-        params={**asdict(params), "categories": settings.categories,
-                "game_cv": GAME_CV_SOURCE},
+        params=valuation_params(params, settings),
         inputs={"projections_path": proj.path, "projections_sha256": proj.sha256, "replacement_line": replacement.round(3).to_dict()},
         values=values,
     )

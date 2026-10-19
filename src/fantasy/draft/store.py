@@ -21,7 +21,7 @@ from fantasy.db.schema import (
 )
 from fantasy.draft.order import draft_order, pick_info
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.valuation import ValuationRun, git_sha
+from fantasy.model.valuation import MODEL_VERSION, ValuationRun, git_sha
 from fantasy.ops.common import json_safe as _clean
 
 
@@ -203,10 +203,13 @@ def latest_recommendation(draft_id: str, engine: Engine | None = None) -> dict |
 
 # ---------------------------------------------------------------- valuation runs
 def find_valuation_run(projections_sha: str, params: dict, engine: Engine | None = None) -> str | None:
+    """Newest valuation run of the current MODEL_VERSION with these projections and exactly these params
+    (build params with `fantasy.model.valuation.valuation_params`)."""
     eng = engine or get_engine()
     with eng.connect() as conn:
         rows = conn.execute(
-            select(model_runs).where(model_runs.c.kind == "valuation").order_by(model_runs.c.created_at.desc()).limit(20)
+            select(model_runs).where(model_runs.c.kind == "valuation", model_runs.c.model_version == MODEL_VERSION)
+            .order_by(model_runs.c.created_at.desc()).limit(20)
         ).mappings().all()
     for r in rows:
         if (r["inputs"] or {}).get("projections_sha256") == projections_sha and r["params"] == _clean(params):

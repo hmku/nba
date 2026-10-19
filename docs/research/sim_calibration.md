@@ -199,6 +199,9 @@ noise, so the **priors are kept and are now validated**. By missed-games band:
   spells.
 
 ## 5. Effect on simulator outputs
+_Note: every number in this section was computed with `FANTASY_GAME_CV=prior` (the draft default at the time).
+Since valuation-0.2.3 the default is the fitted CV, which changes the drafted rosters and the `game_var="cv"`
+noise, so set `FANTASY_GAME_CV=prior` to reproduce these tables, including the 0.3.0 rows._
 **Fixed leagues.** Three ADP-snake leagues, 2,000 sims each. The favourite's edge is the mean |P(win weekly
 matchup) − 0.5|; seasons are measured by the sd of season category wins.
 
@@ -235,12 +238,14 @@ simulated league; the variants share drafts and seeds, so the differences are pa
 (in-season, T-016). The components that feed it are each fitted above.
 
 ## 6. Draft model: fitted GAME_CV (adopted 2026-10-18, valuation-0.2.3, user decision)
-_Update: after this analysis the user chose to adopt it before the draft; the default is now `GAME_CV_FITTED` and
-`FANTASY_GAME_CV=prior` reverts. The text below describes the analysis as run (opt-in at the time)._
-`GAME_CV` also sets the draft valuation's G-score week-to-week variance and the optimizer's category model. Under
-the draft-path freeze, the default is unchanged (`GAME_CV_PRIOR`). `FANTASY_GAME_CV=fitted` switches to the pooled
-rostered CVs (`GAME_CV_FITTED`; read at import, recorded in valuation params). Effect on the adopted blend
-projections:
+**Update:** adopted as the draft default by user decision on 2026-10-18 (before the draft-path freeze):
+valuation-0.2.3 uses `GAME_CV_FITTED`, and `FANTASY_GAME_CV=prior` reverts (read at import; only `""`, `fitted`
+or `prior` are accepted). Picks 1/24/36 are unchanged; an independent review reproduced this (same top-60 set,
+Spearman 0.997). Valuation, season-sim and draft-sim runs record the source as `game_cv` in their params.
+
+`GAME_CV` also sets the draft valuation's G-score week-to-week variance and the optimizer's category model. The
+analysis below was run while the fitted CV was still opt-in, comparing it with `GAME_CV_PRIOR` on the adopted
+blend projections:
 - **Valuation:**
   - The top 60 is the same set of players. Spearman 0.997; mean |rank move| 0.8; max 4.
   - The moves: Lillard 57 → 53, Booker 34 → 31, Ware 29 → 32, Sarr 54 → 57.
@@ -252,14 +257,16 @@ projections:
   - Pick 36: Derrick White in both (5.968 vs 6.040).
   - Only the order of near-ties below the top choice changes: Holmgren and Duren swap with D. White at 24, and Bane
     with Kyrie at 36.
-- **Recommendation:** it is not material to the draft. Leave the default until after the draft. Adopt the fitted CV
-  (or better, the variance function) in-season, when the category model is next versioned.
+- **Recommendation at the time:** not material to the draft, so leave the default until after the draft. The user
+  chose to adopt it before the draft instead (see the update above). A later step is to replace the CV with the
+  fitted variance function in-season, when the category model is next versioned.
 
 ## 7. What changed (`season-sim-0.4.0`)
 - `src/fantasy/sim/calibration.py`: the fitted constants with SEs.
 - `SimParams` defaults: `vol_sd`, `fg_pct_sd`, `ft_pct_sd` = `None` (by mpg tier), `stat_sd = None` with per-stat
   `stat_sds`, `game_var = "fitted"`, `noise_corr = True`. To reproduce 0.3.0, set
-  `vol_sd=0.08, stat_sd=0.08, fg_pct_sd=0.015, ft_pct_sd=0.03, game_var="cv", noise_corr=False`.
+  `vol_sd=0.08, stat_sd=0.08, fg_pct_sd=0.015, ft_pct_sd=0.03, game_var="cv", noise_corr=False` and also run
+  with `FANTASY_GAME_CV=prior` (since valuation-0.2.3 `GAME_CV` defaults to the fitted values).
 - `rest_share` and `two_spell_prob` are unchanged (validated in section 4).
 - `fantasy.model.lines`: `GAME_CV_PRIOR`, `GAME_CV_FITTED` (draft default since valuation-0.2.3), and the
   `FANTASY_GAME_CV=prior` switch.

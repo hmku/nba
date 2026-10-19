@@ -22,7 +22,7 @@ from fantasy.draft.optimizer import DraftContext
 from fantasy.draft.order import draft_order, order_for_draft, picks_for_slot
 from fantasy.league.settings import LeagueSettings, load_settings
 from fantasy.model.lines import load_projections
-from fantasy.model.valuation import ValuationParams, run_valuation
+from fantasy.model.valuation import ValuationParams, run_valuation, valuation_params
 
 app = typer.Typer(no_args_is_help=True, help="Live draft: state, picks, recommendations, simulation.")
 
@@ -59,9 +59,7 @@ def _context(
     vp = vp or ValuationParams()
     run_id = None
     try:
-        from dataclasses import asdict
-
-        params = {**asdict(vp), "categories": settings.categories}
+        params = valuation_params(vp, settings)
         run_id = store.find_valuation_run(proj.sha256, params)
         if run_id is None:
             run = run_valuation(proj, settings, vp)

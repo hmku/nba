@@ -45,7 +45,17 @@ GAME_CV_FITTED: dict[str, float] = {
     "fgm": 0.442, "fga": 0.316, "ftm": 0.746, "fta": 0.702, "fg3m": 0.761, "pts": 0.416,
     "reb": 0.449, "ast": 0.512, "stl": 0.972, "blk": 1.038, "tov": 0.680,
 }
-GAME_CV_SOURCE = "prior" if os.environ.get("FANTASY_GAME_CV", "").strip().lower() == "prior" else "fitted"
+
+
+def _game_cv_source(raw: str) -> str:
+    """FANTASY_GAME_CV: "" or "fitted" (default) or "prior", case-insensitive; anything else is an error."""
+    v = raw.strip().lower()
+    if v not in ("", "fitted", "prior"):
+        raise ValueError(f"FANTASY_GAME_CV must be '', 'fitted' or 'prior' (case-insensitive), got {raw!r}")
+    return v or "fitted"
+
+
+GAME_CV_SOURCE = _game_cv_source(os.environ.get("FANTASY_GAME_CV", ""))
 GAME_CV: dict[str, float] = dict(GAME_CV_FITTED if GAME_CV_SOURCE == "fitted" else GAME_CV_PRIOR)
 
 
