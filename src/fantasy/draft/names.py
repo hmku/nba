@@ -7,12 +7,19 @@ import re
 
 import pandas as pd
 
-from fantasy.data.ids import slugify
+from fantasy.data.ids import ALIASES, canonical_id, slugify
 
 
 def slug(name: str) -> str:
     """Canonical player-id slug (same as `fantasy.data.ids.slugify`, the projections' id scheme)."""
     return slugify(name)
+
+
+def unknown_player_id(name: str) -> str:
+    """Id for a drafted player who is not in our projections: ``unknown:<canonical id>``. Identical to the
+    web's ``unknownId`` (web/src/lib/agentPure.ts), so the same unknown player recorded by the CLI and by
+    the dashboard/agent API is the same id (and caught as a duplicate)."""
+    return f"unknown:{canonical_id(name)}"
 
 
 class NameResolutionError(ValueError):
@@ -33,6 +40,9 @@ def resolve_player(query: str, values: pd.DataFrame, cutoff: float = 0.82) -> st
     qs = slug(q)
     if qs in values.index:
         return qs
+    qa = ALIASES.get(qs, qs)  # known spelling variants ("Cam Johnson" -> cameron-johnson), as the web does
+    if qa in values.index:
+        return qa
     name_slugs = {pid: slug(str(n)) for pid, n in values["name"].items()}
     exact = [pid for pid, s in name_slugs.items() if s == qs]
     if len(exact) == 1:

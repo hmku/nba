@@ -7,7 +7,8 @@ Failure JSON contract (all groups, with ``--json``)::
 
 - ``code`` is the field to branch on. Values: ``usage`` (bad arguments), ``not_found``, ``conflict``,
   ``lock_held``, ``not_allowed``, ``duplicate``, ``invalid_state``, ``still_pending``, ``rest_auth``,
-  ``unresolved_player``, ``draft_complete``, ``error`` (anything else).
+  ``unresolved_player``, ``draft_complete``, ``order_conflicts_with_recorded_picks`` (`draft set-order`, exit 2),
+  ``error`` (anything else).
 - ``error`` keeps its historical meaning per group so existing callers do not break: in ops commands
   (`run`, `lock`, `approval`, `txn`, `task`, `status`, `publish`) and the ops-backed draft commands
   (`prepare-pick` refusals, `confirm-pick` ledger errors) it equals ``code``; in `draft`, `sim`,

@@ -54,7 +54,7 @@ One row per player, **per-game means** for the 2026-27 season:
 - Exit codes (ops contract, `fantasy.ops.common`): 0 ok, 1 error, 2 usage, 3 conflict, 4 not allowed, 5 duplicate, 6 not found, 7 invalid state, 8 still pending.
 - Failure JSON (every group, `fantasy.cli_common`): `{"ok": false, "code": <machine code>, "message": <text>, "error": ...}`
   on stdout with `--json` (stderr `error: ...` without). Branch on the exit code, then `code` (`usage`, `not_found`,
-  `conflict`, `unresolved_player`, `draft_complete`, `not_allowed`, `lock_held`, `invalid_state`, `still_pending`,
+  `conflict`, `unresolved_player`, `draft_complete`, `order_conflicts_with_recorded_picks`, `not_allowed`, `lock_held`, `invalid_state`, `still_pending`,
   `rest_auth`, ...). `error` is kept for old callers: it equals `code` in ops commands (and `prepare-pick`/`confirm-pick`
   ledger refusals) but is the human message in `draft`/`sim`/`values`/`settings`.
 

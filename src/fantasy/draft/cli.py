@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from collections.abc import Container
 from pathlib import Path
 from typing import Annotated
 
@@ -17,12 +18,13 @@ import typer
 
 from fantasy.cli_common import emit, fail
 from fantasy.draft import store
-from fantasy.draft.names import NameResolutionError, resolve_player
+from fantasy.draft.names import NameResolutionError, resolve_player, unknown_player_id
 from fantasy.draft.optimizer import DraftContext
 from fantasy.draft.order import draft_order, order_for_draft, picks_for_slot
 from fantasy.league.settings import LeagueSettings, load_settings
 from fantasy.model.lines import load_projections
 from fantasy.model.valuation import ValuationParams, run_valuation, valuation_params
+from fantasy.ops.common import EXIT_NOT_FOUND
 
 app = typer.Typer(no_args_is_help=True, help="Live draft: state, picks, recommendations, simulation.")
 
@@ -117,10 +119,17 @@ def order(
 def set_order(
     rounds: Annotated[str, typer.Option("--rounds", help="Slot order per round as read on Yahoo: '1,2,..,12;12,..,1;...' "
                                         "or @file.json with [[...], ...]")],
+    force: Annotated[bool, typer.Option("--force", help="Also re-assign already-recorded picks whose team changes "
+                                        "(only if the commissioner really re-assigned made picks)")] = False,
     draft_id: DraftOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
-    """Store the exact draft order from Yahoo's draft-order page (overrides the 3RR formula)."""
+    """Store the exact draft order from Yahoo's draft-order page (overrides the 3RR formula).
+
+    If picks are already recorded and the new order gives any of them a different team, nothing is saved:
+    exit 2, code `order_conflicts_with_recorded_picks`, `conflicts` = [{overall, old_slot, new_slot, ...}].
+    --force saves anyway and rewrites those picks' team_slot/round (listed in `reassigned_picks`).
+    After any mid-draft change restart `fantasy draft watch`."""
     d = _load_draft(draft_id, as_json)
     try:
         if rounds.startswith("@"):
@@ -130,12 +139,23 @@ def set_order(
         draft_order(d["num_teams"], d["num_rounds"], "custom", custom)
     except (ValueError, TypeError, OSError) as e:
         fail(f"invalid --rounds: {e}", as_json, exit_code=2, draft_id=d["draft_id"])
-    store.set_draft_order(d["draft_id"], custom)
-    d = store.get_draft(d["draft_id"])
+    try:
+        reassigned = store.set_draft_order(d["draft_id"], custom, force=force)
+    except store.OrderConflict as e:
+        fail(f"new order changes the team of {len(e.conflicts)} recorded pick(s): "
+             + ", ".join(f"#{c['overall']} slot {c['old_slot']}->{c['new_slot']}" for c in e.conflicts)
+             + "; nothing saved. Re-check the order on Yahoo; only if the commissioner re-assigned picks that "
+             "were already made, re-run with --force", as_json, exit_code=2,
+             code="order_conflicts_with_recorded_picks", draft_id=d["draft_id"], conflicts=e.conflicts)
+    d = store.get_draft(d["draft_id"]) or d
     mine = [p.overall for p in order_for_draft(d) if p.slot == d["my_slot"]]
     formula = picks_for_slot(d["my_slot"], d["num_teams"], d["num_rounds"], "snake_3rr")
-    emit({"ok": True, "draft_id": d["draft_id"], "my_picks": mine, "matches_3rr_formula": mine == formula}, as_json,
-         f"order saved; my picks: {mine} ({'matches' if mine == formula else 'DIFFERS FROM'} 3RR formula)")
+    text = f"order saved; my picks: {mine} ({'matches' if mine == formula else 'DIFFERS FROM'} 3RR formula)"
+    if reassigned:
+        text += "; RE-ASSIGNED recorded picks: " + ", ".join(
+            f"#{c['overall']} slot {c['old_slot']}->{c['new_slot']}" for c in reassigned)
+    emit({"ok": True, "draft_id": d["draft_id"], "my_picks": mine, "matches_3rr_formula": mine == formula,
+          "reassigned_picks": reassigned}, as_json, text)
 
 
 @app.command()
@@ -164,12 +184,18 @@ def pick(
     player: Annotated[str, typer.Argument(help="Player name as shown on Yahoo, or player_id")],
     overall: Annotated[int | None, typer.Option("--overall", help="Overall pick number (default: next open pick)")] = None,
     source: Annotated[str, typer.Option("--source", help="yahoo_sync|browser|manual|agent")] = "manual",
-    force: Annotated[bool, typer.Option("--force", help="Overwrite a conflicting pick")] = False,
+    allow_unknown: Annotated[bool, typer.Option("--allow-unknown", help="Record a name not in projections as "
+                                                "unknown:<id> (does not overwrite by itself)")] = False,
+    overwrite: Annotated[bool, typer.Option("--overwrite", help="Replace a different player already recorded at "
+                                            "--overall (reported as `overwrote`)")] = False,
+    force: Annotated[bool, typer.Option("--force", help="Deprecated alias of --allow-unknown (does NOT overwrite; "
+                                        "use --overwrite)")] = False,
     draft_id: DraftOpt = None,
     projections: ProjOpt = None,
     as_json: JsonOpt = False,
 ) -> None:
-    """Record an observed pick. Idempotent; refuses conflicts unless --force (exit 2)."""
+    """Record an observed pick. Idempotent; refuses conflicts (exit 2, code conflict): a different player
+    at --overall (unless --overwrite) or the same player at another pick (undo that pick first)."""
     d = _load_draft(draft_id, as_json)
     n_total = d["num_teams"] * d["num_rounds"]
     if overall is not None and not 1 <= overall <= n_total:
@@ -181,26 +207,41 @@ def pick(
         pid = resolve_player(player, values)
         name = str(values.loc[pid, "name"])
     except NameResolutionError as e:
-        if not force:
+        if not (allow_unknown or force):
             fail(str(e), as_json, exit_code=2, code="unresolved_player", candidates=e.candidates)
-        pid, name = f"unknown:{player.strip().lower().replace(' ', '-')}", player.strip()
+        pid, name = unknown_player_id(player), player.strip()
     taken = {p["overall_pick"] for p in store.get_picks(d["draft_id"])}
     ov = overall if overall is not None else next((k for k in range(1, n_total + 1) if k not in taken), None)
     if ov is None:
         fail("draft is complete", as_json, code="draft_complete", draft_id=d["draft_id"])
     try:
-        row = store.record_pick(d, ov, pid, name, source, force=force)
+        row = store.record_pick(d, ov, pid, name, source, overwrite=overwrite)
     except store.PickConflict as e:
-        fail(str(e), as_json, exit_code=2, code="conflict")
-    emit({"ok": True, "draft_id": d["draft_id"], "pick": row}, as_json, f"#{ov}: {name} ({pid}) [{row['status']}]")
+        hint = "" if overwrite or "already drafted" in str(e) else \
+            " (if the board is wrong: `draft undo N` and re-record, or --overwrite)"
+        fail(f"{e}{hint}", as_json, exit_code=2, code="conflict", draft_id=d["draft_id"])
+    overwrote = row.pop("overwrote", None)
+    msg = f"#{ov}: {name} ({pid}) [{row['status']}]"
+    if overwrote:
+        msg += f" — OVERWROTE {overwrote['player_name']} ({overwrote['player_id']})"
+    emit({"ok": True, "draft_id": d["draft_id"], "pick": row, "overwrote": overwrote}, as_json, msg)
 
 
 @app.command()
 def undo(overall: int, draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
-    """Remove a recorded pick (to correct mistakes)."""
+    """Remove a recorded pick (to correct mistakes). Exit 6 (code not_found) if nothing is recorded there."""
     d = _load_draft(draft_id, as_json)
     n = store.undo_pick(d["draft_id"], overall)
-    emit({"ok": n > 0, "draft_id": d["draft_id"], "removed": n}, as_json, f"removed {n} pick(s)")
+    if not n:
+        fail(f"no pick recorded at #{overall}", as_json, exit_code=EXIT_NOT_FOUND, code="not_found",
+             draft_id=d["draft_id"], removed=0)
+    emit({"ok": True, "draft_id": d["draft_id"], "removed": n}, as_json, f"removed {n} pick(s)")
+
+
+def behind_clock(taken: Container[int], upto: int | None) -> list[int]:
+    """Picks before `upto` (e.g. my next pick) that are not recorded. Unlike `gaps` (holes below the highest
+    recorded pick) this also counts picks after the last recorded one: the board is behind the clock."""
+    return [] if upto is None else [k for k in range(1, upto) if k not in taken]
 
 
 @app.command()
@@ -227,6 +268,8 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
         "recent_picks": picks[-12:],
         "gaps": [p for p in range(1, (max(taken) if taken else 0)) if p not in taken],
     }
+    # picks before my next pick not yet on the board (must be [] before prepare-pick, like gaps)
+    out["behind"] = behind_clock(taken, out["my_upcoming"][0] if out["my_upcoming"] else None)
     if as_json:
         emit(out, True)
         return
@@ -236,6 +279,8 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
     typer.echo(f"my upcoming picks: {out['my_upcoming']}")
     if out["gaps"]:
         typer.echo(f"WARNING missing picks (not yet recorded): {out['gaps']}")
+    if out["behind"] and out["behind"] != out["gaps"]:
+        typer.echo(f"board behind my next pick #{out['my_upcoming'][0]}: picks {out['behind']} not on the board yet")
 
 
 # Register the remaining commands on `app` (order = help order). Imported last: they import this module.

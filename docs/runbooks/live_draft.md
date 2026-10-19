@@ -38,9 +38,10 @@ The agent protocol itself is `.claude/skills/live-draft/SKILL.md`. This page is 
 | Symptom | Action |
 |---|---|
 | Agent stuck / browser unresponsive | Say "manual mode". Pick in Yahoo yourself using the top of `/draft` recommendations, or run `fantasy draft recommend` in a terminal. |
-| Board out of sync | `fantasy draft board` shows `gaps`; record missing picks: `fantasy draft pick "Name" --overall N --source manual` (or use the dashboard Manual panel). |
+| Board out of sync | `fantasy draft board` shows `gaps` / `behind` (prepare-pick refuses to CLICK until both are empty); record missing picks: `fantasy draft pick "Name" --overall N --source manual` (or use the dashboard Manual panel). |
 | Dashboard writes disabled | Needs `SUPABASE_SERVICE_ROLE_KEY` + `DASHBOARD_PASSPHRASE` env vars in Vercel. Use the CLI instead. |
-| Wrong pick recorded | `fantasy draft undo N` then re-record. |
+| Wrong pick recorded | `fantasy draft undo N` then re-record (or `fantasy draft pick ... --overwrite`). |
+| Commissioner changed the order mid-draft | `fantasy draft set-order --rounds ...`; if it refuses with `order_conflicts_with_recorded_picks`, re-check Yahoo; `--force` only if already-made picks were re-assigned. Restart `fantasy draft watch`. |
 | Clock expiring | Yahoo autopicks from your Pre-Draft Rankings (set in setup step 4). |
 | Recommendations live-updating from dashboard entries | Run `fantasy draft watch` in a terminal: it recomputes whenever a pick is recorded anywhere. DB errors are logged to stderr (`warning: ... DB error ... still watching`) and retried with backoff (≤30 s); it does not exit. |
 

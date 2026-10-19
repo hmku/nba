@@ -85,16 +85,47 @@ def get_draft(draft_id: str | None = None, engine: Engine | None = None) -> dict
     return dict(row) if row else None
 
 
-def set_draft_order(draft_id: str, custom_rounds: list[list[int]], engine: Engine | None = None) -> None:
+class OrderConflict(Exception):
+    """A new draft order would change the team slot of already-recorded picks (see `set_draft_order`)."""
+
+    def __init__(self, conflicts: list[dict]):
+        self.conflicts = conflicts
+        super().__init__(f"{len(conflicts)} recorded pick(s) would change team: "
+                         + ", ".join(f"#{c['overall']} slot {c['old_slot']}->{c['new_slot']}" for c in conflicts))
+
+
+def set_draft_order(
+    draft_id: str, custom_rounds: list[list[int]], force: bool = False, engine: Engine | None = None,
+) -> list[dict]:
+    """Store a custom order. Recorded picks whose team slot (or round) differs under the new order are
+    conflicts: raise OrderConflict (nothing written) unless `force`, which rewrites their team_slot/round.
+    Returns the re-assigned picks ([] when none), each {overall, old_slot, new_slot, player_id, player_name}."""
     eng = engine or get_engine()
     with eng.begin() as conn:
         row = conn.execute(select(drafts).where(drafts.c.draft_id == draft_id)).mappings().first()
         if row is None:
             raise KeyError(draft_id)
+        new_order = draft_order(row["num_teams"], row["num_rounds"], "custom", custom_rounds)
+        picks = conn.execute(select(draft_picks).where(draft_picks.c.draft_id == draft_id)
+                             .order_by(draft_picks.c.overall_pick)).mappings().all()
+        changed = []
+        for p in picks:
+            new = new_order[p["overall_pick"] - 1]
+            if (p["team_slot"], p["round"]) != (new.slot, new.round):
+                changed.append({"overall": p["overall_pick"], "old_slot": p["team_slot"], "new_slot": new.slot,
+                                "player_id": p["player_id"], "player_name": p["player_name"]})
+        if changed and not force:
+            raise OrderConflict(changed)
+        for c in changed:
+            new = new_order[c["overall"] - 1]
+            conn.execute(update(draft_picks).where(
+                draft_picks.c.draft_id == draft_id, draft_picks.c.overall_pick == c["overall"]
+            ).values(team_slot=new.slot, round=new.round))
         config = with_order({**(row["config"] or {}), "custom_rounds": custom_rounds},
                             row["num_teams"], row["num_rounds"], "custom")
         conn.execute(update(drafts).where(drafts.c.draft_id == draft_id).values(
             order_type="custom", config=config, updated_at=_now()))
+    return changed
 
 
 def status_for(current: str | None, n_picks: int, n_total: int) -> str:
@@ -142,33 +173,41 @@ class PickConflict(Exception):
 
 def record_pick(
     draft: dict, overall: int, player_id: str, player_name: str, source: str,
-    force: bool = False, engine: Engine | None = None,
+    force: bool = False, engine: Engine | None = None, overwrite: bool = False,
 ) -> dict:
-    """Idempotent: re-recording the same player at the same pick is a no-op."""
+    """Idempotent: re-recording the same player at the same pick is a no-op.
+
+    A different player already at `overall` is a PickConflict unless `overwrite` (`force` is the old name
+    for the same thing); the replaced row is returned as ``overwrote``. The same player recorded at another
+    pick is always a PickConflict (undo that pick first)."""
+    overwrite = overwrite or force
     eng = engine or get_engine()
     info = pick_info(overall, draft["num_teams"], draft["num_rounds"], draft["order_type"],
                      (draft.get("config") or {}).get("custom_rounds"))
+    overwrote = None
     with eng.begin() as conn:
         existing = conn.execute(
             select(draft_picks).where(draft_picks.c.draft_id == draft["draft_id"], draft_picks.c.overall_pick == overall)
         ).mappings().first()
         if existing:
             if existing["player_id"] == player_id:
-                return {**dict(existing), "status": "unchanged"}
-            if not force:
+                return {**dict(existing), "status": "unchanged", "overwrote": None}
+            if not overwrite:
                 raise PickConflict(f"pick {overall} already recorded as {existing['player_name']} ({existing['player_id']})")
-            conn.execute(delete(draft_picks).where(
-                draft_picks.c.draft_id == draft["draft_id"], draft_picks.c.overall_pick == overall))
         dup = conn.execute(
             select(draft_picks).where(draft_picks.c.draft_id == draft["draft_id"], draft_picks.c.player_id == player_id)
         ).mappings().first()
-        if dup and not force:
+        if dup:
             raise PickConflict(f"{player_name} already drafted at pick {dup['overall_pick']}")
+        if existing:
+            overwrote = dict(existing)
+            conn.execute(delete(draft_picks).where(
+                draft_picks.c.draft_id == draft["draft_id"], draft_picks.c.overall_pick == overall))
         row = {"draft_id": draft["draft_id"], "overall_pick": overall, "round": info.round, "team_slot": info.slot,
                "player_id": player_id, "player_name": player_name, "source": source, "created_at": _now()}
         conn.execute(insert(draft_picks).values(**row))
         _sync_status(conn, draft["draft_id"])  # pending -> live, and -> complete when the board is full
-    return {**row, "status": "recorded"}
+    return {**row, "status": "recorded", "overwrote": overwrote}
 
 
 def undo_pick(draft_id: str, overall: int, engine: Engine | None = None) -> int:

@@ -11,7 +11,7 @@ import {
   requireAgent,
   writer,
 } from "@/lib/agentApi";
-import { REPORTS_PER_HOUR, defaultOverall, resolvePlayer, slugify, validatePick } from "@/lib/agentPure";
+import { REPORTS_PER_HOUR, defaultOverall, resolvePlayer, unknownId, validatePick } from "@/lib/agentPure";
 import { pickInfoForDraft } from "@/lib/draftOrder";
 import { syncDraftStatus } from "@/lib/draftStatus";
 import type { DraftPick } from "@/lib/types";
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     playerId = res.player.player_id;
     playerName = res.player.name;
   } else if (input.allow_unknown && res.status === "not_found") {
-    playerId = `unknown:${slugify(input.player)}`;
+    playerId = unknownId(input.player);
     playerName = input.player;
   } else {
     return fail(

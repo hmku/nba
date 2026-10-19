@@ -20,6 +20,7 @@ from fantasy.draft.cli import (
     _load_draft,
     _settings_for,
     app,
+    behind_clock,
 )
 from fantasy.draft.optimizer import (
     DEFAULT_STRATEGIES,
@@ -28,6 +29,7 @@ from fantasy.draft.optimizer import (
     DraftState,
     OptimizerParams,
 )
+from fantasy.draft.order import order_for_draft
 from fantasy.draft.policy import (
     DEFAULT_EPS,
     DEFAULT_MARGIN,
@@ -116,8 +118,12 @@ def recommend(
     rec["ok"] = True
     rec["valuation_params"] = {"kappa": vp.kappa, "punt": vp.punt}
     gaps = [p for p in range(1, (max(state.taken) if state.taken else 0)) if p not in state.taken]
-    if gaps:
+    if gaps and not any("not recorded" in w for w in rec["warnings"]):  # the optimizer usually warned already
         rec["warnings"].append(f"Picks {gaps} not recorded — availability may be wrong; sync the board first.")
+    rec["behind"] = behind_clock(state.taken, rec.get("for_pick"))
+    if rec["behind"] and rec["behind"] != gaps:
+        rec["warnings"].append(f"Board behind my pick #{rec['for_pick']}: picks {rec['behind']} are not on the "
+                               "board yet; all must be recorded before prepare-pick.")
     if save:
         try:
             rec["rec_id"] = store.save_recommendation(rec)
@@ -176,6 +182,12 @@ def _attach_value_search(rec: dict, ctx: DraftContext, state: DraftState, mode: 
     rec["value_search"] = res
 
 
+def _order_key(d: dict) -> tuple:
+    """What `watch` must recompute on besides picks: the per-pick slot order and my slot."""
+    slots = (d.get("config") or {}).get("order_slots") or [p.slot for p in order_for_draft(d)]
+    return (tuple(slots), d["my_slot"])
+
+
 WATCH_MAX_BACKOFF = 30.0  # seconds between retries while the DB keeps failing
 
 
@@ -206,8 +218,8 @@ def watch(
 
     db_errors = (SQLAlchemyError, OSError)
     d = _load_draft(draft_id, False)
-    s = _settings_for(d)
-    ctx, run_id = _context(s, projections, d)
+    order_key = _order_key(d)
+    ctx, run_id = _context(_settings_for(d), projections, d)
     opt = DraftOptimizer(ctx)
     last: tuple | None = None
     unsaved: dict | None = None  # computed recommendation whose save failed
@@ -217,8 +229,16 @@ def watch(
     while True:
         polls += 1
         try:
+            # re-read the draft row every poll: `set-order` mid-draft changes my picks (and the context)
+            fresh = store.get_draft(d["draft_id"])
+            if fresh is not None and _order_key(fresh) != order_key:
+                d, order_key = fresh, _order_key(fresh)
+                ctx, run_id = _context(_settings_for(d), projections, d)
+                opt = DraftOptimizer(ctx)
+                typer.echo(f"[{time.strftime('%H:%M:%S')}] draft order changed (my slot {d['my_slot']}); "
+                           "context rebuilt")
             picks = store.get_picks(d["draft_id"])
-            key = tuple((p["overall_pick"], p["player_id"]) for p in picks)
+            key = (order_key, tuple((p["overall_pick"], p["player_id"]) for p in picks))
             if key != last:
                 unsaved = None
                 state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])

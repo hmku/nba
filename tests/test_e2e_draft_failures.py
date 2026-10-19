@@ -145,9 +145,11 @@ def test_name_ambiguity_returns_candidates(P):
     assert code == 2 and prep["candidates"]
     code, out = cli("draft", "pick", pid, "--overall", 1, "--source", "browser", "--json", *P)
     assert code == 0 and out["pick"]["player_id"] == pid
-    # a player not in projections: --force records unknown:<name>
-    code, out = cli("draft", "pick", "Zz Nobody Qq", "--overall", 2, "--force", "--json", *P)
-    assert code == 0 and out["pick"]["player_id"].startswith("unknown:")
+    # a player not in projections: --allow-unknown (or the old --force) records unknown:<id>
+    code, out = cli("draft", "pick", "Zz Nobody Qq", "--overall", 2, "--allow-unknown", "--json", *P)
+    assert code == 0 and out["pick"]["player_id"] == "unknown:zz-nobody-qq"
+    code, out = cli("draft", "pick", "Yy Nobody", "--overall", 3, "--force", "--json", *P)
+    assert code == 0 and out["pick"]["player_id"] == "unknown:yy-nobody"
 
 
 def test_sync_gap_warning_everywhere(P):
@@ -162,8 +164,9 @@ def test_sync_gap_warning_everywhere(P):
     for ov in range(6, 24):
         assert cli("draft", "pick", f"player-{ov + 20:03d}", "--overall", ov, "--json", *P)[0] == 0
     assert cli("draft", "undo", 12, "--json")[1]["removed"] == 1
-    code, out = prepare(P, "Player 100", 24, rid)
-    assert code == 0 and out["gaps"] == [12] and any("not recorded" in w for w in out["warnings"])
+    code, out = prepare(P, "Player 100", 24, rid)  # a hole in the board: never CLICK (review A3)
+    assert code == 4 and out["action"] == "DO_NOT_CLICK" and out["gaps"] == [12] and out["behind"] == [12]
+    assert "not recorded" in out["message"]
     code, rec = cli("draft", "recommend", "--no-save", "--json", *P)
     assert any("not recorded" in w for w in rec["warnings"])
 
@@ -182,7 +185,10 @@ def test_undo_and_rerecord(P):
     assert code == 0 and out["pick"]["status"] == "recorded"
     assert board()["my_roster"][0]["player_id"] == "player-008"
     code, out = cli("draft", "pick", "Player 009", "--overall", 1, "--force", "--json", *P)
-    assert code == 0 and board()["my_roster"][0]["player_id"] == "player-009"
+    assert code == 2 and out["code"] == "conflict"  # --force no longer overwrites (review A4)
+    code, out = cli("draft", "pick", "Player 009", "--overall", 1, "--overwrite", "--json", *P)
+    assert code == 0 and out["overwrote"]["player_id"] == "player-008"
+    assert board()["my_roster"][0]["player_id"] == "player-009"
 
 
 def test_out_of_order_recording(P):

@@ -10,7 +10,7 @@ import typer
 
 from fantasy.cli_common import emit, fail, failure
 from fantasy.draft import store
-from fantasy.draft.cli import DraftOpt, JsonOpt, ProjOpt, _load_draft, app
+from fantasy.draft.cli import DraftOpt, JsonOpt, ProjOpt, _load_draft, app, behind_clock
 from fantasy.draft.names import NameResolutionError, resolve_player
 from fantasy.draft.order import order_for_draft
 from fantasy.model.lines import load_projections
@@ -32,7 +32,8 @@ def prepare_pick(
     mark it submitted.
 
     Exit 0 with action=CLICK → click Draft in Yahoo now. Exit 4 → NOT allowed (dry_run, no lock, not my pick,
-    pick already on the board, player already drafted): do not click. Exit 7 → this pick already has a
+    pick already on the board, player already drafted, board not synced = an earlier pick is not recorded,
+    listed in `behind`): do not click. Exit 7 → this pick already has a
     submitted/verified txn: verify on Yahoo instead of clicking again. A failed/cancelled earlier attempt is
     retried automatically (next attempt number); a `planned` txn left by another run is re-owned.
     """
@@ -56,6 +57,10 @@ def prepare_pick(
     if refusal:
         _refuse(refusal[0], as_json, did, **refusal[1])
     top, rank_in_recs, gaps, warnings = _vs_latest_recommendation(did, pid, overall, taken)
+    behind = behind_clock(taken, overall)
+    if behind:  # the clock is at my pick only if every earlier pick is on the board (gaps alone miss 21..23 of 1..20)
+        _refuse(f"board not synced: picks {behind} not recorded — record them from the draft log first",
+                as_json, did, behind=behind, gaps=gaps)
     mode = None
     try:
         mode = ledger.get_run(run_id)["mode"]
@@ -63,7 +68,7 @@ def prepare_pick(
     except OpsError as e:
         if as_json:
             typer.echo(json.dumps({**e.to_dict(), "action": "DO_NOT_CLICK", "draft_id": did, "run_mode": mode,
-                                   "gaps": gaps, "warnings": warnings}, default=str))
+                                   "gaps": gaps, "behind": behind, "warnings": warnings}, default=str))
         else:
             typer.echo(f"DO NOT CLICK: {e.message}", err=True)
         raise typer.Exit(e.exit_code) from e
@@ -72,7 +77,7 @@ def prepare_pick(
            "attempt": transactions.attempt_of(txn), "txn_note": txn_note, "run_mode": mode,
            "agrees_with_model": dec.get("agrees_with_model"),
            "rank_in_recommendations": None if rank_in_recs is None else rank_in_recs + 1,
-           "gaps": gaps, "warnings": warnings}
+           "gaps": gaps, "behind": behind, "warnings": warnings}
     emit(out, as_json, f"CLICK DRAFT: {name} ({out['team']}) at #{overall}  txn={txn['txn_id']}  "
                         f"agrees_with_model={out['agrees_with_model']} {warnings or ''}")
 

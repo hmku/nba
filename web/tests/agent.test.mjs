@@ -10,10 +10,12 @@ import {
   boardInfo,
   defaultOverall,
   museRunId,
+  planManualPick,
   recIsFresh,
   resolvePlayer,
   searchPlayers,
   slugify,
+  unknownId,
   validatePick,
   validateReport,
 } from "../src/lib/agentPure.ts";
@@ -138,4 +140,36 @@ test("resolvePlayer: Python alias spellings resolve by id", () => {
   const p = [{ player_id: "alexandre-sarr", name: "Alexandre Sarr", team: "WAS", positions: ["C"], rank: 60 }, ...pool];
   assert.equal(resolvePlayer("Alex Sarr", p).player?.player_id, "alexandre-sarr");
   assert.equal(resolvePlayer("Jaren Jackson", p).player?.player_id, "jaren-jackson-jr");
+});
+
+test("resolvePlayer: Yahoo spellings resolve like Python's resolver (fixture 'resolve', review B1)", () => {
+  const projected = idFx.cases.filter((c) => !c.extra).map((c) => ({ player_id: c.id, name: c.name }));
+  assert.ok(idFx.resolve.length >= 2);
+  for (const c of idFx.resolve) assert.equal(resolvePlayer(c.query, projected).player?.player_id, c.id, c.query);
+});
+
+test("unknownId equals Python unknown_player_id (fixture 'unknown')", () => {
+  assert.ok(idFx.unknown.length >= 2);
+  for (const c of idFx.unknown) assert.equal(unknownId(c.name), c.id, c.name);
+});
+
+test("planManualPick: no silent overwrite, duplicates always refused (review B3)", () => {
+  const board = [
+    { overall_pick: 1, player_id: "nikola-jokic", player_name: "Nikola Jokić" },
+    { overall_pick: 2, player_id: "unknown:zz-nobody", player_name: "Zz Nobody" },
+  ];
+  assert.equal(planManualPick(board, 1, "nikola-jokic", false).action, "unchanged");
+  const c = planManualPick(board, 1, "victor-wembanyama", false);
+  assert.equal(c.action, "conflict");
+  assert.match(c.error, /^Conflict: pick 1 already has Nikola Jokić/);
+  const r = planManualPick(board, 1, "victor-wembanyama", true);
+  assert.equal(r.action, "replace");
+  assert.equal(r.existing.player_id, "nikola-jokic");
+  for (const ow of [false, true]) {
+    const d = planManualPick(board, 3, "unknown:zz-nobody", ow);
+    assert.equal(d.action, "conflict");
+    assert.match(d.error, /already recorded at pick 2/);
+  }
+  assert.equal(planManualPick(board, 3, "victor-wembanyama", false).action, "insert");
+  assert.equal(planManualPick([], 1, "x", true).action, "insert");
 });

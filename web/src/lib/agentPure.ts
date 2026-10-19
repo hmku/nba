@@ -64,6 +64,13 @@ export function canonicalId(name: string): string {
   return ALIASES[s] ?? s;
 }
 
+/** Id for a drafted player not in our list: `unknown:<canonical id>`. Identical to Python's
+ *  `fantasy.draft.names.unknown_player_id` (fixture: tests/fixtures/player_id_parity.json "unknown"), so the
+ *  same unknown player recorded from the CLI and from the web is one id (and caught as a duplicate). */
+export function unknownId(name: string): string {
+  return `unknown:${canonicalId(name)}`;
+}
+
 const SUFFIX = /(jr|sr|ii|iii|iv)$/;
 
 function levenshtein(a: string, b: string): number {
@@ -191,6 +198,36 @@ export function defaultOverall(recorded: number[], total: number): number | null
   const set = new Set(recorded);
   for (let i = 1; i <= total; i++) if (!set.has(i)) return i;
   return null;
+}
+
+export interface RecordedPick {
+  overall_pick: number;
+  player_id: string | null;
+  player_name: string | null;
+}
+
+export type ManualPickPlan =
+  | { action: "unchanged"; existing: RecordedPick }
+  | { action: "conflict"; error: string; existing: RecordedPick }
+  | { action: "insert" }
+  | { action: "replace"; existing: RecordedPick };
+
+/** What the dashboard's manual pick route does (mirrors `fantasy draft pick` / store.record_pick): the same
+ *  player at the same pick is a no-op; the same player at ANOTHER pick is always a conflict (undo that pick
+ *  first); a different player at this pick is a conflict unless `overwrite` (then it is replaced). */
+export function planManualPick(picks: RecordedPick[], overall: number, playerId: string, overwrite: boolean): ManualPickPlan {
+  const atPick = picks.find((p) => p.overall_pick === overall);
+  if (atPick && atPick.player_id === playerId) return { action: "unchanged", existing: atPick };
+  const dup = picks.find((p) => p.player_id === playerId && p.overall_pick !== overall);
+  if (dup)
+    return {
+      action: "conflict",
+      error: `Conflict: ${dup.player_name ?? dup.player_id} is already recorded at pick ${dup.overall_pick} (undo that pick first)`,
+      existing: dup,
+    };
+  if (atPick && !overwrite)
+    return { action: "conflict", error: `Conflict: pick ${overall} already has ${atPick.player_name ?? atPick.player_id}`, existing: atPick };
+  return atPick ? { action: "replace", existing: atPick } : { action: "insert" };
 }
 
 /* ------------------------------------------------------------------ report validation */

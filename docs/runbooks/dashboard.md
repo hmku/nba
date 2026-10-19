@@ -149,7 +149,8 @@ anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src
 - `POST /api/agent/pick {overall?, player, note?, allow_unknown?}` — records an observed pick, `source='external_agent'`.
   Same player at same pick → 200 `unchanged`; pick or player already recorded → 409 (never overwrites); name resolution
   mirrors `fantasy/draft/names.py` plus Yahoo "V. Wembanyama" and unique ≥5-char substrings; ambiguous/unknown → 422
-  with `candidates`; `allow_unknown` records `unknown:<slug>` like `fantasy draft pick --force`. Default `overall` = lowest
+  with `candidates`; `allow_unknown` records `unknown:<canonical id>` exactly like `fantasy draft pick --allow-unknown` (same id on both sides,
+  so the same unknown player is caught as a duplicate). Default `overall` = lowest
   unrecorded pick. Also logs an `observation` (`payload.report_kind = "observed_pick"`) in the muse run.
 - `POST /api/agent/report {kind, message, details?, source?}` — kinds `draft_order|trade|rule|injury_news|schedule|
   chat_note|other`; message trimmed to 2000 chars, details ≤ 8000 chars JSON. Upserts the day's run

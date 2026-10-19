@@ -126,9 +126,13 @@ def test_prepare_pick_board_checks_and_gaps(P):
     code, out = cli("draft", "prepare-pick", "Player 000", "--overall", 24, *D, "--run-id", rid, "--json", *P)
     assert code == 4 and "already recorded as drafted" in out["message"]
     cli("draft", "pick", "Player 010", "--overall", 20, *D, *P)  # picks 2..19 missing
+    code, out = cli(*base, "--overall", 24)  # board not synced (review A3): refuse, list what is missing
+    assert code == 4 and out["action"] == "DO_NOT_CLICK", out
+    assert out["gaps"] == list(range(2, 20)) and out["behind"] == [*range(2, 20), 21, 22, 23]
+    for k in [*range(2, 20), 21, 22, 23]:
+        assert cli("draft", "pick", f"player-{k + 100:03d}", "--overall", k, *D, *P)[0] == 0
     code, out = cli(*base, "--overall", 24)
-    assert code == 0 and out["action"] == "CLICK", out
-    assert out["gaps"] == list(range(2, 20)) and any("not recorded" in w for w in out["warnings"])
+    assert code == 0 and out["action"] == "CLICK" and out["gaps"] == [] and out["behind"] == [], out
 
 
 def test_prepare_pick_retry_reown_and_mode(P):
