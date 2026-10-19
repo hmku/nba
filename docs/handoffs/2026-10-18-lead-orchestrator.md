@@ -51,3 +51,9 @@ Supabase REST publish (network secret) ; demo rows removed.
   culprit = analytic ADP availability model (availability="sim" closes the gap; GreedyCat ~ BPA so objective OK).
   Best: `--search value --availability sim --room mixed`: +1.9 pp P(po), +1.4 pp P(title) vs default (z 8.7/4.7), >= BPA on title in every world, ~2 s.
   Pick #24 changes Kawhi -> Bam Adebayo. NEEDS USER OK before 22:00 UTC freeze to make default.
+
+## Update 2026-10-19 ~16:50 UTC: draft config FINAL (pre-freeze)
+- Default policy (user-approved): `--search value --availability sim --room mixed` (862cc74, reviewed), value-model-0.2.0 (c2217ac, reviewed; rollback FANTASY_VALUE_MODEL=value-model-0.1.0), display-only p_next fix (4940316), live-draft guard value_search_status==ok (7f4bd68).
+- Room-sim self-pick correction evaluated (1c71257): NOT adopted (worse/tie in W_mixed); stays opt-in `room_self`.
+- Placeholder variants (177675e): not adopted, opt-in.
+- Remaining USER actions: privacy SQL in Supabase SQL editor; laptop draft-prep + mock rehearsal after 22:00 UTC freeze (check value_search_status ok); `pip install -e .`.
