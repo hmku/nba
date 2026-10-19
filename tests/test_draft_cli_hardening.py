@@ -200,7 +200,7 @@ def test_recommend_reuses_valuation_run(P, db_url):
 
     from fantasy.db.engine import get_engine
     from fantasy.db.schema import model_runs
-    from fantasy.model.lines import GAME_CV_SOURCE
+    from fantasy.model.noise import NOISE_MODEL_VERSION
 
     cli("draft", "init", "--draft-id", "mock-c", "--mock")
     for _ in range(2):
@@ -210,4 +210,4 @@ def test_recommend_reuses_valuation_run(P, db_url):
         rows = conn.execute(select(model_runs.c.params).where(model_runs.c.kind == "valuation")).all()
         assert conn.execute(select(func.count()).select_from(model_runs)
                             .where(model_runs.c.kind == "valuation")).scalar_one() == 1
-    assert rows[0][0]["game_cv"] == GAME_CV_SOURCE
+    assert rows[0][0]["noise_model"] == NOISE_MODEL_VERSION and "game_cv" not in rows[0][0]

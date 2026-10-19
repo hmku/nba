@@ -50,7 +50,7 @@ SEED: list[tuple[int, str, str, str]] = [
      "Read the draft order page on Yahoo (Yahoo has no native 3RR; commissioner enters it by hand) and "
      "store it with `fantasy draft set-order`; confirm my picks."),
     (1, "model", "Calibrate availability and variance priors",
-     "Fit ADP sd (draft/availability.py) on Yahoo draft results and GAME_CV per-game CVs (model/lines.py) on game logs."),
+     "Fit ADP sd (draft/availability.py) on Yahoo draft results and per-game noise var(stat, m) (model/noise.py) on game logs."),
     (1, "draft", "Calibrate opponent drafting noise",
      "SD_FLOOR/SD_SLOPE in draft/availability.py (spread of human picks around ADP) are priors; fit from real "
      "Yahoo draft results (incl. our league's 2026 draft) and check rookie/injured-star/position-run deviations."),

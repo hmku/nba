@@ -171,8 +171,13 @@ w.r.t. our projections and uncalibrated simulator priors; the optimism-decomposi
 
 ## Limitations
 - **In-sample**: training labels, validation (i)/(ii) and the search all use our projections and the
-  same season simulator (uncalibrated `SimParams`/`GAME_CV` priors, being calibrated concurrently). (iii)
+  same season simulator (then-uncalibrated `SimParams` and constant game-CV priors, calibrated since). (iii)
   is the only out-of-sample-style check and it is a proxy.
+- **Known mismatch (2026-10-19): noise model.** `value-model-0.1.0` was trained on rosters, values and labels
+  produced under the old constant-CV game noise (valuation-0.2.x, season-sim-0.4.0). Since valuation-0.3.0 /
+  season-sim-0.5.0 both use the one fitted variance function (`fantasy.model.noise`). Its features (category
+  model moments) are now computed under the new noise, so its scale is slightly off. It is advisory only and was
+  not retrained (the draft-time effect of the noise change is small: `sim_calibration.md` section 8).
 - The value model sees rosters only through the category model's Normal moments and availability sums;
   it cannot know about schedule details beyond what the 160-season labels average out.
 - Rollouts complete my roster with GreedyCat (no lookahead), not with the optimizer; the search therefore

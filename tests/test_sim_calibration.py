@@ -1,17 +1,12 @@
-"""Calibrated simulator constants (docs/research/sim_calibration.md) and the opt-in fitted GAME_CV."""
-
-import os
-import subprocess
-import sys
-from pathlib import Path
+"""Calibrated simulator constants (docs/research/sim_calibration.md). Game noise: tests/test_noise.py."""
 
 import numpy as np
 import pytest
 
-import fantasy
 from fantasy.draft.order import draft_order
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.lines import GAME_CV, GAME_CV_FITTED, STATS, load_projections
+from fantasy.model.lines import STATS, load_projections
+from fantasy.model.noise import game_var_matrix
 from fantasy.sim import calibration as cal
 from fantasy.sim.context import build_context
 from fantasy.sim.engine import FACTOR_STATS, SimParams
@@ -38,25 +33,11 @@ def test_defaults_are_the_fitted_constants():
     p = SimParams()
     assert p.vol_sd is None and p.fg_pct_sd is None and p.ft_pct_sd is None  # by projected mpg
     assert p.stat_sd is None and p.stat_sds == cal.STAT_SD and set(cal.STAT_SD) == set(FACTOR_STATS)
-    assert p.game_var == "fitted" and p.noise_corr
+    assert p.noise_corr and not hasattr(p, "game_var")  # one noise model; no constant-CV switch
     C = np.array(cal.NOISE_CORR)
     assert np.allclose(C, C.T) and np.allclose(np.diag(C), 1.0)
     np.linalg.cholesky(C)  # positive definite
-    assert set(cal.GAME_VAR) == set(STATS) == set(cal.GAME_CV_POOLED)
-
-
-def test_draft_game_cv_default_is_fitted():
-    # valuation-0.2.3: the fitted GAME_CV is the draft default unless FANTASY_GAME_CV=prior
-    if os.environ.get("FANTASY_GAME_CV", "").lower() != "prior":
-        assert GAME_CV == GAME_CV_FITTED
-
-
-def test_prior_game_cv_is_opt_out():
-    code = "from fantasy.model.lines import GAME_CV, GAME_CV_PRIOR, GAME_CV_SOURCE; print(GAME_CV_SOURCE, GAME_CV == GAME_CV_PRIOR)"
-    src = str(Path(fantasy.__file__).resolve().parents[1])
-    env = {**os.environ, "FANTASY_GAME_CV": "prior", "PYTHONPATH": src}
-    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True).stdout
-    assert out.split() == ["prior", "True"]
+    assert not hasattr(cal, "GAME_VAR") and not hasattr(cal, "GAME_CV_POOLED")  # moved to model.noise / deleted
 
 
 def test_per_stat_and_scalar_stat_sd(ctx):
@@ -91,16 +72,11 @@ def test_error_sds_by_projected_minutes(ctx):
     assert np.log(mu[:, i] / float(ctx.proj.df.loc[pid, "reb"])).std() == pytest.approx(cal.ERROR_BY_MPG[0][1], rel=0.1)
 
 
-def test_game_variance_modes(ctx):
+def test_simulator_uses_the_shared_noise_model(ctx):
     m = np.array([[10.0, 20.0, 3.0, 4.0, 1.5, 25.0, 6.0, 4.0, 1.0, 0.6, 2.0]])
-    fitted = ctx.simulator(SimParams(n_sims=1)).game_variance(m)
-    a = np.array([cal.GAME_VAR[s][0] for s in STATS])
-    b = np.array([cal.GAME_VAR[s][1] for s in STATS])
-    assert np.allclose(fitted, a * m + b * m * m)
-    cv = ctx.simulator(SimParams(n_sims=1, game_var="cv")).game_variance(m)
-    assert np.allclose(cv, (m * np.array([GAME_CV[s] for s in STATS])) ** 2)
-    with pytest.raises(ValueError):
-        ctx.simulator(SimParams(n_sims=1, game_var="bogus"))
+    assert np.array_equal(ctx.simulator(SimParams(n_sims=1)).game_variance(m), game_var_matrix(m))
+    with pytest.raises(TypeError):
+        SimParams(n_sims=1, game_var="cv")  # type: ignore[call-arg]
 
 
 def _partial_corr(res, a, b):
@@ -120,26 +96,3 @@ def test_noise_correlation_raises_category_correlation(ctx, league):
     assert _partial_corr(on, "reb", "ast") > _partial_corr(off, "reb", "ast") + 0.05
     # the means are unaffected
     assert abs(on.totals.mean() - off.totals.mean()) < 0.01 * abs(off.totals.mean())
-
-
-def test_bad_game_cv_env_fails_loudly():
-    code = "import fantasy.model.lines"
-    src = str(Path(fantasy.__file__).resolve().parents[1])
-    env = {**os.environ, "FANTASY_GAME_CV": "fited", "PYTHONPATH": src}
-    res = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True)
-    assert res.returncode != 0
-    assert "ValueError" in res.stderr and "FANTASY_GAME_CV" in res.stderr and "'fited'" in res.stderr
-    # accepted spellings
-    for ok in ("", "Fitted", " PRIOR "):
-        assert subprocess.run([sys.executable, "-c", code], env={**env, "FANTASY_GAME_CV": ok}).returncode == 0
-
-
-def test_valuation_run_params_record_game_cv(proj_path):
-    from fantasy.league.settings import LeagueSettings
-    from fantasy.model.lines import GAME_CV_SOURCE
-    from fantasy.model.valuation import ValuationParams, run_valuation, valuation_params
-
-    s, vp = LeagueSettings(), ValuationParams()
-    run = run_valuation(load_projections(proj_path), s, vp)
-    assert run.params["game_cv"] == GAME_CV_SOURCE
-    assert run.params == valuation_params(vp, s)

@@ -1,6 +1,6 @@
 ---
 name: model-eval
-description: Evaluate and improve the quant models - Monte Carlo draft simulation (optimizer vs best-player-available baseline), sensitivity to kappa / punts / objective / ADP noise, where the uncalibrated priors live (GAME_CV, ADP sd, USAGE, stream_recovery), backtesting (T-010) and calibration (T-016), and the rule that model changes bump MODEL_VERSION and need tests. Use when asked whether the model/optimizer is good, to tune or calibrate parameters, to compare strategies, or before merging any change under src/fantasy/model or src/fantasy/draft.
+description: Evaluate and improve the quant models - Monte Carlo draft simulation (optimizer vs best-player-available baseline), sensitivity to kappa / punts / objective / ADP noise, where the uncalibrated priors live (ADP sd, USAGE, stream_recovery; game noise is fitted in model/noise.py), backtesting (T-010) and calibration (T-016), and the rule that model changes bump MODEL_VERSION and need tests. Use when asked whether the model/optimizer is good, to tune or calibrate parameters, to compare strategies, or before merging any change under src/fantasy/model or src/fantasy/draft.
 ---
 
 # Model evaluation & improvement
@@ -47,7 +47,7 @@ draft for recommend experiments - never experiment on the real draft record.
 ## 3. Priors that need calibration (T-016)
 | Prior | Where | Current | Calibrate on |
 |---|---|---|---|
-| `GAME_CV` per-game coefficient of variation per stat | `src/fantasy/model/lines.py` | fitted `GAME_CV_FITTED` is the default since valuation-0.2.3 (pts 0.42, stl 0.97; no change to picks 1/24/36); old prior (pts 0.35, stl 0.85) via `FANTASY_GAME_CV=prior` | done for the simulator: `docs/research/sim_calibration.md` (variance ∝ mean, not constant CV) |
+| Game-to-game noise var(stat, m) = a·m + b·m² (ONE model for valuation G-scores, the optimizer's category model and the season simulator; `noise_model` = noise-var-1.0 in run params) | `src/fantasy/model/noise.py` | **fitted** (valuation-0.3.0, season-sim-0.5.0); beats a constant CV out of sample on every stat; the constant-CV models and `FANTASY_GAME_CV` were deleted 2026-10-19 (git history keeps them) | done: `docs/research/sim_calibration.md` sections 2 and 8. Open: 15-24 mpg FGA/PTS/REB game variance still ~10-40% under-stated (minutes volatility) |
 | ADP sd = `SD_FLOOR + SD_SLOPE * adp` | `src/fantasy/draft/availability.py` | 2.5 + 0.18*adp | Yahoo draft results vs ADP (pick - ADP residuals) |
 | `USAGE` share of rostered games that count | `src/fantasy/model/catmodel.py` | 0.85 | in-season lineup data |
 | `stream_recovery` share of missed games recovered by streamers | `ValuationParams` in `src/fantasy/model/valuation.py` | 0.5 | waiver activity / replacement-level games |

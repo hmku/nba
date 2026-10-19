@@ -14,7 +14,6 @@ docs/research/availability_model.md.
 from __future__ import annotations
 
 import hashlib
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,32 +30,7 @@ GAMES_PER_WEEK = 3.5  # 82 games over ~23.5 matchup weeks
 # playoff_weight equal to this leaves availability unchanged (season average).
 PLAYOFF_CALENDAR_SHARE = 3 / 20
 
-# Per-game coefficient of variation for each raw stat (within-player game-to-game noise).
-# GAME_CV_FITTED (default since valuation-0.2.3, user-approved 2026-10-18): pooled CV of rostered players
-# (>= 24 mpg) from 2010-24 box scores, bootstrap SE <= 0.03 (docs/research/sim_calibration.md).
-# GAME_CV_PRIOR: the earlier heuristic priors; revert with FANTASY_GAME_CV=prior (read at import; affects the
-# valuation's G-scores and the draft optimizer's category model). The season simulator has its own fitted
-# variance function (fantasy.sim.calibration).
-GAME_CV_PRIOR: dict[str, float] = {
-    "fgm": 0.38, "fga": 0.30, "ftm": 0.60, "fta": 0.55, "fg3m": 0.75, "pts": 0.35,
-    "reb": 0.42, "ast": 0.48, "stl": 0.85, "blk": 0.95, "tov": 0.58,
-}
-GAME_CV_FITTED: dict[str, float] = {
-    "fgm": 0.442, "fga": 0.316, "ftm": 0.746, "fta": 0.702, "fg3m": 0.761, "pts": 0.416,
-    "reb": 0.449, "ast": 0.512, "stl": 0.972, "blk": 1.038, "tov": 0.680,
-}
-
-
-def _game_cv_source(raw: str) -> str:
-    """FANTASY_GAME_CV: "" or "fitted" (default) or "prior", case-insensitive; anything else is an error."""
-    v = raw.strip().lower()
-    if v not in ("", "fitted", "prior"):
-        raise ValueError(f"FANTASY_GAME_CV must be '', 'fitted' or 'prior' (case-insensitive), got {raw!r}")
-    return v or "fitted"
-
-
-GAME_CV_SOURCE = _game_cv_source(os.environ.get("FANTASY_GAME_CV", ""))
-GAME_CV: dict[str, float] = dict(GAME_CV_FITTED if GAME_CV_SOURCE == "fitted" else GAME_CV_PRIOR)
+# Game-to-game noise lives in fantasy.model.noise (one variance model for draft and simulator).
 
 
 @dataclass(frozen=True)
@@ -144,8 +118,3 @@ def effective_lines(
         eff = avail * own + (1 - avail) * stream_recovery * rep
     return pd.DataFrame(eff, index=df.index, columns=STATS)
 
-
-def game_variance(lines: pd.DataFrame) -> pd.DataFrame:
-    """Per-game variance of each raw stat for each player (CV heuristic)."""
-    cv = pd.Series(GAME_CV)[STATS]
-    return (lines[STATS] * cv) ** 2

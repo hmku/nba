@@ -32,13 +32,13 @@ from scipy.stats import spearmanr
 
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import (
-    GAME_CV,
     GAMES_PER_WEEK,
     STATS,
     ProjectionSet,
     availability,
     effective_lines,
 )
+from fantasy.model.noise import game_var, ratio_var
 from fantasy.model.valuation import ValuationParams, compute_values
 
 
@@ -51,15 +51,13 @@ def fixed_pool_scores(
     for c in settings.cats:
         if c.kind == "count":
             x, xr = eff[c.stat], ref[c.stat]
-            within = (xr * GAME_CV[c.stat]) ** 2
+            within = pd.Series(game_var(c.stat, xr.to_numpy()), index=xr.index)
         else:
             mr, ar = ref[c.num], ref[c.den]
             p_pool = mr.loc[pool].sum() / max(ar.loc[pool].sum(), 1e-9)
             x = eff[c.num] - p_pool * eff[c.den]
             xr = mr - p_pool * ar
-            with np.errstate(divide="ignore", invalid="ignore"):
-                p = np.where(ar > 0, mr / ar, p_pool)
-            within = ar * p * (1 - p) + (GAME_CV[c.den] * ar) ** 2 * (p - p_pool) ** 2
+            within = pd.Series(ratio_var(mr.to_numpy(), ar.to_numpy(), p_pool, c.den), index=ar.index)
         mu, sd = xr.loc[pool].mean(), xr.loc[pool].std(ddof=0)
         denom = np.sqrt(sd**2 + kappa * within.loc[pool].mean() / GAMES_PER_WEEK)
         g = (x - mu) / max(denom, 1e-9)

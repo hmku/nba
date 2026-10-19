@@ -8,6 +8,10 @@ in market (ADP) order, and the spread between league teams is added as extra opp
 P(win cat) = Phi(sign * (mu_me - mu_opp) / sqrt(var_me + var_opp + spread))
 Expected category wins = sum of P(win cat); matchup win prob = P(#wins > #losses) via the
 Poisson-binomial distribution (categories treated as independent).
+
+Per-game variances come from the one game-noise model, fantasy.model.noise (var = a*m + b*m^2 per stat).
+Within-game cross-stat correlation is left to the season simulator: expected category wins is a sum of
+per-category marginals, which correlation does not change.
 """
 
 from __future__ import annotations
@@ -19,7 +23,8 @@ import pandas as pd
 from scipy.stats import norm
 
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.lines import GAME_CV, GAMES_PER_WEEK, STATS
+from fantasy.model.lines import GAMES_PER_WEEK, STATS
+from fantasy.model.noise import game_var_matrix, ratio_var
 
 STAT_IDX = {s: i for i, s in enumerate(STATS)}
 USAGE = 0.85  # share of rostered players' games that make it into active lineups
@@ -40,16 +45,13 @@ class PlayerArrays:
 
 def build_arrays(lines: pd.DataFrame, settings: LeagueSettings) -> PlayerArrays:
     S = lines[STATS].to_numpy(dtype=float)
-    cv = np.array([GAME_CV[s] for s in STATS])
-    V = (S * cv) ** 2
+    V = game_var_matrix(S)  # per-game variance, fantasy.model.noise
     ratio_cats = [c for c in settings.cats if c.kind == "ratio"]
     R = np.zeros((len(lines), len(ratio_cats)))
     for j, c in enumerate(ratio_cats):
         m, a = S[:, STAT_IDX[c.num]], S[:, STAT_IDX[c.den]]
-        with np.errstate(divide="ignore", invalid="ignore"):
-            p = np.where(a > 0, m / a, 0.0)
         p_league = m.sum() / max(a.sum(), 1e-9)
-        R[:, j] = a * p * (1 - p) + (GAME_CV[c.den] * a) ** 2 * (p - p_league) ** 2
+        R[:, j] = ratio_var(m, a, p_league, c.den)
     return PlayerArrays(ids=list(lines.index), S=S, V=V, R=R)
 
 

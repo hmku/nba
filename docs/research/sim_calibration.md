@@ -6,9 +6,12 @@ structure (`rest_share = 0.25`, `two_spell_prob = 0.5`). The simulator also had 
 correlation and no pace/opponent effects. This note fits each of them on historical data, out of sample where
 that matters, with standard errors.
 
-**Outcome:** the simulator (`season-sim-0.4.0`) now uses fitted values (`src/fantasy/sim/calibration.py`). The
-draft model uses the refitted `GAME_CV` since `valuation-0.2.3` (user decision 2026-10-18; revert with
-`FANTASY_GAME_CV=prior`). It does not change the picks at 1, 24 or 36 (section 6).
+**Outcome:** the simulator (`season-sim-0.4.0`) now uses fitted values (`src/fantasy/sim/calibration.py`).
+**Since 2026-10-19 there is one game-to-game noise model** for the draft and the simulator: the fitted variance
+function var(stat, m) = a·m + b·m² in `src/fantasy/model/noise.py` (valuation-0.3.0, optimizer-0.3.0,
+season-sim-0.5.0). It beats a constant CV out of sample (section 8). The constant-CV models (`GAME_CV_PRIOR`,
+`GAME_CV_FITTED`, `GAME_CV_POOLED`) and the `FANTASY_GAME_CV` switch were deleted; git history keeps their values
+(and sections 2, 5 and 6 below quote them).
 
 ## Data (provenance)
 - **Box scores:** NocturneBear/NBA-Data-2010-2024,
@@ -101,8 +104,8 @@ AST 0.236 (0.007), STL 0.061 (0.024), BLK 0.181 (0.013), TO 0.163 (0.008).
   - FGA, REB and AST are mildly over-dispersed (a ≈ 1.25-1.4);
   - FTA is a ≈ 2.2, because free throws come in pairs.
   - So the CV is larger for lower-volume players. A constant CV is the wrong functional form.
-- **Adopted for the simulator:** `game_var="fitted"` uses var = a·m + b·m² per player (`calibration.GAME_VAR`).
-  `game_var="cv"` restores `GAME_CV`.
+- **Adopted for the simulator** (0.4.0) and, since 2026-10-19, for the draft too: var = a·m + b·m² per player,
+  now in `fantasy.model.noise.GAME_VAR` (section 8). The `game_var="cv"` option was deleted.
 
 **Within-player game-level correlation** (player-season demeaned, rostered; player-bootstrap SE ≤ 0.010).
 - The only large correlations are the mechanical ones: FGM-FGA 0.76, FTM-FTA 0.94, PTS-FGM 0.93, 3PM-FGM 0.49.
@@ -199,9 +202,9 @@ noise, so the **priors are kept and are now validated**. By missed-games band:
   spells.
 
 ## 5. Effect on simulator outputs
-_Note: every number in this section was computed with `FANTASY_GAME_CV=prior` (the draft default at the time).
-Since valuation-0.2.3 the default is the fitted CV, which changes the drafted rosters and the `game_var="cv"`
-noise, so set `FANTASY_GAME_CV=prior` to reproduce these tables, including the 0.3.0 rows._
+_Note: every number in this section was computed with the prior constant CV in the draft model (the default at
+the time). The constant-CV code was deleted on 2026-10-19; reproduce these tables from git history (commit a6079da
+or earlier, `FANTASY_GAME_CV=prior`). Current numbers: section 8._
 **Fixed leagues.** Three ADP-snake leagues, 2,000 sims each. The favourite's edge is the mean |P(win weekly
 matchup) − 0.5|; seasons are measured by the sd of season category wins.
 
@@ -237,7 +240,9 @@ simulated league; the variants share drafts and seeds, so the differences are pa
 **What cannot be validated yet:** the absolute calibration of P(win matchup). It needs real fantasy matchup outcomes
 (in-season, T-016). The components that feed it are each fitted above.
 
-## 6. Draft model: fitted GAME_CV (adopted 2026-10-18, valuation-0.2.3, user decision)
+## 6. Draft model: fitted GAME_CV (adopted 2026-10-18, valuation-0.2.3; superseded 2026-10-19 by section 8)
+_Historical: the constant-CV draft model described here was replaced by the variance function on 2026-10-19._
+
 **Update:** adopted as the draft default by user decision on 2026-10-18 (before the draft-path freeze):
 valuation-0.2.3 uses `GAME_CV_FITTED`, and `FANTASY_GAME_CV=prior` reverts (read at import; only `""`, `fitted`
 or `prior` are accepted). Picks 1/24/36 are unchanged; an independent review reproduced this (same top-60 set,
@@ -264,16 +269,154 @@ blend projections:
 ## 7. What changed (`season-sim-0.4.0`)
 - `src/fantasy/sim/calibration.py`: the fitted constants with SEs.
 - `SimParams` defaults: `vol_sd`, `fg_pct_sd`, `ft_pct_sd` = `None` (by mpg tier), `stat_sd = None` with per-stat
-  `stat_sds`, `game_var = "fitted"`, `noise_corr = True`. To reproduce 0.3.0, set
-  `vol_sd=0.08, stat_sd=0.08, fg_pct_sd=0.015, ft_pct_sd=0.03, game_var="cv", noise_corr=False` and also run
-  with `FANTASY_GAME_CV=prior` (since valuation-0.2.3 `GAME_CV` defaults to the fitted values).
+  `stat_sds`, `game_var = "fitted"`, `noise_corr = True`. To reproduce 0.3.0, check out a6079da or earlier and
+  set `vol_sd=0.08, stat_sd=0.08, fg_pct_sd=0.015, ft_pct_sd=0.03, game_var="cv", noise_corr=False` with
+  `FANTASY_GAME_CV=prior` (the `game_var` field and the CV constants no longer exist since season-sim-0.5.0).
 - `rest_share` and `two_spell_prob` are unchanged (validated in section 4).
 - `fantasy.model.lines`: `GAME_CV_PRIOR`, `GAME_CV_FITTED` (draft default since valuation-0.2.3), and the
-  `FANTASY_GAME_CV=prior` switch.
+  `FANTASY_GAME_CV=prior` switch (all deleted in section 8's change).
 - `sim/symmetric.py` `PERTURB_DEFAULT` (opponents' private projection views) is unchanged. It models how far
   *opponents' beliefs* diverge from ours, not the truth's divergence. Opponents' errors are correlated with ours
   (same public data), so the fitted truth error would overstate it.
 - Tests: `tests/test_sim_calibration.py`.
+
+## 8. Unified noise model (2026-10-19)
+**Decision (user request):** one game-to-game noise model for the draft and the simulator, the best-supported one,
+with the alternatives deleted. It is the fitted variance function
+
+    var(stat, m) = a_stat·m + b_stat·m²   (per game, given the player plays; clipped at 0)
+
+with the section 2 coefficients, now in `src/fantasy/model/noise.py` (`NOISE_MODEL_VERSION = "noise-var-1.0"`).
+The API is `game_var(stat, mean)` (vectorised), `game_var_matrix(means)` (last axis = `lines.STATS`) and
+`ratio_var(makes, attempts, p_ref, den)` (FG%/FT% impact variance: binomial + volume term). A team's weekly
+variance is Σ_players games·var(m).
+
+**Out-of-sample evidence** (fitted, script `docs/research/noise_oos_2026-10-19.py`; data: the section 2 box
+scores). Three models are fitted on the TRAIN seasons' rostered player-seasons (≥ 24 mpg, ≥ 30 games):
+- `cv`: a constant CV, pooled, which is the old `GAME_CV_FITTED` method;
+- `lin`: var = a·m, one parameter;
+- `vf`: var = a·m + b·m².
+
+They are scored on the TEST seasons, on every player-season with ≥ 30 games and ≥ 10 mpg (streamers included).
+Split A trains on 2011-18 and tests on 2019-24 (1,374 train units; 2,145 test units, 124,884 games). Split B is
+the reverse: train 2018-24, test 2011-17 (2,407 test units, 151,407 games).
+
+*(1) Game-level Gaussian log-likelihood per game, vf − cv* (player-cluster bootstrap SE), plus *(2) weekly
+calibration*. For (2), z = (weekly sum − g·m)/√(g·var(m)) per player-week, and the table shows the mean z² by
+minutes tier (1 = calibrated; > 1 = variance under-stated). Split A:
+
+| stat | ΔLL vf−cv, all (SE) | ΔLL 15-24 mpg | ΔLL 30+ | ΔLL vf−lin | weekly z², cv: 15-24 / 24-30 / 30+ | weekly z², vf: 15-24 / 24-30 / 30+ |
+|---|---|---|---|---|---|---|
+| FGM | +0.296 (0.014) | +0.380 | +0.031 | +0.007 | 3.39 / 1.70 / 0.91 | 1.42 / 1.14 / 1.07 |
+| FGA | +0.368 (0.020) | +0.468 | +0.025 | +0.007 | 4.23 / 1.91 / 0.99 | 1.87 / 1.33 / 1.11 |
+| FTM | +0.615 (0.026) | +0.854 | +0.111 | 0.000 | 4.13 / 2.75 / 1.40 | 1.01 / 1.01 / 1.03 |
+| FTA | +0.619 (0.029) | +0.841 | +0.111 | 0.000 | 4.13 / 2.68 / 1.39 | 1.06 / 1.02 / 1.02 |
+| 3PM | +0.186 (0.010) | +0.233 | +0.082 | 0.000 | 2.18 / 1.39 / 1.13 | 1.06 / 1.00 / 0.99 |
+| PTS | +0.322 (0.014) | +0.416 | +0.033 | +0.009 | 3.59 / 1.81 / 0.94 | 1.49 / 1.21 / 1.11 |
+| REB | +0.226 (0.012) | +0.280 | +0.030 | −0.001 | 2.81 / 1.63 / 1.16 | 1.38 / 1.05 / 0.93 |
+| AST | +0.538 (0.025) | +0.728 | +0.081 | 0.000 | 4.09 / 2.42 / 1.31 | 1.20 / 1.11 / 0.98 |
+| STL | +0.183 (0.008) | +0.251 | +0.032 | 0.000 | 2.23 / 1.49 / 1.17 | 1.03 / 0.97 / 0.95 |
+| BLK | +0.307 (0.010) | +0.338 | +0.257 | +0.003 | 2.41 / 2.23 / 2.14 | 0.96 / 0.97 / 0.94 |
+| TO | +0.307 (0.014) | +0.427 | +0.045 | 0.000 | 2.90 / 1.88 / 1.10 | 1.05 / 1.03 / 0.99 |
+
+What the table shows:
+- **The variance function wins on every stat, in both splits.** Split B: ΔLL vf−cv runs from +0.17 (STL) to
+  +0.75 (AST), every SE ≤ 0.03.
+- **The gain is largest for 15-24 mpg players**, the streamers and bench players the old CV mishandled. The vf
+  gain is still positive for 30+ mpg stars.
+- **vf vs `lin`:** the quadratic term adds almost nothing (|Δ| ≤ 0.009 per game). It is kept because it is the
+  model the simulator has used since 0.4.0, and its coefficients are unchanged.
+- **The `cv` weekly z² is inflated by tiny-mean players** (the mean of per-week ratios).
+- **Ratio of summed variances, a less extreme view** (game level, split A; scratchpad `calib/noise_tier.py`, not committed):
+  - the constant CV under-states variance by ×1.5-2.8 at 15-24 mpg and by ×0.9-1.6 at 24-30 mpg;
+  - it over-states it by ~25% for 30+ mpg stars (ratio 0.69-0.98);
+  - vf is within ±7% at 24-30 and 30+ (REB 30+ 0.89).
+- **Remaining miss:** at 15-24 mpg vf under-states FGA by ×1.40, PTS ×1.23, REB ×1.23 and FGM ×1.18. That is
+  minutes volatility for bench players.
+  - Refitting on ≥ 15 mpg would fix it (×1.1-1.2) but worsens 30+ REB (0.84).
+  - The draft population is mostly ≥ 24 mpg, so the ≥ 24 fit is kept. This is a known limitation.
+- **The review's example:** steals at 0.7 per game now get a CV of 1.22 (√var/m). The actual figure at 15-24 mpg
+  is 1.27; the old constant was 0.97.
+
+**What changed.**
+- *Valuation* (`valuation-0.3.0`): the G-score within-week variance is `game_var(stat, eff)` for count categories,
+  and `ratio_var` for FG%/FT%.
+- *Optimizer's category model* (`optimizer-0.3.0`): V = `game_var_matrix(S)`; R = `ratio_var`.
+- *Market-implied projections* (`sim/market_truth.py`): same formula as the valuation.
+- *Simulator* (`season-sim-0.5.0`): `Simulator.game_variance` = `game_var_matrix`. The numbers are unchanged
+  because the coefficients are the same. `SimParams.game_var` is removed.
+- *Run params:*
+  - valuation, `draft_sim` and `season_sim` runs record `"noise_model": "noise-var-1.0"` instead of `"game_cv"`;
+  - `valuation_params()` is still the single cache key.
+- *Deleted:*
+  - `GAME_CV_PRIOR`, `GAME_CV_FITTED`, `GAME_CV` and `GAME_CV_SOURCE` (with the `FANTASY_GAME_CV` env var);
+  - `lines.game_variance`;
+  - `calibration.GAME_VAR` (moved to `model.noise`) and `calibration.GAME_CV_POOLED`;
+  - the `game_var="cv"` option;
+  - their tests.
+  - Git history (a6079da and earlier) keeps the old values.
+- *Unchanged:*
+  - Effective lines (availability-blended) feed the variance function directly. Its linear term makes avail·m
+    have avail × the per-played-game variance, which is consistent.
+  - Within-game correlation (`NOISE_CORR`, `SimParams.noise_corr`) stays simulator-only. The draft objective,
+    expected category wins, is a sum of per-category marginals, so correlation does not change it.
+- *Not retrained:* the value-search model (`value_search.md`, "Known mismatch").
+
+**Draft effect vs main at a6079da.** Same blend projections and settings; old = constant fitted CV, new = vf.
+
+*Valuation ranks:*
+
+| | top 60 | top 156 |
+|---|---|---|
+| set overlap | 60/60 | 155/156 (Jaime Jaquez Jr. 157 → 152 in, Mitchell Robinson 156 → 160 out) |
+| Spearman | 0.997 | 0.999 |
+| mean \|rank move\| | 0.87 | 1.37 |
+| biggest movers | Anunoby 52 → 57, Duren 27 → 24, Avdija 59 → 56, Amen Thompson 28 → 31, Knueppel 19 → 16 | Camara 97 → 104, Ausar Thompson 107 → 113, Sheppard 72 → 77, Dosunmu 102 → 97, LaVine 129 → 124 |
+
+The top 10 is identical. The direction is the expected one: high-volume players lose a little noise penalty,
+and low-volume, steal- and block-dependent players gain some.
+
+*Mock draft:* slot 1 with third-round reversal; the other teams pick the best ADP available. The table shows the
+top-5 `draft recommend` scores (expected category wins); I take #1.
+
+| pick | before (old CV) | after (vf) |
+|---|---|---|
+| 1 | **Jokić 5.981**, SGA 5.943, Wembanyama 5.910, Dončić 5.772, Haliburton 5.713 | **Jokić 5.904**, Wembanyama 5.853, SGA 5.810, Dončić 5.718, Haliburton 5.589 |
+| 24 | **Kawhi Leonard 5.983**, Adebayo 5.974, Holmgren 5.956, Duren 5.954, Mobley 5.950 | **Kawhi Leonard 5.902**, Adebayo 5.888, Holmgren 5.887, Duren 5.881, D. White 5.874 |
+| 36 | **D. White 5.968**, Clingan 5.965, Bane 5.952, Kyrie 5.951, Knueppel 5.934 | **D. White 5.889**, Bane 5.889, Clingan 5.888, Kyrie 5.872, A. Davis 5.862 |
+| 37 | **Clingan 5.966**, Bane 5.958, Knueppel 5.957, Kyrie 5.951, A. Davis 5.941 | **Bane 5.890**, Clingan 5.888, Knueppel 5.882, Kyrie 5.873, A. Davis 5.863 |
+| 60 | **M. Porter Jr. 5.904**, Edgecombe 5.904, Ware 5.902, Bridges 5.902, Naz Reid 5.901 | **Naz Reid 5.863**, Ware 5.863, M. Porter Jr. 5.860, Edgecombe 5.844, D. Daniels 5.840 |
+| 61 | **Ware 5.924**, Naz Reid 5.920, Edgecombe 5.908, Bridges 5.905, D. Daniels 5.897 | **Ware 5.865**, M. Porter Jr. 5.863, Edgecombe 5.849, D. Daniels 5.846, Bridges 5.845 |
+
+- Picks 1, 24, 36 and 61 are unchanged.
+- At 37 Clingan and Bane swap, with a margin of 0.002. At 60 Porter Jr. and Naz Reid swap, with a margin of
+  0.003.
+- Both swaps are well under the ~0.03 noise threshold for recommendation margins.
+- Scores are ~0.06-0.08 lower everywhere because weekly variance is larger for most rostered players.
+
+*`fantasy draft simulate --sims 200 --seed 0`* (optimizer vs BPA, paired; this is the category model's own view):
+
+| | optimizer ECW | BPA ECW | edge ECW (SE) | edge P(win matchup) (SE) | P(optimizer better) |
+|---|---|---|---|---|---|
+| before | 5.960 | 5.865 | +0.095 (0.007) | +0.0086 (0.0010) | 0.88 |
+| after | 5.893 | 5.796 | +0.098 (0.006) | +0.0104 (0.0009) | 0.93 |
+
+Pick 1 is Jokić in 200/200 sims in both runs. At pick 24 Kawhi Leonard is taken in 99 and 98 of 200.
+
+*`fantasy sim preseason --leagues 20 --sims 2000 --draft-seed 100 --seed 0`* (slot 1; SE clustered by league):
+
+| | P(playoffs) (SE) | P(bye) | P(final) | P(title) (SE) | expected rank (SE) |
+|---|---|---|---|---|---|
+| before (season-sim-0.4.0, valuation-0.2.3) | 0.930 (0.007) | 0.710 | 0.594 | 0.400 (0.015) | 2.36 (0.07) |
+| after (season-sim-0.5.0, valuation-0.3.0) | 0.947 (0.007) | 0.727 | 0.626 | 0.413 (0.011) | 2.26 (0.09) |
+
+- The simulator's noise is numerically identical in the two runs; only the drafted rosters differ, through the
+  draft model.
+- The differences (+1.7 pp playoffs, +1.3 pp title) are within about 1.5 combined SE. The two runs are not paired
+  pick by pick, because different rosters change the random streams. So the honest reading is "no detectable
+  change".
+- **Conclusion:** the switch is a modelling-correctness change, with no material effect on the draft at the top.
+  It matters more for in-season streaming and waiver decisions, where low-volume players are the candidates.
 
 ## Limitations
 - The season error is fitted to the baseline method, not the blend (section 1 caveat). Rookies and players with
@@ -281,6 +424,7 @@ blend projections:
   is probably too small for rookies.
 - The equal-loading one-factor form is what the simulator implements. The free-loading first PC shows FGA and AST
   load more than REB, STL and BLK.
+- Game variance at 15-24 mpg is still under-stated for FGA/PTS/REB/FGM (×1.2-1.4, section 8).
 - Correlations and variances were pooled over 2010-24. The league's 3-point volume rose over the period, and
   3PM noise was not modelled by era.
 - Absence structure: DNP-coach's-decision games count as missed, which is right for fantasy. Mid-season trades

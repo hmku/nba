@@ -27,14 +27,13 @@ import pandas as pd
 
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import (
-    GAME_CV,
-    GAME_CV_SOURCE,
     GAMES_PER_WEEK,
     STATS,
     ProjectionSet,
     availability,
     effective_lines,
 )
+from fantasy.model.noise import NOISE_MODEL_VERSION, game_var, ratio_var
 from fantasy.ops.common import git_sha  # noqa: F401  (re-exported: draft.store, sim.persist, ...)
 
 # 0.2.0: availability = fitted gp (projections baseline-0.2.0) with optional gp risk penalty and a
@@ -45,7 +44,10 @@ from fantasy.ops.common import git_sha  # noqa: F401  (re-exported: draft.store,
 # 0.2.3: per-game CVs default to the fitted GAME_CV_FITTED (user decision 2026-10-18;
 #        docs/research/sim_calibration.md section 6); FANTASY_GAME_CV=prior reverts. Run params record
 #        "game_cv" (see valuation_params).
-MODEL_VERSION = "valuation-0.2.3"
+# 0.3.0: one game-noise model for draft and simulator: per-game variance var(stat, m) = a*m + b*m^2
+#        (fantasy.model.noise, noise-var-1.0) replaces the constant CVs, which are deleted (and with them
+#        FANTASY_GAME_CV). Run params record "noise_model". docs/research/sim_calibration.md section 8.
+MODEL_VERSION = "valuation-0.3.0"
 
 
 @dataclass
@@ -69,14 +71,12 @@ def _cat_scores(
     for c in settings.cats:
         if c.kind == "count":
             x = eff[c.stat]
-            within = (eff[c.stat] * GAME_CV[c.stat]) ** 2
+            within = pd.Series(game_var(c.stat, eff[c.stat].to_numpy()), index=eff.index)
         else:
             m, a = eff[c.num], eff[c.den]
             p_pool = m.loc[pool].sum() / max(a.loc[pool].sum(), 1e-9)
             x = m - p_pool * a
-            with np.errstate(divide="ignore", invalid="ignore"):
-                p = np.where(a > 0, m / a, p_pool)
-            within = a * p * (1 - p) + (GAME_CV[c.den] * a) ** 2 * (p - p_pool) ** 2
+            within = pd.Series(ratio_var(m.to_numpy(), a.to_numpy(), p_pool, c.den), index=eff.index)
         mu, sd = x.loc[pool].mean(), x.loc[pool].std(ddof=0)
         denom = np.sqrt(sd**2 + kappa * within.loc[pool].mean() / GAMES_PER_WEEK)
         g = (x - mu) / max(denom, 1e-9)
@@ -142,7 +142,7 @@ def market_order(values: pd.DataFrame, adp_weight: float = 1.0) -> list[str]:
 
 def valuation_params(vp: ValuationParams, settings: LeagueSettings) -> dict:
     """The params recorded on a valuation run; also the cache key used to find an existing run."""
-    return {**asdict(vp), "categories": settings.categories, "game_cv": GAME_CV_SOURCE}
+    return {**asdict(vp), "categories": settings.categories, "noise_model": NOISE_MODEL_VERSION}
 
 
 @dataclass

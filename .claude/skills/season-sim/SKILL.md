@@ -54,7 +54,7 @@ for experiments.
 3. Playoff weeks 18-20 (Mar 1-7, 8-14, 15-21, 2027; 6 teams, re-seeded each round, ties to the higher
    seed) are verified from the Yahoo settings page; the other week dates are derived (week 1 assumed
    Oct 20 - Nov 1, All-Star week 17 = Feb 15-28) until Yahoo's schedule JSON is loaded (warning in output).
-4. `SimParams` are fitted since season-sim-0.4.0 (`docs/research/sim_calibration.md`: projection error, game variance, within-game correlation; injury spells validated). Still not validated end-to-end: P(win matchup) against real fantasy outcomes, streaming, lineup behaviour; the season error is fitted on the baseline (not blended) projections.
+4. `SimParams` are fitted since season-sim-0.4.0 (`docs/research/sim_calibration.md`: projection error, game variance, within-game correlation; injury spells validated). Since season-sim-0.5.0 the per-game variance comes from `fantasy.model.noise` (the one noise model the draft also uses; there is no `game_var` option any more); `noise_corr` (within-game correlation) is simulator-only. Still not validated end-to-end: P(win matchup) against real fantasy outcomes, streaming, lineup behaviour; the season error is fitted on the baseline (not blended) projections.
 
 ## Post-draft setup (needs a local session with the browser, `yahoo-browser` skill)
 1. Read every team's roster from Yahoo (league → each team page) → `rosters.json` with player ids

@@ -9,7 +9,7 @@ from sqlalchemy import Engine, insert
 
 from fantasy.db.engine import get_engine
 from fantasy.db.schema import model_runs
-from fantasy.model.lines import GAME_CV_SOURCE
+from fantasy.model.noise import NOISE_MODEL_VERSION
 from fantasy.model.valuation import git_sha
 from fantasy.ops.common import json_safe as _clean
 from fantasy.sim import SIM_VERSION
@@ -22,5 +22,5 @@ def save_sim_run(kind: str, params: dict, inputs: dict, summary: dict, engine: E
     with eng.begin() as conn:
         conn.execute(insert(model_runs).values(
             run_id=run_id, kind=kind, model_version=SIM_VERSION, git_sha=git_sha(),
-            params=_clean({**params, "game_cv": GAME_CV_SOURCE}), inputs=_clean(inputs), summary=_clean(summary), created_at=now))
+            params=_clean({**params, "noise_model": NOISE_MODEL_VERSION}), inputs=_clean(inputs), summary=_clean(summary), created_at=now))
     return run_id

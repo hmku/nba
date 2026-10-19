@@ -5,7 +5,8 @@ sumitrodatta Basketball-Reference mirror (player totals 2011-2026). Values are f
 (>= 24 projected or realised minutes per game), the population a 12-team league rosters. SEs are cluster
 bootstraps (by player or by season, see the note).
 
-These are simulator-only. The draft valuation still uses `fantasy.model.lines.GAME_CV`.
+These are simulator-only. The per-game noise variance is NOT here: it lives in fantasy.model.noise and is shared
+with the draft valuation and optimizer.
 """
 
 from __future__ import annotations
@@ -34,30 +35,12 @@ ERROR_BY_MPG = [
     (0.0, 0.330, 0.033, 0.049),  # 15-24 mpg: vol 0.330 (0.009), FG 0.033 (0.002), FT 0.049 (0.003)
 ]
 
-# Game-to-game variance given that the player plays: var = a * mean + b * mean^2 (least squares across
-# 2451 rostered player-seasons with >= 30 games). b is ~0, so variance is close to proportional to the
-# mean (over-dispersed Poisson), not a constant CV.
-GAME_VAR = {
-    "fgm": (1.377, -0.032),
-    "fga": (1.430, -0.010),
-    "ftm": (1.969, -0.001),
-    "fta": (2.198, -0.009),
-    "fg3m": (1.152, -0.004),
-    "pts": (3.342, -0.028),
-    "reb": (1.258, 0.014),
-    "ast": (1.243, -0.002),
-    "stl": (1.036, 0.022),
-    "blk": (1.052, 0.065),
-    "tov": (1.049, -0.020),
-}
-# Constant-CV refit (pooled over rostered player-seasons; bootstrap SE <= 0.03). The draft valuation's
-# default since valuation-0.2.3 (fantasy.model.lines.GAME_CV_FITTED); the simulator uses GAME_VAR.
-GAME_CV_POOLED = {
-    "fgm": 0.442, "fga": 0.316, "ftm": 0.746, "fta": 0.702, "fg3m": 0.761, "pts": 0.416,
-    "reb": 0.449, "ast": 0.512, "stl": 0.972, "blk": 1.038, "tov": 0.680,
-}
+# Game-to-game variance: fantasy.model.noise (one model shared by the draft and the simulator, noise-var-1.0).
+# The constant-CV alternatives (GAME_CV_POOLED here, GAME_CV_PRIOR/GAME_CV_FITTED in model.lines) were deleted;
+# git history keeps them.
 
-# Correlation of team weekly noise given games, in the simulator's noise order. "fgm"/"ftm" stand for makes
+# Correlation of team weekly noise given games, in the simulator's noise order (simulator-only: the draft
+# objective, expected category wins, is a sum of per-category marginals, which correlation does not change). "fgm"/"ftm" stand for makes
 # given attempts (fgm - p * fga). Covariance-pooled within-player game-level correlation (150,100 player-games;
 # season-cluster bootstrap SE <= 0.01).
 NOISE_ORDER = ["fga", "fgm", "fta", "ftm", "fg3m", "reb", "ast", "stl", "blk", "tov"]

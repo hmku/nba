@@ -31,7 +31,7 @@ _Last updated: 2026-10-18 (session 1, lead engineer). Update this file when stat
 - Cloud sessions can now reach bbref / Yahoo public API / ESPN / CBS (stats.nba.com times out, cdn.nba.com 403s at origin).
   Stats still come from the GitHub mirror of Basketball-Reference (verified identical to bbref.com 2026-10-18).
 - Opponent model = league-average team; absolute win probabilities are optimistic.
-- Variance priors: the season simulator is fitted (`season-sim-0.4.0`, `docs/research/sim_calibration.md`); the draft model uses the fitted `GAME_CV` since `valuation-0.2.3` (user decision 2026-10-18; picks 1/24/36 unchanged; `FANTASY_GAME_CV=prior` reverts). ADP sd and `USAGE` are uncalibrated heuristics.
+- Variance priors: the season simulator is fitted (`docs/research/sim_calibration.md`). Since 2026-10-19 there is ONE game-noise model, the fitted var(stat, m) = a·m + b·m² in `src/fantasy/model/noise.py`, used by valuation G-scores, the optimizer's category model and the season simulator (`valuation-0.3.0`, `optimizer-0.3.0`, `season-sim-0.5.0`); the constant-CV models and `FANTASY_GAME_CV` are deleted. Draft effect: section 8 of sim_calibration.md. ADP sd and `USAGE` are uncalibrated heuristics.
 - Quant review (2026-10-18) open concerns: weekly variance ignores schedule (games/week) variance and
   category correlation → overconfident win probs; GP weighted ~linearly (`stream_recovery=0.5` may
   over-penalize long injuries given 3 IL slots + IL direct adds); punt scan rarely beats balanced under the cat-wins objective

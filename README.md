@@ -97,8 +97,8 @@ Every command accepts `--json`; JSON is the agent interface.
    is compared with a best-player-available baseline (`fantasy draft simulate`).
 
 Caveats (details in STATUS.md): the opponent is league-average so win probabilities are optimistic;
-`GAME_CV`, ADP sd and `USAGE` are uncalibrated priors; weekly variance ignores schedule and category
-correlation; recommendation margins under about 0.03 are noise; the sim edge is in-sample. Every model
+ADP sd and `USAGE` are uncalibrated priors (game-to-game noise is fitted: `model/noise.py`); the draft's weekly
+variance ignores schedule and category correlation; recommendation margins under about 0.03 are noise; the sim edge is in-sample. Every model
 run is versioned (`model_runs`: version, git sha, params, input hashes); model changes bump `MODEL_VERSION`
 and need tests (see the `model-eval` skill).
 

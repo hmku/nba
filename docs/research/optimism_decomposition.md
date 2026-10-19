@@ -158,8 +158,9 @@ perturb={...})`.
 
 ## Limitations
 
-- **Everything is graded by the season simulator**, whose variance priors (GAME_CV, injury spells,
-  streaming, projection error) are uncalibrated; its in-season model gives every team the same passive
+- **Everything is graded by the season simulator**, whose variance priors (then a constant game CV, injury spells,
+  streaming, projection error) were uncalibrated when this was run (game noise, projection error and spells
+  are fitted since season-sim-0.4.0/0.5.0, `sim_calibration.md`); its in-season model gives every team the same passive
   management. Real leagues have trades, waivers and lineup skill differences; these compress (or widen)
   standings in ways not modelled here.
 - **"Smart opponents" are a construct.** Their views are our projections plus prior-sized noise (C rooms) or

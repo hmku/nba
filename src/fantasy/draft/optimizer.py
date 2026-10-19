@@ -39,7 +39,9 @@ from fantasy.model.lines import ProjectionSet
 from fantasy.model.valuation import ValuationParams, compute_values, market_order
 
 # v0.2.0: expected-value rollouts (see docs/handoffs/2026-10-18-optimizer-diagnosis.md)
-OPTIMIZER_VERSION = "optimizer-0.2.0"
+# v0.3.0: category model uses the one game-noise model (fantasy.model.noise, var = a*m + b*m^2) instead of
+#         constant per-game CVs (valuation-0.3.0)
+OPTIMIZER_VERSION = "optimizer-0.3.0"
 
 DEFAULT_STRATEGIES: dict[str, list[str]] = {
     "balanced": [],

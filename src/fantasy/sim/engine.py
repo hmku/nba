@@ -26,11 +26,10 @@ numbers for everyone else):
    adds_per_week x games_per_add x stream_usage = 6 x 2 x 0.5 = 6), limited by its open starting
    slot-days that week. Replacement line = valuation's replacement level.
 5. Weekly team totals: given the counted games k, team attempts/counting stats ~ Normal with mean
-   sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the fitted
-   var = a * mean + b * mean^2 (`game_var="fitted"`, sim.calibration.GAME_VAR) or the constant-CV prior
-   (GAME_CV * mean)^2 (`game_var="cv"`). Noise is drawn at team level, keyed by team id; with
-   `noise_corr` the 10 standard-normal draws are correlated with the fitted within-game correlation
-   (sim.calibration.NOISE_CORR). Makes | attempts ~ Normal(p_team * A, binomial + mix variance); counts are
+   sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the one game-noise model
+   shared with the draft, var = a * mean + b * mean^2 (fantasy.model.noise). Noise is drawn at team level,
+   keyed by team id; with `noise_corr` the 10 standard-normal draws are correlated with the fitted
+   within-game correlation (sim.calibration.NOISE_CORR; simulator-only). Makes | attempts ~ Normal(p_team * A, binomial + mix variance); counts are
    rounded to integers and percentages to 3 decimals, so ties happen (ties count 0.5).
 6. H2H: per week each scheduled pair compares the 9 categories (TO: lower wins). Standings rank by
    category wins + 0.5 * ties (Yahoo H2H categories), random tie-break. Top `playoff_teams` make a
@@ -51,7 +50,8 @@ import numpy as np
 import pandas as pd
 
 from fantasy.league.settings import LeagueSettings
-from fantasy.model.lines import GAME_CV, SEASON_GAMES, STATS
+from fantasy.model.lines import SEASON_GAMES, STATS
+from fantasy.model.noise import game_var_matrix
 from fantasy.sim import calibration as cal
 from fantasy.sim.league import LeagueState
 from fantasy.sim.schedule import FantasyWeek, MatchupSchedule, NBASchedule
@@ -73,9 +73,9 @@ class SimParams:
     stat_sds: dict[str, float] = field(default_factory=lambda: dict(cal.STAT_SD))
     fg_pct_sd: float | None = None
     ft_pct_sd: float | None = None
-    # weekly noise: "fitted" = var a*m + b*m^2 (cal.GAME_VAR); "cv" = lines.GAME_CV (season-sim-0.3.0 prior)
-    game_var: str = "fitted"
-    noise_corr: bool = True  # correlate the team-level weekly noise across stats (cal.NOISE_CORR)
+    # weekly noise: per-game variance from fantasy.model.noise (one model, shared with the draft); this flag
+    # only controls the simulator-only within-game correlation across stats (cal.NOISE_CORR)
+    noise_corr: bool = True
     # availability (priors)
     rest_share: float = 0.25  # share of missed games that are scattered one-game absences
     two_spell_prob: float = 0.5
@@ -198,8 +198,6 @@ class SeasonSimulator:
             self._stat_sd_vec = np.full(len(FACTOR_STATS), float(self.p.stat_sd))
         else:
             self._stat_sd_vec = np.array([float(self.p.stat_sds.get(s, 0.0)) for s in FACTOR_STATS])
-        if self.p.game_var not in ("fitted", "cv"):
-            raise ValueError(f"game_var must be 'fitted' or 'cv', got {self.p.game_var!r}")
         self._chol = np.linalg.cholesky(np.array(cal.NOISE_CORR)) if self.p.noise_corr else None
         assert cal.NOISE_ORDER == NOISE_STATS
 
@@ -213,11 +211,7 @@ class SeasonSimulator:
 
     def game_variance(self, m: np.ndarray) -> np.ndarray:
         """Per-game variance of each raw stat (last axis = STATS) for season mean m, given the player plays."""
-        if self.p.game_var == "cv":
-            return (m * np.array([GAME_CV[s] for s in STATS])) ** 2
-        a = np.array([cal.GAME_VAR[s][0] for s in STATS])
-        b = np.array([cal.GAME_VAR[s][1] for s in STATS])
-        return np.maximum(a * m + b * m * m, 0.0)
+        return game_var_matrix(m)
 
     # ------------------------------------------------------------------ player draws
     def _player_arrays(self, pids: list[str]) -> dict[str, np.ndarray]:

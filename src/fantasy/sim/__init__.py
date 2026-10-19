@@ -8,4 +8,7 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 # 0.3.0: roster completion uses the shared opponent sampler (no-ADP players get the 1.6x sd like draft simulate)
 # 0.4.0: fitted priors (docs/research/sim_calibration.md): season error by mpg tier + per-stat sds, game variance
 #        a*m + b*m^2, correlated weekly noise; rest_share/two_spell_prob validated and unchanged
-SIM_VERSION = "season-sim-0.4.0"
+# 0.5.0: per-game variance from the one game-noise model shared with the draft (fantasy.model.noise,
+#        noise-var-1.0; same a*m + b*m^2 values); the constant-CV option (SimParams.game_var="cv") is deleted.
+#        Drafted rosters change via valuation-0.3.0 / optimizer-0.3.0. Run params record "noise_model".
+SIM_VERSION = "season-sim-0.5.0"
