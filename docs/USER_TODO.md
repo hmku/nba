@@ -4,6 +4,10 @@ _Maintained by the lead agent. Agents: add items here when something needs the u
 Draft: **Mon 2026-10-19, 10:00 PM ET.**
 
 ## Can do from your phone now
+- [ ] **Make Muse's league intel private (1 min, phone OK):** Supabase → fantasy-nba → SQL Editor → New query, paste the contents of
+      `supabase/migrations/20261019120000_private_league_intel.sql` (https://github.com/hmku/nba/blob/main/supabase/migrations/20261019120000_private_league_intel.sql) → Run.
+      (Supabase's plugin asks for a confirmation on DROP statements that can't be shown in Claude Code sessions, so agents can't apply it.)
+      Until then don't ask Muse for chat digests. Tell Claude when done; it verifies the policies.
 - [x] **League settings screenshots** — received and recorded 2026-10-18 (`data/manual/league_settings.json`):
       categories, roster (3 IL, not 4), trades, waivers, playoffs (weeks 18-20, ending Sun Mar 21, 2027).
   - [ ] **Draft order: user believes 1, 24, 36, 37, … is right (2026-10-18); Muse's read of Yahoo (2026-10-19 01:16 UTC) agrees: 3RR, slot 1** — laptop session still confirms on Yahoo before pick 1.
