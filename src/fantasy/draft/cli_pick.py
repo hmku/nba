@@ -59,8 +59,10 @@ def prepare_pick(
     top, rank_in_recs, gaps, warnings = _vs_latest_recommendation(did, pid, overall, taken)
     behind = behind_clock(taken, overall)
     if behind:  # the clock is at my pick only if every earlier pick is on the board (gaps alone miss 21..23 of 1..20)
-        _refuse(f"board not synced: picks {behind} not recorded — record them from the draft log first",
-                as_json, did, behind=behind, gaps=gaps)
+        mine_behind = _behind_mine(d, behind)
+        hint = "".join(f" (your #{m['overall']}: confirm-pick {m['txn_id']})" for m in mine_behind if m["txn_id"])
+        _refuse(f"board not synced: picks {behind} not recorded — record them from the draft log first{hint}",
+                as_json, did, behind=behind, behind_mine=mine_behind, gaps=gaps)
     mode = None
     try:
         mode = ledger.get_run(run_id)["mode"]
@@ -107,6 +109,21 @@ def _board_refusal(d: dict, overall: int, pid: str, name: str, picks: list[dict]
     if already:
         return f"{name} is already recorded as drafted at pick {already['overall_pick']}", {"pick": already}
     return None
+
+
+def _behind_mine(d: dict, behind: list[int]) -> list[dict]:
+    """My own picks among the unrecorded `behind` picks, each with its submitted txn (if any): such a pick was
+    clicked on Yahoo but never confirmed, so the fix is `confirm-pick <txn_id>`, not `draft pick`."""
+    from fantasy.ops import transactions
+
+    mine = {p.overall for p in order_for_draft(d) if p.slot == d["my_slot"]}
+    out = []
+    for k in behind:
+        if k not in mine:
+            continue
+        sub = [t for t in transactions.draft_pick_txns(d["draft_id"], k) if t["status"] == "submitted"]
+        out.append({"overall": k, "txn_id": sub[-1]["txn_id"] if sub else None})
+    return out
 
 
 def _vs_latest_recommendation(

@@ -210,6 +210,9 @@ def pick(
         if not (allow_unknown or force):
             fail(str(e), as_json, exit_code=2, code="unresolved_player", candidates=e.candidates)
         pid, name = unknown_player_id(player), player.strip()
+        if pid == "unknown:":  # no letters/digits: never record a nameless id
+            fail(f"cannot record '{player}' as an unknown player: the name has no letters or digits", as_json,
+                 exit_code=2, code="invalid_name")
     taken = {p["overall_pick"] for p in store.get_picks(d["draft_id"])}
     ov = overall if overall is not None else next((k for k in range(1, n_total + 1) if k not in taken), None)
     if ov is None:

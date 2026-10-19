@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { requireWriter } from "@/lib/guard";
 import { pickInfoForDraft } from "@/lib/draftOrder";
 import { syncDraftStatus } from "@/lib/draftStatus";
-import { planManualPick, unknownId, type RecordedPick } from "@/lib/agentPure";
+import { planManualPick, resolveManualPlayer, type RecordedPick } from "@/lib/agentPure";
+import { playerPool } from "@/lib/agentApi";
 
 export const dynamic = "force-dynamic";
 
-/** Record a pick manually. Body: { draft_id, overall_pick, player_id, player_name, overwrite? }
- *  Same player at the same pick: no-op (status "unchanged"). Different player at that pick: 409 unless
- *  overwrite (reported as `overwrote`). Same player at another pick: always 409. */
+/** Record a pick manually. Body: { draft_id, overall_pick, player_id?, player_name, overwrite?, allow_unknown? }
+ *  A name without player_id is resolved like /api/agent/pick (aliases, accents, fuzzy): ambiguous / not found
+ *  → 400 with `reason` and `candidates`; `unknown:<id>` only when nothing matches AND allow_unknown.
+ *  Same player at the same pick: no-op (status "unchanged"). Different player at that pick: 409
+ *  reason "pick_taken" unless overwrite (reported as `overwrote`). Same player at another pick: always 409
+ *  reason "duplicate_player". */
 export async function POST(req: Request) {
   const w = await requireWriter();
   if ("error" in w) return w.error;
@@ -39,11 +43,31 @@ export async function POST(req: Request) {
     .eq("draft_id", draftId)
     .limit(1000);
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
-  // a name not in our list gets the same id the CLI / agent API would give it (unknown:<canonical id>)
-  const pid = playerId ?? unknownId(playerName ?? "");
+  // a typed name is resolved against the whole pool (drafted players included, so duplicates are caught);
+  // only an explicit allow_unknown records a name not in our list (same unknown:<canonical id> as the CLI)
+  let pool: Awaited<ReturnType<typeof playerPool>>["pool"] = [];
+  if (!playerId) {
+    try {
+      ({ pool } = await playerPool(db));
+    } catch (e) {
+      return NextResponse.json({ error: `Could not load the player list: ${(e as Error).message}` }, { status: 500 });
+    }
+  }
+  const who = resolveManualPlayer(playerId, playerName, pool, body.allow_unknown === true);
+  if (!who.ok)
+    return NextResponse.json(
+      {
+        error: who.error,
+        reason: who.reason,
+        candidates: who.candidates.map((c) => ({ player_id: c.player_id, name: c.name, team: c.team, positions: c.positions })),
+      },
+      { status: who.status },
+    );
+  const pid = who.player_id;
   const plan = planManualPick((picks as RecordedPick[]) ?? [], overall, pid, body.overwrite === true);
   if (plan.action === "unchanged") return NextResponse.json({ ok: true, status: "unchanged", pick: plan.existing });
-  if (plan.action === "conflict") return NextResponse.json({ error: plan.error }, { status: 409 });
+  if (plan.action === "conflict")
+    return NextResponse.json({ error: plan.error, reason: plan.reason, existing: plan.existing }, { status: 409 });
 
   const { round, slot } = pickInfoForDraft(draft, overall);
   const row = {
@@ -52,7 +76,7 @@ export async function POST(req: Request) {
     round,
     team_slot: slot,
     player_id: pid,
-    player_name: playerName ?? pid,
+    player_name: who.player_name,
     source: "manual",
     created_at: new Date().toISOString(),
   };
@@ -62,13 +86,17 @@ export async function POST(req: Request) {
       : await db.from("draft_picks").insert(row); // PK (draft_id, overall_pick) rejects a concurrent writer
   if (error) {
     if (error.code === "23505")
-      return NextResponse.json({ error: `Conflict: pick ${overall} was recorded concurrently; reload the board` }, { status: 409 });
+      return NextResponse.json(
+        { error: `Conflict: pick ${overall} was recorded concurrently; reload the board`, reason: "concurrent" },
+        { status: 409 },
+      );
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   await syncDraftStatus(db, draft); // pending -> live; complete when the board is full
   return NextResponse.json({
     ok: true,
     status: "recorded",
+    resolved: who.how,
     pick: row,
     overwrote: plan.action === "replace" ? plan.existing : null,
   });

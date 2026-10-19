@@ -253,6 +253,16 @@ function DraftView({
     return s;
   }, [picks, rowByName]);
   const available = useMemo(() => allRows.filter((r) => !draftedIds.has(r.player_id)), [allRows, draftedIds]);
+  // player_id -> overall pick where he was drafted (by id, or by name for rows recorded without one)
+  const draftedAt = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of picks) {
+      if (p.player_id) m.set(p.player_id, p.overall_pick);
+      const byName = rowByName.get(normName(p.player_name));
+      if (byName && !m.has(byName.player_id)) m.set(byName.player_id, p.overall_pick);
+    }
+    return m;
+  }, [picks, rowByName]);
 
   const myPicks = picks.filter((p) => p.team_slot === draft.my_slot).sort((a, b) => a.overall_pick - b.overall_pick);
   const myRoster: PlayerRow[] = myPicks
@@ -478,7 +488,9 @@ function DraftView({
         <ManualPickSheet
           draft={draft}
           currentPick={complete ? null : currentPick}
-          available={available}
+          rows={allRows}
+          draftedAt={draftedAt}
+          picks={picks}
           selected={selected}
           setSelected={setSelected}
           teamName={teamName}
@@ -762,7 +774,9 @@ function AgentLine({ live }: { live: DraftLive | null }) {
 function ManualPickSheet({
   draft,
   currentPick,
-  available,
+  rows,
+  draftedAt,
+  picks,
   selected,
   setSelected,
   teamName,
@@ -772,7 +786,9 @@ function ManualPickSheet({
 }: {
   draft: Draft;
   currentPick: number | null;
-  available: PlayerRow[];
+  rows: PlayerRow[];
+  draftedAt: Map<string, number>;
+  picks: DraftPick[];
   selected: PlayerRow | null;
   setSelected: (p: PlayerRow | null) => void;
   teamName: (s: number) => string;
@@ -785,6 +801,9 @@ function ManualPickSheet({
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // the server could not resolve the typed name: its candidates (ambiguous) or suggestions (not found)
+  const [cands, setCands] = useState<{ reason: string; list: { player_id: string; name: string }[] } | null>(null);
+  const rowById = useMemo(() => new Map(rows.map((r) => [r.player_id, r])), [rows]);
   const effectiveOverall = overall === "" ? currentPick : Number(overall);
   const info = effectiveOverall ? pickInfoForDraft(draft, effectiveOverall) : null;
   const canWrite = ws.writesEnabled && ws.authed;
@@ -795,19 +814,27 @@ function ManualPickSheet({
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
+  // search every player (drafted ones too, flagged "drafted #N") so a duplicate is visible before submitting
   const matches = useMemo(() => {
     const n = normName(q);
     if (!n) return [];
-    return available.filter((r) => normName(r.name).includes(n) || r.player_id.includes(q.toLowerCase())).slice(0, 8);
-  }, [q, available]);
+    const hits = rows.filter((r) => normName(r.name).includes(n) || r.player_id.includes(q.toLowerCase()));
+    return [...hits.filter((r) => !draftedAt.has(r.player_id)), ...hits.filter((r) => draftedAt.has(r.player_id))].slice(0, 8);
+  }, [q, rows, draftedAt]);
+  // a typed name equal to an already recorded pick's name (also catches unlisted `unknown:` picks)
+  const typedDup = useMemo(() => {
+    const n = normName(q);
+    return n ? (picks.find((p) => normName(p.player_name) === n) ?? null) : null;
+  }, [q, picks]);
 
-  const submit = async (overwrite = false) => {
+  const submit = async (overwrite = false, allowUnknown = false) => {
     if (!effectiveOverall) return;
     const player = selected;
     const name = player?.name ?? q.trim();
     if (!name) return;
     setBusy(true);
     setMsg(null);
+    setCands(null);
     const r = await fetch("/api/draft/pick", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -817,6 +844,7 @@ function ManualPickSheet({
         player_id: player?.player_id ?? null,
         player_name: name,
         overwrite,
+        allow_unknown: allowUnknown,
       }),
     });
     const j = await r.json().catch(() => ({}));
@@ -827,9 +855,12 @@ function ManualPickSheet({
       setOverall("");
       onDone({ ok: true, text: `Recorded #${effectiveOverall}: ${name}` });
       onClose();
-    } else if (r.status === 409 && !overwrite) {
-      if (window.confirm(`${j.error}\n\nOverwrite?`)) submit(true);
+    } else if (r.status === 409 && j.reason === "pick_taken" && !overwrite) {
+      // only a different player at this pick slot can be overwritten; a duplicate player never
+      if (window.confirm(`${j.error}\n\nOverwrite?`)) submit(true, allowUnknown);
     } else {
+      if (r.status === 400 && (j.reason === "ambiguous" || j.reason === "not_found"))
+        setCands({ reason: j.reason, list: Array.isArray(j.candidates) ? j.candidates : [] });
       setMsg({ ok: false, text: j.error || `HTTP ${r.status}` });
     }
   };
@@ -912,8 +943,11 @@ function ManualPickSheet({
               <>
                 <input
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search available players…"
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setCands(null);
+                  }}
+                  placeholder="Search players…"
                   className="w-full rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-base outline-none focus:border-accent"
                 />
                 {matches.length > 0 && (
@@ -922,24 +956,74 @@ function ManualPickSheet({
                       <li key={m.player_id}>
                         <button
                           type="button"
+                          disabled={draftedAt.has(m.player_id)}
                           onClick={() => {
                             setSelected(m);
                             setQ("");
+                            setCands(null);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-panel-2"
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-panel-2 disabled:opacity-60"
                         >
                           <span className="font-medium">{m.name}</span>
                           <span className="text-xs text-muted">
                             {m.team} {m.positions.join("/")}
                           </span>
-                          <span className="num ml-auto text-xs text-muted">#{m.rank ?? "—"}</span>
+                          {draftedAt.has(m.player_id) ? (
+                            <span className="ml-auto text-xs text-bad">drafted #{draftedAt.get(m.player_id)}</span>
+                          ) : (
+                            <span className="num ml-auto text-xs text-muted">#{m.rank ?? "—"}</span>
+                          )}
                         </button>
                       </li>
                     ))}
                   </ul>
                 )}
-                {q && matches.length === 0 && (
-                  <div className="mt-1 text-[11px] text-muted">No match in available players — will record the free-text name (no player_id).</div>
+                {typedDup && (
+                  <div className="mt-1 text-[11px] text-bad">
+                    {typedDup.player_name} already drafted at #{typedDup.overall_pick}
+                  </div>
+                )}
+                {q && matches.length === 0 && !typedDup && (
+                  <div className="mt-1 text-[11px] text-muted">
+                    No name match here — the server will resolve it (aliases, spelling); an unlisted name needs confirmation.
+                  </div>
+                )}
+                {cands && (
+                  <div className="mt-2 rounded-lg border border-line p-2 text-xs">
+                    <div className="mb-1 text-muted">{cands.reason === "ambiguous" ? "Which player?" : "Did you mean:"}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {cands.list.map((c) => {
+                        const row = rowById.get(c.player_id);
+                        const at = draftedAt.get(c.player_id);
+                        return (
+                          <button
+                            key={c.player_id}
+                            type="button"
+                            disabled={!row || at != null}
+                            onClick={() => {
+                              if (!row) return;
+                              setSelected(row);
+                              setQ("");
+                              setCands(null);
+                            }}
+                            className="rounded border border-line px-2 py-1 hover:bg-panel-2 disabled:opacity-60"
+                          >
+                            {c.name}
+                            {at != null && <span className="ml-1 text-bad">drafted #{at}</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {cands.reason === "not_found" && (
+                      <button
+                        type="button"
+                        onClick={() => submit(false, true)}
+                        className="mt-2 rounded border border-warn/50 px-2 py-1 text-warn hover:bg-warn/10"
+                      >
+                        Record “{q.trim()}” as an unlisted player
+                      </button>
+                    )}
+                  </div>
                 )}
               </>
             )}

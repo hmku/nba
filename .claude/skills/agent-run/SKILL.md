@@ -36,7 +36,7 @@ and verified. Background and design: `docs/runbooks/agent_ops.md` (read once). D
 | 1 | unexpected error | read `error`, fix input, do not loop |
 | 2 | usage: bad args, unresolved player name (JSON has `candidates`), missing run id, invalid `--strategy/--objective/--punt` or `set-order` rounds (JSON has `valid`), mock-looking draft id without `--mock`, `set-order` that would re-assign recorded picks (`code: order_conflicts_with_recorded_picks`, JSON has `conflicts`) | fix args / use player_id; for set-order see live-draft §1 |
 | 3 | conflict: lock held by another run, task owned by someone else | STOP that action; report holder |
-| 4 | not allowed: dry_run, approval missing/pending, lock not held | do NOT perform the Yahoo action |
+| 4 | not allowed: dry_run, approval missing/pending, lock not held, board not synced (`behind`: earlier picks unrecorded; `behind_mine` lists my own with their submitted txn → `confirm-pick`) | do NOT perform the Yahoo action |
 | 5 | duplicate txn (JSON has `existing`) | inspect `existing.status`; never re-plan to dodge it (`draft prepare-pick` handles draft-pick retries itself) |
 | 6 | not found (also `draft undo N` when nothing is recorded at N) | check ids |
 | 7 | invalid state transition / run not running / approval already decided | re-read state (`txn show`, `run show`) |

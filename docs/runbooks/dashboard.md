@@ -81,7 +81,9 @@ Live room details:
     is the payload's `prob_available_next` (my pick *after* `for_pick`); for fallback it is P(available
     at my next pick).
   - **✎ Enter a pick** button opens a bottom sheet (manual pick: overall # defaults to the pick on the
-    clock, search available or free text, 409 → confirm overwrite, undo latest manual pick). "+" in the
+    clock; search covers drafted players too, flagged "drafted #N"; a typed name is resolved server-side like
+    `/api/agent/pick` — ambiguous/unknown → candidates, an unlisted name only after "Record as unlisted";
+    409 `reason: pick_taken` → confirm overwrite, `duplicate_player` → never; undo latest manual pick). "+" in the
     available table / "pick" in the fallback list open the sheet preselected.
   - Agent one-liner (only when an agent run's `task` contains the draft_id) → expands to latest
     decision event, latest `decisions` row (disagreement highlighted amber), recent events.

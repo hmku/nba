@@ -62,3 +62,28 @@ Skill and runbook changes:
   Both outcomes mean do not click.
 - The dashboard UI does not display `overwrote` or `behind` yet (it computes its own gaps).
 - No DB/task state was changed (no `fantasy task` work; tests used temp SQLite).
+
+## Addendum: re-review fixes (M1, M2, m1-m5)
+- **M1** The dashboard manual pick route (`web/src/app/api/draft/pick/route.ts`) now resolves a typed name with
+  `resolveManualPlayer` (new, `web/src/lib/agentPure.ts`), using the same resolver as `/api/agent/pick` over the
+  full `playerPool` (drafted players included). "Cam Johnson" now becomes `cameron-johnson`, so a duplicate is
+  caught as a 409. An ambiguous or unmatched name returns 400 with `reason` and `candidates`. `unknown:<id>` is
+  used only with `allow_unknown`, which the panel sends from its "Record … as an unlisted player" button. The
+  panel search also shows drafted players (flagged "drafted #N"), and a typed name that matches a recorded pick
+  shows "already drafted at #N". The stale "(no player_id)" hint is gone.
+- **m3** A 409 now carries `reason` (`pick_taken` | `duplicate_player` | `concurrent`). The panel offers
+  "Overwrite?" only for `pick_taken`.
+- **m4** A name without letters or digits is rejected: `draft pick --allow-unknown` exits 2 with
+  `code: invalid_name`, and the web returns 400 (`reason: invalid_name`, also in `/api/agent/pick`).
+- **m1** A `prepare-pick` refusal for `behind` now includes `behind_mine` (`[{overall, txn_id}]`). The message ends
+  with "(your #N: confirm-pick <txn>)" when one of my own picks has a submitted txn.
+- **m5** In `draft watch`, a context rebuild after an order change that fails with a non-DB error now logs one
+  warning. Recommending pauses (a stale recommendation is never published), and the rebuild is retried on every poll.
+- **M2/m2** The `live-draft` time budget now says to never click outside prepare-pick when it refuses with
+  `behind`. The `agent-run` exit-4 row lists "board not synced (behind)".
+- Tests: `tests/test_draft_review3_fixes.py` (`test_prepare_pick_behind_names_my_unconfirmed_pick`,
+  `test_allow_unknown_rejects_name_without_letters_or_digits[3]`, `test_watch_survives_failed_context_rebuild`).
+  In `web/tests/agent.test.mjs`: the alias test, the duplicate-409 test, the ambiguous-candidates test, and the
+  no-letters test.
+- Draft outputs are byte-identical: `draft recommend` at picks 1/24/36 on fresh SQLite matches origin/main
+  after stripping ids and timestamps.

@@ -10,8 +10,10 @@ import {
   boardInfo,
   defaultOverall,
   museRunId,
+  isRecordableName,
   planManualPick,
   recIsFresh,
+  resolveManualPlayer,
   resolvePlayer,
   searchPlayers,
   slugify,
@@ -172,4 +174,64 @@ test("planManualPick: no silent overwrite, duplicates always refused (review B3)
   }
   assert.equal(planManualPick(board, 3, "victor-wembanyama", false).action, "insert");
   assert.equal(planManualPick([], 1, "x", true).action, "insert");
+});
+
+// ---- dashboard manual pick: typed names resolve like /api/agent/pick (re-review M1, m3, m4)
+const manualPool = [
+  ...pool,
+  { player_id: "cameron-johnson", name: "Cameron Johnson", team: "BKN", positions: ["SF"], rank: 90 },
+];
+
+test("resolveManualPlayer: alias 'Cam Johnson' → cameron-johnson, never unknown: (M1)", () => {
+  const r = resolveManualPlayer(null, "Cam Johnson", manualPool, false);
+  assert.equal(r.ok, true);
+  assert.equal(r.player_id, "cameron-johnson");
+  assert.equal(r.player_name, "Cameron Johnson");
+  assert.equal(r.how, "resolved");
+  // even with allow_unknown a resolvable name is the real player
+  assert.equal(resolveManualPlayer(null, "Cam Johnson", manualPool, true).player_id, "cameron-johnson");
+  // an explicit player_id is used as is
+  const byId = resolveManualPlayer("nikola-jokic", null, manualPool, false);
+  assert.equal(byId.player_id, "nikola-jokic");
+  assert.equal(byId.player_name, "Nikola Jokić");
+});
+
+test("manual pick: a typed name of an already drafted player is a 409 duplicate, not an overwrite (M1, m3)", () => {
+  const board = [{ overall_pick: 7, player_id: "cameron-johnson", player_name: "Cameron Johnson" }];
+  const who = resolveManualPlayer(null, "Cam Johnson", manualPool, true); // resolved over the full pool
+  for (const overwrite of [false, true]) {
+    const plan = planManualPick(board, 8, who.player_id, overwrite);
+    assert.equal(plan.action, "conflict");
+    assert.equal(plan.reason, "duplicate_player"); // the UI must NOT offer "Overwrite?"
+    assert.match(plan.error, /already recorded at pick 7/);
+  }
+  const slot = planManualPick(board, 7, "nikola-jokic", false);
+  assert.equal(slot.action, "conflict");
+  assert.equal(slot.reason, "pick_taken"); // only this one may be overwritten
+});
+
+test("resolveManualPlayer: ambiguous name → 400 with candidates; unknown only with allow_unknown (M1)", () => {
+  const amb = resolveManualPlayer(null, "J. Williams", manualPool, true);
+  assert.equal(amb.ok, false);
+  assert.equal(amb.status, 400);
+  assert.equal(amb.reason, "ambiguous");
+  assert.deepEqual(amb.candidates.map((c) => c.player_id).sort(), ["jalen-williams", "jaylin-williams"]);
+  const nf = resolveManualPlayer(null, "Zz Nobody", manualPool, false);
+  assert.equal(nf.ok, false);
+  assert.equal(nf.reason, "not_found");
+  const unk = resolveManualPlayer(null, "Zz Nobody", manualPool, true);
+  assert.equal(unk.ok, true);
+  assert.equal(unk.player_id, "unknown:zz-nobody");
+  assert.equal(unk.how, "unknown");
+});
+
+test("a name without letters or digits is never recorded as 'unknown:' (m4)", () => {
+  for (const bad of ["", "   ", "!!!", "-", "’."]) {
+    assert.equal(isRecordableName(bad), false, JSON.stringify(bad));
+    const r = resolveManualPlayer(null, bad, manualPool, true);
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 400);
+    assert.equal(r.reason, "invalid_name");
+  }
+  assert.equal(isRecordableName("Zz Nobody"), true);
 });

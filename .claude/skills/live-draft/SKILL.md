@@ -110,6 +110,9 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
 
 **Time budget (60 s):** sync ≤15 s, recommend 3 s, decide ≤10 s, execute ≤20 s. If < 15 s remain and you
 haven't clicked, click the precomputed top pick if still available. Autopick (Pre-Draft Rankings) is the last resort.
+If prepare-pick refuses (`behind`), never click outside prepare-pick: record the missing picks (for your own
+submitted pick use confirm-pick — the refusal names it as `behind_mine` / "your #N: confirm-pick <txn_id>"), or
+let Yahoo autopick from Pre-Draft Rankings.
 
 ## 3. Failure handling
 - Browser tool errors / page unresponsive: reload the draft room once; if still broken tell the user

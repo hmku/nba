@@ -223,6 +223,7 @@ def watch(
     opt = DraftOptimizer(ctx)
     last: tuple | None = None
     unsaved: dict | None = None  # computed recommendation whose save failed
+    bad_order_key: tuple | None = None  # a new order whose context rebuild failed (warned once, retried)
     failures = 0
     polls = 0
     typer.echo(f"watching {d['draft_id']} every {interval}s (Ctrl-C to stop)")
@@ -231,31 +232,45 @@ def watch(
         try:
             # re-read the draft row every poll: `set-order` mid-draft changes my picks (and the context)
             fresh = store.get_draft(d["draft_id"])
-            if fresh is not None and _order_key(fresh) != order_key:
-                d, order_key = fresh, _order_key(fresh)
-                ctx, run_id = _context(_settings_for(d), projections, d)
-                opt = DraftOptimizer(ctx)
-                typer.echo(f"[{time.strftime('%H:%M:%S')}] draft order changed (my slot {d['my_slot']}); "
-                           "context rebuilt")
-            picks = store.get_picks(d["draft_id"])
-            key = (order_key, tuple((p["overall_pick"], p["player_id"]) for p in picks))
-            if key != last:
-                unsaved = None
-                state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
+            if fresh is not None and _order_key(fresh) == order_key:
+                bad_order_key = None  # order reverted to the one the current context was built for
+            elif fresh is not None:
+                new_key = _order_key(fresh)
+                unsaved = None  # a recommendation computed under the old order must not be published
                 try:
-                    rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+                    ctx, run_id = _context(_settings_for(fresh), projections, fresh)
+                    opt = DraftOptimizer(ctx)
                 except db_errors:
                     raise
-                except Exception as e:  # noqa: BLE001 — keep watching; the agent can still run `draft recommend`
-                    _watch_warn(f"recommendation failed for {len(picks)} picks ({_short(e)}); waiting for the next "
-                                "board change")
-                    last = key
-                    rec = None
-                if rec is not None:
-                    last = key
-                    unsaved = rec
-                    top = rec["recommendations"][0]["name"] if rec["recommendations"] else "-"
-                    typer.echo(f"[{time.strftime('%H:%M:%S')}] {len(picks)} picks → for #{rec.get('for_pick')}: {top}")
+                except Exception as e:  # noqa: BLE001 — keep watching; the rebuild is retried every poll
+                    if new_key != bad_order_key:
+                        _watch_warn(f"draft order changed but rebuilding the context failed ({_short(e)}); "
+                                    "not recommending until it succeeds — still watching")
+                    bad_order_key = new_key
+                else:
+                    d, order_key, bad_order_key, last = fresh, new_key, None, None
+                    typer.echo(f"[{time.strftime('%H:%M:%S')}] draft order changed (my slot {d['my_slot']}); "
+                               "context rebuilt")
+            if bad_order_key is None:  # skip while the new order's context cannot be built
+                picks = store.get_picks(d["draft_id"])
+                key = (order_key, tuple((p["overall_pick"], p["player_id"]) for p in picks))
+                if key != last:
+                    unsaved = None
+                    state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
+                    try:
+                        rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
+                    except db_errors:
+                        raise
+                    except Exception as e:  # noqa: BLE001 — keep watching; the agent can still run `draft recommend`
+                        _watch_warn(f"recommendation failed for {len(picks)} picks ({_short(e)}); waiting for the next "
+                                    "board change")
+                        last = key
+                        rec = None
+                    if rec is not None:
+                        last = key
+                        unsaved = rec
+                        top = rec["recommendations"][0]["name"] if rec["recommendations"] else "-"
+                        typer.echo(f"[{time.strftime('%H:%M:%S')}] {len(picks)} picks → for #{rec.get('for_pick')}: {top}")
             if unsaved is not None:
                 store.save_recommendation(unsaved)
                 done = unsaved.get("for_pick") is None

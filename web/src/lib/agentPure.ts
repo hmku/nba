@@ -206,9 +206,13 @@ export interface RecordedPick {
   player_name: string | null;
 }
 
+/** Why a manual pick was refused (machine-readable, returned by the route as `reason`). Only `pick_taken` may be
+ *  resolved by resubmitting with overwrite; a `duplicate_player` needs the other pick undone first. */
+export type ManualPickConflict = "pick_taken" | "duplicate_player";
+
 export type ManualPickPlan =
   | { action: "unchanged"; existing: RecordedPick }
-  | { action: "conflict"; error: string; existing: RecordedPick }
+  | { action: "conflict"; reason: ManualPickConflict; error: string; existing: RecordedPick }
   | { action: "insert" }
   | { action: "replace"; existing: RecordedPick };
 
@@ -222,12 +226,60 @@ export function planManualPick(picks: RecordedPick[], overall: number, playerId:
   if (dup)
     return {
       action: "conflict",
+      reason: "duplicate_player",
       error: `Conflict: ${dup.player_name ?? dup.player_id} is already recorded at pick ${dup.overall_pick} (undo that pick first)`,
       existing: dup,
     };
   if (atPick && !overwrite)
-    return { action: "conflict", error: `Conflict: pick ${overall} already has ${atPick.player_name ?? atPick.player_id}`, existing: atPick };
+    return {
+      action: "conflict",
+      reason: "pick_taken",
+      error: `Conflict: pick ${overall} already has ${atPick.player_name ?? atPick.player_id}`,
+      existing: atPick,
+    };
   return atPick ? { action: "replace", existing: atPick } : { action: "insert" };
+}
+
+/** True if `name` yields a usable unknown id (it has at least one letter or digit), i.e. not `unknown:`. */
+export function isRecordableName(name: string | null | undefined): boolean {
+  return canonicalId(name ?? "") !== "";
+}
+
+export type ManualPlayer<T extends NamedPlayer> =
+  | { ok: true; player_id: string; player_name: string; how: "id" | "resolved" | "unknown" }
+  | { ok: false; status: 400; reason: "invalid_name" | "ambiguous" | "not_found"; error: string; candidates: T[] };
+
+/** Which player a dashboard manual pick means (the same resolver as /api/agent/pick and `fantasy draft pick`).
+ *  An explicit player_id is used as is. A typed name is resolved against the FULL pool (drafted players
+ *  included, so a duplicate is caught by planManualPick rather than recorded as `unknown:`). Ambiguous → 400
+ *  with candidates; no match → 400 with suggestions unless `allowUnknown` (then `unknown:<canonical id>`);
+ *  a name without letters/digits is never recorded. */
+export function resolveManualPlayer<T extends NamedPlayer>(
+  playerId: string | null,
+  playerName: string | null,
+  pool: T[],
+  allowUnknown: boolean,
+): ManualPlayer<T> {
+  if (playerId) {
+    const known = pool.find((p) => p.player_id === playerId);
+    return { ok: true, player_id: playerId, player_name: playerName?.trim() || known?.name || playerId, how: "id" };
+  }
+  const name = (playerName ?? "").trim();
+  if (!isRecordableName(name))
+    return { ok: false, status: 400, reason: "invalid_name", error: `Invalid player name '${name}': no letters or digits`, candidates: [] };
+  const res = resolvePlayer(name, pool);
+  if (res.status === "ok") return { ok: true, player_id: res.player.player_id, player_name: res.player.name, how: "resolved" };
+  if (res.status === "not_found" && allowUnknown) return { ok: true, player_id: unknownId(name), player_name: name, how: "unknown" };
+  return {
+    ok: false,
+    status: 400,
+    reason: res.status,
+    error:
+      res.status === "ambiguous"
+        ? `Ambiguous player '${name}': pick one of the candidates`
+        : `No player named '${name}' in our list: pick a suggestion, or record it as an unlisted name`,
+    candidates: res.candidates.slice(0, 8),
+  };
 }
 
 /* ------------------------------------------------------------------ report validation */
