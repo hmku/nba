@@ -11,6 +11,13 @@ includes the expected current state (compare-and-set), e.g.
 so a concurrent change (the user deciding on the dashboard, another session) makes the call fail with
 the same error code / exit code the local SQLAlchemy path uses, instead of overwriting it.
 
+Lost responses: the client never re-sends a write whose response was lost (it may have committed);
+it raises `rest.RestOutcomeUnknownError` and `RestStore` resolves it. An INSERT is re-read by its
+primary key (ours are generated, so a matching row is our own write). A PATCH/DELETE is re-issued
+once, which is safe because every one here is conditional (CAS: an already-applied write now
+matches 0 rows) or sets absolute values; the 0-row paths then re-read the row and accept it when it
+already holds exactly our write (`_transition`, `end_run`, `done`), so the outcome is idempotent.
+
 The business rules are not duplicated: kinds, statuses, the txn state machine (`TRANSITIONS`),
 idempotency keys, default scopes, required locks, policy and `agrees_with_model` all come from the
 local ops modules. Only the storage calls differ. Method names and signatures mirror the module
@@ -71,6 +78,11 @@ def q(value: Any) -> str:
     """Double-quote a value for use inside in.(...) / or=(...) lists."""
     s = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{s}"'
+
+
+def _same_ts(a: Any, b: datetime) -> bool:
+    """Timestamp read back == the one we wrote (identifies our own write after a lost response)."""
+    return isinstance(a, datetime) and as_utc(a) == as_utc(b)
 
 
 def eq(value: Any) -> str:
@@ -141,14 +153,37 @@ class RestStore:
         rows = self.select(table, filters, limit=1)
         return rows[0] if rows else None
 
-    def insert(self, table: str, row: dict[str, Any]) -> dict[str, Any]:
-        """Plain INSERT (no upsert). Raises Conflict409 on a unique/PK clash."""
-        resp = self.client.request(
-            "POST",
-            table,
-            headers={"Prefer": "return=representation", "Content-Type": "application/json"},
-            content=self._encode(row),
+    @staticmethod
+    def same_values(row: dict[str, Any], values: dict[str, Any]) -> bool:
+        """Does `row` (as read back) hold `values` (as we wrote them)? Datetimes and `*_at` keys
+        inside JSON objects are ignored (server precision/format may differ; ids identify us)."""
+        def norm(v: Any) -> Any:
+            if isinstance(v, dict):
+                return {k: norm(x) for k, x in v.items() if not str(k).endswith("_at")}
+            return json.loads(json.dumps(rest.to_json_value(v)))
+        return all(
+            k in row and norm(row[k]) == norm(v)
+            for k, v in values.items() if not isinstance(v, datetime)
         )
+
+    def _pk_filters(self, table: str, row: dict[str, Any]) -> Filters:
+        return [(c.name, eq(row[c.name])) for c in metadata.tables[table].primary_key.columns]
+
+    def insert(self, table: str, row: dict[str, Any]) -> dict[str, Any]:
+        """Plain INSERT (no upsert). Raises Conflict409 on a unique/PK clash. If the response is
+        lost, the row is re-read by primary key: present with our values -> our insert landed."""
+        try:
+            resp = self.client.request(
+                "POST",
+                table,
+                headers={"Prefer": "return=representation", "Content-Type": "application/json"},
+                content=self._encode(row),
+            )
+        except rest.RestOutcomeUnknownError:
+            got = self.one(table, self._pk_filters(table, row))
+            if got is not None and self.same_values(got, row):
+                return got
+            raise
         if resp.status_code == 409:
             raise Conflict409(f"insert {table}: conflict", status=409)
         self.client.check(resp, f"insert {table}")
@@ -159,22 +194,28 @@ class RestStore:
         """Conditional UPDATE; returns the rows that matched (empty = precondition failed)."""
         if not filters:
             raise ValueError("refusing an unfiltered PATCH")
-        resp = self.client.request(
-            "PATCH",
-            table,
-            params=list(filters),
-            headers={"Prefer": "return=representation", "Content-Type": "application/json"},
-            content=self._encode(values),
-        )
+        kw: dict[str, Any] = {
+            "params": list(filters),
+            "headers": {"Prefer": "return=representation", "Content-Type": "application/json"},
+            "content": self._encode(values),
+        }
+        try:
+            resp = self.client.request("PATCH", table, **kw)
+        except rest.RestOutcomeUnknownError:
+            # Conditional/absolute: re-issuing matches 0 rows if the first one applied, and the
+            # caller's 0-row path re-reads (see module docstring). A second loss propagates.
+            resp = self.client.request("PATCH", table, **kw)
         self.client.check(resp, f"update {table}")
         return self._rows(table, resp)
 
     def delete(self, table: str, filters: Filters) -> list[dict[str, Any]]:
         if not filters:
             raise ValueError("refusing an unfiltered DELETE")
-        resp = self.client.request(
-            "DELETE", table, params=list(filters), headers={"Prefer": "return=representation"}
-        )
+        kw: dict[str, Any] = {"params": list(filters), "headers": {"Prefer": "return=representation"}}
+        try:
+            resp = self.client.request("DELETE", table, **kw)
+        except rest.RestOutcomeUnknownError:  # same filter again: deletes nothing if it applied
+            resp = self.client.request("DELETE", table, **kw)
         self.client.check(resp, f"delete {table}")
         return self._rows(table, resp)
 
@@ -237,6 +278,9 @@ class RestLedger:
         )
         if len(rows) != 1:
             run = self.get_run(run_id)
+            if run["status"] == status and _same_ts(run["ended_at"], t):
+                # our own write applied but its response was lost: finish the job idempotently
+                return {**run, "released_locks": self.locks.release_all(run_id)}
             raise InvalidStateError(
                 f"run {run_id} already ended ({run['status']})", run_id=run_id, status=run["status"]
             )
@@ -505,6 +549,12 @@ class RestTransactions:
             if existing is None:
                 raise
             raise self._dup(existing) from exc
+        except rest.RestOutcomeUnknownError:  # store.insert found no row of ours by txn_id
+            existing = self.get_by_key(key)
+            if existing is None or existing["txn_id"] != txn_id:
+                raise
+        # (A lost INSERT response that did commit is resolved by RestStore.insert: we continue
+        # with our own txn_id and create the approval below, so it is never left without one.)
         if policy.requires_approval(kind):
             approval_id = self.approvals.request_approval(
                 run_id, kind, summary or f"{kind}: {canonical_json(payload)}",
@@ -522,10 +572,15 @@ class RestTransactions:
         for f in froms:
             if to not in _txns.TRANSITIONS[f]:
                 raise InvalidStateError(f"invalid transition {f} -> {to}", txn_id=txn_id)
+        t = now()
         rows = self.s.patch("transactions", [("txn_id", eq(txn_id)), ("status", in_(froms))],
-                            {"status": to, "updated_at": now(), **values})
+                            {"status": to, "updated_at": t, **values})
         if len(rows) != 1:
             cur = self.get_txn(txn_id)
+            # updated_at == our t identifies *this* write (a genuine repeat call still fails)
+            if (cur["status"] == to and _same_ts(cur["updated_at"], t)
+                    and self.s.same_values(cur, values)):
+                return  # our own write already applied (its response was lost): idempotent
             raise InvalidStateError(
                 f"invalid transition {cur['status']} -> {to}",
                 txn_id=txn_id, status=cur["status"],
@@ -736,9 +791,12 @@ class RestTasks:
         # CAS: only finish it if nobody claimed/changed it since we looked
         f: Filters = [("task_id", eq(task_id)), ("status", eq(cur["status"]))]
         f.append(("owner", "is.null") if cur["owner"] is None else ("owner", eq(cur["owner"])))
-        rows = self.s.patch("tasks", f, {"status": "done", "updated_at": now()})
+        t = now()
+        rows = self.s.patch("tasks", f, {"status": "done", "updated_at": t})
         if len(rows) != 1:
             now_ = self.get_task(task_id)
+            if now_["status"] == "done" and _same_ts(now_["updated_at"], t):
+                return now_  # our own write already applied (its response was lost)
             raise ConflictError(f"task {task_id} changed concurrently "
                                 f"({now_['status']}, owner {now_['owner']})", task=now_)
         return self.get_task(task_id)

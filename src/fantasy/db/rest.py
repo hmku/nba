@@ -33,7 +33,14 @@ from fantasy.ops.common import OpsError, as_utc, row_dict
 DEFAULT_SUPABASE_URL = "https://bdzpkdkhlzjzddkptjex.supabase.co"
 KEY_ENVS = ("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY")
 BATCH = 500
-RETRIES = 2  # extra attempts on 5xx / network errors (upserts are idempotent)
+RETRIES = 2  # extra attempts (see RestClient.request for which failures are retried)
+# Methods whose repetition cannot change server state; anything else is retried only when the
+# request provably never reached the server (connection not established), unless the caller
+# declares the write idempotent (bulk upsert / insert-ignore-duplicates in `publish --rest`).
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+CONNECT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
+# Gateway answers after the request was forwarded: the write may or may not have been applied.
+AMBIGUOUS_STATUSES = frozenset({502, 504})
 
 # Ephemeral state that must not be copied (an offline lease means nothing online).
 PUBLISH_SKIP = frozenset({"locks"})
@@ -95,6 +102,14 @@ class RestAuthError(RestError):
 
 class RestUnreachableError(RestError):
     code = "rest_unreachable"
+
+
+class RestOutcomeUnknownError(RestUnreachableError):
+    """A non-idempotent write was sent but its response was lost (read timeout, dropped
+    connection, 502/504): it may or may not have been applied. Never retry it blindly; re-read
+    the target row and decide (`fantasy.ops.rest_ledger` does this for every ledger write)."""
+
+    code = "rest_outcome_unknown"
 
 
 def unique_clashes(
@@ -173,7 +188,13 @@ class RestClient:
     def _scrub(self, text: str) -> str:
         return text.replace(self.key, "***") if self.key else text
 
-    def request(self, method: str, path: str, **kw: Any) -> httpx.Response:
+    def request(self, method: str, path: str, *, idempotent: bool | None = None,
+                **kw: Any) -> httpx.Response:
+        """Send with bounded retries. Safe methods (and writes the caller marks `idempotent`) are
+        retried on any transport error and on 5xx. Other writes (POST/PATCH/DELETE) are retried
+        only on connection-establishment errors -- the request never left -- because a write whose
+        response was lost may have committed; that raises RestOutcomeUnknownError instead."""
+        retry_all = method.upper() in SAFE_METHODS if idempotent is None else idempotent
         last: Exception | None = None
         for attempt in range(RETRIES + 1):
             if attempt:
@@ -185,11 +206,27 @@ class RestClient:
                 raise RestUnreachableError(
                     self._scrub(BLOCKED_HELP.format(host=host, err=exc)), host=host
                 ) from exc
-            except httpx.TransportError as exc:
+            except CONNECT_ERRORS as exc:
                 last = exc
                 continue
-            if resp.status_code >= 500 and attempt < RETRIES:
+            except httpx.TransportError as exc:
+                if not retry_all:
+                    raise RestOutcomeUnknownError(self._scrub(
+                        f"{method} {path}: response lost ({type(exc).__name__}: {exc}); the "
+                        "write may or may not have been applied -- re-read before retrying"
+                    ), method=method, table=path) from exc
+                last = exc
                 continue
+            if resp.status_code >= 500:
+                if not retry_all:
+                    if resp.status_code in AMBIGUOUS_STATUSES:
+                        raise RestOutcomeUnknownError(self._scrub(
+                            f"{method} {path}: HTTP {resp.status_code} from the gateway; the write "
+                            "may or may not have been applied -- re-read before retrying"
+                        ), method=method, table=path, status=resp.status_code)
+                    return resp
+                if attempt < RETRIES:
+                    continue
             return resp
         raise RestUnreachableError(
             self._scrub(f"network error talking to Supabase: {type(last).__name__}: {last}")
@@ -221,6 +258,7 @@ class RestClient:
         resp = self.request(
             "POST",
             table,
+            idempotent=True,  # merge-duplicates: re-sending the same rows is a no-op
             params={"on_conflict": ",".join(pk)},
             headers={
                 "Prefer": "resolution=merge-duplicates,return=minimal",
@@ -236,6 +274,7 @@ class RestClient:
         resp = self.request(
             "POST",
             table,
+            idempotent=True,  # ignore-duplicates: re-sending inserts nothing new (count may be low)
             params={"on_conflict": ",".join(pk), "select": ",".join(pk)},
             headers={
                 "Prefer": "resolution=ignore-duplicates,return=representation",

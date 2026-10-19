@@ -14,10 +14,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 from collections.abc import Iterable
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any, Protocol
 
 from sqlalchemy import select
@@ -48,10 +50,63 @@ SNAPSHOT_META = [
 # ------------------------------------------------------------------ hashing (mirrors agentPure.ts)
 
 
+MAX_SAFE_INTEGER = 2**53 - 1  # JS Number.MAX_SAFE_INTEGER: larger integers are not portable
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def js_number(x: int | float) -> str:
+    """A JSON number exactly as JavaScript's JSON.stringify prints it (ECMA-262 Number::toString):
+    integral values as integers (1.0 -> "1", -0.0 -> "0"), others with the shortest round-trip
+    digits and JS exponent rules (1e-07 -> "1e-7", 1e-06 -> "0.000001"). Non-finite numbers and
+    integral values beyond +-(2**53-1) are rejected (JS cannot represent them exactly)."""
+    if isinstance(x, float):
+        if not math.isfinite(x):
+            raise ValueError(f"non-finite number {x!r} cannot be hashed canonically")
+        if x.is_integer():
+            x = int(x)
+    if isinstance(x, int):
+        if abs(x) > MAX_SAFE_INTEGER:
+            raise ValueError(f"integer {x} exceeds 2**53-1; send it as a string")
+        return str(x)
+    # non-integral -> |x| < 2**52, so only the small-exponent rule differs from Python's repr
+    sign = "-" if x < 0 else ""
+    t = Decimal(repr(abs(x))).normalize().as_tuple()
+    digits = "".join(map(str, t.digits))
+    k = len(digits)
+    n = int(t.exponent) + k  # value = 0.<digits> * 10**n
+    if 0 < n <= 21:
+        return sign + digits[:n] + "." + digits[n:]
+    if -6 < n <= 0:
+        return sign + "0." + "0" * -n + digits
+    e = n - 1
+    mant = digits if k == 1 else digits[0] + "." + digits[1:]
+    return f"{sign}{mant}e{'+' if e >= 0 else '-'}{abs(e)}"
+
+
+def _js_string(s: str) -> str:
+    # JSON.stringify escapes lone surrogates as \udxxx (Python str never holds a valid pair)
+    return _SURROGATE.sub(lambda m: f"\\u{ord(m.group()):04x}", json.dumps(s, ensure_ascii=False))
+
+
 def canonical_json(value: Any) -> str:
-    """Sorted-key, whitespace-free JSON: same bytes as canonicalJson() in web/src/lib/agentPure.ts
-    for JSON-native values (strings, ints, bools, null, nested objects/arrays)."""
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """Sorted-key, whitespace-free JSON: the same bytes as canonicalJson() in
+    web/src/lib/agentPure.ts (shared vectors: tests/fixtures/canonical_json_parity.json). Numbers
+    follow JS formatting (`js_number`), object keys sort by UTF-16 code units like JS
+    Array.prototype.sort. Raises ValueError for non-portable numbers, TypeError for non-JSON."""
+    if value is None or isinstance(value, bool):
+        return json.dumps(value)
+    if isinstance(value, int | float):
+        return js_number(value)
+    if isinstance(value, str):
+        return _js_string(value)
+    if isinstance(value, list | tuple):
+        return "[" + ",".join(canonical_json(x) for x in value) + "]"
+    if isinstance(value, dict):
+        if not all(isinstance(k, str) for k in value):
+            raise TypeError("canonical_json: object keys must be strings")
+        keys = sorted(value, key=lambda k: k.encode("utf-16-be", "surrogatepass"))
+        return "{" + ",".join(f"{_js_string(k)}:{canonical_json(value[k])}" for k in keys) + "}"
+    raise TypeError(f"canonical_json: {type(value).__name__} is not JSON")
 
 
 def payload_sha256(payload: Any) -> str:

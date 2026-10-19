@@ -1,14 +1,16 @@
-"""Render rows of a (local) database as Postgres upsert statements
-(INSERT ... ON CONFLICT (<pk>) DO UPDATE SET <non-pk cols> = excluded.<col>).
+"""Render rows of a (local) database as Postgres INSERT statements, per table policy
+(`fantasy.db.rest.publish_policy`, the same as `fantasy publish` and `publish --rest`):
+  merge  -> INSERT ... ON CONFLICT (<pk>) DO UPDATE SET <non-pk cols> = excluded.<col>
+  insert -> INSERT ... ON CONFLICT (<pk>) DO NOTHING   (ledger/state tables: never overwritten)
+  skip   -> nothing (`locks`)
 
 Used to publish to Supabase when only SQL access (e.g. the Supabase MCP) is available:
   python -m fantasy.db.sqldump --source sqlite:///var/fantasy.db --tables players model_runs ... --out dir/
 
-Same semantics as the SQL `fantasy publish` (upsert by primary key, `locks` never published), except
-that unique-key clashes with *different* target rows cannot be pre-checked offline: such a statement
-fails in the target instead of being skipped. NOTE: unlike `publish --rest` it does not apply
-`fantasy.db.rest.publish_policy`, so it overwrites ledger/state rows (approvals, transactions, ...):
-only dump those tables from a DB that is newer than the target.
+Same semantics as the SQL `fantasy publish`, except that unique-key clashes with *different* target
+rows cannot be pre-checked offline: such a statement fails in the target instead of being skipped.
+A stale local ledger/state row (e.g. a 'pending' approval already 'rejected' online) is left alone;
+change those rows one at a time with `fantasy ... --rest` instead.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, select
 
-from fantasy.db.rest import PUBLISH_SKIP
+from fantasy.db.rest import publish_policy
 from fantasy.db.schema import metadata
 
 
@@ -42,7 +44,8 @@ def dump(source: str, tables: list[str], chunk_chars: int = 90_000) -> list[str]
     eng = create_engine(source)
     chunks: list[str] = []
     for name in tables:
-        if name in PUBLISH_SKIP:
+        policy = publish_policy(name)
+        if policy == "skip":
             continue
         t = metadata.tables[name]
         cols = [c.name for c in t.columns]
@@ -56,16 +59,19 @@ def dump(source: str, tables: list[str], chunk_chars: int = 90_000) -> list[str]
             buf.append(vals)
             size += len(vals)
             if size > chunk_chars:
-                chunks.append(_stmt(name, cols, pk, buf))
+                chunks.append(_stmt(name, cols, pk, buf, policy))
                 buf, size = [], 0
         if buf:
-            chunks.append(_stmt(name, cols, pk, buf))
+            chunks.append(_stmt(name, cols, pk, buf, policy))
     return chunks
 
 
-def _stmt(table: str, cols: list[str], pk: list[str], rows: list[str]) -> str:
+def _stmt(table: str, cols: list[str], pk: list[str], rows: list[str], policy: str = "insert") -> str:
     rest = [c for c in cols if c not in pk]
-    action = ("do update set " + ", ".join(f"{c} = excluded.{c}" for c in rest)) if rest else "do nothing"
+    if policy == "merge" and rest:
+        action = "do update set " + ", ".join(f"{c} = excluded.{c}" for c in rest)
+    else:
+        action = "do nothing"
     return (f"insert into {table} ({','.join(cols)}) values\n" + ",\n".join(rows)
             + f"\non conflict ({','.join(pk)}) {action};")
 

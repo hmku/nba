@@ -34,7 +34,13 @@ export function AutoRefresh({ seconds = 15 }: { seconds?: number }) {
     const t = setInterval(() => {
       if (document.visibilityState === "visible") router.refresh();
     }, seconds * 1000);
-    return () => clearInterval(t);
+    // re-render server data right after unlock/lock (private sections depend on the session cookie)
+    const onAuth = () => router.refresh();
+    window.addEventListener("fdash-auth", onAuth);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("fdash-auth", onAuth);
+    };
   }, [router, seconds]);
   return null;
 }

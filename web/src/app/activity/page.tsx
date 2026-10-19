@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { anonClient } from "@/lib/supabase";
+import { serviceClient } from "@/lib/supabase-admin";
+import { isAuthed } from "@/lib/auth";
 import type { AgentEvent, AgentRun, Approval, Decision, LeagueSnapshot, Lock, Transaction } from "@/lib/types";
 import { Badge, Disclosure, ErrorNote, JsonView, statusTone } from "@/components/ui";
 import { Ago, AutoRefresh } from "@/components/client";
@@ -8,7 +10,7 @@ import { ageSeconds, shortTime } from "@/lib/format";
 import Link from "next/link";
 import { DecideButtons } from "../approvals/DecideButtons";
 import { ChatDigests, SnapshotCard } from "./LeagueIntel";
-import { latestPerKind } from "@/lib/agentPure";
+import { isPrivateEvent, latestPerKind } from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Activity" };
@@ -90,7 +92,10 @@ function DecisionCard({ d }: { d: Decision }) {
 }
 
 export default async function ActivityPage() {
-  const db = anonClient();
+  // League intel (Yahoo snapshots, group-chat digests/notes) is private: RLS hides it from the anon key, and it is
+  // read server-side with the service key only after the passphrase unlock (same cookie as the write panels).
+  const intelDb = (await isAuthed()) ? serviceClient() : null;
+  const db = intelDb ?? anonClient();
   const [runsR, decR, txnR, locksR, apprR] = await Promise.all([
     db.from("agent_runs").select("*").order("started_at", { ascending: false }).limit(40),
     db.from("decisions").select("*").order("created_at", { ascending: false }).limit(100),
@@ -99,16 +104,18 @@ export default async function ActivityPage() {
     db.from("approvals").select("*").order("requested_at", { ascending: false }).limit(100),
   ]);
   // league intel: newest Yahoo snapshots (table may not exist until its migration is applied) + chat digests
-  const [snapR, digR] = await Promise.all([
-    db.from("league_snapshots").select("*").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(80),
-    db
-      .from("agent_events")
-      .select("*")
-      .like("run_id", "muse-%")
-      .eq("payload->>report_kind", "chat_digest")
-      .order("ts", { ascending: false })
-      .limit(10),
-  ]);
+  const [snapR, digR] = intelDb
+    ? await Promise.all([
+        intelDb.from("league_snapshots").select("*").order("last_seen_at", { ascending: false, nullsFirst: false }).limit(80),
+        intelDb
+          .from("agent_events")
+          .select("*")
+          .like("run_id", "muse-%")
+          .eq("payload->>report_kind", "chat_digest")
+          .order("ts", { ascending: false })
+          .limit(10),
+      ])
+    : [{ data: [] }, { data: [] }];
   const snapshots = latestPerKind((snapR.data as LeagueSnapshot[]) ?? []);
   const digests = (digR.data as AgentEvent[]) ?? [];
   const { data: mrData } = await db.from("model_runs").select("run_id,kind,created_at").order("created_at", { ascending: false }).limit(60);
@@ -122,7 +129,9 @@ export default async function ActivityPage() {
     for (const r of rows) if (r.run_id) m.set(r.run_id, [...(m.get(r.run_id) ?? []), r]);
     return m;
   };
-  const events = group((evR.data as AgentEvent[]) ?? []);
+  // defence in depth (and before the RLS migration is applied): no chat content without the unlock
+  const visibleEvents = ((evR.data as AgentEvent[]) ?? []).filter((e) => intelDb || !isPrivateEvent(e));
+  const events = group(visibleEvents);
   const decisions = (decR.data as Decision[]) ?? [];
   const decByRun = group(decisions);
   const txns = (txnR.data as Transaction[]) ?? [];
@@ -149,7 +158,7 @@ export default async function ActivityPage() {
   const stuck = runs.filter((r) => r.agent !== "muse" && r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
   const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
   const museRuns = new Set(runs.filter((r) => r.agent === "muse").map((r) => r.run_id));
-  const museReports = ((evR.data as AgentEvent[]) ?? [])
+  const museReports = visibleEvents
     .filter((e) => museRuns.has(e.run_id) && reportOf(e) && reportOf(e)!.kind !== "chat_digest")
     .sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""))
     .slice(0, 8);
@@ -229,6 +238,13 @@ export default async function ActivityPage() {
             );
           })}
         </section>
+      )}
+
+      {!intelDb && (
+        <p className="rounded-xl border border-line bg-panel px-4 py-2.5 text-xs text-muted">
+          League intel (Yahoo snapshots and group-chat digests from Muse) is private: unlock with the dashboard passphrase (🔒 in
+          the menu) to view it.
+        </p>
       )}
 
       {(snapshots.length > 0 || digests.length > 0) && (

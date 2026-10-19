@@ -197,6 +197,13 @@ export function defaultOverall(recorded: number[], total: number): number | null
 
 export const REPORT_KINDS = ["draft_order", "trade", "rule", "injury_news", "schedule", "chat_note", "chat_digest", "other"] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
+/** Group-chat content (other league members' words): never readable with the public anon key (RLS, migration
+ *  20261019120000_private_league_intel.sql); the dashboard shows it only after the passphrase unlock. */
+export const PRIVATE_REPORT_KINDS: readonly string[] = ["chat_digest", "chat_note"];
+export function isPrivateEvent(e: { payload?: unknown }): boolean {
+  const p = e.payload;
+  return !!p && typeof p === "object" && !Array.isArray(p) && PRIVATE_REPORT_KINDS.includes((p as Record<string, unknown>).report_kind as string);
+}
 export const MAX_MESSAGE = 2000;
 export const MAX_DETAILS_BYTES = 8000;
 /** Per-kind override of MAX_DETAILS_BYTES: a chat digest carries message excerpts. */
@@ -348,8 +355,10 @@ export function numLike(v: unknown): number | null {
   return Number(s);
 }
 
-/** Sorted-key, whitespace-free JSON (same bytes as Python json.dumps(sort_keys=True, separators=(",",":"),
- *  ensure_ascii=False) for JSON-native values) — basis of payload_sha256 and the dedupe key. */
+/** Sorted-key, whitespace-free JSON — the same bytes as fantasy.ops.intel.canonical_json (shared vectors:
+ *  tests/fixtures/canonical_json_parity.json) — basis of payload_sha256 and the dedupe key. Keys sort by UTF-16
+ *  code units (default sort; Python mirrors it). Numbers print as JSON.stringify does (Python mirrors it); a
+ *  non-finite number or an integer beyond Number.MAX_SAFE_INTEGER throws (not representable on both sides). */
 export function canonicalJson(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map((x) => canonicalJson(x === undefined ? null : x)).join(",")}]`;
   if (isObj(v))
@@ -358,6 +367,12 @@ export function canonicalJson(v: unknown): string {
       .sort()
       .map((k) => `${JSON.stringify(k)}:${canonicalJson(v[k])}`)
       .join(",")}}`;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) throw new RangeError(`non-finite number ${v} cannot be hashed canonically`);
+    if (Number.isInteger(v) && !Number.isSafeInteger(v))
+      throw new RangeError(`integer ${v} exceeds 2^53-1; send it as a string`);
+  }
+  if (typeof v === "bigint") throw new RangeError("bigint cannot be hashed canonically");
   return JSON.stringify(v ?? null);
 }
 
@@ -587,7 +602,13 @@ export function validateSnapshot(
   }
   if (errors.length) return bad(errors);
 
-  const payload_sha256 = sha256Hex(canonicalJson(p));
+  let canon: string;
+  try {
+    canon = canonicalJson(p);
+  } catch (e) {
+    return bad([`payload: ${e instanceof Error ? e.message : String(e)}`]);
+  }
+  const payload_sha256 = sha256Hex(canon);
   const summary = (isStr(body.summary) ? body.summary.trim() : summarizeSnapshot(kind, p, week)).slice(0, MAX_SUMMARY);
   return {
     ok: true,

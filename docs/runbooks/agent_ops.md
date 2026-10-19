@@ -115,9 +115,10 @@ Execution recipe for any Yahoo write:
 - **Approval never answered**: it expires; the txn stays `awaiting_approval` — cancel it.
 - **Offline work** (no Supabase): run with the local SQLite DB, then
   `FANTASY_PUBLISH_URL=postgresql://... fantasy publish` (laptop) or `fantasy publish --rest`
-  (cloud session, section 5b). The SQL publish upserts every table by primary key except `locks`
-  (ephemeral) -- including ledger rows, so only run it from a DB that is newer than Supabase.
-  `publish --rest` applies the per-table policy of section 5b (ledger/state rows never overwritten).
+  (cloud session, section 5b). Both (and `python -m fantasy.db.sqldump`, for SQL-only access) apply
+  the per-table policy of section 5b: reference/model-output tables are upserted, ledger/state rows
+  (approvals, transactions, runs, tasks, drafts, events, decisions, snapshots) are inserted only if
+  missing (`ON CONFLICT DO NOTHING`) and never overwritten, `locks` are skipped.
   Tasks/transactions whose title/idempotency key collide with a *different* row online are skipped
   and reported, never overwritten.
 
@@ -139,6 +140,8 @@ fantasy publish --rest [--source sqlite:///...] [--tables players,model_runs ...
 - `POST /rest/v1/<table>?on_conflict=<pk cols>`, 500 rows per request, FK-safe order
   (`metadata.sorted_tables`), `locks` never. Datetimes as ISO UTC, JSON columns as JSON, NaN as
   null. 5xx/network errors are retried twice (both modes are idempotent); proxy denials are not retried.
+  The same policy applies to the SQL `fantasy publish --target` and to `fantasy.db.sqldump`
+  (`ON CONFLICT DO UPDATE` for merge, `ON CONFLICT DO NOTHING` for insert).
 - **Per-table policy** (`fantasy.db.rest.publish_policy`, JSON key `policy`):
 
   | policy | PostgREST | tables | why |
@@ -184,8 +187,17 @@ fantasy task add|list|show|claim|update|done ... --rest
   `PATCH approvals?status=eq.pending&expires_at=lt.<now>`: it can never touch a decided approval.
 - Not available with `--rest`: `approval decide` (human-only), `lock release --force` (human override),
   `run reap`, `task seed`, `fantasy status` (use the list/reconcile commands above).
+- Lost responses (read timeout, dropped connection, 502/504 after the request was sent): the client
+  never re-sends a POST/PATCH/DELETE (only connection-establishment errors are retried) and raises
+  `rest_outcome_unknown`; the ledger then re-reads: an INSERT is found by its generated primary key,
+  a CAS PATCH is re-issued (it matches 0 rows if the first one applied) and accepted when the row
+  already holds exactly our write (`updated_at`/`ended_at` we sent), so e.g. `txn mark submitted`
+  or `txn plan add_drop` (txn + its approval) are idempotent. If the re-read shows the write did
+  not land, the error is returned and the command is safe to re-run.
 - Auth: same as publish (network secret injects an `sb_secret_` key = Supabase `service_role`, which
-  bypasses RLS; the anon/publishable key has SELECT-only policies and could not write).
+  bypasses RLS; the anon/publishable key has SELECT-only policies and could not write). League intel
+  (`league_snapshots`, chat_digest/chat_note events) has no anon read at all
+  (`20261019120000_private_league_intel.sql`); `fantasy intel --rest` reads it with that key.
 
 ## 6. Tasks (backlog)
 

@@ -1,5 +1,5 @@
-import { anonClient } from "@/lib/supabase";
-import { fail, missingTable, reply, requireAgent } from "@/lib/agentApi";
+import { NextResponse } from "next/server";
+import { fail, missingTable, reply, requireAgent, writer } from "@/lib/agentApi";
 import { SNAPSHOT_KINDS, parseSince } from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,10 @@ export async function GET(req: Request) {
   }
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 20));
   const withPayload = url.searchParams.get("payload") === "1";
-  let q = anonClient()
+  // league_snapshots is private (no anon read since 20261019120000_private_league_intel.sql): service key
+  const db = writer();
+  if (db instanceof NextResponse) return db;
+  let q = db
     .from("league_snapshots")
     .select(withPayload ? `${META},payload` : META)
     .order("last_seen_at", { ascending: false, nullsFirst: false })

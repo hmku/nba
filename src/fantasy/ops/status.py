@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, func, select
 
 from fantasy.db import rest
 from fantasy.db.engine import DEFAULT_SQLITE, db_url
-from fantasy.db.rest import PUBLISH_SKIP, PUBLISH_UNIQUE, unique_clashes
+from fantasy.db.rest import PUBLISH_UNIQUE, publish_policy, unique_clashes
 from fantasy.db.schema import drafts, metadata, model_runs
 from fantasy.ops import approvals, ledger, locks, tasks, transactions
 from fantasy.ops.cli import JsonOut, emit, handled
@@ -128,7 +128,10 @@ def _render_text(s: dict[str, Any]) -> str:
 
 
 def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any]:
-    """Upsert every row of every table from source into target (FK order, PK upsert)."""
+    """Copy every table from source into target in FK order with the same per-table policy as
+    `publish --rest` (`fantasy.db.rest.publish_policy`): `merge` tables are upserted by PK,
+    `insert` (ledger/state) tables get ON CONFLICT DO NOTHING -- a stale local row never overwrites
+    the target's (e.g. a local 'pending' approval vs. 'rejected' online) -- and `locks` are skipped."""
     if source_url == target_url:
         raise ValueError("source and target are the same database")
     src = create_engine(source_url, future=True)
@@ -143,10 +146,14 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any
         raise ValueError(f"unsupported target dialect {dst.dialect.name}")
     counts: dict[str, int] = {}
     skipped: dict[str, list[str]] = {}
+    policies: dict[str, str] = {}
+    inserted: dict[str, int | None] = {}
     with src.connect() as sconn, dst.begin() as dconn:
         for table in metadata.sorted_tables:
-            if table.name in PUBLISH_SKIP:
+            pol = publish_policy(table.name)
+            if pol == "skip":
                 continue
+            policies[table.name] = pol
             rows = [row_dict(r) for r in sconn.execute(select(table))]  # tz-aware UTC
             pk = [c.name for c in table.primary_key.columns]
             uniq = PUBLISH_UNIQUE.get(table.name)
@@ -158,18 +165,20 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any
                 rows, skipped_pks = unique_clashes(rows, pkcol, uniq, existing)
                 if skipped_pks:
                     skipped[table.name] = skipped_pks
+            new: int | None = 0
             for i in range(0, len(rows), chunk):
                 batch = rows[i : i + chunk]
                 stmt = dialect_insert(table).values(batch)
                 updates = {c.name: stmt.excluded[c.name] for c in table.columns if c.name not in pk}
-                stmt = (
-                    stmt.on_conflict_do_update(index_elements=pk, set_=updates)
-                    if updates
-                    else stmt.on_conflict_do_nothing(index_elements=pk)
-                )
-                dconn.execute(stmt)
+                if pol == "merge" and updates:
+                    dconn.execute(stmt.on_conflict_do_update(index_elements=pk, set_=updates))
+                    continue
+                n = dconn.execute(stmt.on_conflict_do_nothing(index_elements=pk)).rowcount
+                new = None if new is None or n is None or n < 0 else new + n
             counts[table.name] = len(rows)
-    return {"rows": counts, "skipped": skipped}
+            if pol == "insert":
+                inserted[table.name] = new
+    return {"rows": counts, "skipped": skipped, "policy": policies, "inserted": inserted}
 
 
 # ------------------------------------------------------------------ registration
@@ -252,11 +261,12 @@ def register(app: typer.Typer) -> None:
                                               "send nothing")] = False,
         json_out: JsonOut = False,
     ) -> None:
-        """Copy all rows from the local sqlite DB to Supabase (upsert by PK; skips `locks`).
+        """Copy all rows from the local sqlite DB to Supabase (skips `locks`).
 
-        Default: SQL to FANTASY_PUBLISH_URL (laptop). --rest: HTTPS/PostgREST (cloud sessions);
-        ledger/state tables (runs, approvals, transactions, tasks, drafts, events, decisions) are
-        insert-if-missing there, never overwritten (fantasy.db.rest.publish_policy).
+        Default: SQL to FANTASY_PUBLISH_URL (laptop). --rest: HTTPS/PostgREST (cloud sessions).
+        Both apply fantasy.db.rest.publish_policy: reference/model-output tables are upserted by
+        PK; ledger/state tables (runs, approvals, transactions, tasks, drafts, events, decisions,
+        snapshots) are insert-if-missing, never overwritten.
         """
         if source:
             src = source
@@ -288,7 +298,10 @@ def register(app: typer.Typer) -> None:
             if target.startswith(prefix):
                 target = "postgresql+psycopg://" + target[len(prefix):]
         res = publish(src, target)
-        text = "\n".join(f"{k}: {v}" for k, v in res["rows"].items())
+        text = "\n".join(
+            f"{k}: {'upserted' if res['policy'][k] == 'merge' else 'insert-if-missing'} {v} rows"
+            + (f", {res['inserted'][k]} new" if res["inserted"].get(k) is not None else "")
+            for k, v in res["rows"].items())
         if res["skipped"]:
             text += f"\nSKIPPED (unique-key clash with different target row): {res['skipped']}"
         emit({"source": _redact(src), "target": _redact(target), **res}, json_out, text)

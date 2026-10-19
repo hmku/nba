@@ -1,6 +1,7 @@
 // League-intel validators (POST /api/agent/snapshot, chat_digest reports). Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   canonicalJson,
   catLeader,
@@ -47,6 +48,29 @@ test("cross-language hash vector (same as tests/test_intel.py)", () => {
   assert.equal(snapshotId("my_team", 3, sha), "snap_44d6ddba65e3f6156f83d427715a6dfa");
   assert.equal(snapshotId("my_team", null, sha), "snap_0467e6a2854e20fdb7a9a39403b6ff33");
   assert.equal(canonicalJson({ b: 1, a: [1, { d: null, c: "x" }] }), '{"a":[1,{"c":"x","d":null}],"b":1}');
+});
+
+// Shared vectors generated from Python (tests/test_canonical_json_parity.py): integral floats, exponents,
+// ints beyond 2^53 (rejected), non-BMP key order, string escapes.
+const canonFx = JSON.parse(readFileSync(new URL("../../tests/fixtures/canonical_json_parity.json", import.meta.url), "utf8"));
+test("canonicalJson: byte parity with Python canonical_json on the shared fixture", () => {
+  assert.ok(canonFx.cases.length >= 10);
+  for (const c of canonFx.cases) {
+    const v = JSON.parse(c.json);
+    if (c.error) {
+      assert.throws(() => canonicalJson(v), RangeError, c.name);
+      continue;
+    }
+    const got = canonicalJson(v);
+    assert.equal(got, c.canonical, c.name);
+    assert.equal(sha256Hex(got), c.sha256, c.name);
+  }
+});
+
+test("validateSnapshot rejects a payload with a non-portable integer", () => {
+  const r = validateSnapshot({ kind: "settings", payload: { league_id: 9007199254740993 } }, NOW);
+  assert.equal(r.ok, false);
+  assert.match(r.error, /2\^53/);
 });
 
 test("validateSnapshot: my_team ok, dedupe key ignores key order, auto summary", () => {

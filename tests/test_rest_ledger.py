@@ -358,3 +358,125 @@ def test_local_path_never_calls_rest(tmp_path, monkeypatch):
     assert cli("run", "end", "--run-id", rid)[0] == 0
     with engine().connect() as c:
         assert c.execute(agent_runs.select()).first().status == "succeeded"
+
+
+# ------------------------------------------------------------------ lost responses (review2 #1)
+
+
+def lossy(tmp_path, monkeypatch):
+    """Backend whose transport can lose the response of the next matching request, either after
+    the fake committed it (`after=True`: the write landed) or before (`after=False`: it did not)."""
+    use_test_db(tmp_path, monkeypatch)
+    fake = FakePostgrest(f"sqlite:///{tmp_path / 'remote.db'}")
+    armed: list[tuple[str, str, bool]] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        for i, (method, table, after) in enumerate(armed):
+            if req.method == method and req.url.path.endswith("/" + table):
+                armed.pop(i)
+                if after:
+                    fake(req)
+                raise httpx.ReadTimeout("response lost", request=req)
+        return fake(req)
+
+    cl = rest.RestClient(base_url="https://e.supabase.co", transport=httpx.MockTransport(handler),
+                         sleep=lambda s: None)
+    return rest_ledger.backend(cl), armed, fake
+
+
+def test_client_retries_writes_only_before_send():
+    calls: list[str] = []
+
+    def mk(*outcomes):
+        seq = list(outcomes)
+
+        def h(req):
+            calls.append(req.method)
+            o = seq.pop(0)
+            if isinstance(o, Exception):
+                raise o
+            return httpx.Response(o, json=[])
+        return rest.RestClient(base_url="https://e.supabase.co", transport=httpx.MockTransport(h),
+                               sleep=lambda s: None)
+
+    for method in ("POST", "PATCH", "DELETE"):
+        calls.clear()  # read timeout after send: no retry, outcome unknown
+        with pytest.raises(rest.RestOutcomeUnknownError):
+            mk(httpx.ReadTimeout("x"), 201).request(method, "transactions")
+        assert calls == [method]
+        calls.clear()  # 5xx after send: returned as is, not retried
+        assert mk(500, 201).request(method, "transactions").status_code == 500 and len(calls) == 1
+        calls.clear()  # 504 from the gateway: the write may have landed
+        with pytest.raises(rest.RestOutcomeUnknownError):
+            mk(504, 201).request(method, "transactions")
+        calls.clear()  # connection never established: safe to retry
+        assert mk(httpx.ConnectError("x"), httpx.ConnectTimeout("x"), 201).request(
+            method, "transactions").status_code == 201 and len(calls) == 3
+    calls.clear()  # reads and declared-idempotent writes keep the full retry policy
+    assert mk(httpx.ReadTimeout("x"), 503, 200).request("GET", "t").status_code == 200
+    assert mk(httpx.ReadTimeout("x"), 201).request("POST", "t", idempotent=True).status_code == 201
+
+
+def test_lost_patch_response_mark_submitted_is_idempotent(tmp_path, monkeypatch):
+    b, armed, fake = lossy(tmp_path, monkeypatch)
+    rid = b.ledger.start_run("a", mode="live")
+    t = b.transactions.plan("lineup", {"x": 1}, rid)
+    b.locks.acquire("yahoo:roster", rid)
+    armed.append(("PATCH", "transactions", True))
+    out = b.transactions.mark_submitted(t["txn_id"], rid)
+    assert out["status"] == "submitted" and out["verification"]["submitted_by"] == rid
+    # a genuine second submit is still refused (reconcile first)
+    with pytest.raises(Exception, match="reconcile"):
+        b.transactions.mark_submitted(t["txn_id"], rid)
+    # and a genuine repeat of a transition is still an InvalidStateError
+    b.transactions.mark_verified(t["txn_id"], {"seen": 1}, rid)
+    with pytest.raises(rest_ledger.InvalidStateError):
+        b.transactions.mark_verified(t["txn_id"], {"seen": 1}, rid)
+
+
+def test_lost_patch_response_when_not_applied_reissues(tmp_path, monkeypatch):
+    b, armed, fake = lossy(tmp_path, monkeypatch)
+    rid = b.ledger.start_run("a", mode="live")
+    t = b.transactions.plan("lineup", {"x": 1}, rid)
+    armed.append(("PATCH", "transactions", False))
+    assert b.transactions.cancel(t["txn_id"], "nope")["status"] == "cancelled"
+
+
+def test_lost_insert_response_plan_add_drop_gets_its_approval(tmp_path, monkeypatch):
+    b, armed, fake = lossy(tmp_path, monkeypatch)
+    rid = b.ledger.start_run("a", mode="live")
+    armed.append(("POST", "transactions", True))
+    armed.append(("POST", "approvals", True))
+    t = b.transactions.plan("add_drop", {"add": "x", "drop": "y"}, rid)
+    assert t["status"] == "awaiting_approval" and t["approval_id"]
+    assert [(r["status"], r["approval_id"]) for r in fake.rows("transactions")] == [
+        ("awaiting_approval", t["approval_id"])]
+    assert [r["approval_id"] for r in fake.rows("approvals")] == [t["approval_id"]]
+
+
+def test_lost_insert_that_did_not_land_raises_outcome_unknown(tmp_path, monkeypatch):
+    b, armed, fake = lossy(tmp_path, monkeypatch)
+    rid = b.ledger.start_run("a", mode="live")
+    armed.append(("POST", "transactions", False))
+    with pytest.raises(rest.RestOutcomeUnknownError):
+        b.transactions.plan("lineup", {"x": 1}, rid)
+    assert fake.rows("transactions") == []
+    assert b.transactions.plan("lineup", {"x": 1}, rid)["status"] == "planned"  # safe to re-run
+
+
+def test_lost_responses_run_end_lock_and_task_done(tmp_path, monkeypatch):
+    b, armed, fake = lossy(tmp_path, monkeypatch)
+    armed.append(("POST", "agent_runs", True))
+    rid = b.ledger.start_run("a", mode="live")
+    armed.append(("POST", "locks", True))
+    assert b.locks.acquire("yahoo:roster", rid)["holder_run_id"] == rid
+    task = b.tasks.add("t1")
+    b.tasks.claim(task["task_id"], "me")
+    armed.append(("PATCH", "tasks", True))
+    assert b.tasks.done(task["task_id"], "me")["status"] == "done"
+    armed.append(("PATCH", "agent_runs", True))
+    out = b.ledger.end_run(rid, "succeeded", "ok")
+    assert out["status"] == "succeeded" and out["released_locks"] == ["yahoo:roster"]
+    assert fake.rows("locks") == []
+    with pytest.raises(rest_ledger.InvalidStateError):  # a genuine second end still fails
+        b.ledger.end_run(rid, "succeeded", "ok")
