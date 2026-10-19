@@ -275,6 +275,12 @@ def simulate_drafts(
         "my_picks": my_picks,
         "optimizer_version": OPTIMIZER_VERSION,
         "policy": (policy or PolicyParams()).name,
+        # my optimizer's availability model (default sim:mixed since optimizer-0.4.0). The live default also
+        # re-ranks with value search, which is NOT replayed here (~1 s x 13 picks per sim; graded instead by
+        # `python -m fantasy.draft.policy_eval` arm vs_sim, docs/research/draft_policy.md)
+        "optimizer_availability": opt.params.availability + (f":{opt.params.room}" if opt.params.availability == "sim"
+                                                             else ""),
+        "value_search_replayed": False,
         "noise": noise,
         "seed": seed,
         "strategy_forced": strategy,

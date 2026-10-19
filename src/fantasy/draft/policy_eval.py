@@ -257,7 +257,7 @@ class ViewOptPolicy:
 
     def __init__(self, base: DraftContext, view: DraftContext, cache: dict) -> None:
         self.base, self.view, self.cache = base, view, cache
-        self.opt = DraftOptimizer(view, OptimizerParams(strategy="balanced"))
+        self.opt = DraftOptimizer(view, OptimizerParams(strategy="balanced", availability="adp"))
 
     def pick(self, board, overall: int, slot: int) -> int:  # noqa: ANN001
         key = ("view", slot, tuple(board.taken[k] for k in sorted(board.taken)))
@@ -307,11 +307,11 @@ def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, va
     teams = list(range(1, s.num_teams + 1))
     ours = build_context(proj, s, teams)
     mt = market_implied_projections(proj, s)
-    params = OptimizerParams(strategy=opt_strategy)
+    params = OptimizerParams(strategy=opt_strategy, availability="adp")
     opts = {"params": params, "opt": DraftOptimizer(ctx, params),
             "opt_valavail": DraftOptimizer(availability_context(ctx, "valavail"), params),
             "opt_sd50": DraftOptimizer(availability_context(ctx, "sd50"), params),
-            "opt_matchup": DraftOptimizer(ctx, OptimizerParams(strategy=opt_strategy, objective="matchup"))}
+            "opt_matchup": DraftOptimizer(ctx, OptimizerParams(strategy=opt_strategy, objective="matchup", availability="adp"))}
     if oracle_positions:
         z = np.load(oracle_positions, allow_pickle=False)
         ids = [str(x) for x in z["ids"]]

@@ -72,8 +72,8 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
    - `fantasy draft board --json` → `gaps` (holes below the highest recorded pick) **and `behind`** (picks before my
      next pick not yet recorded) must **both be empty** before every `prepare-pick` (and `gaps` before recommending;
      `behind` is normal while the picks before mine are still being made). Fill them from the draft log first.
-2. **When my pick is ≤ 2 picks away**, precompute: `fantasy draft recommend --json` (≈3 s). Read
-   `recommendations[0..4]`, `strategy`, `warnings`, `prob_available_next`.
+2. **When my pick is ≤ 2 picks away**, precompute: `fantasy draft recommend --json` (≈2–3 s wall incl. Python start-up, measured 2026-10-19 on 4 cores; ≤ 10 s budget). Read
+   `recommendations[0..4]`, `strategy`, `warnings`, `prob_available_next`, `recommend_policy`.
 3. **On the clock:** sync again (last picks), re-run `recommend --json`. Choose `recommendations[0]` unless:
    - the player has fresh injury news (check the player card in the draft room) → note it, rerun excluding
      nobody — instead pick the next recommendation and record the disagreement;
@@ -97,13 +97,26 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
    txn left by an earlier dry run and cancels planned txns for other players.
    Reconcile draft picks only with `confirm-pick` (it records the pick on the board); if someone used
    `txn mark <id> verified`, run `confirm-pick <txn_id>` anyway - it is idempotent and records the pick.
-   - **`value_search` block (advisory, on by default since 2026-10-18):** a learned season-outcome model
-     re-scores the top 6 candidates (P(title)/P(playoffs) with paired SEs). It does **not** change
-     `recommendations[0]`; validation did not justify that (docs/research/value_search.md). Use it only as
-     a tie-breaker among near-equal options (it is never worse than the optimizer in validation). Note the
-     same validation found plain best-available-by-value (BPA) beat the optimizer under the full season
-     simulator; that is an open question for the lead, not a license to deviate. `--search value` lets it
-     pick the top (opt-in); `--search none` skips it (saves ~0.5–1 s). If it fails you get a warning only.
+   - **Default policy (user-approved 2026-10-19, recommend-0.2.0 / optimizer-0.4.0):** `draft recommend`,
+     `draft watch` and mock rehearsals all run `--search value --availability sim --room mixed` with no flags
+     (docs/research/draft_policy.md: in the 3-sharp + 8-ADP room, +1.9 pp P(playoffs), +1.4 pp P(title) vs the
+     old default, fitted on 200 paired simulated drafts, slot 1). Do not pass these flags; check the
+     **`recommend_policy`** block instead: `search`, `availability`, `room`, `value_search_status`
+     (`ok` | `failed` | `off`), `top_pick_decided_by` (`optimizer` | `value_search` | `policy:<name>`),
+     `is_default`, `fallback`. A pick is "per model" iff it is `recommendations[0]`.
+   - **`availability`** (`sim:mixedx300`): P(still on the board at my picks) comes from 300 simulated rooms
+     (3 sharp drafters on random seats + 8 noisy-ADP drafters) from the current board, seeded per pick, so the
+     same board always gives the same answer (`prob_available_next` uses it).
+   - **`value_search`** (`mode: value`): a learned season-outcome model re-scores the optimizer's top 6 with
+     48 paired rollouts each (P(title)/P(playoffs), paired SEs) and moves its best to `recommendations[0]` only
+     if the gain is ≥ 1 SE; otherwise the optimizer's #1 stands (`agrees_with_optimizer`).
+   - **Fallback (automatic):** if the value model is missing/incompatible or the search throws, you get a
+     `value search failed ...` warning, `value_search_status: failed`, and the optimizer's sim-availability
+     ranking - still a valid pick; just go on. Manual fallbacks if recommend itself is slow or broken:
+     `--search none` (optimizer + sim availability, ≈1 s less), then `--search none --availability adp` (the
+     pre-2026-10-19 default), then the dashboard / Pre-Draft Rankings. `--search advise` keeps the optimizer order
+     and adds the block as advice only. `--policy bpa|hybrid|...` decides the top itself (value search then
+     only advises).
 6. If you deviate from `recommendations[0]`, the rationale must say why (it is stored with `agrees_with_model=false`
    and shown on the dashboard).
 7. `fantasy lock renew draft:$FANTASY_DRAFT_ID --ttl 10800` every ~30 min; `fantasy run heartbeat` every few picks.

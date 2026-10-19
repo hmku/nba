@@ -157,7 +157,7 @@ class Experiment:
     n_season_sims: int = 500
     noise: float = 1.0
     perturb: dict = field(default_factory=dict)
-    my_full_params: OptimizerParams = field(default_factory=OptimizerParams)
+    my_full_params: OptimizerParams = field(default_factory=lambda: OptimizerParams(availability="adp"))
     market_proj: ProjectionSet | None = None  # needed for the C*m rooms
 
     def __post_init__(self) -> None:
@@ -177,7 +177,7 @@ class Experiment:
         me_exact = Drafter("opt", self.base, self.my_opt)
 
         def bal(t: int) -> Drafter:
-            return Drafter("opt", views[t], DraftOptimizer(views[t], OptimizerParams(strategy="balanced")))
+            return Drafter("opt", views[t], DraftOptimizer(views[t], OptimizerParams(strategy="balanced", availability="adp")))
 
         if room == "adp_all":
             return {}
@@ -191,7 +191,7 @@ class Experiment:
         if room == "A_bpa":
             return {t: Drafter("bpa", views[t]) for t in range(1, self.T + 1)}
         if room == "A_full":
-            return {t: Drafter("opt", views[t], DraftOptimizer(views[t], OptimizerParams())) for t in range(1, self.T + 1)}
+            return {t: Drafter("opt", views[t], DraftOptimizer(views[t], OptimizerParams(availability="adp"))) for t in range(1, self.T + 1)}
         raise ValueError(f"unknown room {room!r}")
 
     def grade(self, rosters: dict[int, list[str]], seed: int) -> dict[str, dict]:

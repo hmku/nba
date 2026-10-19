@@ -108,7 +108,7 @@ def _optimizer_plan(draft: dict, picks: list[dict], ctx: SimContext) -> list[str
     custom = (draft.get("config") or {}).get("custom_rounds")
     dctx = DraftContext(ctx.proj, ctx.settings, values=ctx.values, custom_rounds=custom)
     taken = {int(p["overall_pick"]): p["player_id"] for p in picks if p.get("player_id")}
-    rec = DraftOptimizer(dctx, OptimizerParams(strategy="balanced")).recommend(
+    rec = DraftOptimizer(dctx, OptimizerParams(strategy="balanced", availability="adp")).recommend(
         DraftState(taken=taken, my_slot=int(draft["my_slot"])), draft_id=draft["draft_id"])
     if not rec.get("recommendations"):
         return []

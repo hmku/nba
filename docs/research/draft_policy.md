@@ -16,7 +16,8 @@ sample sizes and paired standard errors in every table) unless labelled prior/gu
   sampled Normal(ADP) position as the pick number and knows only ADP drafters; it under-estimates how long
   players last, so the optimizer reaches (mean ADP of its roster 84 vs BPA 90 in W_mixed) and passes value it
   would have got anyway.
-- **Recommended configuration for tonight:**
+- **Adopted as the default 2026-10-19 (user-approved; optimizer-0.4.0 / recommend-0.2.0,
+  `docs/handoffs/2026-10-19-default-policy-switch.md`).** Recommended configuration for tonight:
   `fantasy draft recommend --search value --availability sim --room mixed` ("vs_sim": value search re-ranking
   the candidates of the sim-availability optimizer). In W_mixed vs the current default: **+1.9 pp P(playoffs)
   (z 8.7), +1.4 pp P(title) (z 4.7)** on our projections; also ≥ the default in W_adp (+0.3 / +0.4 pp) and W_sym

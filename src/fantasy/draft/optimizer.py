@@ -52,7 +52,9 @@ from fantasy.model.valuation import ValuationParams, compute_values, market_orde
 #         constant per-game CVs (valuation-0.3.0)
 # v0.3.1: opt-in OptimizerParams(availability="sim", room=...) - Monte Carlo availability from the board
 #         (fantasy.draft.room_sim); default (availability="adp") output unchanged; payload gains "availability"
-OPTIMIZER_VERSION = "optimizer-0.3.1"
+# v0.4.0: DEFAULT availability="sim", room="mixed" (user-approved 2026-10-19, docs/research/draft_policy.md);
+#         the analytic Normal(ADP) model stays reachable with availability="adp"
+OPTIMIZER_VERSION = "optimizer-0.4.0"
 
 DEFAULT_STRATEGIES: dict[str, list[str]] = {
     "balanced": [],
@@ -77,9 +79,10 @@ class OptimizerParams:
     strategies: dict[str, list[str]] = field(default_factory=lambda: dict(DEFAULT_STRATEGIES))
     strategy: str | None = None  # force a strategy; None = scan
     strategy_switch_margin: float = 0.03  # require this improvement over balanced to punt
-    # availability model: "adp" = analytic Normal(ADP) (fantasy.draft.availability, default) | "sim" = Monte
-    # Carlo of the room `room` from the current board (fantasy.draft.room_sim; opt-in, research)
-    availability: str = "adp"
+    # availability model: "sim" = Monte Carlo of the room `room` from the current board (fantasy.draft.room_sim;
+    # default since optimizer-0.4.0, deterministic per board: seed = (0, current pick)) | "adp" = analytic
+    # Normal(ADP) (fantasy.draft.availability; the pre-0.4.0 default, research harnesses pin it explicitly)
+    availability: str = "sim"
     room: str = "mixed"  # sim only: adp | mixed | sym
     room_sims: int = 300
     # research options (docs/research/optimizer_placeholders.md); defaults keep optimizer-0.2.0 outputs identical

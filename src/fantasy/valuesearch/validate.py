@@ -59,7 +59,7 @@ class ViewPolicy:
     def __init__(self, base, view) -> None:  # noqa: ANN001
         from fantasy.draft.optimizer import DraftOptimizer, OptimizerParams
 
-        self.base, self.opt = base, DraftOptimizer(view, OptimizerParams(strategy="balanced"))
+        self.base, self.opt = base, DraftOptimizer(view, OptimizerParams(strategy="balanced", availability="adp"))
 
     def pick(self, board, overall: int, slot: int) -> int:  # noqa: ANN001
         from fantasy.draft.optimizer import DraftState
@@ -88,7 +88,7 @@ def _grade(rosters: dict[int, list[str]], truths: list[str], seed: int) -> dict:
 
 
 def run_seed(job: tuple[int, list[str]]) -> dict:
-    from fantasy.draft.optimizer import DraftContext
+    from fantasy.draft.optimizer import DraftContext, OptimizerParams
     from fantasy.sim.symmetric import perturb_projections
     from fantasy.valuesearch.policies import (
         ADPPolicy,
@@ -122,7 +122,7 @@ def run_seed(job: tuple[int, list[str]]) -> dict:
             elif name == "bpa":
                 me = BPAPolicy()
             else:
-                me = ValueSearchPolicy(_E["vs"], SearchParams(seed=seed))
+                me = ValueSearchPolicy(_E["vs"], SearchParams(seed=seed), opt_params=OptimizerParams(availability="adp"))
             board = run_draft(ctx, {1: me, **opp})
             rosters = {t: [ctx.ids[r] for r in rows] for t, rows in board.rosters.items()}
             t2 = time.perf_counter()

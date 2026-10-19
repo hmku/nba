@@ -35,7 +35,7 @@ def draft_check(
         ds = settings.model_copy(update={"num_teams": int(draft["num_teams"]), "my_slot": int(draft["my_slot"]),
                                          "draft_order_type": draft["order_type"]})
         dctx = DraftContext(sctx.proj, ds, values=sctx.values, custom_rounds=custom)
-    opt = DraftOptimizer(dctx, OptimizerParams(strategy="balanced"))
+    opt = DraftOptimizer(dctx, OptimizerParams(strategy="balanced", availability="adp"))
     taken = {int(p["overall_pick"]): p["player_id"] for p in picks if p.get("player_id")}
     my_slot = int(draft["my_slot"])
     state = DraftState(taken=taken, my_slot=my_slot)

@@ -5,7 +5,7 @@ The agent protocol itself is `.claude/skills/live-draft/SKILL.md`. This page is 
 ## Roles
 - **Local Claude Code + Claude in Chrome** (on your laptop): syncs the Yahoo draft room, runs
   `fantasy draft recommend`, clicks picks, verifies, logs. Cloud sessions can't reach Yahoo.
-- **Python engine**: deterministic recommendations (≈3 s per call) from `data/processed/projections_2026_27.csv`.
+- **Python engine**: deterministic recommendations (≈2–3 s per call, policy above) from `data/processed/projections_2026_27.csv`.
 - **Dashboard `/draft`** (Vercel): board, recommendations, roster profile, agent activity; manual pick
   entry if automation fails.
 - **You**: supervise; take over if anything looks wrong.
@@ -46,10 +46,20 @@ The agent protocol itself is `.claude/skills/live-draft/SKILL.md`. This page is 
 | Recommendations live-updating from dashboard entries | Run `fantasy draft watch` in a terminal: it recomputes whenever a pick is recorded anywhere. DB errors are logged to stderr (`warning: ... DB error ... still watching`) and retried with backoff (≤30 s); it does not exit. |
 
 ## How to read a recommendation
+**Policy (default since 2026-10-19, user-approved):** the optimizer with *simulated* availability (300 rooms of 3
+sharp + 8 ADP drafters from the current board) proposes candidates; a value search (learned season-outcome model,
+48 paired rollouts per candidate) picks the top among its 6 best when the gain is ≥ 1 SE. Evidence:
+docs/research/draft_policy.md (+1.9 pp P(playoffs), +1.4 pp P(title) vs the old default in simulated rooms; fitted,
+not a guarantee). The `recommend_policy` block says which policy produced the pick (`top_pick_decided_by`) and
+whether the value search ran (`value_search_status`); `availability: sim:mixedx300` is the availability model.
+If the value search fails the recommendation still comes back (optimizer order + a warning). Old behaviour:
+`fantasy draft recommend --search advise --availability adp`.
+
 - `score`: projected expected categories won per week (of 9) for the **final roster** if you take this player
   and then make the planned picks (`plan`) — vs a league-average opponent.
 - `marginal_value`: score difference to the next-best option (top) / to the top (others).
-- `prob_available_next`: chance the player is still there at your next pick — low = take now.
+- `prob_available_next`: chance the player is still there at your next pick (from the simulated rooms) — low = take now.
+- `value_search.candidates`: P(title) / P(playoffs) per candidate with `diff_vs_optimizer_top ± diff_se` (paired).
 - `strategy`: whether a punt build (e.g. punt FT%) projects better than balanced; scan in `strategy.scan`.
 - `cat_impact`: the player's per-category G-scores (positive = helps).
 Absolute win probabilities are optimistic (opponent model is an average team); compare options relatively.

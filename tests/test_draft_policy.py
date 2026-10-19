@@ -25,7 +25,7 @@ from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import load_projections
 
 runner = CliRunner()
-BAL = OptimizerParams(strategy="balanced")
+BAL = OptimizerParams(strategy="balanced", availability="adp")  # the harnesses' pre-0.4.0 optimizer
 
 
 @pytest.fixture(scope="module")
@@ -234,10 +234,11 @@ def test_room_sim_adp_ranks_not_positions(ctx):
     assert float(t[24][top].sum()) == pytest.approx(40 - 23 + float((1 - t[24])[np.argsort(ctx.market_rank)[40:]].sum()), abs=1e-6)
 
 
-def test_optimizer_sim_availability_opt_in(ctx):
+def test_optimizer_sim_availability_default_and_adp_reachable(ctx):
     st = _state_at_24(ctx)
+    assert OptimizerParams().availability == "sim" and OptimizerParams().room == "mixed"  # default since 0.4.0
     base = DraftOptimizer(ctx, BAL).recommend(st)
-    assert base["availability"] == "adp"  # default unchanged
+    assert base["availability"] == "adp"  # old behaviour reachable explicitly
     sim = DraftOptimizer(ctx, OptimizerParams(strategy="balanced", availability="sim", room="mixed",
                                               room_sims=200)).recommend(st)
     assert sim["availability"] == "sim:mixedx200"

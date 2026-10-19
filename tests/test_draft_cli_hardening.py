@@ -76,6 +76,9 @@ def test_input_validation(P):
     code, out = cli("draft", "recommend", *D, "--strategy", "bogus", "--json", *P)
     assert code == 2 and "punt_ft" in out["valid"] and "bogus" in out["error"]
     code, out = cli("draft", "recommend", *D, "--objective", "bogus", "--json", *P)
+    # default search is "value": the optimizer's and the value search's objectives are valid
+    assert code == 2 and out["valid"][:2] == ["cat_wins", "matchup"] and "blend" in out["valid"]
+    code, out = cli("draft", "recommend", *D, "--search", "none", "--objective", "bogus", "--json", *P)
     assert code == 2 and out["valid"] == ["cat_wins", "matchup"]
     code, out = cli("draft", "recommend", *D, "--punt", "bogus", "--json", *P)
     assert code == 2 and "ft_pct" in out["valid"]

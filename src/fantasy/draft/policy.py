@@ -23,14 +23,15 @@ uses; the simulation harness (`fantasy.draft.policy_eval`) wraps the same functi
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 
 from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, OptimizerParams
 from fantasy.draft.roster import max_starting_matching
 
-POLICY_VERSION = "draft-policy-0.1.0"
+# 0.2.0: opt_valavail / opt_sd50 pin availability="adp" (the optimizer default became "sim" in optimizer-0.4.0)
+POLICY_VERSION = "draft-policy-0.2.0"
 POLICIES = ("optimizer", "bpa", "hybrid", "bpa_need", "opt_valavail", "opt_sd50")
 DEFAULT_POLICY = "optimizer"  # unchanged default; see docs/research/draft_policy.md before switching
 DEFAULT_MARGIN = 0.02  # hybrid: expected category wins (of 9) the optimizer must gain over BPA (prior)
@@ -155,6 +156,9 @@ def decide(ctx: DraftContext, rec: dict, taken: dict[int, str], my_slot: int, pa
 
 
 def alt_optimizer(ctx: DraftContext, policy: str, params: OptimizerParams | None = None) -> DraftOptimizer | None:
+    # these policies are variants of the analytic Normal(ADP) availability model: pin availability="adp"
+    # (the optimizer default is "sim" since optimizer-0.4.0)
+    params = replace(params or OptimizerParams(), availability="adp")
     if policy == "opt_valavail":
         return DraftOptimizer(availability_context(ctx, "valavail"), params)
     if policy == "opt_sd50":

@@ -25,7 +25,7 @@ function Sec({ title, children, open = false }: { title: string; children: React
 }
 
 // Fallback when no draft_sim run is readable; keep equal to OPTIMIZER_VERSION in src/fantasy/draft/optimizer.py.
-const OPTIMIZER_VERSION_FALLBACK = "optimizer-0.3.1";
+const OPTIMIZER_VERSION_FALLBACK = "optimizer-0.4.0";
 
 export default function HowItWorks({ optimizerVersion }: { optimizerVersion?: string | null }) {
   return (
@@ -121,9 +121,20 @@ export default function HowItWorks({ optimizerVersion }: { optimizerVersion?: st
             then scores the finished 13-man roster with the category-win model (<code>{optimizerVersion ?? OPTIMIZER_VERSION_FALLBACK}</code>{optimizerVersion ? ", per the latest draft simulation run" : ""}).
           </li>
           <li>
-            <b>Availability</b>: a player&apos;s draft position ~ Normal(ADP, sd) with sd growing with ADP (2.5 + 0.18·ADP);
-            P(still there at pick p | there now) follows. That is the &quot;X% chance he&apos;s still there&quot; on the Draft
-            tab.
+            <b>Availability</b> (default since 2026-10-19): from the current board, 300 simulated rooms of 3
+            &quot;sharp&quot; drafters (best available by their own noisy view of player value) on random seats plus 8 drafters
+            following a noisy ADP order; P(still there at pick p) is the share of rooms where he lasts. That is the
+            &quot;X% chance he&apos;s still there&quot; on the Draft tab. The older analytic model (draft position ~ Normal(ADP, sd),
+            sd = 2.5 + 0.18·ADP) treated the sampled position as the pick number and ignored drafters who don&apos;t follow
+            ADP, which made the optimizer reach too early (docs/research/draft_policy.md).
+          </li>
+          <li>
+            <b>Value search</b> (default since 2026-10-19): the optimizer&apos;s top 6 candidates are re-scored by a learned
+            season-outcome model (P(title) / P(playoffs) over 48 paired simulated drafts each); its best candidate replaces
+            the optimizer&apos;s #1 only if the gain is at least one standard error. In simulated drafts against that room this
+            policy gained +1.9 pp P(playoffs) and +1.4 pp P(title) over the previous default (200 paired drafts, slot 1;
+            simulation evidence, not a guarantee). Each saved recommendation records the policy that produced it
+            (<code>recommend_policy</code>); if the value search fails, the optimizer&apos;s order is used with a warning.
           </li>
           <li>
             <b>Third-round reversal</b> and custom orders are built in: the rollout knows exactly when I pick next (e.g. 24

@@ -454,7 +454,7 @@ function AvailTable({ d }: { d: DraftSim }) {
           <Explain
             text={
               explanationText(ex, "availability") ??
-              "Probability the player is still undrafted when my pick comes, from the ADP availability model (Normal around ADP)."
+              "Probability the player is still undrafted when my pick comes, from the recommendation's availability model (default: 300 simulated rooms of 3 sharp + 8 ADP drafters from the current board)."
             }
           />
           <p className="mt-1 text-xs text-muted">

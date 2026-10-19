@@ -155,10 +155,106 @@ def test_cli_search_flag(setup, proj_path, db_url, tmp_path, monkeypatch):
     assert code == 0 and "value_search" not in none
     assert _cli("draft", "recommend", *P, "--search", "bogus", "--json")[0] == 2
     assert _cli("draft", "recommend", *P, "--search", "none", "--objective", "title", "--json")[0] == 2
-    # without an explicit --search the valid objectives are the optimizer's, as before
+    # without an explicit --search the default (value) applies: value objectives are valid too
     code, out = _cli("draft", "recommend", *P, "--objective", "bogus", "--json")
-    assert code == 2 and out["valid"] == ["cat_wins", "matchup"]
+    assert code == 2 and out["valid"][:2] == ["cat_wins", "matchup"] and "title" in out["valid"]
     # a broken artifact never blocks a recommendation
     code, bad = _cli("draft", "recommend", *[x if x != mp else tmp_path / "missing.npz" for x in P],
                      "--search", "advise", "--json")
     assert code == 0 and "value_search" not in bad and any("value search failed" in w for w in bad["warnings"])
+
+
+def test_default_policy_is_value_search_with_sim_availability(setup, proj_path, db_url, tmp_path, monkeypatch):
+    """2026-10-19 user decision: the default recommend = --search value --availability sim --room mixed; the old
+    behaviour stays reachable with explicit flags; the saved payload says which policy produced the pick."""
+    from fantasy.draft import store
+    from fantasy.valuesearch.search import DEFAULT_SEARCH
+
+    monkeypatch.delenv("FANTASY_DRAFT_ID", raising=False)
+    assert DEFAULT_SEARCH == "value"
+    _, feat, _ = setup
+    mp = tmp_path / "vm.npz"
+    stump_model(feat.names).save(mp)
+    P = ["--projections", proj_path, "--draft-id", "mock-def", "--value-model", mp, "--rollouts", 4,
+         "--search-candidates", 3]
+    assert _cli("draft", "init", "--draft-id", "mock-def", "--mock")[0] == 0
+    code, out = _cli("draft", "recommend", *P, "--json")
+    assert code == 0 and out["ok"]
+    rp = out["recommend_policy"]
+    assert (rp["search"], rp["availability"], rp["room"], rp["value_search_status"]) == ("value", "sim", "mixed", "ok")
+    assert rp["is_default"] and rp["fallback"] is None and rp["version"].startswith("recommend-")
+    assert out["availability"].startswith("sim:mixed") and out["value_search"]["mode"] == "value"
+    assert out["recommendations"][0]["player_id"] == out["value_search"]["top_pick"]
+    assert out["optimizer_version"] == "optimizer-0.4.0"
+    # provenance is in the saved row (dashboard / prepare-pick read it)
+    saved = store.latest_recommendation("mock-def")
+    assert saved["recommend_policy"]["search"] == "value" and saved["recommend_policy"]["availability"] == "sim"
+    # deterministic per board state
+    code, again = _cli("draft", "recommend", *P, "--no-save", "--json")
+    assert [r["player_id"] for r in again["recommendations"]] == [r["player_id"] for r in out["recommendations"]]
+    assert again["value_search"]["candidates"] == out["value_search"]["candidates"]
+    # old behaviour with explicit flags
+    code, old = _cli("draft", "recommend", *P, "--no-save", "--search", "advise", "--availability", "adp", "--json")
+    assert code == 0 and old["availability"] == "adp" and old["value_search"]["advisory"]
+    assert old["recommend_policy"]["search"] == "advise" and not old["recommend_policy"]["is_default"]
+    assert old["recommend_policy"]["room"] is None
+    # a non-optimizer --policy decides the top itself: the default search drops to advise (no usage error)
+    code, bpa = _cli("draft", "recommend", *P, "--no-save", "--policy", "bpa", "--json")
+    assert code == 0 and bpa["recommend_policy"]["search"] == "advise" and bpa["value_search"]["advisory"]
+    assert bpa["recommend_policy"]["top_pick_decided_by"] == "policy:bpa"
+    assert _cli("draft", "recommend", *P, "--no-save", "--policy", "bpa", "--search", "value", "--json")[0] == 2
+
+
+def test_default_policy_falls_back_to_optimizer(setup, proj_path, db_url, tmp_path, monkeypatch):
+    """Value model missing, or the search throwing: the optimizer's (sim-availability) ranking with a warning."""
+    import fantasy.valuesearch.search as vsearch
+
+    monkeypatch.delenv("FANTASY_DRAFT_ID", raising=False)
+    _, feat, _ = setup
+    mp = tmp_path / "vm.npz"
+    stump_model(feat.names).save(mp)
+    P = ["--projections", proj_path, "--draft-id", "mock-fb", "--no-save", "--rollouts", 4, "--search-candidates", 3]
+    assert _cli("draft", "init", "--draft-id", "mock-fb", "--mock")[0] == 0
+    code, ref = _cli("draft", "recommend", *P, "--search", "none", "--json")
+    assert code == 0 and ref["recommend_policy"]["value_search_status"] == "off"
+    ref_ids = [r["player_id"] for r in ref["recommendations"]]
+    code, miss = _cli("draft", "recommend", *P, "--value-model", tmp_path / "missing.npz", "--json")
+    assert code == 0 and miss["ok"] and "value_search" not in miss
+    assert miss["recommend_policy"]["value_search_status"] == "failed" and miss["recommend_policy"]["fallback"]
+    assert miss["recommend_policy"]["top_pick_decided_by"] == "optimizer"
+    assert any("value search failed" in w for w in miss["warnings"])
+    assert [r["player_id"] for r in miss["recommendations"]] == ref_ids
+
+    def boom(self, *a, **k):
+        raise RuntimeError("search exploded")
+
+    monkeypatch.setattr(vsearch.ValueSearch, "run", boom)
+    code, err = _cli("draft", "recommend", *P, "--value-model", mp, "--json")
+    assert code == 0 and err["recommend_policy"]["value_search_status"] == "failed"
+    assert any("search exploded" in w for w in err["warnings"])
+    assert [r["player_id"] for r in err["recommendations"]] == ref_ids
+
+
+def test_watch_saves_what_recommend_returns(setup, proj_path, db_url, tmp_path, monkeypatch):
+    """`draft watch` uses the same default policy, so its precomputed recommendation equals `draft recommend`."""
+    from fantasy.draft import store
+
+    monkeypatch.delenv("FANTASY_DRAFT_ID", raising=False)
+    ctx, feat, _ = setup
+    mp = tmp_path / "vm.npz"
+    stump_model(feat.names).save(mp)
+    assert _cli("draft", "init", "--draft-id", "mock-w", "--mock")[0] == 0
+    for ov in range(1, 4):  # three picks recorded: my next pick is #24 (slot 1)
+        assert _cli("draft", "pick", ctx.market[ov - 1], "--overall", ov, "--draft-id", "mock-w",
+                    "--projections", proj_path)[0] == 0
+    code, _ = _cli("draft", "watch", "--draft-id", "mock-w", "--projections", proj_path, "--value-model", mp,
+                   "--interval", 0, "--max-iterations", 1)
+    assert code == 0
+    w = store.latest_recommendation("mock-w")
+    code, r = _cli("draft", "recommend", "--draft-id", "mock-w", "--projections", proj_path, "--value-model", mp,
+                   "--no-save", "--json")
+    assert code == 0
+    assert w["recommend_policy"]["search"] == "value" and w["recommend_policy"]["value_search_status"] == "ok"
+    assert w["availability"] == r["availability"] and w["for_pick"] == r["for_pick"] == 24
+    assert [x["player_id"] for x in w["recommendations"]] == [x["player_id"] for x in r["recommendations"]]
+    assert w["value_search"]["top_pick"] == r["value_search"]["top_pick"]

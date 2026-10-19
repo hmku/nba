@@ -103,7 +103,7 @@ class OptimizerPolicy:
                  seed: int | None = None) -> None:
         """`seed` (instead of `rng`): draw the diversity noise from rng([seed, slot, overall]) so the same
         decision gets the same draw across paired drafts that differ elsewhere."""
-        self.opt = DraftOptimizer(ctx, params or OptimizerParams(strategy=strategy))
+        self.opt = DraftOptimizer(ctx, params or OptimizerParams(strategy=strategy, availability="adp"))
         self.temp, self.eps, self.k = temp, eps, k
         self.rng = rng or np.random.default_rng(0)
         self.seed = seed
