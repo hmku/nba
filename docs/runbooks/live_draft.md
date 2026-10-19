@@ -24,10 +24,15 @@ The agent protocol itself is `.claude/skills/live-draft/SKILL.md`. This page is 
    1, 24, 36, 37, 60, 61, …), fill Yahoo ADP gaps, rebuild values, and set Yahoo **Pre-Draft Rankings**
    from `fantasy draft queue --top 60` so Yahoo's autopick uses our model if the clock runs out.
 5. Rehearse: start a Yahoo **mock draft** and ask Claude to run the live-draft skill in `dry_run` mode
-   with draft id `mock-1`, then once more in `live` mode in a mock to test clicking.
+   with draft id `mock-1`, then once more in `live` mode in a mock to test clicking. The rehearsal applies the same
+   value-model guard as draft night (below): `unset FANTASY_VALUE_MODEL`, and every recommend must report
+   `value_search_status` `ok` with `value_model_version` `value-model-0.2.0`.
 
 ## Draft night
 1. 21:30 — laptop plugged in, sleep disabled, Chrome open on the draft room, `claude --chrome` in the repo.
+   In that shell first run `unset FANTASY_VALUE_MODEL` (a leftover override would swap the value model), then check:
+   `fantasy draft recommend --json | python3 -c "import json,sys;p=json.load(sys.stdin)['recommend_policy'];print(p['value_search_status'],p['value_model_version'])"`
+   must print `ok value-model-0.2.0`.
 2. Say explicitly: *"Run the live-draft skill for the real draft nba.l.44495-2026 in live mode. You are
    authorised to make my picks."* (Without this sentence the agent must stay in dry_run.)
 3. Watch `/draft` on the dashboard (phone works). The agent records every pick, recommendation and
@@ -52,7 +57,11 @@ sharp + 8 ADP drafters from the current board) proposes candidates; a value sear
 docs/research/draft_policy.md (+1.9 pp P(playoffs), +1.4 pp P(title) vs the old default in simulated rooms; fitted,
 not a guarantee). The `recommend_policy` block says which policy produced the pick (`top_pick_decided_by`) and
 whether the value search ran (`value_search_status`); `availability: sim:mixedx300` is the availability model.
-If the value search fails the recommendation still comes back (optimizer order + a warning). Old behaviour:
+If the value search fails the recommendation still comes back (optimizer order + a warning).
+**Value-model guard (every recommend):** the agent checks `recommend_policy.value_search_status == "ok"` and
+`recommend_policy.value_model_version == "value-model-0.2.0"`. If not, it stops and tells you before picking —
+unless the clock is short, in which case it takes `recommendations[0]` (still a valid optimizer pick), logs it and
+tells you right after. In text mode a failed value search prints a `!!! VALUE SEARCH FAILED` line. Old behaviour:
 `fantasy draft recommend --search advise --availability adp`.
 
 - `score`: projected expected categories won per week (of 9) for the **final roster** if you take this player

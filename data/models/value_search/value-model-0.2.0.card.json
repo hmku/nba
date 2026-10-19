@@ -136,7 +136,32 @@
       "k": 4
     },
     "train_room_seeds_note": "seeds 400000-400944 launched, 942 rooms completed (generation stopped by time)",
-    "seasons_per_league_note": "500 seasons, same season seed for the K completions of a room (common random numbers)"
+    "seasons_per_league_note": "500 seasons, same season seed for the K completions of a room (common random numbers)",
+    "sha256": {
+      "train_final.jsonl": "6a49b3556f6b65deb86ec40e3481bd40eb07294710f5cae58963c5776e1572fd",
+      "holdout.jsonl": "9759a79bf2e45f3f10459deb474e62c59a041cfdcf4e32011aa7d137f86d522d"
+    },
+    "sha256_sorted_lines": {
+      "train_final.jsonl": "8fdf7acd79f04f954d390a472b969c46c4ed4a18db12ed551098d177a6e37972",
+      "holdout.jsonl": "9f20762c54f2e475089efcd130fb70e94eaea689ef662cfe17f17d55c2c83726"
+    },
+    "n_lines": {
+      "train_final.jsonl": 3768,
+      "holdout.jsonl": 400
+    },
+    "train_rooms_missing": [
+      400940,
+      400943,
+      400944
+    ],
+    "regenerate": {
+      "code": "src/ + data/ at git_sha 177675e plus the value-model-0.2.0 commit's src/fantasy/valuesearch (see code_note)",
+      "env": "PYTHONPATH=src OMP_NUM_THREADS=1",
+      "holdout": "python -m fantasy.valuesearch.datagen --gen v2 --n 100 --seed0 910000 --seasons 2000 --k 4 --workers 3 --out holdout.jsonl",
+      "train": "python -m fantasy.valuesearch.datagen --gen v2 --n 945 --seed0 400000 --seasons 500 --k 4 --workers 3 --out train.jsonl, then drop rooms 400940, 400943, 400944 (the original run, --n 1400, was stopped by time after rooms 400000-400944 were launched; those 3 did not finish)",
+      "fit": "python -m fantasy.valuesearch.train --data train_final.jsonl --holdout holdout.jsonl --variant plain --version value-model-0.2.0 --out data/models/value_search/value-model-0.2.0.npz",
+      "note": "line order follows worker completion, so compare sha256_sorted_lines (LC_ALL=C sort FILE | sha256sum), not the raw file hash; files were kept only in the training session's scratchpad (not committed)"
+    }
   },
   "projections_sha256": "6acf9cce425b45e1f0021f267b9c4766e2c9cbb267ad3c883b8c835ea4a896bc",
   "metrics": {
@@ -832,5 +857,9 @@
     "adopted": true,
     "doc": "docs/research/value_search.md#value-model-020-2026-10-19"
   },
-  "code_note": "trained with the value-model-0.2.0 commit's src/fantasy/valuesearch (git_sha above = parent commit; training code was uncommitted at train time)"
+  "code_note": "trained with the value-model-0.2.0 commit's src/fantasy/valuesearch (git_sha above = parent commit; training code was uncommitted at train time)",
+  "notes": [
+    "versions.optimizer records optimizer-0.3.1 (the version at git_sha 177675e). For this artifact it is equivalent to optimizer-0.4.0: 0.4.0 only changed the OptimizerParams default availability from \"adp\" to \"sim\" (room \"mixed\"); training data generation already passed availability=\"sim\" (room = the regime) explicitly for my slot, and the research harness seats that relied on the old \"adp\" default were pinned to \"adp\" explicitly in the same 0.4.0 commit (862cc74), so generated data is unchanged.",
+    "data.sha256 / data.regenerate added 2026-10-19 after training (review follow-up); the .npz is unchanged."
+  ]
 }

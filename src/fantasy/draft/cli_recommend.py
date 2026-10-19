@@ -238,6 +238,9 @@ def recommend(
     typer.echo(f"policy: search={rp.get('search')} ({rp.get('value_search_status')}), availability="
                f"{rec.get('availability')}, decided by {rp.get('top_pick_decided_by')}"
                + ("" if rp.get("is_default") else " [non-default]"))
+    if rp.get("value_search_status") == "failed":
+        typer.echo("!!! VALUE SEARCH FAILED - ranking below is the optimizer fallback; tell the user before picking "
+                   "(see WARNING lines) !!!")
     fb = rec.get("filler")
     if fb:
         steps = fb["convergence"]["steps"]

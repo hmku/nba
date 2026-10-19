@@ -224,6 +224,8 @@ def test_default_policy_falls_back_to_optimizer(setup, proj_path, db_url, tmp_pa
     assert miss["recommend_policy"]["top_pick_decided_by"] == "optimizer"
     assert any("value search failed" in w for w in miss["warnings"])
     assert [r["player_id"] for r in miss["recommendations"]] == ref_ids
+    res = runner.invoke(app, ["draft", "recommend", *map(str, P), "--value-model", str(tmp_path / "missing.npz")])
+    assert res.exit_code == 0 and "!!! VALUE SEARCH FAILED" in res.output
 
     def boom(self, *a, **k):
         raise RuntimeError("search exploded")
@@ -301,3 +303,23 @@ def test_default_model_path_env_override(monkeypatch, tmp_path):
     assert default_model_path() == MODEL_DIR / "value-model-0.1.0.npz"
     monkeypatch.setenv(MODEL_ENV, str(tmp_path / "x.npz"))
     assert default_model_path() == tmp_path / "x.npz"
+
+
+def test_shipped_default_artifact_matches_current_features():
+    """The SHIPPED default artifact (not a stub) must use exactly the features the current code computes:
+    a silent feature reorder/addition would make draft-time predictions garbage without any error."""
+    from fantasy.valuesearch.features import FEATURES_VERSION, feature_names
+    from fantasy.valuesearch.model import DEFAULT_MODEL
+
+    s = load_settings()
+    assert DEFAULT_MODEL.name == "value-model-0.2.0.npz" and DEFAULT_MODEL.exists()
+    vm = ValueModel.load(DEFAULT_MODEL)
+    assert vm.version == "value-model-0.2.0"
+    assert vm.feature_names == feature_names(list(s.categories), 12)
+    assert vm.feature_names == feature_names(list(s.categories), s.num_teams)
+    assert vm.card["features_version"] == FEATURES_VERSION
+    assert vm.card["feature_names"] == vm.feature_names
+    assert sorted(vm.ensembles) == sorted(TARGETS)
+    X = np.zeros((2, len(vm.feature_names)))
+    out = vm.predict(X)
+    assert all(np.isfinite(out[t]).all() for t in TARGETS)

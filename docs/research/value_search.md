@@ -288,8 +288,8 @@ These agree with §5's 400-season numbers within their SEs.
 projections, the unified noise model `noise-var-1.0`, `valuation-0.3.0`, calibrated `season-sim-0.5.0`, the
 sim-availability optimizer that the recommended draft policy uses, mixed rooms as the primary world), attack its known
 weakness (poor resolution of *within-room* differences), and adopt it only if it validates better than 0.1.0.
-Everything below is **fitted by simulation** on main at `23e308b` (bit-identical to the code of the stored
-`draft_policy.md` runs: re-drafting vs_sim + 0.1.0 at 6 seeds in W_mixed / W_sym gave the stored leagues and grades exactly),
+Everything below is **fitted by simulation** on a frozen snapshot of main at `177675e` (the card's `git_sha`; it adds
+only opt-in research options to `23e308b`, the code of the stored `draft_policy.md` runs: re-drafting vs_sim + 0.1.0 at 6 seeds in W_mixed / W_sym gave the stored leagues and grades exactly),
 projections sha256 `6acf9cce…`. Each run used a frozen copy of `src/` + `data/`.
 
 ### Data (`datagen --gen v2`)
@@ -488,5 +488,8 @@ python -m fantasy.valuesearch.train --data train.jsonl --holdout holdout.jsonl -
 python -m fantasy.draft.policy_eval run --seeds 0:200 --slots 1 --regimes mixed,adp,sym --policies vs_sim \
   --value-model data/models/value_search/value-model-0.2.0.npz --opt-strategy balanced --out vm2.jsonl
 ```
+The training/holdout files were not committed; their sha256 (raw and over `LC_ALL=C sort`-ed lines, since line order
+follows worker completion), line counts, the 3 unfinished train rooms (400940, 400943, 400944) and the exact
+regeneration commands are in the model card (`data.sha256`, `data.sha256_sorted_lines`, `data.regenerate`).
 Rollback: `FANTASY_VALUE_MODEL=value-model-0.1.0` (or a path) for any command
 that loads the default model.

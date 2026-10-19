@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -87,12 +88,16 @@ def within_room(pred: np.ndarray, y: np.ndarray, g: np.ndarray, team: np.ndarray
 def fit_variant(X: np.ndarray, Y: np.ndarray, g: np.ndarray, team: np.ndarray, paired: np.ndarray,
                 variant: str = "plain", lam: float = 1.0, seed: int = 0, folds: int = 4,
                 hgb_kw: dict | None = None, weight: np.ndarray | None = None,
-                fe_mask: np.ndarray | None = None, ridge: float = 1e-3) -> dict[str, TreeEnsemble]:
+                fe_mask: np.ndarray | None = None, ridge: float = 1e-3,
+                sk_out: dict | None = None) -> dict[str, TreeEnsemble]:
     """Fit one ensemble per target (see module doc for the variants). `weight`: sample weights of the level
-    fits; `fe_mask`: rows the within-room correction is fitted on (default all paired rows)."""
+    fits; `fe_mask`: rows the within-room correction is fitted on (default all paired rows); `sk_out`: if given,
+    receives the fitted sklearn level estimators per target (for the numpy-vs-sklearn parity check)."""
     kw = hgb_kw or {}
-    out = {tgt: TreeEnsemble.from_sklearn(fit_hgb(X, Y[:, j], seed=seed, sample_weight=weight, **kw))
-           for j, tgt in enumerate(LABELS)}
+    level = {tgt: fit_hgb(X, Y[:, j], seed=seed, sample_weight=weight, **kw) for j, tgt in enumerate(LABELS)}
+    if sk_out is not None:
+        sk_out.update(level)
+    out = {tgt: TreeEnsemble.from_sklearn(est) for tgt, est in level.items()}
     if variant == "plain":
         return out
     if variant not in ("fe", "fel"):
@@ -178,7 +183,17 @@ def main() -> None:
         report["split"][tgt] = {"all": metrics(Y[te, j], p), "slot1": metrics(Y[te & slot1, j], p[slot1[te]])}
         if paired[te].any():
             report["split"][tgt]["within_room_slot1"] = within_room(p, Y[te, j], g[te], team[te], cand[te], slot1[te])
-    final = fit_variant(X, Y, g, team, paired, a.variant, a.lam, a.seed, fe_mask=fm, ridge=a.ridge)  # refit on everything for the artifact
+    final_sk: dict = {}
+    final = fit_variant(X, Y, g, team, paired, a.variant, a.lam, a.seed, fe_mask=fm, ridge=a.ridge,
+                        sk_out=final_sk)  # refit on everything for the artifact
+    # numpy inference must match sklearn; only the plain variant is a pure export of the sklearn level model
+    # (fe/fel add a correction sklearn does not compute)
+    Xc = X[:512]
+    sk_check = ({tgt: float(np.abs(final_sk[tgt].predict(Xc) - final[tgt].predict(Xc)).max()) for tgt in LABELS}
+                if a.variant == "plain" else None)
+    if sk_check is not None and max(sk_check.values()) > 1e-6:
+        print(f"WARNING: numpy export disagrees with sklearn (max abs diff {sk_check}); do not ship this artifact",
+              file=sys.stderr)
     vm = ValueModel(final, feat.names, {})
     if a.holdout:
         hl = load_leagues(a.holdout)
@@ -224,13 +239,14 @@ def main() -> None:
         "projections_sha256": proj.sha256, "metrics": {"league_split_test": report["split"], "holdout": report["holdout"],
                                                        "holdout_n_leagues": report.get("holdout_n_leagues"),
                                                        "holdout_seasons": report.get("holdout_seasons")},
-        "train_seconds": round(time.time() - t0, 1),
+        "numpy_vs_sklearn_max_abs_diff": sk_check, "train_seconds": round(time.time() - t0, 1),
     }
     vm.card = card
     vm.save(a.out)
     if a.report:
         a.report.write_text(json.dumps(card, indent=2))
-    print(json.dumps({"split": report["split"], "holdout": report["holdout"], "size_bytes": a.out.stat().st_size},
+    print(json.dumps({"split": report["split"], "holdout": report["holdout"], "size_bytes": a.out.stat().st_size,
+                      "check": sk_check},
                      indent=1))
 
 

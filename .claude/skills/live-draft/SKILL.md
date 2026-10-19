@@ -21,13 +21,23 @@ Every `fantasy draft ...` JSON includes the `draft_id` it resolved - check it is
 
 ## 1. Setup (do before the draft starts)
 ```bash
+unset FANTASY_VALUE_MODEL   # a leftover rollback/override would silently swap the value model
 export FANTASY_RUN_ID=$(fantasy run start --agent draft-manager --task "live draft nba.l.44495-2026" --mode live)
 fantasy draft init --draft-id nba.l.44495-2026          # idempotent
 export FANTASY_DRAFT_ID=nba.l.44495-2026
 fantasy lock acquire draft:$FANTASY_DRAFT_ID --ttl 10800 --purpose "live draft"   # exit 3 = someone else is drafting: STOP
 fantasy lock acquire yahoo:browser --ttl 10800 --purpose "draft room"
 fantasy settings show --json        # check `unverified`
+fantasy draft recommend --json | python3 -c "import json,sys;p=json.load(sys.stdin)['recommend_policy'];print(p['value_search_status'],p['value_model_version'])"
+# must print: ok value-model-0.2.0   (otherwise STOP and tell the user before the draft starts)
 ```
+- **Value-model guard (every recommend, setup and loop):** in `recommend --json` check
+  `recommend_policy.value_search_status == "ok"` **and** `recommend_policy.value_model_version == "value-model-0.2.0"`.
+  If either differs (status `failed`/`off`, another or missing version), **stop and tell the user before picking**,
+  quoting the status, version and `warnings`. Exception — the clock is short (< ~20 s left on my pick): take
+  `recommendations[0]` (the optimizer's sim-availability ranking is still a valid pick), then log it:
+  `fantasy run event observation "value-model guard failed; took recommendations[0] (clock)" --payload '{"value_search_status": "...", "value_model_version": "..."}'`
+  and tell the user right after the pick.
 - In the browser, open the league's **Draft order** page (League → Draft Results/Draft order, or the draft room's order panel). Yahoo has
   no native 3RR, so read the actual order and store it:
   `fantasy draft set-order --rounds "1,2,...,12;12,...,1;..."` → confirm `my_picks` (expected 1,24,36,37,60,61,...).
@@ -45,14 +55,17 @@ fantasy settings show --json        # check `unverified`
 
 ### Mock rehearsal recipe
 ```bash
+unset FANTASY_VALUE_MODEL
 export FANTASY_RUN_ID=$(fantasy run start --agent draft-manager --task "mock rehearsal mock-N" --mode dry_run)
 fantasy draft init --draft-id mock-N --mock --slot <my slot in the mock> --json   # mock* ids REQUIRE --mock (exit 2 otherwise)
 export FANTASY_DRAFT_ID=mock-N          # otherwise commands default to the latest NON-mock draft
 # Yahoo mocks are a plain snake: odd rounds 1..12, even rounds 12..1
 fantasy draft set-order --rounds "$(python3 -c "n=12;r=13;print(';'.join(','.join(map(str,range(1,n+1) if i%2==0 else range(n,0,-1))) for i in range(r)))")" --json
 fantasy lock acquire draft:$FANTASY_DRAFT_ID --ttl 7200 --purpose "mock rehearsal"
+fantasy draft recommend --json | python3 -c "import json,sys;p=json.load(sys.stdin)['recommend_policy'];print(p['value_search_status'],p['value_model_version'])"
+# must print: ok value-model-0.2.0 — the rehearsal must exercise the same guard as the real draft (§1)
 ```
-Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_run"`, decision logged with
+Then run the loop below, applying the value-model guard (§1) on every recommend. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_run"`, decision logged with
 `mode: dry_run`): never click; record the pick Yahoo autopicks with `draft pick`. Afterwards
 `fantasy run end` (releases the locks), `unset FANTASY_DRAFT_ID`.
 
@@ -74,7 +87,10 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
      `behind` is normal while the picks before mine are still being made). Fill them from the draft log first.
 2. **When my pick is ≤ 2 picks away**, precompute: `fantasy draft recommend --json` (≈2–3 s wall incl. Python start-up, measured 2026-10-19 on 4 cores; ≤ 10 s budget). Read
    `recommendations[0..4]`, `strategy`, `warnings`, `prob_available_next`, `recommend_policy`.
-3. **On the clock:** sync again (last picks), re-run `recommend --json`. Choose `recommendations[0]` unless:
+   **Value-model guard:** `recommend_policy.value_search_status == "ok"` and
+   `recommend_policy.value_model_version == "value-model-0.2.0"`; if not, stop and tell the user now (§1).
+3. **On the clock:** sync again (last picks), re-run `recommend --json` and apply the value-model guard (§1: if it
+   fails and the clock is short, take `recommendations[0]` and log it). Choose `recommendations[0]` unless:
    - the player has fresh injury news (check the player card in the draft room) → note it, rerun excluding
      nobody — instead pick the next recommendation and record the disagreement;
    - top options are within ~0.03 score (model noise — treat as ties): prefer the one with *lower* `prob_available_next` (it won't come back).
@@ -117,7 +133,8 @@ Then run the loop below. In `dry_run` `prepare-pick` exits 4 (`run_mode: "dry_ru
      if the gain is ≥ 1 SE; otherwise the optimizer's #1 stands (`agrees_with_optimizer`).
    - **Fallback (automatic):** if the value model is missing/incompatible or the search throws, you get a
      `value search failed ...` warning, `value_search_status: failed`, and the optimizer's sim-availability
-     ranking - still a valid pick; just go on. Manual fallbacks if recommend itself is slow or broken:
+     ranking - a valid pick, but the value-model guard (§1) applies: stop and tell the user before picking,
+     unless the clock is short (then take `recommendations[0]` and log it). Manual fallbacks if recommend itself is slow or broken:
      `--search none` (optimizer + sim availability, ≈1 s less), then `--search none --availability adp` (the
      pre-2026-10-19 default), then the dashboard / Pre-Draft Rankings. `--search advise` keeps the optimizer order
      and adds the block as advice only. `--policy bpa|hybrid|...` decides the top itself (value search then
