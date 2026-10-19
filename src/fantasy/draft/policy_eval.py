@@ -10,10 +10,22 @@ Regimes (opponents = every slot except mine):
   sym     our balanced optimizer on their own perturbed view (= value-search validation "sym", the
           optimism-decomposition C11 proxy; "as smart as us, independent errors")
   symbpa  value-BPA (lineup-feasible) on their own perturbed view (A_bpa-style smart-but-simple room)
-Each league is graded under truth `ours` (the drafting projections) and `market`
-(fantasy.sim.market_truth.market_implied_projections).
+  mixed   N_SHARP (3) "sharp" opponents as in `sym` + the other 8 noisy ADP (as `adp`, same room order); the
+          sharp seats are drawn per room (rng([seed, 13])). The user's description of the league ("a few prepare
+          seriously, most are casual") -> the primary world W for the draft-policy decision.
+Ablation arms (lead/user request, 2026-10-19; which component of the optimizer loses value vs BPA):
+  greedycat    one-step pick maximising expected category wins vs the league-average opponent (roster + player +
+               market filler), lineup-feasible, no lookahead, no availability model  -> isolates the objective
+  opt_oracle   the optimizer with its Normal(ADP) availability replaced by the room's empirical availability
+               (per-player survival curves from independent simulated drafts of the same room type, seeds
+               disjoint from the evaluation seeds; `rooms` subcommand)               -> isolates availability
+  opt_matchup  the optimizer with objective P(win the weekly matchup) instead of expected category wins
+Each league is graded under truth `ours` (the drafting projections), `market`
+(fantasy.sim.market_truth.market_implied_projections) and `mid` (their 50/50 blend_projections).
 
   python -m fantasy.draft.policy_eval run --seeds 0:200 --slots 1 --regimes adp,sym,symbpa --out x.jsonl
+  python -m fantasy.draft.policy_eval rooms --seeds 10000:10150 --regimes adp,sym,symbpa --out rooms.npz
+  python -m fantasy.draft.policy_eval run ... --policies greedycat,opt_oracle --oracle-positions rooms.npz
   python -m fantasy.draft.policy_eval summary --out x.jsonl
 """
 
@@ -31,11 +43,14 @@ from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, Op
 from fantasy.draft.policy import (
     PolicyParams,
     availability_context,
+    board_state,
+    bpa_row,
     decide,
     feasible,
+    need_row,
 )
 
-EVAL_VERSION = "policy-eval-0.1.0"
+EVAL_VERSION = "policy-eval-0.2.0"  # 0.2.0: ablation arms greedycat / opt_oracle / opt_matchup
 # policy spec name -> (policy name, margin, eps)
 SPECS: dict[str, tuple[str, float, float]] = {
     "optimizer": ("optimizer", 0.0, 0.0),
@@ -47,8 +62,12 @@ SPECS: dict[str, tuple[str, float, float]] = {
     "opt_valavail": ("opt_valavail", 0.0, 0.0),
     "opt_sd50": ("opt_sd50", 0.0, 0.0),
     "value_search": ("value_search", 0.0, 0.0),
+    "greedycat": ("greedycat", 0.0, 0.0),
+    "opt_oracle": ("opt_oracle", 0.0, 0.0),
+    "opt_matchup": ("opt_matchup", 0.0, 0.0),
 }
-TRUTHS = ("ours", "market")
+N_SHARP = 3
+TRUTHS = ("ours", "market", "mid")  # mid = 50/50 ours / market-implied stat lines
 _E: dict = {}
 
 
@@ -57,8 +76,9 @@ class MyPolicy:
     """A policy spec for my slot. Optimizer payloads are memoised per board (shared across specs of one
     job via `cache`), so specs that agree on a prefix of the draft don't recompute it."""
 
-    def __init__(self, ctx: DraftContext, spec: str, opts: dict, cache: dict, vs=None, seed: int = 0) -> None:  # noqa: ANN001
-        self.ctx, self.spec, self.opts, self.cache = ctx, spec, opts, cache
+    def __init__(self, ctx: DraftContext, spec: str, opts: dict, cache: dict, vs=None, seed: int = 0,  # noqa: ANN001
+                 regime: str = "adp") -> None:
+        self.ctx, self.spec, self.opts, self.cache, self.regime = ctx, spec, opts, cache, regime
         name, margin, eps = SPECS[spec]
         self.params = PolicyParams(name=name, margin=margin, eps=eps)
         self.log: list[dict] = []
@@ -77,12 +97,24 @@ class MyPolicy:
     def pick(self, board, overall: int, slot: int) -> int:  # noqa: ANN001
         ctx, taken = self.ctx, board.taken
         name = self.params.name
-        if name == "value_search":
+        if name == "greedycat":
+            available, roster, left_after = board_state(ctx, taken, slot)
+            remaining = [p.overall for p in ctx.order if p.slot == slot and p.overall > overall]
+            row = need_row(ctx, available, roster, left_after, remaining, eps=1e9)
+            bpa = ctx.ids[bpa_row(ctx, available, roster, left_after)]
+            self.log.append({"pick": overall, "chosen": ctx.ids[row], "bpa": bpa, "opt": None, "planned_next": None,
+                             "planned_next_pick": None, "score_gain_opt_vs_bpa": None, "strategy": "greedycat"})
+            return row
+        if name in ("opt_oracle", "opt_matchup"):
+            which = f"opt_oracle:{self.regime}" if name == "opt_oracle" else name
+            rec = self._rec(which, taken, slot)
+            d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
+        elif name == "value_search":
             row = self.vsp.pick(board, overall, slot)
             rec = self._rec("opt", taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
             d["player_id"] = ctx.ids[row]
-        elif name in ("bpa", "bpa_need"):
+        elif name in ("bpa", "bpa_need"):  # noqa: SIM114
             rec = self._rec("opt", taken, slot)  # for the mechanism log only (cached, shared)
             d = decide(ctx, rec, taken, slot, self.params)
         else:
@@ -103,6 +135,97 @@ class MyPolicy:
                          round(recs[0]["score"] - sc[d["bpa_player_id"]], 4),
                          "strategy": rec["strategy"]["name"]})
         return ctx.pos[d["player_id"]]
+
+
+def build_room(seed: int, me: int, regime: str, cache: dict) -> dict:
+    """The 11 opponents' policies for one paired room (deterministic in seed)."""
+    from fantasy.sim.symmetric import perturb_projections
+    from fantasy.valuesearch.policies import ADPPolicy, sample_room_order
+
+    ctx, s = _E["ctx"], _E["settings"]
+    room = sample_room_order(ctx, np.random.default_rng([seed, 11]), 1.0)
+    others = [t for t in range(1, s.num_teams + 1) if t != me]
+    if regime == "adp":
+        return {t: ADPPolicy(room) for t in others}
+    if regime == "mixed":
+        sharp = set(np.random.default_rng([seed, 13]).choice(others, N_SHARP, replace=False).tolist())
+        return {t: (ViewOptPolicy(ctx, DraftContext(perturb_projections(_E["proj"], seed, t), s), cache)
+                    if t in sharp else ADPPolicy(room)) for t in others}
+    if regime in ("sym", "symbpa"):
+        views = {t: DraftContext(perturb_projections(_E["proj"], seed, t), s) for t in others}
+        return ({t: ViewOptPolicy(ctx, views[t], cache) for t in others} if regime == "sym"
+                else {t: ViewBPAPolicy(ctx, views[t]) for t in others})
+    raise ValueError(regime)
+
+
+# ---------------------------------------------------------------- oracle availability
+def survival_table(positions: np.ndarray, n_total: int, prior: np.ndarray | None = None, a: float = 2.0) -> np.ndarray:
+    """S[x, row] = P(row is drafted at an overall pick > x), x = 0..n_total, from simulated drafts
+    (`positions[d, row]` = overall pick, n_total + 1 if undrafted), shrunk towards `prior` (same shape) with
+    `a` pseudo-drafts."""
+    xs = np.arange(n_total + 1)[:, None, None]
+    after = (positions[None, :, :] > xs).sum(axis=1).astype(float)  # [x, row]
+    n = positions.shape[0]
+    if prior is None:
+        return after / n
+    return (after + a * prior) / (n + a)
+
+
+class OracleOptimizer(DraftOptimizer):
+    """The optimizer with `prob_available` answered by an empirical survival table of the actual room type
+    instead of Normal(ADP). Market ranks are unique integers, so the rows behind any `adp` array the optimizer
+    passes in are recovered exactly; everything else (candidates, filler, objective) is unchanged."""
+
+    def __init__(self, ctx: DraftContext, params: OptimizerParams, S: np.ndarray) -> None:
+        super().__init__(ctx, params)
+        self.S = S
+        mr = ctx.market_rank.astype(int)
+        if len(set(mr.tolist())) != len(mr):
+            raise ValueError("market ranks are not unique; cannot decode rows")
+        self.row_of = np.full(int(mr.max()) + 1, -1)
+        self.row_of[mr] = np.arange(len(mr))
+
+    def prob_available(self, at_pick: float, current_pick: float, adp: np.ndarray, sd_mult=None) -> np.ndarray:  # noqa: ANN001
+        adp = np.asarray(adp, dtype=float)
+        if at_pick <= current_pick:
+            return np.ones_like(adp)
+        rows = self.row_of[adp.astype(int)]
+        s_now = self.S[int(current_pick) - 1, rows]
+        s_then = self.S[int(at_pick) - 1, rows]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            p = np.where(s_now > 1e-12, s_then / s_now, 0.0)
+        return np.clip(p, 0.0, 1.0)
+
+    def recommend(self, state: DraftState, draft_id: str = "local", model_run_id: str | None = None) -> dict:
+        import fantasy.draft.optimizer as om
+
+        orig = om.prob_available
+        om.prob_available = self.prob_available
+        try:
+            return super().recommend(state, draft_id, model_run_id)
+        finally:
+            om.prob_available = orig
+
+
+def normal_survival(ctx: DraftContext) -> np.ndarray:
+    from fantasy.draft.availability import survival
+
+    n_total = len(ctx.order)
+    return np.stack([survival(x, ctx.market_rank, ctx.sd_mult) for x in range(n_total + 1)])
+
+
+def room_positions(job: tuple[int, int, str]) -> tuple[str, np.ndarray]:
+    """One simulated draft of a room type with me = lineup-feasible BPA: overall pick of every row."""
+    from fantasy.valuesearch.policies import run_draft
+
+    seed, me, regime = job
+    ctx = _E["ctx"]
+    opp = build_room(seed, me, regime, {})
+    board = run_draft(ctx, {me: ViewBPAPolicy(ctx, ctx), **opp})
+    pos = np.full(len(ctx.ids), len(ctx.order) + 1, dtype=np.int16)
+    for ov, pid in board.taken.items():
+        pos[ctx.pos[pid]] = ov
+    return regime, pos
 
 
 # ---------------------------------------------------------------- opponents
@@ -145,13 +268,14 @@ class ViewBPAPolicy:
 
 
 # ---------------------------------------------------------------- worker
-def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, value_model: str | None) -> None:
+def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, value_model: str | None,
+                oracle_positions: str | None = None) -> None:
     from threadpoolctl import threadpool_limits
 
     from fantasy.league.settings import load_settings
     from fantasy.model.lines import load_projections
     from fantasy.sim.context import build_context
-    from fantasy.sim.market_truth import market_implied_projections
+    from fantasy.sim.market_truth import blend_projections, market_implied_projections
 
     threadpool_limits(1)
     s = load_settings()
@@ -163,7 +287,18 @@ def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, va
     params = OptimizerParams(strategy=opt_strategy)
     opts = {"params": params, "opt": DraftOptimizer(ctx, params),
             "opt_valavail": DraftOptimizer(availability_context(ctx, "valavail"), params),
-            "opt_sd50": DraftOptimizer(availability_context(ctx, "sd50"), params)}
+            "opt_sd50": DraftOptimizer(availability_context(ctx, "sd50"), params),
+            "opt_matchup": DraftOptimizer(ctx, OptimizerParams(strategy=opt_strategy, objective="matchup"))}
+    if oracle_positions:
+        z = np.load(oracle_positions, allow_pickle=False)
+        ids = [str(x) for x in z["ids"]]
+        prior = normal_survival(ctx)
+        for regime in [k for k in z.files if k != "ids"]:
+            pos = np.full((z[regime].shape[0], len(ctx.ids)), len(ctx.order) + 1, dtype=np.int16)
+            for j, pid in enumerate(ids):
+                if pid in ctx.pos:
+                    pos[:, ctx.pos[pid]] = z[regime][:, j]
+            opts[f"opt_oracle:{regime}"] = OracleOptimizer(ctx, params, survival_table(pos, len(ctx.order), prior))
     vs = None
     if value_model:
         from fantasy.valuesearch.features import Featurizer
@@ -173,9 +308,10 @@ def init_worker(proj_path: str | None, n_eval: int, opt_strategy: str | None, va
         vs = ValueSearch(ctx, Featurizer(ctx, proj.df), ValueModel.load(value_model))
     _E.clear()
     _E.update(settings=s, proj=proj, ctx=ctx, n_eval=n_eval, opts=opts, vs=vs,
-              truths={"ours": ours, "market": build_context(mt.proj, s, teams, nba=ours.nba)},
+              truths={"ours": ours, "market": build_context(mt.proj, s, teams, nba=ours.nba),
+                      "mid": build_context(blend_projections(proj, mt, 0.5), s, teams, nba=ours.nba)},
               meta={"projections": proj.path, "projections_sha256": proj.sha256, "opt_strategy": opt_strategy,
-                    "n_eval": n_eval, "eval_version": EVAL_VERSION})
+                    "n_eval": n_eval, "eval_version": EVAL_VERSION, "oracle_positions": oracle_positions})
 
 
 def _cat_rates(res, team: int) -> list[float]:  # noqa: ANN001
@@ -213,28 +349,17 @@ def grade(rosters: dict[int, list[str]], me: int, seed: int) -> dict:
 
 
 def run_job(job: tuple[int, int, str, list[str]]) -> dict:
-    from fantasy.sim.symmetric import perturb_projections
-    from fantasy.valuesearch.policies import ADPPolicy, run_draft, sample_room_order
+    from fantasy.valuesearch.policies import run_draft
 
     seed, me, regime, specs = job
-    ctx, s = _E["ctx"], _E["settings"]
-    T = s.num_teams
+    ctx = _E["ctx"]
     t0 = time.perf_counter()
     cache: dict = {}
-    room = sample_room_order(ctx, np.random.default_rng([seed, 11]), 1.0)
-    others = [t for t in range(1, T + 1) if t != me]
-    if regime == "adp":
-        opp: dict = {t: ADPPolicy(room) for t in others}
-    elif regime in ("sym", "symbpa"):
-        views = {t: DraftContext(perturb_projections(_E["proj"], seed, t), s) for t in others}
-        opp = ({t: ViewOptPolicy(ctx, views[t], cache) for t in others} if regime == "sym"
-               else {t: ViewBPAPolicy(ctx, views[t]) for t in others})
-    else:
-        raise ValueError(regime)
+    opp = build_room(seed, me, regime, cache)
     out: dict = {"seed": seed, "slot": me, "regime": regime, "policies": {}, **_E["meta"]}
     for spec in specs:
         t1 = time.perf_counter()
-        pol = MyPolicy(ctx, spec, _E["opts"], cache, _E["vs"], seed)
+        pol = MyPolicy(ctx, spec, _E["opts"], cache, _E["vs"], seed, regime)
         board = run_draft(ctx, {me: pol, **opp})
         rosters = {t: [ctx.ids[r] for r in rows] for t, rows in board.rosters.items()}
         taken_at = {pid: ov for ov, pid in board.taken.items()}
@@ -245,7 +370,7 @@ def run_job(job: tuple[int, int, str, list[str]]) -> dict:
         ev = ctx.model.evaluate_team(rows)
         t2 = time.perf_counter()
         out["policies"][spec] = {
-            "roster": rosters[me], "value_sum": round(float(ctx.value[rows].sum()), 4),
+            "roster": rosters[me], "league": {str(t): r for t, r in rosters.items()}, "value_sum": round(float(ctx.value[rows].sum()), 4),
             "catmodel_ecw": round(float(ev["expected_category_wins"]), 4),
             "grade": grade(rosters, me, seed), "log": pol.log,
             "draft_s": round(t2 - t1, 2), "grade_s": round(time.perf_counter() - t2, 2)}
@@ -274,6 +399,8 @@ def summarize(rows: list[dict], base: str = "bpa") -> dict:
         for truth in TRUTHS:
             k = f"slot{slot}/{regime}/{truth}"
             out[k] = {"n": len(rr)}
+            if any(truth not in r["policies"][specs[0]]["grade"] for r in rr):
+                continue
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["policies"][p]["grade"][truth][metric] for r in rr]) for p in specs}
                 m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
@@ -288,7 +415,7 @@ def summarize(rows: list[dict], base: str = "bpa") -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "summary"])
+    ap.add_argument("cmd", choices=["run", "summary", "rooms"])
     ap.add_argument("--seeds", default="0:200")
     ap.add_argument("--slots", default="1")
     ap.add_argument("--regimes", default="adp,sym,symbpa")
@@ -298,22 +425,36 @@ def main() -> None:
     ap.add_argument("--value-model", default=None)
     ap.add_argument("--n-eval", type=int, default=400)
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--oracle-positions", default=None, help="npz from `rooms` (needed for opt_oracle)")
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
     if a.cmd == "summary":
         print(json.dumps(summarize(load(a.out)), indent=1))
         return
     lo, hi = (int(x) for x in a.seeds.split(":"))
+    from multiprocessing import get_context
+
+    if a.cmd == "rooms":  # independent room samples for the oracle availability model
+        slot = int(a.slots.split(",")[0])
+        rjobs = [(sd, slot, rg) for rg in a.regimes.split(",") for sd in range(lo, hi)]
+        got: dict[str, list[np.ndarray]] = {}
+        with get_context("fork").Pool(a.workers, initializer=init_worker,
+                                      initargs=(a.projections, a.n_eval, a.opt_strategy, None)) as pool:
+            for k, (rg, pos) in enumerate(pool.imap(room_positions, rjobs)):
+                got.setdefault(rg, []).append(pos)
+                print(f"{k + 1}/{len(rjobs)} room drafts", flush=True)
+        init_worker(a.projections, a.n_eval, a.opt_strategy, None)
+        np.savez_compressed(a.out, ids=np.array(_E["ctx"].ids), **{k: np.stack(v) for k, v in got.items()})
+        return
     specs = a.policies.split(",")
     done = {(r["seed"], r["slot"], r["regime"]) for r in load(a.out)} if a.out.exists() else set()
     slots = [int(x) for x in a.slots.split(",")]
     jobs = [(sd, sl, rg, specs) for sd in range(lo, hi) for sl in slots for rg in a.regimes.split(",")
             if (sd, sl, rg) not in done]  # seed-major, so a partial file covers every regime/slot
-    from multiprocessing import get_context
 
     os.environ.setdefault("OMP_NUM_THREADS", "1")
     t0 = time.time()
-    args = (a.projections, a.n_eval, a.opt_strategy, a.value_model)
+    args = (a.projections, a.n_eval, a.opt_strategy, a.value_model, a.oracle_positions)
     with get_context("fork").Pool(a.workers, initializer=init_worker, initargs=args) as pool, a.out.open("a") as fh:
         for k, rec in enumerate(pool.imap_unordered(run_job, jobs)):
             fh.write(json.dumps(rec) + "\n")
