@@ -12,7 +12,15 @@ For each candidate at the current pick we run a lookahead rollout:
      P(available) >= `avail_threshold`, which treats a 51% player as certain and a 49% one as gone;
   3. score the completed (expected) roster with the category-win model (fantasy.model.catmodel).
 "Filler" for an unfilled future pick is the average line of players the market takes around
-that pick, so partial rosters are always compared at full size.
+that pick, so partial rosters are always compared at full size (`filler="market"`, default). Opt-in
+research variants (docs/research/optimizer_placeholders.md; NOT defaults):
+  filler="board"     the market window around p conditioned on the current board (taken players removed,
+                     availability model from the current pick): E[line of the players the room takes at
+                     p-4..p+2 | board];
+  filler="available" the expected best-available-by-value player at p given the current board;
+  refine_passes=k    fixed-point refinement: re-run each candidate's rollout k more times with the
+                     placeholders for later picks replaced by the per-pick expected lines the previous pass
+                     planned (complement-aware filler).
 
 The objective is expected category wins vs the league-average opponent (Yahoo H2H categories
 counts each category), optionally with punted categories zero-weighted. A strategy scan
@@ -23,6 +31,7 @@ complementarity and positional feasibility.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -73,6 +82,13 @@ class OptimizerParams:
     availability: str = "adp"
     room: str = "mixed"  # sim only: adp | mixed | sym
     room_sims: int = 300
+    # research options (docs/research/optimizer_placeholders.md); defaults keep optimizer-0.2.0 outputs identical
+    filler: str = "market"  # market | board | available  (expected rollouts only)
+    refine_passes: int = 0  # extra fixed-point passes with the previous pass's planned lines as filler
+
+
+FILLER_MODES = ("market", "board", "available")
+Line = tuple[np.ndarray, np.ndarray, np.ndarray]
 
 
 class DraftContext:
@@ -106,6 +122,7 @@ class DraftContext:
         self.value = values["value"].to_numpy(dtype=float)
         self.order: list[Pick] = draft_order(settings.num_teams, settings.num_rounds, settings.draft_order_type, custom_rounds)
         self._filler = self._build_filler()
+        self.value_order = np.argsort(-self.value, kind="stable")
 
     def _build_filler(self) -> dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]]:
         """Average components of players the market takes around each overall pick."""
@@ -121,14 +138,55 @@ class DraftContext:
             )
         return out
 
-    def filler_sums(self, picks: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def filler_sums(self, picks: list[int], lines: dict[int, Line] | None = None) -> Line:
+        """Sum of the placeholder lines for `picks` (`lines` overrides the market filler per pick)."""
+        src = self._filler if lines is None else lines
         S = np.zeros(self.arrays.S.shape[1])
         V = np.zeros_like(S)
         R = np.zeros(self.arrays.R.shape[1])
         for p in picks:
-            s, v, r = self._filler[p]
+            s, v, r = src[p]
             S, V, R = S + s, V + v, R + r
         return S, V, R
+
+    def board_filler(self, picks: list[int], current_pick: int, available: np.ndarray, mode: str,
+                     pa_fn: Callable[[int, np.ndarray], np.ndarray] | None = None) -> dict[int, Line]:
+        """Placeholder lines for `picks` conditioned on the board (research option, see module docstring).
+
+        board:     weights w_i = P(avail at max(p-4, now)) - P(avail at p+3) over available players (= P(i is taken
+                   in the window p-4..p+2)), normalised to an average line (the window market filler, re-centred
+                   on the actual board).
+        available: q_i = P(i is the highest-value available player at p) = pa_i * prod_{j valued above i}(1 - pa_j)
+                   (independence approximation, as in the expected rollout); leftover mass gets the market line.
+        """
+        a = self.arrays
+        out: dict[int, Line] = {}
+        if mode == "available":
+            idx = self.value_order[available[self.value_order]]
+        else:
+            idx = np.flatnonzero(available)
+        mr, sm = self.market_rank[idx], self.sd_mult[idx]
+
+        def pa_at(at: int) -> np.ndarray:  # P(available at `at`) for rows idx (optimizer's availability model)
+            return prob_available(at, current_pick, mr, sm) if pa_fn is None else pa_fn(at, idx)
+
+        for p in picks:
+            fs, fv, fr = self._filler[p]
+            if mode == "available":
+                pa = pa_at(p)
+                q = pa * np.concatenate([[1.0], np.cumprod(1.0 - pa)[:-1]])
+                resid = max(0.0, 1.0 - float(q.sum()))
+            elif mode == "board":
+                lo = pa_at(max(p - 4, current_pick))
+                hi = pa_at(p + 3)
+                wsum = np.clip(lo - hi, 0.0, None)
+                tot = float(wsum.sum())
+                q = wsum / tot if tot > 1e-9 else wsum
+                resid = 0.0 if tot > 1e-9 else 1.0
+            else:
+                raise ValueError(f"unknown filler mode {mode!r}")
+            out[p] = (q @ a.S[idx] + resid * fs, q @ a.V[idx] + resid * fv, q @ a.R[idx] + resid * fr)
+        return out
 
     def weights(self, punt: list[str]) -> np.ndarray:
         return np.array([0.0 if c.key in punt else 1.0 for c in self.model.cats])
@@ -173,6 +231,7 @@ class DraftOptimizer:
         return simulate_availability(ctx.market_rank, ctx.sd_mult, ctx.value, available,
                                      [pk.slot for pk in ctx.order], current, targets, my_slot,
                                      room=prm.room, n_sims=prm.room_sims)
+        self._filler_cache: dict[tuple, dict[int, Line]] = {}
 
     # ------------------------------------------------------------------ helpers
     def _objective(self, P: np.ndarray, w: np.ndarray) -> np.ndarray:
@@ -224,7 +283,20 @@ class DraftOptimizer:
     ) -> tuple[list[int], float, np.ndarray]:
         """Expected completion of `roster`: at each future pick, mix the ranked candidates by the
         probability each is the best one left. Returns (most likely pick per future pick, objective, P)."""
+        added, obj, P, _ = self._rollout_expected_lines(roster, available, future_picks, current_pick, w)
+        return added, obj, P
+
+    def _rollout_expected_lines(
+        self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray,
+        fill: dict[int, Line] | None = None, resid_fill: dict[int, Line] | None = None,
+    ) -> tuple[list[int], float, np.ndarray, dict[int, Line]]:
+        """`rollout_expected` that also returns the expected line it planned for each future pick.
+
+        `fill` overrides the placeholder line of later picks while ranking (None = market filler);
+        `resid_fill` the line used for the probability mass no ranked candidate covers (None = market)."""
         ctx, a = self.ctx, self.ctx.arrays
+        resid_src = ctx._filler if resid_fill is None else resid_fill
+        lines: dict[int, Line] = {}
         roster = list(roster)
         not_mine = available.astype(float)  # P(player not already taken by me in this rollout)
         S, V, R = self._sums(roster)
@@ -239,23 +311,55 @@ class DraftOptimizer:
             ok = self._feasible_rows(roster, cand, len(remaining))
             if ok.any():
                 cand = cand[ok]
-            fill = ctx.filler_sums(remaining)
-            obj, _ = self._score_batch((S + fill[0], V + fill[1], R + fill[2]), cand, w)
+            fsum = ctx.filler_sums(remaining, fill)
+            obj, _ = self._score_batch((S + fsum[0], V + fsum[1], R + fsum[2]), cand, w)
             ranked = cand[np.argsort(-obj, kind="stable")]
             pr = pa[ranked]
             q = pr * np.concatenate([[1.0], np.cumprod(1.0 - pr)[:-1]])
             resid = max(0.0, 1.0 - float(q.sum()))
-            fs, fv, fr = ctx._filler[p]
-            S = S + q @ a.S[ranked] + resid * fs
-            V = V + q @ a.V[ranked] + resid * fv
-            R = R + q @ a.R[ranked] + resid * fr
+            fs, fv, fr = resid_src[p]
+            qs, qv, qr = q @ a.S[ranked], q @ a.V[ranked], q @ a.R[ranked]
+            lines[p] = (qs + resid * fs, qv + resid * fv, qr + resid * fr)
+            S = S + qs + resid * fs  # same association as optimizer-0.2.0 (default outputs bit-identical)
+            V = V + qv + resid * fv
+            R = R + qr + resid * fr
             not_mine[ranked] *= 1.0 - q
             q_rep = np.where(np.isin(ranked, added), -1.0, q)
             likely = int(ranked[int(np.argmax(q_rep))])
             roster.append(likely)  # representative pick: positional feasibility and the plan
             added.append(likely)
         P = ctx.model.win_probs(S[None], V[None], R[None])[0]
-        return added, float(self._objective(P[None], w)[0]), P
+        return added, float(self._objective(P[None], w)[0]), P, lines
+
+    def candidate_rollout(
+        self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray,
+    ) -> tuple[list[int], float, np.ndarray, list[float]]:
+        """The rollout used to score one candidate, honouring `filler` and `refine_passes`.
+
+        Returns (plan, objective, P, objective after each pass). With the defaults this is exactly `rollout`."""
+        prm = self.params
+        if prm.rollout_mode != "expected" or (prm.filler == "market" and prm.refine_passes <= 0):
+            added, obj, P = self.rollout(roster, available, future_picks, current_pick, w)
+            return added, obj, P, [obj]
+        if prm.filler not in FILLER_MODES:
+            raise ValueError(f"unknown filler mode {prm.filler!r}; expected one of {FILLER_MODES}")
+        base: dict[int, Line] | None = None
+        if prm.filler != "market":
+            key = (current_pick, prm.filler, tuple(future_picks), available.tobytes())
+            base = self._filler_cache.get(key)
+            if base is None:
+                base = self.ctx.board_filler(future_picks, current_pick, available, prm.filler,
+                                             lambda at, idx: self._pa(at, current_pick, idx))
+                self._filler_cache[key] = base
+        added, obj, P, lines = self._rollout_expected_lines(roster, available, future_picks, current_pick, w, base, base)
+        objs = [obj]
+        for _ in range(max(0, prm.refine_passes)):
+            fill = dict(base) if base is not None else {p: self.ctx._filler[p] for p in future_picks}
+            fill.update(lines)
+            added, obj, P, lines = self._rollout_expected_lines(roster, available, future_picks, current_pick, w,
+                                                                fill, base)
+            objs.append(obj)
+        return added, obj, P, objs
 
     def rollout_greedy(
         self, roster: list[int], available: np.ndarray, future_picks: list[int], current_pick: int, w: np.ndarray
@@ -340,16 +444,18 @@ class DraftOptimizer:
         w_full = ctx.weights([])
         strat_results: dict[str, dict] = {}
         per_strategy_cands: dict[str, list[dict]] = {}
+        research = prm.rollout_mode == "expected" and (prm.filler != "market" or prm.refine_passes > 0)
+        self._filler_cache = {}
         for name, punt in strategies.items():
             w = ctx.weights(punt)
             rows = []
             for c in cands:
                 av = available.copy()
                 av[c] = False
-                added, obj, P = self.rollout(roster + [c], av, later, current, w)
+                added, obj, P, objs = self.candidate_rollout(roster + [c], av, later, current, w)
                 full_obj = float(P.sum())
                 rows.append({"row": c, "obj": obj, "P": P, "plan": added, "cat_wins": full_obj,
-                             "matchup": float(ctx.model.matchup_win_prob(P[None])[0])})
+                             "matchup": float(ctx.model.matchup_win_prob(P[None])[0]), "obj_passes": objs})
             rows.sort(key=lambda r: -r["obj"])
             per_strategy_cands[name] = rows
             best = rows[0]
@@ -400,11 +506,14 @@ class DraftOptimizer:
         for rec in recs:
             rec["reason"] = self._reason(rec, recs[0], next_pick)
 
+        if research:
+            for rec_, r in zip(recs, rows, strict=True):
+                rec_["score_passes"] = [round(x, 4) for x in r["obj_passes"]]
         top = recs[0]
         final_team = roster + [ctx.pos[top["player_id"]]] + [ctx.pos[p] for p in top["plan"]]
         team_eval = ctx.model.evaluate_team(final_team)
         current_eval = ctx.model.evaluate_team(roster) if roster else None
-        return {
+        out = {
             "draft_id": draft_id,
             "as_of_pick": current - 1,
             "for_pick": decision_pick,
@@ -436,6 +545,11 @@ class DraftOptimizer:
             "open_starting_slots": unfilled_slots([ctx.positions[i] for i in roster], ctx.settings.starting_slots),
             "warnings": warnings,
         }
+        if research:  # research options only: default payloads stay identical to optimizer-0.2.0
+            out["filler"] = {"mode": prm.filler, "refine_passes": prm.refine_passes,
+                             "convergence": _convergence(rows),
+                             "evidence": "docs/research/optimizer_placeholders.md"}
+        return out
 
     def _roster_payload(self, state: DraftState, my_all: list[int]) -> list[dict]:
         out = []
@@ -466,6 +580,19 @@ class DraftOptimizer:
         if next_pick:
             parts.append(f"{rec['prob_available_next']:.0%} chance available at #{next_pick}")
         return "; ".join(parts)
+
+
+def _convergence(rows: list[dict]) -> dict:
+    """Per refinement pass: max |score change| over candidates and whether the #1 changed vs the previous pass."""
+    n = min(len(r["obj_passes"]) for r in rows)
+    steps = []
+    for k in range(1, n):
+        prev = max(rows, key=lambda r: r["obj_passes"][k - 1])["row"]
+        cur = max(rows, key=lambda r: r["obj_passes"][k])["row"]
+        steps.append({"pass": k, "max_abs_score_change": round(max(abs(r["obj_passes"][k] - r["obj_passes"][k - 1])
+                                                                   for r in rows), 4),
+                      "top_changed": prev != cur})
+    return {"passes": n, "steps": steps}
 
 
 def _strategy_note(chosen: str, res: dict) -> str:

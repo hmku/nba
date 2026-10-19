@@ -118,3 +118,52 @@ def test_expected_rollout_completes_plan(proj_path):
     plan, obj, P = DraftOptimizer(ctx).rollout(roster, av, future, 2, w)
     assert len(plan) == len(set(plan)) == len(future) and roster[0] not in plan
     assert np.isfinite(obj) and np.all((P >= 0) & (P <= 1))
+
+
+def test_filler_options_default_is_market_and_identical(proj_path):
+    """The research placeholder options are opt-in: default params give the same scores as filler=market."""
+    ctx = _ctx(proj_path)
+    taken = {i + 1: pid for i, pid in enumerate(ctx.market[:23])}
+    a = DraftOptimizer(ctx, OptimizerParams(strategy="balanced")).recommend(DraftState(taken=taken, my_slot=1))
+    b = DraftOptimizer(ctx, OptimizerParams(strategy="balanced", filler="market", refine_passes=0)).recommend(
+        DraftState(taken=taken, my_slot=1))
+    assert [(r["player_id"], r["score"]) for r in a["recommendations"]] == \
+        [(r["player_id"], r["score"]) for r in b["recommendations"]]
+    assert "filler" not in a and "score_passes" not in a["recommendations"][0]
+
+
+def test_board_filler_excludes_taken_and_is_a_line(proj_path):
+    ctx = _ctx(proj_path)
+    av = np.ones(len(ctx.ids), dtype=bool)
+    later = [36, 37, 60]
+    full = {m: ctx.board_filler(later, 24, av, m) for m in ("board", "available")}
+    for p in later:  # board-conditioned window on an untouched board ~ the market window
+        assert np.allclose(full["board"][p][0], ctx._filler[p][0], rtol=0.5, atol=1.0)
+    gone = av.copy()
+    gone[ctx.value_order[:60]] = False  # the 60 highest-value players are drafted
+    for m in ("board", "available"):
+        f = ctx.board_filler(later, 24, gone, m)
+        for p in later:
+            assert all(np.all(np.isfinite(x)) for x in f[p])
+            assert not np.allclose(f[p][0], full[m][p][0])
+
+
+def test_refine_passes_and_available_filler_run(proj_path):
+    ctx = _ctx(proj_path)
+    taken = {i + 1: pid for i, pid in enumerate(ctx.market[:23])}
+    for kw in ({"filler": "available"}, {"filler": "board"}, {"refine_passes": 2}):
+        rec = DraftOptimizer(ctx, OptimizerParams(strategy="balanced", **kw)).recommend(DraftState(taken=taken, my_slot=1))
+        recs = rec["recommendations"]
+        assert rec["filler"]["mode"] == kw.get("filler", "market")
+        assert rec["filler"]["convergence"]["passes"] == 1 + kw.get("refine_passes", 0)
+        assert all(len(r["score_passes"]) == 1 + kw.get("refine_passes", 0) for r in recs)
+        assert [r["score"] for r in recs] == sorted([r["score"] for r in recs], reverse=True)
+        assert not {r["player_id"] for r in recs} & set(taken.values())
+
+
+def test_unknown_filler_mode_raises(proj_path):
+    import pytest
+
+    ctx = _ctx(proj_path)
+    with pytest.raises(ValueError):
+        DraftOptimizer(ctx, OptimizerParams(strategy="balanced", filler="nope")).recommend(DraftState(taken={}, my_slot=1))

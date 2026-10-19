@@ -24,6 +24,7 @@ from fantasy.draft.cli import (
 )
 from fantasy.draft.optimizer import (
     DEFAULT_STRATEGIES,
+    FILLER_MODES,
     DraftContext,
     DraftOptimizer,
     DraftState,
@@ -73,6 +74,11 @@ def recommend(
     = "adp",
     room: Annotated[str, typer.Option("--room", help="--availability sim: room model mixed (3 sharp + 8 ADP "
                                       "drafters) | adp | sym (docs/research/draft_policy.md)")] = "mixed",
+    filler: Annotated[str, typer.Option("--filler", help="Research option: rollout placeholder for later picks: "
+                                        "market (default) | board | available (docs/research/optimizer_placeholders.md)")]
+    = "market",
+    refine: Annotated[int, typer.Option("--refine", help="Research option: complement-aware refinement passes "
+                                        "(default 0)")] = 0,
     as_json: JsonOpt = False,
 ) -> None:
     """Recommend my next pick given all recorded picks. Deterministic for a given state."""
@@ -90,6 +96,9 @@ def recommend(
     check_choice(policy, POLICIES, "--policy", as_json)
     check_choice(availability, ["adp", "sim"], "--availability", as_json)
     check_choice(room, list(ROOMS), "--room", as_json)
+    check_choice(filler, list(FILLER_MODES), "--filler", as_json)
+    if not 0 <= refine <= 5:
+        fail("--refine must be between 0 and 5", as_json, EXIT_USAGE)
     if search == "value" and policy != "optimizer":
         fail("--search value re-ranks the optimizer's candidates; use it with --policy optimizer", as_json,
              EXIT_USAGE, valid=["optimizer"])
@@ -106,7 +115,7 @@ def recommend(
     picks = store.get_picks(d["draft_id"])
     state = DraftState(taken={p["overall_pick"]: p["player_id"] for p in picks}, my_slot=d["my_slot"])
     opt = DraftOptimizer(ctx, OptimizerParams(strategy=strategy, objective=objective, availability=availability,
-                                              room=room))
+                                              room=room, filler=filler, refine_passes=refine))
     rec = opt.recommend(state, draft_id=d["draft_id"], model_run_id=run_id)
     # the policy decides the top pick (and records BPA / optimizer #1 side by side); value search, if any, then
     # advises relative to that order
@@ -134,6 +143,11 @@ def recommend(
         return
     typer.echo(f"Pick #{rec['for_pick']} (on the clock: #{rec.get('on_the_clock', {}).get('overall')}); "
                f"strategy {rec['strategy']['name']} — {rec['strategy']['notes']}")
+    fb = rec.get("filler")
+    if fb:
+        steps = fb["convergence"]["steps"]
+        typer.echo(f"research filler={fb['mode']} refine={fb['refine_passes']}"
+                   + (f"; last pass max score change {steps[-1]['max_abs_score_change']:.3f}" if steps else ""))
     pol = rec.get("policy") or {}
     if pol.get("top_pick"):
         typer.echo(f"policy {pol['name']}: {pol['top_pick_name']} — {pol['rule']} "
