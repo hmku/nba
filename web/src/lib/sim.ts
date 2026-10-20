@@ -54,6 +54,99 @@ export async function latestSimRuns(db: SupabaseClient, kind: string, limit = 10
   return { runs: (data as ModelRun[]) ?? [], error: error?.message };
 }
 
+/** Only the small fields `runCommand` / `runScenario` read (a full season_sim row is ~75 KB of jsonb). */
+const META_COLS =
+  "run_id,kind,model_version,created_at,p_command:params->command,p_scenario:params->scenario,s_command:summary->command,s_scenario:summary->scenario,s_label:summary->label";
+
+interface MetaRow {
+  run_id: string;
+  kind: string;
+  model_version: string;
+  created_at: string | null;
+  p_command?: unknown;
+  p_scenario?: unknown;
+  s_command?: unknown;
+  s_scenario?: unknown;
+  s_label?: unknown;
+}
+
+/** A metadata row reshaped as a ModelRun carrying only the fields the pickers inspect. */
+function metaRun(m: MetaRow): ModelRun {
+  return {
+    run_id: m.run_id,
+    kind: m.kind,
+    model_version: m.model_version,
+    git_sha: null,
+    inputs: null,
+    created_at: m.created_at,
+    params: { command: m.p_command ?? null, scenario: m.p_scenario ?? null },
+    summary: { command: m.s_command ?? null, scenario: m.s_scenario ?? null, label: m.s_label ?? null },
+  } as ModelRun;
+}
+
+export interface SimPicks {
+  /** newest run of the kind (full row), if requested */
+  latest: ModelRun | null;
+  /** pickSeasonRun over the newest `limit` runs (full row), if requested */
+  season: ModelRun | null;
+  /** pickPreseasonRun over the newest `limit` runs (full row), if requested */
+  preseason: ModelRun | null;
+  /** model_version of the newest run (from metadata) */
+  latestVersion: string | null;
+  error?: string;
+}
+
+/**
+ * Same selection as `latestSimRuns(db, kind, limit)` + pickSeasonRun / pickPreseasonRun / runs[0], but in
+ * two steps: a live metadata query (a few KB, decides which runs are newest) and then only the chosen
+ * full rows by run_id via `rows` (may be a cached client: a run row is immutable for its id).
+ */
+export async function loadSimPicks(
+  db: SupabaseClient,
+  rows: SupabaseClient,
+  kind: string,
+  limit: number,
+  want: { latest?: boolean; season?: boolean; preseason?: boolean },
+): Promise<SimPicks> {
+  const out: SimPicks = { latest: null, season: null, preseason: null, latestVersion: null };
+  const { data, error } = await db
+    .from("model_runs")
+    .select(META_COLS)
+    .eq("kind", kind)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return { ...out, error: error.message };
+  const meta = ((data as unknown as MetaRow[]) ?? []).map(metaRun);
+  out.latestVersion = meta[0]?.model_version ?? null;
+  const full = async (ids: string[]): Promise<ModelRun[]> => {
+    if (!ids.length) return [];
+    const r = await rows.from("model_runs").select("*").in("run_id", ids);
+    if (r.error) throw new Error(r.error.message);
+    const byId = new Map(((r.data as ModelRun[]) ?? []).map((x) => [x.run_id, x]));
+    return ids.map((id) => byId.get(id)).filter((x): x is ModelRun => !!x); // keep newest-first order
+  };
+  // season: metadata decides command/scenario; summary.my_team is only checkable on the full row, so walk
+  // the candidates newest-first in small batches (normally the first one matches).
+  const seasonCands = want.season
+    ? meta.filter((r) => runCommand(r) === "season" && isSeasonScenario(runScenario(r))).map((r) => r.run_id)
+    : [];
+  const preId = want.preseason ? (pickPreseasonRun(meta)?.run_id ?? null) : null;
+  const latestId = want.latest ? (meta[0]?.run_id ?? null) : null;
+  try {
+    const first = [...new Set([...seasonCands.slice(0, 2), ...(preId ? [preId] : []), ...(latestId ? [latestId] : [])])];
+    const got = new Map((await full(first)).map((r) => [r.run_id, r]));
+    out.preseason = preId ? (got.get(preId) ?? null) : null;
+    out.latest = latestId ? (got.get(latestId) ?? null) : null;
+    if (want.season) {
+      out.season = pickSeasonRun(seasonCands.slice(0, 2).map((id) => got.get(id)).filter((x): x is ModelRun => !!x));
+      for (let i = 2; !out.season && i < seasonCands.length; i += 4) out.season = pickSeasonRun(await full(seasonCands.slice(i, i + 4)));
+    }
+  } catch (e) {
+    out.error = String(e instanceof Error ? e.message : e);
+  }
+  return out;
+}
+
 function runCommand(r: ModelRun): string | null {
   return str(obj(r.params)?.command) ?? str(obj(r.summary)?.command) ?? null;
 }

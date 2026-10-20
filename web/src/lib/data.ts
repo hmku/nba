@@ -146,6 +146,8 @@ export async function loadValues(db: SupabaseClient, runId?: string): Promise<Va
     candidates = (data as ModelRun[]) ?? [];
   }
   run = candidates[0] ?? null;
+  // player names don't depend on which valuation run wins: fetch them alongside the values
+  const playersP = run ? loadPlayers(db) : null;
   for (const c of candidates) {
     try {
       const v = await pagedByRun<PlayerValue>(db, "player_values", c.run_id, "rank");
@@ -159,8 +161,8 @@ export async function loadValues(db: SupabaseClient, runId?: string): Promise<Va
       break;
     }
   }
-  if (!run) return { run: null, values: [], players: {}, errors };
-  const players = await loadPlayers(db);
+  if (!run || !playersP) return { run: null, values: [], players: {}, errors };
+  const players = await playersP;
   return { run, values, players, errors };
 }
 

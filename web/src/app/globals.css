@@ -15,6 +15,9 @@
   --bad: #e11d48;
   --warn: #b45309;
   --mine: rgba(79, 91, 213, 0.12);
+  /* selected nav tab: text 6.2:1 on its pill, 7.3:1 on --bg (WCAG AA); indicator bar = --accent (5.2:1) */
+  --tab-fg: #3a44b5;
+  --tab-bg: rgba(79, 91, 213, 0.12);
   /* category families (identity only; always shown next to a text label) */
   --cat-pct: #2a78d6;
   --cat-score: #eb6834;
@@ -37,6 +40,9 @@
   --bad: #fb7185;
   --warn: #fbbf24;
   --mine: rgba(139, 151, 255, 0.14);
+  /* selected nav tab: text 7.0:1 on its pill, 9.3:1 on --panel; indicator bar = --accent (7.0:1) */
+  --tab-fg: #aab3ff;
+  --tab-bg: rgba(139, 151, 255, 0.18);
   --cat-pct: #3987e5;
   --cat-score: #d95926;
   --cat-big: #199e70;
@@ -58,6 +64,8 @@
   --color-bad: var(--bad);
   --color-warn: var(--warn);
   --color-mine: var(--mine);
+  --color-tab-fg: var(--tab-fg);
+  --color-tab-bg: var(--tab-bg);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
