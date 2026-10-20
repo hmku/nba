@@ -3,16 +3,23 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Nav } from "@/components/Nav";
 import { ThemeAuto } from "@/components/client";
+import { ServiceWorkerRegister } from "@/components/ServiceWorker";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Fantasy Desk", template: "%s · Fantasy Desk" },
   description: "Fantasy basketball agent dashboard: draft room, agents, approvals, models.",
+  applicationName: "Fantasy Desk",
+  // manifest.ts is linked automatically; iOS "Add to Home Screen" reads these instead.
+  appleWebApp: { capable: true, title: "Fantasy Desk", statusBarStyle: "black-translucent" },
+  icons: { apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }] },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover", // lets env(safe-area-inset-*) report the notch / home-indicator insets (used in Nav + main)
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0a0c0f" },
     { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
@@ -31,8 +38,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="antialiased">
         <ThemeAuto />
+        <ServiceWorkerRegister />
         <Nav />
-        <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-24 md:pb-10">{children}</main>
+        <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">{children}</main>
       </body>
     </html>
   );

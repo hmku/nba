@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0c0f">
+<title>Offline · Fantasy Desk</title>
+<style>
+  :root { --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --fg:#0f1217; --muted:#5d6676; --accent:#4f5bd5; --accent-fg:#fff; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0a0c0f; --panel:#111419; --line:#232932; --fg:#e5e8ec; --muted:#8a93a3; --accent:#8b97ff; --accent-fg:#0a0c0f; }
+  }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  main { min-height:100%; display:grid; place-items:center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); box-sizing:border-box; }
+  .card { max-width:360px; text-align:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:24px; }
+  h1 { font-size:17px; margin:12px 0 4px; }
+  p { color:var(--muted); margin:0 0 16px; }
+  button { background:var(--accent); color:var(--accent-fg); border:0; border-radius:8px; padding:8px 16px; font:inherit; font-weight:600; cursor:pointer; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <img src="/icons/icon-192.png" width="48" height="48" alt="">
+    <h1>You're offline</h1>
+    <p>Fantasy Desk shows live data only, so nothing is cached. Reconnect and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</main>
+</body>
+</html>

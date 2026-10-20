@@ -195,6 +195,22 @@ delete from tasks where task_id like 'mock-%';
 delete from data_snapshots where snapshot_id like 'mock-%';
 ```
 
+## Install as an app (PWA)
+The dashboard is an installable web app ("Fantasy Desk"); it opens full-screen at `/` (→ Matchup after the draft).
+- **iPhone/iPad (Safari only):** open https://fantasy.harrisonku.com → Share button → *Add to Home Screen* → Add.
+  Unlock writes once inside the installed app (it has its own cookie jar, separate from Safari).
+- **Android (Chrome):** open the URL → ⋮ menu → *Install app* (or *Add to Home screen*) → Install.
+- **Desktop Chrome/Edge:** open the URL → install icon at the right of the address bar (or ⋮ → *Cast, save and share* →
+  *Install page as app*; Edge: ⋯ → *Apps* → *Install this site as an app*).
+
+How it works: `web/src/app/manifest.ts` (→ `/manifest.webmanifest`), icons in `web/public/icons/` generated from
+`web/src/app/icon.svg` by `node web/scripts/make-icons.mjs` (re-run + commit if the SVG changes), Apple metadata in
+`layout.tsx`, and a minimal service worker `web/public/sw.js` (registered in production only). The SW caches **only**
+`/_next/static/*` and `/icons/*`; pages always come from the network (offline → `/offline.html`), and `/api/*`,
+Supabase and all other requests are never intercepted or cached, so data is always live. To force-update the SW,
+bump `VERSION` in `sw.js`. Safe areas (notch / home indicator) are handled via `viewportFit: "cover"` +
+`env(safe-area-inset-*)` padding in `Nav.tsx` and the main container.
+
 ## Troubleshooting
 - Red "sync error" dot on /draft: Supabase unreachable or RLS error; message shown as one red line at the top.
   The page keeps the last good state. Use the CLI as a fallback.
