@@ -29,7 +29,10 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
 1. Daily: scheduled task `fantasy-daily` (10:00 ET; first unattended run 2026-10-20). Watch its logs (`docs/daily/`) and fix friction.
 2. **Awaiting the user's yes:** waiver claim Julian Champagnie / drop Ace Bailey (helps under all 3 projection sets; claim
    before Thu Oct 22). Murray trades: speculative schedule bet, not now (inseason-0.3.0, `docs/research/streaming_and_trade_scan.md` §0).
-3. Moves tab live (`fantasy advise`); advisor channel built (user sets ADVISOR_API_TOKEN).
+3. Dashboard (2026-10-20): This week (score + both lineups + cat odds, `/week`), League, Inbox (decisions with Approve =
+   user's yes, ideas, threaded agent feed; `/inbox`), Draft, More. Live score: `fantasy league score` from
+   `scripts/yahoo/capture_matchup.js`; lineup-0.3.0 uses banked totals. Daily task 07:10 ET. Advisor channel built
+   (user sets ADVISOR_API_TOKEN). Privacy migration applied (anon can't read chat/snapshots).
 4. Decide: in-season projection updates (proposed session, backtest first).
 5. Streaming (T-006) + trade scan (T-008) done and quant-reviewed (inseason-0.3.0); T-016: draft-room part done (first sample), in-season tag priors / rest_share open.
 6. Advisor channel (`/advisor`, ADVISOR_API_TOKEN, read-only GPT dot): built; user sets the token (USER_TODO) and pastes the setup prompt.

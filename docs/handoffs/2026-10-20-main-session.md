@@ -81,3 +81,19 @@ nav). The deployed `/manifest.webmanifest` and icons return 200.
 - For the user / open: set the task's permission mode to Auto in the desktop app (or recreate the task from a desktop
   message); CI mypy one-liner (USER_TODO; token lacks workflow scope); delete leftover `mock-check` draft row? (DB delete,
   ask); projections docstring vs code on age curve for TOV (model question); advisor token setup.
+
+## Day 1 afternoon (2026-10-20): dashboard reshaped around decisions
+- Policy: the user's Approve click on a dashboard approval counts as their yes (CLAUDE.md, skills, memory). Every
+  recommendation carries `rationale` + `why_now` (advice-0.2.0; CLAUDE.md evidence standard).
+- Built + merged (subagents, reviewed): threads (agree/disagree replies; Muse/advisor/user/Claude), unified paginated
+  feed, Inbox (Moves+Activity: one card per decision with Why/What changed, Approve/Reject, discussion), This week
+  (Matchup+Lineup: live score header, category odds, my lineup vs opponent's, games left), Lineup records
+  (`lineup plan --save`, `lineup record`, `league sync --record-lineup`), live score (`fantasy league score`, parser
+  verified on the real page; lineup-0.3.0 aims at categories still in play), History lazy-load, dashboard speed
+  (loading skeletons, -64 KB JS), dark-mode active tab.
+- Privacy: migration 20261019120000 applied via Supabase connector (user-approved); verified anon can't read
+  chat_note/chat_digest or league_snapshots.
+- Daily task moved to 07:00 ET (dispatch ~07:10).
+- Open decisions on the Inbox: Champagnie claim/drop Bailey (apr-4931627b…, before Thu Oct 22 waivers), propose
+  VanVleet → Edgecombe + Nurkić to jesse's Phenomenal Team (apr-b111d44e…; from a private Muse DM report, kept private).
+- Notes: Muse prompt for threads given to the user (not yet confirmed sent); advisor token not set yet.
