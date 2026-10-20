@@ -102,7 +102,40 @@
     "label": "Streaming & trade scan (§0)",
     "path": "docs/research/streaming_and_trade_scan.md"
    }
-  ]
+  ],
+  "rationale": [
+   "Julian Champagnie is a 3-and-D forward (San Antonio, SF/PF): he hits threes, rebounds a bit, and rarely turns it over. Ace Bailey is a 20-year-old rookie scorer whose role and efficiency are uncertain.",
+   "Over a full season Champagnie is projected to play ~10 more games (72 vs 62) and to give us more 3-pointers and rebounds at better efficiency; Bailey gives a bit more points and assists.",
+   "The paired season simulations favour Champagnie under all three projection sets (ours, the ESPN+FantasyPros market blend, and ESPN-only): about +1.6 to +2.4 pp title odds and +0.7 to +1.1 pp playoff odds, each > 2 SE.",
+   "- Cost this week: about −1 pp of P(win vs Joshua's) — Bailey loses 2 games before Champagnie can play (claim clears Oct 22, he plays from Oct 23).",
+   "- Cost the model doesn't capture: our waiver priority goes from 1st to last (rolling list), so we'd be behind everyone for the next breakout pickup; and Bailey's rookie upside (if he wins a bigger role, his value could rise mid-season)."
+  ],
+  "why_now": {
+   "before": "At the draft (pick 156, our last) the model had Bailey and Champagnie in an exact tie: optimizer score 5.617 vs 5.617, and the 48-rollout season simulation gave Bailey 35.18% vs 34.99% title odds — a 0.2 pp gap well inside its noise. Our rule was 'always take the top recommendation', so the tie went to Bailey.",
+   "changed": [
+    {
+     "text": "Much more precise evidence: 8 seeds × 2,000 paired seasons per projection set instead of 48 rollouts, so a 1.5-2 pp edge is now clearly above noise.",
+     "kind": "model"
+    },
+    {
+     "text": "Robustness across projection sets (new since the draft): the market projections value Bailey far lower (0.59 vs Champagnie 0.97), our own model slightly lower (1.08 vs 1.26).",
+     "kind": "model"
+    },
+    {
+     "text": "Simulator upgrades since the draft: position-aware daily lineups and IL replacement (season-sim-0.6.0); the C/PF crunch costs ~0 games, so Bailey's SF eligibility (a draft-time roster need) no longer buys anything — Champagnie is SF/PF too.",
+     "kind": "model"
+    },
+    {
+     "text": "Champagnie went undrafted and is free to claim; no games have been played yet, so this is not a reaction to on-court news.",
+     "kind": "league"
+    }
+   ],
+   "evidence": [
+    "ΔP(title), blend",
+    "ΔP(title), market projections",
+    "ΔP(title), ESPN stats + ESPN games (stress)"
+   ]
+  }
  },
  "params": {
   "add": "julian-champagnie",

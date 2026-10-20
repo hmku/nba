@@ -119,7 +119,31 @@
     "label": "Quant review summary",
     "path": "docs/handoffs/2026-10-20-main-session.md"
    }
-  ]
+  ],
+  "rationale": [
+   "Jamal Murray (Denver) is a high-volume scoring guard. The idea is to consolidate two of our players into one better one, then use the open roster spot on a free agent.",
+   "Most of the simulated title gain comes from the NBA schedule, not Murray's quality: Denver plays 4 games in each of fantasy playoff weeks 19 and 20 vs 3 for the players we'd give, and an extra game in a championship week matters a lot.",
+   "Brunson+Bailey→Murray helps us but costs Yeet 1-6 pp of playoff odds, so they would likely refuse; Ware+VanVleet→Murray raises title odds but lowers our playoff odds and category wins (speculative).",
+   "- Not recommended now. Better to make the free Champagnie claim first and revisit trades nearer the Mar 4 deadline, when health and rest patterns for the playoff weeks are clearer."
+  ],
+  "why_now": {
+   "before": "Trades only became possible after the draft. Last night's first scan reported +8.6 pp title odds for Ware+VanVleet→Murray and suggested pursuing it with a Champagnie refill.",
+   "changed": [
+    {
+     "text": "An independent review found the +8.6 pp was inflated: about half was the free Champagnie pickup (no trade needed), plus best-case refill and lucky seed reuse.",
+     "kind": "model"
+    },
+    {
+     "text": "inseason-0.3.0 re-measured against a base that already includes the free move, with a realistic refill, fresh seeds and a schedule-neutral comparison: most of the remaining gain is Denver's playoff-week schedule.",
+     "kind": "model"
+    },
+    {
+     "text": "Partner check added: Yeet's own odds fall in the bigger version, so it's unlikely to be accepted.",
+     "kind": "model"
+    }
+   ],
+   "evidence": []
+  }
  },
  "params": {
   "source": "inseason-0.3.0 tradeeval, base incl. Champagnie/Bailey, refill 6th FA, 6 seeds",
