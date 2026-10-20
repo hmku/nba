@@ -5,16 +5,16 @@
  *  custom:     drafts.config.custom_rounds = [[slot order of round 1], [round 2], ...]
  *              (Yahoo has no native 3RR; set via `fantasy draft set-order`).
  */
-export type CustomRounds = number[][] | null | undefined;
+type CustomRounds = number[][] | null | undefined;
 
-export interface PickSlot {
+interface PickSlot {
   overall: number;
   round: number;
   slot: number;
   pickInRound: number;
 }
 
-export function isReversed(round: number, orderType: string): boolean {
+function isReversed(round: number, orderType: string): boolean {
   if (orderType === "snake_3rr") {
     if (round === 1) return false;
     if (round === 2 || round === 3) return true;
@@ -54,7 +54,7 @@ export function draftOrder(numTeams: number, numRounds: number, orderType: strin
   return out;
 }
 
-export function pickInfo(overall: number, numTeams: number, orderType: string, custom?: CustomRounds, numRounds?: number) {
+function pickInfo(overall: number, numTeams: number, orderType: string, custom?: CustomRounds, numRounds?: number) {
   const rounds = numRounds ?? Math.max(custom?.length ?? 0, Math.ceil(overall / numTeams));
   const order = draftOrder(numTeams, rounds, orderType, custom);
   const p = order[overall - 1];
@@ -85,7 +85,7 @@ export function storedOrderOf(config: unknown, numTeams: number, numRounds: numb
   return slots;
 }
 
-export interface DraftOrderSource {
+interface DraftOrderSource {
   num_teams: number;
   num_rounds: number;
   order_type: string;

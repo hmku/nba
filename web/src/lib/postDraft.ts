@@ -18,14 +18,14 @@ const n = (v: unknown): number | null => (typeof v === "number" && Number.isFini
 const a = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const s = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
-export const POST_DRAFT_PREFIX = "post-draft";
+const POST_DRAFT_PREFIX = "post-draft";
 
 /** Season runs on real rosters: no scenario (older runs) or a "post-draft…" scenario. */
 export function isSeasonScenario(scenario: string | null | undefined): boolean {
   return scenario == null || scenario.startsWith(POST_DRAFT_PREFIX);
 }
 
-export function numMap(v: unknown): Record<string, number> {
+function numMap(v: unknown): Record<string, number> {
   const out: Record<string, number> = {};
   const m = o(v);
   if (m) for (const [k, x] of Object.entries(m)) if (n(x) != null) out[k] = x as number;

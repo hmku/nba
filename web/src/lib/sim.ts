@@ -12,13 +12,13 @@ import { isSeasonScenario, parseH2HMatrix, parseScheduleInfo, parseVsOpponents, 
 
 export type Obj = Record<string, unknown>;
 
-export function obj(v: unknown): Obj | null {
+function obj(v: unknown): Obj | null {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null;
 }
 export function arr(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
 }
-export function num(v: unknown): number | null {
+function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Number(v);
   return null;
@@ -27,12 +27,12 @@ export function str(v: unknown): string | null {
   return typeof v === "string" && v ? v : typeof v === "number" ? String(v) : null;
 }
 /** First present value among several candidate keys (shapes evolve; accept aliases). */
-export function pick(o: Obj | null | undefined, ...keys: string[]): unknown {
+function pick(o: Obj | null | undefined, ...keys: string[]): unknown {
   if (!o) return undefined;
   for (const k of keys) if (o[k] !== undefined && o[k] !== null) return o[k];
   return undefined;
 }
-export function catMap(v: unknown): Partial<Record<CatKey, number>> {
+function catMap(v: unknown): Partial<Record<CatKey, number>> {
   const o = obj(v);
   const out: Partial<Record<CatKey, number>> = {};
   if (!o) return out;
@@ -54,16 +54,16 @@ export async function latestSimRuns(db: SupabaseClient, kind: string, limit = 10
   return { runs: (data as ModelRun[]) ?? [], error: error?.message };
 }
 
-export function runCommand(r: ModelRun): string | null {
+function runCommand(r: ModelRun): string | null {
   return str(obj(r.params)?.command) ?? str(obj(r.summary)?.command) ?? null;
 }
 
-export function runScenario(r: ModelRun): string | null {
+function runScenario(r: ModelRun): string | null {
   const s = obj(r.summary);
   return str(pick(s, "scenario", "label")) ?? str(obj(r.params)?.scenario) ?? null;
 }
 
-export const PRESEASON = "pre-draft projection";
+const PRESEASON = "pre-draft projection";
 
 /** Newest pre-draft projection (`fantasy sim preseason`). */
 export function pickPreseasonRun(runs: ModelRun[]): ModelRun | null {
@@ -104,7 +104,7 @@ export interface WeekMatchup {
   raw: Obj;
 }
 
-export function parseWeek(v: unknown): WeekMatchup | null {
+function parseWeek(v: unknown): WeekMatchup | null {
   const o = obj(v);
   if (!o) return null;
   const week = num(o.week);
@@ -154,7 +154,7 @@ export interface TeamRow {
   isMe: boolean;
 }
 
-export function parseLeagueTable(v: unknown): TeamRow[] {
+function parseLeagueTable(v: unknown): TeamRow[] {
   const out: TeamRow[] = [];
   for (const r of arr(v)) {
     const o = obj(r);
@@ -191,7 +191,7 @@ export interface TeamProfile {
   gamesPerWeek: number | null;
 }
 
-export function parseProfiles(v: unknown): Record<string, TeamProfile> {
+function parseProfiles(v: unknown): Record<string, TeamProfile> {
   const o = obj(v);
   const out: Record<string, TeamProfile> = {};
   if (!o) return out;
@@ -319,7 +319,7 @@ function parseCatProfile(v: unknown): SeasonSim["categoryProfile"] {
 }
 
 /** [{player_id, name}] or ["slug", ...] → [{id, name}] */
-export function parsePlayerRefs(v: unknown): { id: string; name: string }[] {
+function parsePlayerRefs(v: unknown): { id: string; name: string }[] {
   return arr(v)
     .map((x) => {
       const o = obj(x);
