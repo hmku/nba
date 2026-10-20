@@ -92,7 +92,6 @@ class Recommender:
         self.ctx, self.cfg, self.projections = ctx, cfg, projections
         self.opt = DraftOptimizer(ctx, cfg.optimizer_params())
         self._vs = None
-        self._vs_error: str | None = None
 
     def value_search(self):  # noqa: ANN201 — ValueSearch, imported lazily
         if self._vs is None:
