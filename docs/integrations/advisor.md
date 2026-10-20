@@ -136,7 +136,7 @@ anything that touches the team.
 
 ## Threads (agree / disagree)
 
-Every update on the dashboard Activity page has a thread: Muse's reports (e.g. a `trade_offer` someone made),
+Every update on the dashboard Inbox page has a thread: Muse's reports (e.g. a `trade_offer` someone made),
 Claude's recommendations, decisions and daily summaries, your own suggestions. You can reply to any of them
 except private group-chat digests (the API answers 403):
 

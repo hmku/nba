@@ -609,7 +609,7 @@ function inWeek(dates: (string | null)[], start: string, end: string): boolean {
 
 /**
  * The week's decisions, newest first: Yahoo transactions (lineup changes with their verification evidence, IL moves,
- * add/drops, trades), approvals, recommendations (Moves items with rationale / why-now) and logged decisions.
+ * add/drops, trades), approvals, recommendations (Inbox decision cards with rationale / why-now) and logged decisions.
  * An item belongs to the week when it happened in it (ET) or is FOR a date in it (txn payload.date, advice for_date/week).
  */
 export function buildTimeline(
@@ -635,7 +635,7 @@ export function buildTimeline(
       rationale: texts(p?.rationale ?? p?.reason),
       whyNow: s(p?.why_now),
       evidence: txnEvidence(t),
-      href: "/activity#runs",
+      href: "/inbox?timeline=1#runs",
     });
   }
   for (const r of input.approvals) {
@@ -651,7 +651,7 @@ export function buildTimeline(
       rationale: [...texts(p?.rationale), ...(r.note ? [r.note] : [])],
       whyNow: s(p?.why_now),
       evidence: null,
-      href: "/activity",
+      href: `/inbox#${encodeURIComponent(r.approval_id)}`,
     });
   }
   for (const x of input.advice) {
@@ -666,7 +666,7 @@ export function buildTimeline(
       rationale: x.rationale,
       whyNow: x.whyNow,
       evidence: null,
-      href: "/moves",
+      href: `/inbox#${encodeURIComponent(x.adviceId)}`,
     });
   }
   for (const d of input.decisions) {
@@ -683,7 +683,7 @@ export function buildTimeline(
       rationale: d.rationale ? [d.rationale] : [],
       whyNow: null,
       evidence: null,
-      href: d.run_id ? `/activity?timeline=1#runs` : "/activity",
+      href: d.run_id ? `/inbox?timeline=1#runs` : "/inbox",
     });
   }
   return out.sort((x, y) => (y.at ?? "").localeCompare(x.at ?? ""));

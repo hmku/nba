@@ -3,7 +3,7 @@ import { LEGACY_REDIRECTS } from "./src/lib/routes";
 
 const nextConfig: NextConfig = {
   async redirects() {
-    // /matchup and /lineup -> /week (query string passed through)
+    // /matchup, /lineup -> /week; /moves, /activity, /approvals, /agents -> /inbox (query string passed through)
     return LEGACY_REDIRECTS.map((r) => ({ ...r }));
   },
   async headers() {

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Landing: before/during the draft → Draft room; once the (real) draft is complete → This week (matchup + lineups).
- * (The old "Team" attention page moved: approvals → Activity tab badge, data freshness → More › History.)
+ * (The old "Team" attention page moved: approvals → Inbox tab badge, data freshness → More › History.)
  */
 export default async function Home() {
   const db = anonClient();

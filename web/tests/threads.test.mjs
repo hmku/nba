@@ -1,4 +1,4 @@
-// Threads (replies to agent updates) + the Activity "Agent updates" feed. Run: `npm test`.
+// Threads (replies to agent updates) + the Inbox "Agent updates" feed. Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {

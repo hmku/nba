@@ -6,9 +6,18 @@ import { useWriteStatus } from "@/components/client";
 
 const STANCES = ["agree", "disagree", "comment", "question"] as const;
 
-/** The user's reply to an update. Only rendered once the dashboard is unlocked (same passphrase-gated write path as
- *  approvals); posts to /api/threads/reply, where the server sets the author to "user". */
-export function ReplyBox({ replyTo }: { replyTo: string }) {
+/** The user's reply to an update, or (`comment`) a new thread on a decision card. Only rendered once the dashboard is
+ *  unlocked (same passphrase-gated write path as approvals); posts to /api/threads/reply or /api/threads/comment,
+ *  where the server sets the author to "user". */
+export function ReplyBox({
+  replyTo,
+  comment,
+  label = "Reply",
+}: {
+  replyTo?: string;
+  comment?: { advice_id: string } | { approval_id: string };
+  label?: string;
+}) {
   const ws = useWriteStatus();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -21,7 +30,7 @@ export function ReplyBox({ replyTo }: { replyTo: string }) {
   if (!open)
     return (
       <button onClick={() => setOpen(true)} className="text-xs text-accent hover:underline">
-        Reply
+        {label}
       </button>
     );
 
@@ -29,10 +38,10 @@ export function ReplyBox({ replyTo }: { replyTo: string }) {
     if (!text.trim()) return;
     setBusy(true);
     setErr(null);
-    const r = await fetch("/api/threads/reply", {
+    const r = await fetch(comment ? "/api/threads/comment" : "/api/threads/reply", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reply_to: replyTo, stance, text }),
+      body: JSON.stringify(comment ? { ...comment, stance, text } : { reply_to: replyTo, stance, text }),
     });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
@@ -75,7 +84,7 @@ export function ReplyBox({ replyTo }: { replyTo: string }) {
           disabled={busy || !text.trim()}
           className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-bg disabled:opacity-40"
         >
-          Post reply
+          {comment ? "Post comment" : "Post reply"}
         </button>
         <button onClick={() => setOpen(false)} disabled={busy} className="text-xs text-muted">
           Cancel

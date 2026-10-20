@@ -1,5 +1,5 @@
 /**
- * Activity "Agent updates" feed (pure, no runtime imports: unit-tested by `npm test`).
+ * Inbox "Agent updates" feed (pure, no runtime imports: unit-tested by `npm test`).
  *
  * One chronological feed of everything the agents tell the user: Muse reports (incl. trade offers), Muse's latest
  * Yahoo snapshots (one compact card), group-chat digests (private: only after the passphrase unlock), advisor
@@ -128,7 +128,7 @@ const tsOf = (v: string | null | undefined): string => v ?? "";
 
 /** Build the feed. `events` may contain duplicates (several queries); `canSeePrivate` = passphrase unlocked.
  *  `order`: "activity" (default: newest of the update and its replies; the agent API) or "posted" (the update's
- *  own time: stable for the Activity page's cursor pagination, replies never move a thread). */
+ *  own time: stable for the Inbox page's cursor pagination, replies never move a thread). */
 export function buildFeed({
   events,
   runs = [],

@@ -67,6 +67,9 @@ ADVISOR_REPORT_KINDS = ("advisor_suggestion",)
 CLAUDE_RUN_PREFIX = "claude-"
 USER_RUN_PREFIX = "user-"
 REPLY_KIND = "reply"
+# The user's new thread on a dashboard Inbox decision card (POST /api/threads/comment): a root, linked to the decision
+# by payload.details.advice_id | approval_id (docs/research/dashboard_data.md §4 "Advice ↔ approval ↔ thread").
+USER_COMMENT_KIND = "comment"
 CLAUDE_POST_KINDS = ("update", "recommendation", "trade_offer", "question", "other")
 REPORT_SOURCES = {"muse": MUSE_RUN_PREFIX, "advisor": ADVISOR_RUN_PREFIX,
                   "claude": CLAUDE_RUN_PREFIX, "user": USER_RUN_PREFIX}
@@ -74,7 +77,7 @@ KINDS_BY_SOURCE: dict[str, tuple[str, ...]] = {
     "muse": (*REPORT_KINDS, REPLY_KIND),
     "advisor": (*ADVISOR_REPORT_KINDS, REPLY_KIND),
     "claude": (*CLAUDE_POST_KINDS, REPLY_KIND),
-    "user": (REPLY_KIND,),
+    "user": (USER_COMMENT_KIND, REPLY_KIND),
 }
 # group-chat content: hidden from the public dashboard key (RLS) and never answerable (replies are public)
 PRIVATE_REPORT_KINDS = ("chat_digest", "chat_note")
@@ -795,7 +798,7 @@ def open_threads(src: IntelSource, *, since: datetime | None = None,
     t0 = at or now()
     since = as_utc(since) if since else t0 - timedelta(days=7)
     roots: dict[str, dict[str, Any] | None] = {}
-    for s in ("muse", "advisor", "claude"):
+    for s in ("muse", "advisor", "claude", "user"):
         for r in src.reports(None, since, 200, s):
             k = r["report_kind"]
             if k in PRIVATE_REPORT_KINDS or k in (REPLY_KIND, "observed_pick"):

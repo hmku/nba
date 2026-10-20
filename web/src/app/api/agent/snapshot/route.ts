@@ -75,6 +75,6 @@ export async function POST(req: Request) {
     summary: s.summary,
     payload_sha256: s.payload_sha256,
     warnings: s.warnings,
-    note: "Stored for the agents and shown on the dashboard Activity page. No action was taken.",
+    note: "Stored for the agents and shown on the dashboard Inbox page. No action was taken.",
   });
 }

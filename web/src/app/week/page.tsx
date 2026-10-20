@@ -541,7 +541,7 @@ function DecisionItem({ it }: { it: TimelineItem }) {
       {it.evidence && <div className="mt-0.5 text-[11.5px] text-good">{it.evidence}</div>}
       {it.href && (
         <Link href={it.href} className="text-[11px] text-accent">
-          {it.href.startsWith("/moves") ? "Moves →" : "Activity →"}
+          Inbox →
         </Link>
       )}
     </li>
@@ -553,10 +553,11 @@ function Decisions({ items }: { items: TimelineItem[] }) {
   const rest = items.slice(3);
   return (
     <>
+      <span id="decisions" className="block scroll-mt-16" />
       <SectionTitle
         right={
-          <Link href="/activity" className="text-accent">
-            all activity →
+          <Link href="/inbox" className="text-accent">
+            inbox →
           </Link>
         }
       >

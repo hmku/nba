@@ -731,6 +731,53 @@ export function replyEventPayload(r: ReplyInput, author: ThreadAuthor, threadRoo
   };
 }
 
+/* ------------------------------------------------------------------ comments on a decision (Inbox card) */
+
+/** report_kind of the user's new thread on a decision card (a root, not a reply: the card may have no thread yet). */
+export const USER_COMMENT_KIND = "comment";
+const ADVICE_ID_RE = /^[a-z0-9][a-z0-9._-]{2,99}$/;
+
+export interface CommentInput {
+  ref: { advice_id: string } | { approval_id: string };
+  stance: Stance;
+  text: string;
+}
+
+/** Validate `POST /api/threads/comment` {advice_id | approval_id, stance, text}: exactly one reference. */
+export function validateComment(body: unknown): { ok: true; value: CommentInput } | { ok: false; errors: string[] } {
+  if (!isObj(body)) return { ok: false, errors: ["Body must be a JSON object"] };
+  if (JSON.stringify(body).length > REPLY_MAX_BYTES) return { ok: false, errors: [`Body too large (max ${REPLY_MAX_BYTES} chars of JSON)`] };
+  const errors: string[] = [];
+  const adviceId = typeof body.advice_id === "string" ? body.advice_id.trim() : "";
+  const approvalId = typeof body.approval_id === "string" ? body.approval_id.trim() : "";
+  if (!!adviceId === !!approvalId) errors.push("exactly one of advice_id or approval_id is required");
+  else if (adviceId && !ADVICE_ID_RE.test(adviceId)) errors.push("advice_id: lowercase slug [a-z0-9._-], 3-100 chars");
+  else if (approvalId && !EVENT_ID_RE.test(approvalId)) errors.push("approval_id: invalid id");
+  const stance = String(body.stance ?? "comment");
+  if (!(STANCES as readonly string[]).includes(stance)) errors.push(`stance must be one of: ${STANCES.join(", ")}`);
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  if (!text) errors.push("text (non-empty string) is required");
+  else if (text.length > REPLY_MAX_TEXT) errors.push(`text too long (max ${REPLY_MAX_TEXT})`);
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, value: { ref: adviceId ? { advice_id: adviceId } : { approval_id: approvalId }, stance: stance as Stance, text } };
+}
+
+/** The agent_events row fields for the user's comment: a thread root linked to the decision by `details`. */
+export function commentEventPayload(c: CommentInput): { message: string; payload: Record<string, unknown> } {
+  return {
+    message: c.text,
+    payload: {
+      report_kind: USER_COMMENT_KIND,
+      text: c.text,
+      stance: c.stance,
+      details: { ...c.ref },
+      author: "user",
+      reported_by: "user",
+      source: "user",
+    },
+  };
+}
+
 /** Daily run that holds the user's dashboard replies (agent 'user', never "running"). */
 export function userRunId(now: Date = new Date()): string {
   return `user-${etDay(now)}`;

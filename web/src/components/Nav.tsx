@@ -9,8 +9,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/env";
 const TABS = [
   { href: "/week", label: "This week", icon: "⚔" },
   { href: "/league", label: "League", icon: "▦" },
-  { href: "/moves", label: "Moves", icon: "⇄" },
-  { href: "/activity", label: "Activity", icon: "≋" },
+  { href: "/inbox", label: "Inbox", icon: "\u2709\uFE0E" },
   { href: "/draft", label: "Draft", icon: "◎" },
 ];
 
@@ -27,7 +26,7 @@ async function fetchPendingCount(): Promise<number | null> {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Pending-approval count for the Activity badge (polls every 30s while visible). */
+/** Pending-approval count for the Inbox badge (polls every 30s while visible). */
 function usePendingApprovals(): number {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -68,7 +67,8 @@ const MORE = [
 
 function isActive(path: string, href: string) {
   if (href === "/week") return path.startsWith("/week") || path.startsWith("/matchup") || path.startsWith("/lineup");
-  if (href === "/activity") return path.startsWith("/activity") || path.startsWith("/agents") || path.startsWith("/approvals");
+  if (href === "/inbox")
+    return ["/inbox", "/moves", "/activity", "/agents", "/approvals"].some((p) => path.startsWith(p));
   return path.startsWith(href);
 }
 
@@ -184,7 +184,7 @@ export function Nav() {
                   }`}
                 >
                   <PendingPulse>{t.label}</PendingPulse>
-                  {t.href === "/activity" && <Badge n={pending} />}
+                  {t.href === "/inbox" && <Badge n={pending} />}
                 </Link>
               );
             })}
@@ -200,7 +200,7 @@ export function Nav() {
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 px-[env(safe-area-inset-left)] pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-5">
           {TABS.map((t) => {
             const on = isActive(shown, t.href);
             return (
@@ -213,7 +213,7 @@ export function Nav() {
               >
                 <span className={`relative rounded-full px-3 py-0.5 text-lg leading-none ${on ? "bg-tab-bg" : ""}`}>
                   {t.icon}
-                  {t.href === "/activity" && pending > 0 && (
+                  {t.href === "/inbox" && pending > 0 && (
                     <span className="absolute -top-1 right-0">
                       <Badge n={pending} />
                     </span>

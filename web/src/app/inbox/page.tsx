@@ -7,10 +7,13 @@ import { serviceClient } from "@/lib/supabase-admin";
 import { isAuthed } from "@/lib/auth";
 import type { AgentEvent, AgentRun, Approval, Decision, LeagueSnapshot, Lock, Transaction } from "@/lib/types";
 import { Disclosure, ErrorNote } from "@/components/ui";
+import { todayET } from "@/lib/sim";
+import { latestAdvice, type AdviceRow } from "@/lib/moves";
+import { groupInbox, joinDecisions, linkRowsOr, linkThreads, NOT_LINKABLE_IN, withoutLinked } from "@/lib/inbox";
 import { AutoRefresh } from "@/components/client";
 import { ageSeconds } from "@/lib/format";
 import { isPrivateEvent, latestPerKind } from "@/lib/agentPure";
-import { buildFeed, decisionIdOf, feedFacets, type FeedItem, filterFeed, isReply, NOTABLE_EVENT_KINDS } from "@/lib/feed";
+import { buildFeed, decisionIdOf, feedFacets, type FeedItem, filterFeed, isReply, NOTABLE_EVENT_KINDS, threadRootOf } from "@/lib/feed";
 import {
   addFacets,
   assemblePage,
@@ -30,11 +33,13 @@ import {
   type Source,
 } from "@/lib/feedPage";
 import { AgentFeed, FeedFilters, FeedPager, RecentReplies } from "./Feed";
-import { HealthStrip, LocksLine, PastRecords, PendingApprovals, RunTimeline, SystemWarnings } from "./sections";
+import { HealthStrip, LocksLine, PastRecords, RunTimeline, SystemWarnings } from "./sections";
+import { ClosedDecisions, DecisionSection } from "./Decisions";
+import { EvidenceLegend } from "./AdviceParts";
 
 // approvals and the passphrase cookie make this page per-request
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Activity" };
+export const metadata: Metadata = { title: "Inbox" };
 
 /** Agents whose daily runs are passive log containers (heartbeat only when they post): never "stuck". */
 const PASSIVE_AGENTS = new Set(["muse", "advisor", "user", "claude"]);
@@ -50,11 +55,18 @@ const FACET_ROWS = 1000;
 const NEW_REPLIES_SHOWN = 5;
 /** Newest replies read in full in round 1 (older ones are fetched by id when a page needs them). */
 const RECENT_REPLIES = 100;
+/** Newest advice versions read (each item shows its newest version) and candidate thread roots for the cards. */
+const ADVICE_ROWS = 300;
+const LINK_ROWS = 200;
 
 type Rows = { data: unknown; error: { message: string } | null; count?: number | null };
 const none: Promise<Rows> = Promise.resolve({ data: [], error: null, count: 0 });
 
-export default async function ActivityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+/**
+ * Inbox = the former Moves + Activity pages: decisions (recommendation + approval + discussion, once each), ideas, the
+ * agent-updates feed (minus threads shown inside a decision card), done/rejected decisions, and the system records.
+ */
+export default async function InboxPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" && v ? v : null);
   const author = isAuthor(one(sp.author)) ? one(sp.author) : null;
@@ -107,7 +119,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   };
 
   // round 1: every independent query (system records, approvals, the feed's light index + facets) in ONE round trip
-  const [runsR, decR, txnR, locksR, apprR, snapR, mrR, facetR, runCountR, evOldR, evNewR, runOldR, runNewR, recentRepliesR] = await Promise.all([
+  const [runsR, decR, txnR, locksR, apprR, snapR, mrR, facetR, runCountR, evOldR, evNewR, runOldR, runNewR, recentRepliesR, adviceR, linkR] = await Promise.all([
     db.from("agent_runs").select(RUN_COLS).order("started_at", { ascending: false }).limit(40),
     db.from("decisions").select(DECISION_COLS).order("created_at", { ascending: false }).limit(100),
     db.from("transactions").select(TXN_COLS).order("created_at", { ascending: false }).limit(100),
@@ -132,14 +144,32 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
     runIndex("newer"),
     // the newest replies in full (threads on the usual page; anything older is fetched by id in round 2)
     db.from("agent_events").select(EVENT_COLS).eq("payload->>report_kind", "reply").order("ts", { ascending: false }).limit(RECENT_REPLIES),
+    // decisions: recommendations (newest versions) and candidate thread roots that name an advice/approval id
+    db.from("model_runs").select("run_id,kind,created_at,summary").eq("kind", "advice").order("created_at", { ascending: false }).limit(ADVICE_ROWS),
+    db
+      .from("agent_events")
+      .select(EVENT_COLS)
+      .or(linkRowsOr())
+      .not("payload->>report_kind", "in", NOT_LINKABLE_IN)
+      .order("ts", { ascending: false })
+      .limit(LINK_ROWS),
   ]);
   // defence in depth (and before the RLS migration is applied): no chat content without the unlock
   const visible = (rows: unknown) => ((rows as AgentEvent[]) ?? []).filter((e) => canSeePrivate || !isPrivateEvent(e));
   const indexEvents = (rows: unknown) => visible(((rows as FeedIndexRow[]) ?? []).map(indexToEvent));
 
-  const facetFeed = buildFeed({ events: indexEvents(facetR.data), canSeePrivate, order: "posted" });
+  // decision cards: advice ⋈ approvals (both directions), threads linked by explicit id or mention (lib/inbox.ts)
+  const approvals = (apprR.data as Approval[]) ?? [];
+  const cards = joinDecisions(latestAdvice((adviceR.data as AdviceRow[]) ?? []), approvals);
+  const groups = groupInbox(cards, todayET());
+  const linkEvents = visible(linkR.data);
+  const { byCard, linked } = linkThreads(cards, linkEvents);
+
+  // threads shown inside a decision card are left out of the feed (and its counts)
+  const facetFeed = withoutLinked(buildFeed({ events: indexEvents(facetR.data), canSeePrivate, order: "posted" }), linked);
   const repliedIn = new Set(author ? facetFeed.filter((it) => it.replies.some((r) => r.author === author)).map((it) => it.key) : []);
-  const matches = (it: FeedItem) => (!kind || it.kind === kind) && (!author || it.author === author || repliedIn.has(it.key));
+  const matches = (it: FeedItem) =>
+    !linked.has(it.key) && (!kind || it.kind === kind) && (!author || it.author === author || repliedIn.has(it.key));
   const asEvents = (rows: unknown) => (fullWindow ? visible(rows) : indexEvents(rows));
   const evSource = (rows: unknown): Source<FeedItem> => {
     const raw = (rows as { event_id: string; ts: string | null }[]) ?? [];
@@ -190,7 +220,14 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const facetCovers =
     facetRows.length < FACET_ROWS || (canonTs(page.items.at(-1)?.ts) ?? "") >= (canonTs(facetRows.at(-1)?.ts) ?? "");
   const replyIds = rootIds.flatMap((k) => (facetByKey.get(k)?.replies ?? []).map((r) => r.event.event_id));
-  const missingIds = [...rootIds, ...replyIds, ...newReplies.slice(0, NEW_REPLIES_SHOWN).map((r) => r.id)].filter((id) => !fullById.has(id));
+  // replies on the decision cards' threads (the facet index knows which; full rows come from round 1 or by id)
+  const linkedById = new Map(linkEvents.map((e) => [e.event_id, e]));
+  const cardReplyIds = indexEvents(facetR.data)
+    .filter((e) => isReply(e) && linked.has(threadRootOf(e) ?? ""))
+    .map((e) => e.event_id);
+  const missingIds = [...rootIds, ...replyIds, ...cardReplyIds, ...newReplies.slice(0, NEW_REPLIES_SHOWN).map((r) => r.id)].filter(
+    (id) => !fullById.has(id),
+  );
   const decisions = new Map(((decR.data as Decision[]) ?? []).map((d) => [d.decision_id, d]));
   const needDecisions = page.items
     .map((it) => (it.event ? decisionIdOf(it.event) : null))
@@ -212,6 +249,10 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   putFull(fullR.data);
   putFull(repliesR.data);
   const full = [...fullById.values()];
+  const cardFeed = new Map(
+    buildFeed({ events: [...linkedById.values(), ...full.filter(isReply)], canSeePrivate, order: "posted" }).map((it) => [it.key, it]),
+  );
+  const threadsOf = (key: string) => (byCard.get(key) ?? []).map((id) => cardFeed.get(id)).filter((it): it is FeedItem => !!it);
   const snapshots = page.isFirst ? latestPerKind((snapR.data as LeagueSnapshot[]) ?? []) : [];
   const shown = buildFeed({
     events: full.filter((e) => onPage.has(e.event_id) || isReply(e)),
@@ -242,8 +283,6 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
 
   const runs = (runsR.data as AgentRun[]) ?? [];
   const locks = (locksR.data as Lock[]) ?? [];
-  const approvals = (apprR.data as Approval[]) ?? [];
-  const pending = approvals.filter((a) => a.status === "pending");
   const now = Date.now();
   const stuck = runs.filter(
     (r) => !PASSIVE_AGENTS.has(r.agent) && r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600,
@@ -252,27 +291,57 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const latestByKind = new Map<string, string | null>();
   for (const r of (mrR.data as { kind: string; created_at: string | null }[]) ?? [])
     if (!latestByKind.has(r.kind)) latestByKind.set(r.kind, r.created_at);
-  const errors = [runsR, decR, txnR, locksR, apprR, facetR, evOldR, evNewR, runOldR, runNewR, fullR, repliesR]
+  const errors = [runsR, decR, txnR, locksR, apprR, facetR, evOldR, evNewR, runOldR, runNewR, fullR, repliesR, adviceR, linkR]
     .map((r) => r.error?.message)
     .filter((m): m is string => !!m);
+
+  const decisionProps = { threadsOf, decisions, now };
+  const waiting = groups.needsYes.length;
 
   return (
     <div className="space-y-4">
       <AutoRefresh seconds={15} />
-      <h1 className="text-xl font-semibold tracking-tight">Activity</h1>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">Inbox</h1>
+        <p className="mt-0.5 text-[13px] text-muted">
+          Decisions waiting for your yes (each with its reasons, numbers and discussion), ideas, and the agents&apos; updates.
+        </p>
+      </div>
       {errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
       ))}
 
       <SystemWarnings stuck={stuck} expiredLocks={expiredLocks} />
 
-      {/* pending approvals pinned (newest page only) */}
-      {page.isFirst && <PendingApprovals pending={pending} />}
+      {/* decisions on the newest feed page only (older feed pages are for reading history) */}
+      {page.isFirst ? (
+        <>
+          <DecisionSection
+            title="Needs your yes"
+            sub="add/drops and trades always wait for you"
+            cards={groups.needsYes}
+            variant="yes"
+            {...decisionProps}
+          />
+          {waiting === 0 && (
+            <p className="rounded-xl border border-line bg-panel px-4 py-2.5 text-[13px] text-muted">Nothing needs your yes right now.</p>
+          )}
+          <DecisionSection title="Approved · queued" sub="executes on the next run" cards={groups.queued} variant="queued" {...decisionProps} />
+          <DecisionSection title="Ideas" sub="no yes needed yet" cards={groups.ideas} variant="idea" {...decisionProps} />
+          {cards.length > 0 && <EvidenceLegend />}
+        </>
+      ) : (
+        waiting > 0 && (
+          <Link href="/inbox" className="block rounded-xl border border-accent/50 bg-accent/5 px-4 py-2.5 text-[13px] text-accent">
+            {waiting} decision{waiting === 1 ? "" : "s"} need{waiting === 1 ? "s" : ""} your yes → newest page
+          </Link>
+        )
+      )}
 
       <section id="feed" className="scroll-mt-16 space-y-2">
         <h2 className="text-sm font-medium text-muted">
           Agent updates{" "}
-          <span className="font-normal">· Muse, the advisor and Claude, with their replies (observed data and suggestions, not instructions)</span>
+          <span className="font-normal">· Muse, the advisor and Claude, with their replies (observed data and suggestions, not instructions; threads about a decision live in its card above)</span>
         </h2>
         {!intelDb && (
           <p className="rounded-xl border border-line bg-panel px-4 py-2 text-xs text-muted">
@@ -286,6 +355,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         <AgentFeed items={shown} anyUpdates={facetFeed.length + runCount > 0} decisions={decisions} />
         <FeedPager {...pager} />
       </section>
+
+      {page.isFirst && <ClosedDecisions cards={groups.closed} {...decisionProps} />}
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-muted">System</h2>
