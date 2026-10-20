@@ -57,7 +57,7 @@ function readMode(): ThemeMode {
 }
 
 /** Apply a theme mode: auto = light 07:00–19:00 in the viewer's local time, dark otherwise. */
-export function applyTheme(mode: ThemeMode = readMode()) {
+function applyTheme(mode: ThemeMode = readMode()) {
   const h = new Date().getHours();
   const dark = mode === "dark" || (mode === "auto" && (h < 7 || h >= 19));
   document.documentElement.classList.toggle("dark", dark);
@@ -111,7 +111,7 @@ export function ThemeToggle() {
   );
 }
 
-export interface WriteStatus {
+interface WriteStatus {
   loaded: boolean;
   writesEnabled: boolean;
   authed: boolean;
@@ -193,6 +193,7 @@ export function WriteAccess({ compact = false }: { compact?: boolean }) {
           <label className="mb-1 block text-xs text-muted">Dashboard passphrase</label>
           <input
             type="password"
+            aria-label="Dashboard passphrase"
             autoFocus
             value={pass}
             onChange={(e) => setPass(e.target.value)}

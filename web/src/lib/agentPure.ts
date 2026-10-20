@@ -88,12 +88,12 @@ function levenshtein(a: string, b: string): number {
   return prev[b.length];
 }
 
-export function similarity(a: string, b: string): number {
+function similarity(a: string, b: string): number {
   if (!a.length && !b.length) return 1;
   return 1 - levenshtein(a, b) / Math.max(a.length, b.length);
 }
 
-export interface NamedPlayer {
+interface NamedPlayer {
   player_id: string;
   name: string;
   team?: string | null;
@@ -101,7 +101,7 @@ export interface NamedPlayer {
   rank?: number | null;
 }
 
-export type Resolution<T extends NamedPlayer> =
+type Resolution<T extends NamedPlayer> =
   | { status: "ok"; player: T }
   | { status: "ambiguous"; candidates: T[] }
   | { status: "not_found"; candidates: T[] };
@@ -170,7 +170,7 @@ export function searchPlayers<T extends NamedPlayer>(q: string, pool: T[]): T[] 
 
 /* ------------------------------------------------------------------ draft board */
 
-export interface BoardInfo {
+interface BoardInfo {
   picks_made: number;
   max_recorded: number;
   on_the_clock: number | null;
@@ -208,9 +208,9 @@ export interface RecordedPick {
 
 /** Why a manual pick was refused (machine-readable, returned by the route as `reason`). Only `pick_taken` may be
  *  resolved by resubmitting with overwrite; a `duplicate_player` needs the other pick undone first. */
-export type ManualPickConflict = "pick_taken" | "duplicate_player";
+type ManualPickConflict = "pick_taken" | "duplicate_player";
 
-export type ManualPickPlan =
+type ManualPickPlan =
   | { action: "unchanged"; existing: RecordedPick }
   | { action: "conflict"; reason: ManualPickConflict; error: string; existing: RecordedPick }
   | { action: "insert" }
@@ -245,7 +245,7 @@ export function isRecordableName(name: string | null | undefined): boolean {
   return canonicalId(name ?? "") !== "";
 }
 
-export type ManualPlayer<T extends NamedPlayer> =
+type ManualPlayer<T extends NamedPlayer> =
   | { ok: true; player_id: string; player_name: string; how: "id" | "resolved" | "unknown" }
   | { ok: false; status: 400; reason: "invalid_name" | "ambiguous" | "not_found"; error: string; candidates: T[] };
 
@@ -285,10 +285,10 @@ export function resolveManualPlayer<T extends NamedPlayer>(
 /* ------------------------------------------------------------------ report validation */
 
 export const REPORT_KINDS = ["draft_order", "trade", "rule", "injury_news", "schedule", "chat_note", "chat_digest", "other"] as const;
-export type ReportKind = (typeof REPORT_KINDS)[number];
+type ReportKind = (typeof REPORT_KINDS)[number];
 /** Group-chat content (other league members' words): never readable with the public anon key (RLS, migration
  *  20261019120000_private_league_intel.sql); the dashboard shows it only after the passphrase unlock. */
-export const PRIVATE_REPORT_KINDS: readonly string[] = ["chat_digest", "chat_note"];
+const PRIVATE_REPORT_KINDS: readonly string[] = ["chat_digest", "chat_note"];
 export function isPrivateEvent(e: { payload?: unknown }): boolean {
   const p = e.payload;
   return !!p && typeof p === "object" && !Array.isArray(p) && PRIVATE_REPORT_KINDS.includes((p as Record<string, unknown>).report_kind as string);
@@ -307,7 +307,7 @@ export const CHAT_DIGEST_SHAPE = {
   "message_count?": "number of chat messages in the period",
 };
 
-export interface ReportInput {
+interface ReportInput {
   kind: ReportKind;
   message: string;
   truncated: boolean;
@@ -341,7 +341,7 @@ export function validateReport(body: unknown): { ok: true; value: ReportInput } 
   return { ok: true, value: { kind: kind as ReportKind, message, truncated: raw.length > MAX_MESSAGE, details, source } };
 }
 
-export interface PickInput {
+interface PickInput {
   overall: number | null;
   player: string;
   note: string | null;
@@ -382,13 +382,13 @@ export const SNAPSHOT_KINDS = [
   "settings",
   "other",
 ] as const;
-export type SnapshotKind = (typeof SNAPSHOT_KINDS)[number];
+type SnapshotKind = (typeof SNAPSHOT_KINDS)[number];
 export const MAX_SNAPSHOT_BYTES = 65536;
 /** Combined budget per hour: snapshots + reports/picks (reports alone keep their own 60/hour cap). */
 export const SNAPSHOTS_PER_HOUR = 120;
-export const MAX_SUMMARY = 500;
-export const PLAYER_STATUSES = ["healthy", "DTD", "GTD", "O", "INJ", "IL", "IL+", "NA", "SUSP"] as const;
-export const CATEGORY_KEYS = ["fg_pct", "ft_pct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
+const MAX_SUMMARY = 500;
+const PLAYER_STATUSES = ["healthy", "DTD", "GTD", "O", "INJ", "IL", "IL+", "NA", "SUSP"] as const;
+const CATEGORY_KEYS = ["fg_pct", "ft_pct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"] as const;
 
 /** Documented JSON shapes per kind (lenient: required core fields; extra fields are kept). `?` = optional. */
 export const SNAPSHOT_SHAPES: Record<SnapshotKind, Record<string, string>> = {
@@ -417,7 +417,7 @@ export const SNAPSHOT_SHAPES: Record<SnapshotKind, Record<string, string>> = {
   other: { "(any)": "non-empty object; a top-level `summary` is required for this kind" },
 };
 
-export interface SnapshotInput {
+interface SnapshotInput {
   kind: SnapshotKind;
   week: number | null;
   observed_at: string;

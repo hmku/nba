@@ -55,7 +55,7 @@ export async function activeDraft(db: SupabaseClient): Promise<{ draft: Draft | 
   return { draft: drafts.find((d) => d.status !== "complete") ?? drafts[0] ?? null, error: error?.message };
 }
 
-export interface PoolPlayer {
+interface PoolPlayer {
   player_id: string;
   name: string;
   team: string | null;

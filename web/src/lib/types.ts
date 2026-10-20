@@ -193,18 +193,6 @@ export interface Lock {
   expires_at: string | null;
 }
 
-export interface Task {
-  task_id: string;
-  title: string;
-  description: string | null;
-  area: string | null;
-  priority: number | null;
-  status: string;
-  owner: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
 export interface DataSnapshot {
   snapshot_id: string;
   source: string;

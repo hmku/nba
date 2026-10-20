@@ -2,7 +2,7 @@ import { CATS, CAT_LABEL } from "./categories";
 import type { CatKey } from "./types";
 import type { PlayerRow } from "./players";
 
-export interface FallbackItem {
+interface FallbackItem {
   row: PlayerRow;
   score: number;
   needBonus: number;
