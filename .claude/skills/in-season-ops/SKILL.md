@@ -58,7 +58,8 @@ Enforced by `src/fantasy/ops/policy.py` (`LIVE_ALLOWED = {lineup, draft_pick}`) 
   procedure in `daily-routine` §3. Never move a player whose game has started (locked). Never use Yahoo's
   "Start Active Players".
 - **Add, drop, add/drop, waiver claim, trade (and any unknown kind)**: **always** need the user's explicit "yes" for
-  that exact move, plus an approved approval:
+  that exact move — in chat, or by the user clicking Approve on that approval in the dashboard (counts as yes; user
+  decision 2026-10-20) — plus an approved approval:
   ```bash
   export FANTASY_RUN_ID=$(fantasy run start --agent season-ops --task "..." --mode live)   # only if the user authorised live
   fantasy lock acquire yahoo:roster --ttl 300 --purpose "add X drop Y" --json

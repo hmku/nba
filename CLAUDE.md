@@ -61,7 +61,8 @@ data-auditor, draft-shadow (all read-only).
 - Mode `dry_run` is the default. Never touch Yahoo roster state outside a `live` run.
 - Before any Yahoo write (draft pick, add/drop, lineup, trade): hold the right lock
   (`yahoo:roster` / `yahoo:browser` / `draft:<id>`), plan it in the txn ledger (idempotent), get approval if policy
-  requires (drops, add/drops, trades ALWAYS need the user's approval for now), then verify the result
+  requires (drops, add/drops, trades ALWAYS need the user's approval: their "yes" in chat, or their Approve click on the
+  dashboard approval, which counts as yes), then verify the result
   independently on Yahoo and `fantasy txn mark <id> verified`.
 - A txn stuck in `submitted` is never retried blindly: re-read Yahoo state, then mark verified/failed.
 - Never substitute a different player than the one decided on, and never take unrelated actions. If
