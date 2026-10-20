@@ -60,6 +60,11 @@ is interested in X; details private"). A thread message
    draft_slot, player_ids, capture_date), then `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --json`
    (dry diff) and, if it validates, `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --write --record-lineup --json` (writes per-team lineup/status maps the lineup tool reads, and records today's actual Yahoo slots for the dashboard's Lineup tab; check `lineup_record.error` is null). Check its
    `positions_from_projections` warnings. Record the diff (adds/drops/trades/status changes for all 12 teams) as an `observation` event.
+1b. Matchup score (banked totals; BEFORE the lineup plan): run `scripts/yahoo/capture_matchup.js` in the browser JS
+   tool, save the raw output as `data/raw/yahoo/matchup_${D}T$(date -u +%H%M)Z.json`, check its `problems`, then
+   `fantasy league score --capture <that file> --save --json` (check `summary.warnings`). The dashboard's This week page
+   and `fantasy lineup plan` both read this row. Then refresh the dashboard's opponent lineups:
+   `cd web && node scripts/league-state.mjs && cd ..` (commit `web/src/content/league_state.json`).
 2. Free agents: `scripts/yahoo/capture_free_agents.js` -> `data/raw/yahoo/free_agents_$D.json` (note waiver vs FA status).
 3. League transactions page `/nba/44495/transactions` (read the last 24 h; cross-check the sync diff).
 4. Injuries: `fantasy data fetch-injuries --json` (ESPN API + CBS) and Yahoo tags from the capture; disagreements
@@ -69,10 +74,12 @@ is interested in X; details private"). A thread message
    never answered.
 
 ## 2. THINK
-- Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.2.0: exact position-aware assignment, matchup-weighted
+- Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted
   vs this week's opponent; `docs/research/lineup_optimizer.md`). Run it BEFORE the day's first tip-off; after a tip-off
-  pass `--locked <ids of players whose games started>`. Mid-week, pass the week's banked totals with `--accumulated`
-  (read them from the matchup page `/nba/44495/matchup`) or note the MID-WEEK warning. Exit 2 `infeasible_roster` = too
+  pass `--locked <ids of players whose games started>`. The plan uses the newest saved matchup score of the week as banked totals
+  automatically (lineup-0.3.0): check `accumulated_source.kind == "matchup_score"` and that its `observed_at` is this
+  morning; a MID-WEEK or BANKED STATS warning means re-capture (1b). `expected.cat_win_prob` = chance to win each
+  category by Sunday (simulated; availability priors). Exit 2 `infeasible_roster` = too
   many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. Read `target_slots` (the full
   final state to reach), `changes_vs_current`, `il_moves`, `decide_at_tipoff` (with `swap_with`), `warnings`, and
   `expected` (state P(win) together with its `availability_assumption`; rest_share 0.25 is a prior).
@@ -130,6 +137,6 @@ dashboard); then follow agent-run §6 with that approval, re-reading Yahoo first
 - Check the dashboard's Lineup tab: no ⚠ (plan vs Yahoo mismatch) cells for today; a mismatch means re-read Yahoo, never re-click blindly.
 - Log `docs/daily/$D.md` (≤ 25 lines): sync diff, injuries, lineup set (verified?), IL moves, recommendations awaiting
   approval with numbers, problems. `fantasy run end --status succeeded --summary "..."`.
-- `python -m pytest -q` only if code changed. Commit only your paths (`data/raw/yahoo/*_$D.json`,
+- `python -m pytest -q` only if code changed. Commit only your paths (`data/raw/yahoo/*_$D*.json`, `web/src/content/league_state.json`,
   `data/manual/league_rosters_2026-27.json`, `docs/daily/$D.md`), `git pull --rebase --autostash origin main && git push origin main`.
 - Final message to the user: 5-10 lines — lineup set (verified), IL moves, what needs their "yes", anything odd.
