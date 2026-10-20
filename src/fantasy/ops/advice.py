@@ -17,12 +17,11 @@ Advice is display-only: `status = "approved"` mirrors a decision the user alread
 from __future__ import annotations
 
 import json
-import os
 import re
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from sqlalchemy import insert, select
 
@@ -37,6 +36,9 @@ from fantasy.ops.common import (
     row_dict,
     sha256_hex,
 )
+
+if TYPE_CHECKING:
+    from fantasy.db.rest import RestClient
 
 ADVICE_KIND = "advice"
 ADVICE_VERSION = "advice-0.1.0"
@@ -223,6 +225,8 @@ class AdviceStore(Protocol):
         """`kind = 'advice'` rows, newest first."""
         ...
 
+    def close(self) -> None: ...
+
 
 class LocalStore:
     """FANTASY_DB_URL / local SQLite via SQLAlchemy."""
@@ -239,21 +243,20 @@ class LocalStore:
                                .order_by(model_runs.c.created_at.desc()).limit(limit))
             return [row_dict(r) for r in res]
 
+    def close(self) -> None:
+        pass  # the engine is shared and cached
+
 
 class RestStore:
     """Supabase over HTTPS (cloud sessions); same auth as `fantasy publish --rest`."""
 
     name = "rest"
 
-    def __init__(self, client: Any = None) -> None:
+    def __init__(self, client: RestClient | None = None) -> None:
         from fantasy.db import rest  # local import: keeps httpx off the default path
 
         self._rest = rest
-        if client is None:
-            key, _ = rest.api_key()
-            client = rest.RestClient(base_url=os.environ.get("SUPABASE_URL", rest.DEFAULT_SUPABASE_URL),
-                                     key=key)
-        self.cl = client
+        self.cl = client if client is not None else rest.default_client()
 
     def insert(self, row: dict[str, Any]) -> None:
         payload = {k: self._rest.to_json_value(v) for k, v in row.items()}
@@ -274,7 +277,7 @@ class RestStore:
         self.cl.close()
 
 
-def store(use_rest: bool = False, client: Any = None) -> AdviceStore:
+def store(use_rest: bool = False, client: RestClient | None = None) -> AdviceStore:
     return RestStore(client) if use_rest else LocalStore()
 
 

@@ -33,7 +33,6 @@ secret injects it). Keys are never printed.
 from __future__ import annotations
 
 import json
-import os
 import time
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -100,8 +99,7 @@ class Conflict409(rest.RestError):
 
 
 def default_client() -> rest.RestClient:
-    key, _ = rest.api_key()
-    return rest.RestClient(base_url=os.environ.get("SUPABASE_URL", rest.DEFAULT_SUPABASE_URL), key=key)
+    return rest.default_client()  # module-level hook: tests monkeypatch it
 
 
 class RestStore:

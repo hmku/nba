@@ -57,3 +57,11 @@ ignore_missing_imports = true
 # Report errors only in the listed modules: an import of a not-yet-clean module (draft/, model/, sim/)
 # must not turn the subset red. Imported modules are still analysed for types.
 follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+# In-season modules written 2026-10-20: also type-check the bodies of unannotated functions.
+module = [
+  "fantasy.ops.advice", "fantasy.ops.advice_cli", "fantasy.ops.intel", "fantasy.ops.intel_cli",
+  "fantasy.league.sync", "fantasy.league.sync_cli", "fantasy.lineup.*",
+]
+check_untyped_defs = true
