@@ -5,6 +5,7 @@ import { Badge, Disclosure, JsonView, statusTone } from "@/components/ui";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { ageSeconds, shortTime } from "@/lib/format";
+import { trimPayload } from "@/lib/feed";
 import { DecideButtons } from "../approvals/DecideButtons";
 
 function short(v: unknown): string {
@@ -59,7 +60,7 @@ function ReportBadges({ e }: { e: AgentEvent }) {
   );
 }
 
-function DecisionCard({ d }: { d: Decision }) {
+export function DecisionCard({ d }: { d: Decision }) {
   const dis = d.agrees_with_model === false;
   return (
     <div className={`rounded-lg border p-2.5 text-sm ${dis ? "border-warn/50 bg-warn/10" : "border-line"}`}>
@@ -93,21 +94,10 @@ const FRESH: [string, string, number][] = [
   ["season_sim", "season sim", 72 * 3600],
 ];
 
-/** Model freshness (links to /history) plus warnings for stuck runs and expired locks. */
-export function HealthStrip({
-  latestByKind,
-  now,
-  stuck,
-  expiredLocks,
-}: {
-  latestByKind: Map<string, string | null>;
-  now: number;
-  stuck: AgentRun[];
-  expiredLocks: Lock[];
-}) {
+/** Model freshness (links to /history). */
+export function HealthStrip({ latestByKind, now }: { latestByKind: Map<string, string | null>; now: number }) {
   return (
-    <>
-      <Link href="/history" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-xs text-muted hover:border-accent/50">
+    <Link href="/history" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-panel px-4 py-2.5 text-xs text-muted hover:border-accent/50">
         {FRESH.map(([k, label, limit]) => {
           const ts = latestByKind.get(k);
           const age = ageSeconds(ts, now);
@@ -120,22 +110,26 @@ export function HealthStrip({
           );
         })}
         <span className="ml-auto text-muted">›</span>
-      </Link>
-      {(stuck.length > 0 || expiredLocks.length > 0) && (
-        <div className="space-y-1 rounded-xl border border-warn/40 bg-warn/10 px-4 py-2.5 text-[13px] text-warn">
-          {stuck.map((r) => (
-            <div key={r.run_id}>
-              ⚠ {r.agent} is &quot;running&quot; but its heartbeat is <Ago ts={r.heartbeat_at ?? r.started_at} /> — it may have died.
-            </div>
-          ))}
-          {expiredLocks.length > 0 && (
-            <div>
-              ⚠ {expiredLocks.length} expired lock{expiredLocks.length === 1 ? "" : "s"} not released: {expiredLocks.map((l) => l.resource).join(", ")}
-            </div>
-          )}
+    </Link>
+  );
+}
+
+/** Warnings for stuck runs and expired locks (shown near the top: they need attention). */
+export function SystemWarnings({ stuck, expiredLocks }: { stuck: AgentRun[]; expiredLocks: Lock[] }) {
+  if (stuck.length === 0 && expiredLocks.length === 0) return null;
+  return (
+    <div className="space-y-1 rounded-xl border border-warn/40 bg-warn/10 px-4 py-2.5 text-[13px] text-warn">
+      {stuck.map((r) => (
+        <div key={r.run_id}>
+          ⚠ {r.agent} is &quot;running&quot; but its heartbeat is <Ago ts={r.heartbeat_at ?? r.started_at} /> — it may have died.
+        </div>
+      ))}
+      {expiredLocks.length > 0 && (
+        <div>
+          ⚠ {expiredLocks.length} expired lock{expiredLocks.length === 1 ? "" : "s"} not released: {expiredLocks.map((l) => l.resource).join(", ")}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -179,35 +173,6 @@ export function PendingApprovals({ pending }: { pending: Approval[] }) {
           </div>
         );
       })}
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ muse reports */
-
-/** Newest reports Muse logged (excluding chat digests, which have their own section). */
-export function MuseReports({ reports }: { reports: AgentEvent[] }) {
-  if (reports.length === 0) return null;
-  return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-medium text-muted">League intel from Muse</h2>
-      <ul className="overflow-hidden rounded-xl border border-line bg-panel">
-        {reports.map((e) => {
-          const r = reportOf(e)!;
-          return (
-            <li key={e.event_id} className="border-t border-line px-4 py-2.5 first:border-t-0">
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <ReportBadges e={e} />
-                <span className="ml-auto text-muted">
-                  <Ago ts={e.ts} />
-                </span>
-              </div>
-              <div className="mt-1 text-[14px] leading-snug whitespace-pre-wrap">{e.message}</div>
-              {r.details != null && <JsonView value={r.details} label="details" />}
-            </li>
-          );
-        })}
-      </ul>
     </section>
   );
 }
@@ -286,7 +251,7 @@ function RunItem({ r, evs, decs, tx }: { r: AgentRun; evs: AgentEvent[]; decs: D
                   </div>
                   {e.payload != null && (
                     <div className="pl-6">
-                      <JsonView value={e.payload} label="payload" />
+                      <JsonView value={trimPayload(e.payload, 600)} label="payload" />
                     </div>
                   )}
                 </li>
@@ -298,7 +263,7 @@ function RunItem({ r, evs, decs, tx }: { r: AgentRun; evs: AgentEvent[]; decs: D
               <Badge tone={statusTone(t.status)}>{t.status}</Badge> <span className="font-medium">{t.kind}</span>{" "}
               <span className="text-muted">{shortTime(t.updated_at ?? t.created_at)}</span>
               {t.error && <div className="text-bad">{t.error}</div>}
-              <JsonView value={t.payload} label="payload" />
+              <JsonView value={trimPayload(t.payload, 600)} label="payload" />
             </div>
           ))}
           <div className="flex flex-wrap gap-x-3 text-[11px] text-muted">
@@ -334,7 +299,7 @@ export function RunTimeline({
   txnByRun: Map<string, Transaction[]>;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-line bg-panel">
+    <section className="overflow-hidden">
       {runs.length === 0 ? (
         <NoRuns />
       ) : (

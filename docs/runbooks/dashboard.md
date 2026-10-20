@@ -123,13 +123,31 @@ draft, or the sim's draft post-draft; names from `drafts.config.team_names`), el
 note with one simulated roster for me.
 
 - `/agent` (public, not in the nav): instructions for Meta Muse — see "External-agent API" below.
-- `/activity`: health strip (age of latest projections / values / draft sim / season sim, ⚠ if stale → History;
-  stuck "running" runs with heartbeat >10m and expired locks shown in amber); with no runs, an explanatory empty
-  state (runs, decisions vs model, approvals, transactions); pending approvals pinned at top (approve/reject with note → POST `/api/approvals`),
-  then the agent run timeline, one line per run (status dot, agent, task, status, age; "≠ model" and
-  error counts flagged; runs with a disagreement tinted amber). Tap to expand: summary, decisions,
-  events (kind icons, payloads), transactions, ids. Held locks as one line; past approvals and
-  decisions/transactions not tied to a listed run under a collapsed expander. Auto-refresh 15s.
+- `/activity` (top to bottom; auto-refresh 15s):
+  1. amber warnings only when needed: stuck "running" runs (heartbeat >10m; the passive `muse`/`advisor`/`user`/
+     `claude` daily runs excluded) and expired locks;
+  2. **Waiting for you**: pending approvals pinned (approve/reject with note → POST `/api/approvals`);
+  3. **Agent updates**: ONE feed (`src/lib/feed.ts`, schema in `docs/research/dashboard_data.md` §5) of Muse reports
+     (incl. `trade_offer` cards: who gives what), advisor suggestions (dashed card: category/urgency/confidence,
+     labelled evidence, proposed change), Claude's decisions / verifications / errors and finished run summaries,
+     Claude's posts, and, after the passphrase unlock only, group-chat digests (badge "private") and one card with
+     Muse's newest Yahoo snapshot per kind (each collapsed). Each card: author badge (Muse / Advisor / Claude / You),
+     kind badge, age, body (long text collapsed behind "more", raw payloads behind "details"), its **thread**
+     (replies oldest first with stance chips agree ✓ / disagree ✕ / question ? / comment …, "↳ re X" when answering
+     a reply, labelled evidence; threads with >4 replies start collapsed showing the stance tally) and the event id.
+     Newest activity first (a new reply bumps its thread). Filter chips by author (started or replied in) and by
+     kind, as URL params (`?author=advisor&kind=trade_offer`); 50 cards, "load more" adds 50 (`?n=100`, max 300). When unlocked, a **Reply** button on
+     every non-private card posts `{reply_to, stance, text}` to `POST /api/threads/reply` (passphrase cookie, author
+     always "user", 30/h). Locked: read-only, with a one-line note that private intel needs the unlock;
+  4. **System**: model freshness strip (→ History), the agent run timeline **on request** (link → `?timeline=1#runs`,
+     streamed via Suspense: one line per run: status dot, agent, task, status, age; "≠ model" and error counts; tap
+     for summary, decisions, every event with payloads capped at 600 chars of JSON, transactions, ids), held locks,
+     and past approvals / decisions / transactions not tied to a listed run.
+  With no data at all, the feed and the timeline show explanatory empty states.
+  Speed: all independent queries run in one `Promise.all`, explicit column lists (no `select("*")` on the big
+  tables), feed rows bounded by `?n`. Local `next start` against production Supabase (anon, median of 10, 2026-10-20):
+  before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB → after 0.075 s / 158 KB, RSC 0.056 s / 84 KB
+  (`?timeline=1`: 0.12 s / 451 KB).
 - `/moves`: recommendations from `fantasy advise post` (`model_runs` kind `advice`, newest version per
   `summary.advice_id`; schema in `docs/research/dashboard_data.md` section 4). Sections: **Needs your yes**
   (status `awaiting_yes`, or `requires_user_yes` with status `idea`), **Today's lineup** (type `lineup` for today ET),
@@ -172,13 +190,21 @@ anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src
   observation of a Yahoo league page in `league_snapshots` (validated, hashed, deduped on kind+week+payload sha;
   size and hourly limits in `src/lib/agentPure.ts`). `GET /api/agent/snapshots?kind=&since=&limit=&payload=1` — what
   has been sent. Agents read them with `fantasy intel ... [--rest]`.
-- `POST /api/agent/report {kind, message, details?, source?}` — kinds `draft_order|trade|rule|injury_news|schedule|
-  chat_note|other`; message trimmed to 2000 chars, details ≤ 8000 chars JSON. Upserts the day's run
+- `POST /api/agent/report {kind, message, details?, source?}` — kinds `draft_order|trade|trade_offer|rule|injury_news|schedule|
+  chat_note|chat_digest|other`; message trimmed to 2000 chars, details ≤ 8000 chars JSON. Upserts the day's run
   `muse-YYYY-MM-DD` (US/Eastern; agent `muse`, mode `dry_run`, status `running`, heartbeat refreshed) and inserts an
   `agent_events` row kind `observation`, `event_id muse-ev-<hex>`, payload `{report_kind, source, details, reported_by}`.
 - Rate limit: ≥ 60 muse events in the last hour (reports + observed picks, counted in the DB) → 429.
-- Activity shows a "League intel from Muse" list (kind badge + source badge) and badges on those events in the
-  timeline; the muse run is excluded from the "stuck running" warning (it only heartbeats on reports).
+- `report_kind: "reply"` (Muse and advisor tokens) `{reply_to, stance, text, evidence?}` — a thread reply (see
+  `docs/integrations/threads.md`, schema `docs/research/dashboard_data.md` §5): author from the token, `reply_to` must
+  exist (404) and not be chat content (403); filed as `kind 'note'` under the caller's daily run. `kind: "trade_offer"`
+  (Muse) needs `details {from_team, to_team, from_gives, to_gives, status?}`.
+- `GET /api/agent/state` also returns `recent_updates` (newest 15 replyable updates with their replies) and
+  `event_id` on `recent_events`.
+- Activity shows Muse's reports in the "Agent updates" feed (author + kind + source badges) and badges on those
+  events in the timeline; the muse run is excluded from the "stuck running" warning (it only heartbeats on reports).
+- `POST /api/threads/reply {reply_to, stance, text}` — the user's reply (passphrase cookie like `/api/approvals`;
+  author "user", run `user-YYYY-MM-DD`).
 - Revoke: change/delete `AGENT_API_TOKEN` in Vercel and trigger a build (push touching `web/`).
 
 ## Mock data

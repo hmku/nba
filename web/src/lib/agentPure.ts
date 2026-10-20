@@ -343,7 +343,17 @@ export function resolveManualPlayer<T extends NamedPlayer>(
 
 /* ------------------------------------------------------------------ report validation */
 
-export const REPORT_KINDS = ["draft_order", "trade", "rule", "injury_news", "schedule", "chat_note", "chat_digest", "other"] as const;
+export const REPORT_KINDS = [
+  "draft_order",
+  "trade",
+  "trade_offer",
+  "rule",
+  "injury_news",
+  "schedule",
+  "chat_note",
+  "chat_digest",
+  "other",
+] as const;
 type ReportKind = (typeof REPORT_KINDS)[number];
 /** Group-chat content (other league members' words): never readable with the public anon key (RLS, migration
  *  20261019120000_private_league_intel.sql); the dashboard shows it only after the passphrase unlock. */
@@ -365,6 +375,34 @@ export const CHAT_DIGEST_SHAPE = {
   "topics?": "[string] e.g. ['trade: Team A / Team B', 'draft time']",
   "message_count?": "number of chat messages in the period",
 };
+export const TRADE_STATUSES = ["proposed", "countered", "accepted", "rejected", "vetoed", "completed", "expired", "cancelled"] as const;
+/** trade_offer details shape: a concrete offer someone made (seen on Yahoo or announced in the chat). */
+export const TRADE_OFFER_SHAPE = {
+  from_team: "string, required: the team that proposed it (exact Yahoo name)",
+  to_team: "string, required: the team it was offered to",
+  from_gives: "[player name], required: what the proposing team gives (may be empty if to_gives is not)",
+  to_gives: "[player name], required: what the receiving team gives",
+  "status?": TRADE_STATUSES.join(" | ") + " (default proposed)",
+  "involves_me?": "boolean: true when the user's team is one of the two",
+  "seen_on?": "yahoo | messenger | other",
+  "expires_at?": "ISO timestamp if Yahoo shows one",
+  "note?": "string: anything else visible (e.g. the proposer's trade note), NO verbatim chat quotes",
+};
+
+function tradeOfferErrors(d: Record<string, unknown> | null): string | null {
+  if (!d) return "trade_offer needs details: {from_team, to_team, from_gives: [..], to_gives: [..], status?}";
+  for (const k of ["from_team", "to_team"])
+    if (typeof d[k] !== "string" || !(d[k] as string).trim()) return `trade_offer details.${k} (non-empty string) is required`;
+  for (const k of ["from_gives", "to_gives"]) {
+    const v = d[k];
+    if (!Array.isArray(v) || v.some((x) => typeof x !== "string" || !x.trim() || x.length > 100))
+      return `trade_offer details.${k} must be an array of player names`;
+  }
+  if ((d.from_gives as unknown[]).length + (d.to_gives as unknown[]).length === 0) return "trade_offer: from_gives and to_gives are both empty";
+  if (d.status != null && !(TRADE_STATUSES as readonly string[]).includes(String(d.status)))
+    return `trade_offer details.status must be one of: ${TRADE_STATUSES.join(", ")}`;
+  return null;
+}
 
 interface ReportInput {
   kind: ReportKind;
@@ -395,6 +433,10 @@ export function validateReport(body: unknown): { ok: true; value: ReportInput } 
     if (!Array.isArray(ex)) return { ok: false, error: "chat_digest needs details.excerpts: [{at?, author?, text}] (may be empty)" };
     const i = ex.findIndex((x) => !x || typeof x !== "object" || Array.isArray(x) || typeof (x as Record<string, unknown>).text !== "string");
     if (i >= 0) return { ok: false, error: `details.excerpts[${i}] must be an object with a text string` };
+  }
+  if (kind === "trade_offer") {
+    const err = tradeOfferErrors(details);
+    if (err) return { ok: false, error: err };
   }
   const source = b.source == null ? null : String(b.source).slice(0, 60);
   return { ok: true, value: { kind: kind as ReportKind, message, truncated: raw.length > MAX_MESSAGE, details, source } };
@@ -433,7 +475,8 @@ export function museRunId(now: Date = new Date()): string {
 
 /* ------------------------------------------------------------------ advisor suggestions (ADVISOR_API_TOKEN) */
 
-export const ADVISOR_REPORT_KINDS = ["advisor_suggestion"] as const;
+/** Report kinds the advisor token may post: its own suggestions and thread replies (default deny for the rest). */
+export const ADVISOR_REPORT_KINDS = ["advisor_suggestion", "reply"] as const;
 export const ADVISOR_CATEGORIES = ["lineup", "add_drop", "trade", "model", "code", "data", "process"] as const;
 /** Categories that are claims about the team or the model: they need at least one evidence item. */
 export const ADVISOR_EVIDENCE_REQUIRED: readonly string[] = ["lineup", "add_drop", "trade", "model"];
@@ -478,6 +521,43 @@ export interface AdvisorSuggestion {
   links: string[];
 }
 
+/** Labelled evidence items ({claim, value?, se?, label, command?}); pushes every problem onto `errors`. */
+export function parseEvidence(raw: unknown, errors: string[], max: number): EvidenceItem[] {
+  const evidence: EvidenceItem[] = [];
+  const ev = raw ?? [];
+  if (!Array.isArray(ev)) {
+    errors.push("evidence must be an array");
+    return evidence;
+  }
+  if (ev.length > max) errors.push(`evidence: at most ${max} items`);
+  ev.slice(0, max).forEach((x, i) => {
+    const p = `evidence[${i}]`;
+    if (!isObj(x)) {
+      errors.push(`${p} must be an object`);
+      return;
+    }
+    const claim = typeof x.claim === "string" ? x.claim.trim() : "";
+    if (!claim || claim.length > 500) errors.push(`${p}.claim (string, 1-500 chars) is required`);
+    const label = String(x.label ?? "");
+    if (!(EVIDENCE_LABELS as readonly string[]).includes(label)) errors.push(`${p}.label must be one of: ${EVIDENCE_LABELS.join(", ")}`);
+    const value = scalar(x.value, `${p}.value`, errors);
+    const se = scalar(x.se, `${p}.se`, errors);
+    let command: string | undefined;
+    if (x.command != null) {
+      if (typeof x.command !== "string" || x.command.length > 500) errors.push(`${p}.command must be a string ≤500 chars`);
+      else command = x.command;
+    }
+    evidence.push({
+      claim,
+      label: label as EvidenceItem["label"],
+      ...(value !== undefined ? { value } : {}),
+      ...(se !== undefined ? { se } : {}),
+      ...(command !== undefined ? { command } : {}),
+    });
+  });
+  return evidence;
+}
+
 function scalar(v: unknown, path: string, errors: string[]): number | string | undefined {
   if (v == null) return undefined;
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -493,7 +573,7 @@ export function validateAdvisorSuggestion(body: unknown): { ok: true; value: Adv
   if (JSON.stringify(body).length > ADVISOR_MAX_BYTES) return { ok: false, errors: [`Body too large (max ${ADVISOR_MAX_BYTES} chars of JSON)`] };
   const errors: string[] = [];
   const kind = String(body.report_kind ?? body.kind ?? "");
-  if (!(ADVISOR_REPORT_KINDS as readonly string[]).includes(kind))
+  if (kind !== "advisor_suggestion")
     errors.push(`report_kind must be one of: ${ADVISOR_REPORT_KINDS.join(", ")} (the advisor token cannot post other report kinds)`);
   const category = String(body.category ?? "");
   if (!(ADVISOR_CATEGORIES as readonly string[]).includes(category)) errors.push(`category must be one of: ${ADVISOR_CATEGORIES.join(", ")}`);
@@ -504,39 +584,10 @@ export function validateAdvisorSuggestion(body: unknown): { ok: true; value: Adv
   if (!summary) errors.push("summary (non-empty string) is required");
   else if (summary.length > ADVISOR_MAX_SUMMARY) errors.push(`summary too long (max ${ADVISOR_MAX_SUMMARY})`);
 
-  const evidence: EvidenceItem[] = [];
-  const ev = body.evidence ?? [];
-  if (!Array.isArray(ev)) errors.push("evidence must be an array");
-  else {
-    if (ev.length > ADVISOR_MAX_EVIDENCE) errors.push(`evidence: at most ${ADVISOR_MAX_EVIDENCE} items`);
-    ev.slice(0, ADVISOR_MAX_EVIDENCE).forEach((x, i) => {
-      const p = `evidence[${i}]`;
-      if (!isObj(x)) {
-        errors.push(`${p} must be an object`);
-        return;
-      }
-      const claim = typeof x.claim === "string" ? x.claim.trim() : "";
-      if (!claim || claim.length > 500) errors.push(`${p}.claim (string, 1-500 chars) is required`);
-      const label = String(x.label ?? "");
-      if (!(EVIDENCE_LABELS as readonly string[]).includes(label)) errors.push(`${p}.label must be one of: ${EVIDENCE_LABELS.join(", ")}`);
-      const value = scalar(x.value, `${p}.value`, errors);
-      const se = scalar(x.se, `${p}.se`, errors);
-      let command: string | undefined;
-      if (x.command != null) {
-        if (typeof x.command !== "string" || x.command.length > 500) errors.push(`${p}.command must be a string ≤500 chars`);
-        else command = x.command;
-      }
-      evidence.push({
-        claim,
-        label: label as EvidenceItem["label"],
-        ...(value !== undefined ? { value } : {}),
-        ...(se !== undefined ? { se } : {}),
-        ...(command !== undefined ? { command } : {}),
-      });
-    });
-    if (ADVISOR_EVIDENCE_REQUIRED.includes(category) && ev.length === 0)
-      errors.push(`evidence: at least one item is required for category ${category}`);
-  }
+  const evidence = parseEvidence(body.evidence, errors, ADVISOR_MAX_EVIDENCE);
+  const rawEv = body.evidence ?? [];
+  if (ADVISOR_EVIDENCE_REQUIRED.includes(category) && Array.isArray(rawEv) && rawEv.length === 0)
+    errors.push(`evidence: at least one item is required for category ${category}`);
 
   let proposed_change: string | null = null;
   if (body.proposed_change != null) {
@@ -586,6 +637,103 @@ export function advisorEventPayload(s: AdvisorSuggestion): { message: string; pa
 /** The advisor's run id for a calendar day in US/Eastern (one agent_runs row per day, agent='advisor'). */
 export function advisorRunId(now: Date = new Date()): string {
   return `advisor-${etDay(now)}`;
+}
+
+/* ------------------------------------------------------------------ threads (replies to agent updates) */
+
+/** Who wrote a thread message. Muse / advisor from their bearer token, user from the passphrase cookie, claude from
+ *  the CLI (`fantasy intel reply`). Never taken from the request body. */
+export type ThreadAuthor = AgentIdentity | "user" | "claude";
+export const STANCES = ["agree", "disagree", "comment", "question"] as const;
+export type Stance = (typeof STANCES)[number];
+export const REPLY_MAX_TEXT = 2000;
+export const REPLY_MAX_EVIDENCE = 10;
+export const REPLY_MAX_BYTES = 12000;
+export const USER_REPLIES_PER_HOUR = 30;
+/** Event ids are generated by us (`muse-ev-<hex>`, `advisor-ev-<hex>`, `evt-<hex>`, ...); anything else is rejected. */
+const EVENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/;
+
+export const REPLY_SHAPE = {
+  report_kind: '"reply" (or kind: "reply")',
+  reply_to: "event_id of the update (or of a reply in its thread) you are answering",
+  stance: STANCES.join(" | "),
+  text: `string, required, ≤${REPLY_MAX_TEXT} chars: your view and why`,
+  "evidence?": `[{claim, value?, se?, label: ${EVIDENCE_LABELS.join("|")}, command?}] (≤${REPLY_MAX_EVIDENCE})`,
+};
+
+export interface ReplyInput {
+  reply_to: string;
+  stance: Stance;
+  text: string;
+  evidence: EvidenceItem[];
+}
+
+/** Validate a thread reply body. Only these fields are kept: any client-claimed author/source/thread_root is dropped. */
+export function validateReply(body: unknown): { ok: true; value: ReplyInput } | { ok: false; errors: string[] } {
+  if (!isObj(body)) return { ok: false, errors: ["Body must be a JSON object"] };
+  if (JSON.stringify(body).length > REPLY_MAX_BYTES) return { ok: false, errors: [`Body too large (max ${REPLY_MAX_BYTES} chars of JSON)`] };
+  const errors: string[] = [];
+  const kind = String(body.report_kind ?? body.kind ?? "reply");
+  if (kind !== "reply") errors.push('report_kind must be "reply"');
+  const replyTo = typeof body.reply_to === "string" ? body.reply_to.trim() : "";
+  if (!EVENT_ID_RE.test(replyTo)) errors.push("reply_to (the event_id you answer) is required");
+  const stance = String(body.stance ?? "");
+  if (!(STANCES as readonly string[]).includes(stance)) errors.push(`stance must be one of: ${STANCES.join(", ")}`);
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  if (!text) errors.push("text (non-empty string) is required");
+  else if (text.length > REPLY_MAX_TEXT) errors.push(`text too long (max ${REPLY_MAX_TEXT})`);
+  const evidence = parseEvidence(body.evidence, errors, REPLY_MAX_EVIDENCE);
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, value: { reply_to: replyTo, stance: stance as Stance, text, evidence } };
+}
+
+/** Does a POST /api/agent/report body ask for a reply (report_kind or kind "reply")? Routes it before other checks. */
+export function isReplyBody(body: unknown): boolean {
+  return isObj(body) && (body.report_kind ?? body.kind) === "reply";
+}
+
+/** Is this event a thread reply? */
+export function isReplyEvent(e: { payload?: unknown }): boolean {
+  const p = e.payload;
+  return isObj(p) && p.report_kind === "reply" && typeof p.reply_to === "string";
+}
+
+export type ReplyTarget = { ok: true; threadRoot: string } | { ok: false; status: 404 | 403; error: string };
+
+/** Decide whether `target` (the event named by reply_to, or null if missing) may be replied to and find the thread
+ *  root. Private events (group-chat content) cannot be answered: replies are public. */
+export function replyTarget(target: { event_id: string; payload?: unknown } | null): ReplyTarget {
+  if (!target) return { ok: false, status: 404, error: "reply_to: no such event" };
+  if (isPrivateEvent(target)) return { ok: false, status: 403, error: "reply_to: private group-chat content cannot be replied to (replies are public)" };
+  const p = isObj(target.payload) ? target.payload : {};
+  if (isReplyEvent(target)) {
+    const root = typeof p.thread_root === "string" && p.thread_root ? p.thread_root : String(p.reply_to);
+    return { ok: true, threadRoot: root };
+  }
+  return { ok: true, threadRoot: target.event_id };
+}
+
+/** The agent_events row fields for a reply; identity fields are set here from the server-known author. */
+export function replyEventPayload(r: ReplyInput, author: ThreadAuthor, threadRoot: string): { message: string; payload: Record<string, unknown> } {
+  return {
+    message: r.text,
+    payload: {
+      report_kind: "reply",
+      reply_to: r.reply_to,
+      thread_root: threadRoot,
+      stance: r.stance,
+      text: r.text,
+      ...(r.evidence.length ? { evidence: r.evidence } : {}),
+      author,
+      reported_by: author,
+      source: author,
+    },
+  };
+}
+
+/** Daily run that holds the user's dashboard replies (agent 'user', never "running"). */
+export function userRunId(now: Date = new Date()): string {
+  return `user-${etDay(now)}`;
 }
 
 /* ------------------------------------------------------------------ league snapshots (read-only Yahoo observations) */

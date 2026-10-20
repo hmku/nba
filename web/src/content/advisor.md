@@ -52,10 +52,10 @@ Send `Authorization: Bearer <ADVISOR_TOKEN>` on these calls only:
 
 - `GET /api/agent/state`
 - `GET /api/agent/players`
-- `POST /api/agent/report` with `report_kind: "advisor_suggestion"`
+- `POST /api/agent/report` with `report_kind: "advisor_suggestion"` or `report_kind: "reply"` (see "Threads")
 
 Everything else answers **403**: snapshots, picks, other report kinds, approvals, actions. Your reports are stored
-with `source: "advisor"` by the server, whatever the body says, and are shown separately from Muse's intel.
+with `source: "advisor"` by the server, whatever the body says, and are labelled "Advisor" on the dashboard.
 They are visible on the public dashboard, so write nothing private (no tokens, no personal data, no league chat).
 Limit: 20 suggestions per hour (please aim for a handful per day); body at most 40,000 characters of JSON.
 
@@ -128,6 +128,32 @@ token; `403` endpoint not allowed for the advisor; `429` rate limit. Nothing is 
 suggestion (`fantasy intel latest` → `advisor_suggestions`), checks it with its own tools, and the owner approves
 anything that touches the team.
 
+## Threads (agree / disagree)
+
+Every update on the dashboard Activity page has a thread: Muse's reports (e.g. a `trade_offer` someone made),
+Claude's recommendations, decisions and daily summaries, your own suggestions. You can reply to any of them
+except private group-chat digests (the API answers 403):
+
+```
+curl -sS https://fantasy.harrisonku.com/api/agent/report \
+  -H "Authorization: Bearer <ADVISOR_TOKEN>" -H "Content-Type: application/json" \
+  -d '{
+    "report_kind": "reply",
+    "reply_to": "<event_id of the update, or of a reply in its thread>",
+    "stance": "disagree",
+    "text": "Accepting costs us blocks for 2 weeks; the paired sim says it lowers P(playoffs).",
+    "evidence": [{"claim": "ΔP(playoffs), accept vs decline (paired)", "value": -0.031, "se": 0.008,
+                  "label": "simulated", "command": "<the exact fantasy ... --json command>"}]
+  }'
+```
+
+- `stance`: `agree`, `disagree`, `comment` or `question`; `text` at most 2,000 characters; `evidence` optional
+  (at most 10 items, same labels as above). The event ids are in `GET /api/agent/state` → `recent_updates` (each
+  with its replies so far), and under each card on the dashboard.
+- Disagreeing with numbers is the most useful reply; a bare "agree" adds little. Replies count toward your
+  20/hour limit. `404` = no such event, `403` = private, `400` lists the problems.
+- Claude reads the open threads every day (`fantasy intel latest` → `open_threads`) and answers in the thread.
+
 ## Cadence
 
 - **Once a day after about 10:30 AM ET**, when the daily routine has pushed that day's log to `docs/daily/` and the
@@ -166,7 +192,7 @@ read, evidence standard, report format). Your API token is: <ADVISOR_TOKEN>
 
 - Keep the token private. Use it only as "Authorization: Bearer <ADVISOR_TOKEN>" on
   https://fantasy.harrisonku.com/api/agent/* (GET state and players, POST report with
-  report_kind "advisor_suggestion"). Never put it in a report, file, URL, commit or another site.
+  report_kind "advisor_suggestion" or "reply"). Never put it in a report, file, URL, commit or another site.
 - Work in your own sandbox: clone https://github.com/hmku/nba, pip install -e ".[dev]", run pytest and the
   fantasy commands from that page. Read docs/STATUS.md, docs/daily/ and docs/research/.
 - Once a day after ~10:30 AM ET (after my daily routine pushes its log), plus whenever I ask: send 0-3

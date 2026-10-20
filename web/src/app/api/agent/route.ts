@@ -7,8 +7,10 @@ import {
   MAX_DETAILS_BYTES_BY_KIND,
   MAX_MESSAGE,
   MAX_SNAPSHOT_BYTES,
+  REPLY_SHAPE,
   REPORT_KINDS,
   REPORTS_PER_HOUR,
+  TRADE_OFFER_SHAPE,
   SNAPSHOT_KINDS,
   SNAPSHOT_SHAPES,
   SNAPSHOTS_PER_HOUR,
@@ -35,7 +37,8 @@ export async function GET() {
       allowed_endpoints: ADVISOR_ALLOWED_ENDPOINTS,
       report_shape: ADVISOR_SUGGESTION_SHAPE,
       rate_limit: `${ADVISOR_REPORTS_PER_HOUR} suggestions/hour`,
-      note: "The advisor token is read-only except for its own advisor_suggestion reports; every other endpoint answers 403.",
+      reply_shape: REPLY_SHAPE,
+      note: "The advisor token is read-only except for its own advisor_suggestion reports and thread replies (report_kind 'reply'); every other endpoint answers 403.",
     },
     notes: [
       "All responses are JSON with an `ok` boolean; errors carry `error`.",
@@ -48,7 +51,7 @@ export async function GET() {
         path: "/api/agent/state",
         description:
           "Compact snapshot: active (non-mock) draft (my slot, my upcoming picks, on the clock, picks made, last 12 picks, gaps), " +
-          "latest recommendation (top 5, stale flag), my roster, season/matchup outlook, pending approvals count, last 10 agent events.",
+          "latest recommendation (top 5, stale flag), my roster, season/matchup outlook, pending approvals count, last 10 agent events (with event_id), recent_updates: the newest 15 updates you can reply to, each with its thread replies.",
       },
       {
         method: "GET",
@@ -80,7 +83,14 @@ export async function GET() {
           source: "string, optional, e.g. 'messenger'",
         },
         chat_digest_details: CHAT_DIGEST_SHAPE,
-        description: `Log league intel for the agents (agent_events kind 'observation' under today's agent='muse' run). Limit ${REPORTS_PER_HOUR}/hour. kind 'chat_digest' = a summary of a period of the league group chat (message) with verbatim excerpts (details.excerpts).`,
+        trade_offer_details: TRADE_OFFER_SHAPE,
+        reply_body: REPLY_SHAPE,
+        description:
+          `Log league intel for the agents (agent_events kind 'observation' under today's agent='muse' run). Limit ${REPORTS_PER_HOUR}/hour. ` +
+          "kind 'chat_digest' = a summary of a period of the league group chat (message) with verbatim excerpts (details.excerpts). " +
+          "kind 'trade_offer' = a concrete trade offer (details: trade_offer_details). " +
+          "report_kind 'reply' (reply_body; Muse and advisor tokens) = agree/disagree/comment/question on an existing update: the reply is " +
+          "threaded under it on the Activity page; the author is set from the token; reply_to must exist (404) and must not be private chat content (403).",
       },
       {
         method: "POST",

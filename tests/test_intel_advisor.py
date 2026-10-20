@@ -82,7 +82,8 @@ def test_list_by_source():
     with pytest.raises(ValueError):
         intel.list_intel(src, kind="advisor_suggestion")  # not a Muse report kind
     with pytest.raises(ValueError):
-        intel.list_intel(src, report_source="claude")
+        intel.list_intel(src, report_source="espn")
+    assert intel.list_intel(src, report_source="claude")["reports"] == []  # threads: claude/user are sources
 
 
 def test_cli_source_advisor_and_show():

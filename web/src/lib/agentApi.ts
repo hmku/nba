@@ -1,7 +1,16 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { advisorRunId, authorizeAgentRequest, museRunId, type AgentIdentity } from "./agentPure";
+import {
+  advisorRunId,
+  authorizeAgentRequest,
+  museRunId,
+  replyEventPayload,
+  replyTarget,
+  userRunId,
+  type AgentIdentity,
+  type ReplyInput,
+} from "./agentPure";
 import { serviceClient } from "./supabase-admin";
 import { loadPlayers } from "./data";
 import type { Draft, Player, PlayerValue } from "./types";
@@ -172,8 +181,58 @@ export function ensureAdvisorRun(db: SupabaseClient): Promise<{ runId: string; e
   return ensureDailyRun(db, "advisor", advisorRunId(), ADVISOR_TASK);
 }
 
+/** The user's daily replies run (agent 'user'). Inserted as "succeeded": it is a log container, never a live run,
+ *  so it never shows as stuck and the stale-run reaper ignores it. */
+async function ensureUserRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
+  const runId = userRunId();
+  const now = new Date().toISOString();
+  const ins = await db.from("agent_runs").upsert(
+    {
+      run_id: runId,
+      agent: "user",
+      task: `the user's replies on the dashboard · ${runId.slice(5)}`,
+      status: "succeeded",
+      mode: "dry_run",
+      started_at: now,
+      heartbeat_at: now,
+      ended_at: now,
+    },
+    { onConflict: "run_id", ignoreDuplicates: true },
+  );
+  return { runId, error: ins.error?.message };
+}
+
+/** Insert a thread reply by `author` (identity known to the server: bearer token or passphrase cookie).
+ *  Checks that reply_to exists and is not private, and files the reply under the author's daily run. */
+export async function postReply(db: SupabaseClient, author: AgentIdentity | "user", r: ReplyInput): Promise<NextResponse> {
+  const { data: rows, error: tErr } = await db.from("agent_events").select("event_id,run_id,payload").eq("event_id", r.reply_to).limit(1);
+  if (tErr) return fail(tErr.message, 500);
+  const target = replyTarget(((rows as { event_id: string; payload: unknown }[]) ?? [])[0] ?? null);
+  if (!target.ok) return fail(target.error, target.status);
+  const run = author === "muse" ? await ensureMuseRun(db) : author === "advisor" ? await ensureAdvisorRun(db) : await ensureUserRun(db);
+  if (run.error) return fail(`Could not open the ${author} run: ${run.error}`, 500);
+  const { message, payload } = replyEventPayload(r, author, target.threadRoot);
+  const event = {
+    event_id: `${author}-ev-${crypto.randomUUID().replace(/-/g, "")}`,
+    run_id: run.runId,
+    ts: new Date().toISOString(),
+    kind: "note",
+    message,
+    payload,
+  };
+  const { error } = await db.from("agent_events").insert(event);
+  if (error) return fail(error.message, 500);
+  return reply({
+    status: "logged",
+    event_id: event.event_id,
+    run_id: run.runId,
+    thread_root: target.threadRoot,
+    note: "Reply added to the thread (dashboard Activity page; `fantasy intel thread` for the agents). Nothing was executed.",
+  });
+}
+
 /** Events in the last hour under runs named `<agent>-...` (each agent has its own budget). */
-async function eventsLastHour(db: SupabaseClient, agent: AgentIdentity): Promise<number> {
+async function eventsLastHour(db: SupabaseClient, agent: AgentIdentity | "user"): Promise<number> {
   const since = new Date(Date.now() - 3600_000).toISOString();
   const { count } = await db
     .from("agent_events")
@@ -186,6 +245,11 @@ async function eventsLastHour(db: SupabaseClient, agent: AgentIdentity): Promise
 /** Advisor events in the last hour (its own budget, separate from Muse's). */
 export function advisorEventsLastHour(db: SupabaseClient): Promise<number> {
   return eventsLastHour(db, "advisor");
+}
+
+/** The user's dashboard replies in the last hour. */
+export function userEventsLastHour(db: SupabaseClient): Promise<number> {
+  return eventsLastHour(db, "user");
 }
 
 /** Number of muse events in the last hour (shared budget for reports and observed picks). */
