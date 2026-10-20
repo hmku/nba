@@ -17,6 +17,15 @@ from fantasy.lineup.players import RosterPlayer, normalize_status, normalize_tea
 from fantasy.model.lines import load_projections
 from fantasy.sim.schedule import NBASchedule
 
+
+@pytest.fixture(autouse=True)
+def _db(tmp_path, monkeypatch):
+    """`lineup plan` looks up the newest saved matchup_score: keep it on a temp SQLite, never var/fantasy.db."""
+    from fantasy.ops.testing import use_test_db
+
+    use_test_db(tmp_path, monkeypatch)
+
+
 SLOTS = DaySlots(("PG", "SG", "G", "SF", "PF", "F", "C", "C", "Util", "Util"), 3, 3)
 POS_CHOICES = [("PG",), ("PG", "SG"), ("SG", "SF", "PF"), ("SF", "PF"), ("PF",), ("PF", "C"), ("C",)]
 D0 = date(2026, 10, 20)
@@ -229,7 +238,7 @@ def test_cli_plan_json_smoke(tmp_path, proj_path):
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["week"] == 1 and out["opponent"]["team_id"] == 2 and len(out["week_plan"]) == 5
-    assert out["model_version"] == "lineup-0.2.0"
+    assert out["model_version"] == "lineup-0.3.0"
     assert {"lineup", "bench", "il_moves", "changes_vs_current", "decide_at_tipoff", "category_weights",
             "expected", "inputs", "params"} <= set(out)
     assert out["inputs"]["accumulated"]["sha256"]

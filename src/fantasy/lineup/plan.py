@@ -37,7 +37,7 @@ from fantasy.model.lines import SEASON_GAMES, STATS, ProjectionSet
 from fantasy.model.valuation import compute_values
 from fantasy.sim.schedule import NBASchedule
 
-LINEUP_MODEL_VERSION = "lineup-0.2.0"
+LINEUP_MODEL_VERSION = "lineup-0.3.0"  # 0.3.0: banked matchup totals (matchup_score) + per-category P(win)
 GAME_FLOOR = 1e-5  # a player with a game is worth at least this (so he never sits for a player without one)
 
 
@@ -240,6 +240,22 @@ def summarize_state(st: CatState) -> dict:
     return {"expected_cats": st.expected_cats, "p_win_matchup": st.matchup_win_prob}
 
 
+def cat_win_probs(final: CatState, mc: dict) -> dict:
+    """Per-category chance to win by the end of the week under the optimized plan (banked totals included):
+    the Monte Carlo category score (P(win) + P(tie)/2, ties = 0.5 as in Yahoo's standings) when sims ran, else the
+    analytic Phi(z). The analytic value is always kept alongside."""
+    analytic = {k: round(float(p), 4) for k, p in zip(final.keys, final.p_win, strict=True)}
+    opt = (mc.get("plans") or {}).get("optimized") if mc else None
+    if opt and opt.get("cat_score"):
+        n = int(mc.get("n_sims") or 0)
+        return {"cat_win_prob": {k: round(float(v), 4) for k, v in opt["cat_score"].items()},
+                "cat_win_prob_method": f"monte_carlo: share of {n} simulated weeks the category is won (ties 0.5); "
+                                       f"SE <= {0.5 / max(n, 1) ** 0.5:.4f}",
+                "cat_win_prob_analytic": analytic}
+    return {"cat_win_prob": analytic, "cat_win_prob_method": "analytic: Phi(z) of the normal weekly margin",
+            "cat_win_prob_analytic": analytic}
+
+
 def day_summary(players: list[RosterPlayer], labels: list[str], P_d: np.ndarray, values_d: np.ndarray,
                 slots: DaySlots, day: date, first_game: np.ndarray | None = None) -> dict:
     start = set(slots.starting)
@@ -385,7 +401,8 @@ def build_plan(
             "availability_assumption": params.availability_assumption(),
             "optimized": summarize_state(res.final_state),
             "naive_season_value": summarize_state(naive_state),
-            "static_current_lineup": summarize_state(static_state)},
+            "static_current_lineup": summarize_state(static_state),
+            **cat_win_probs(res.final_state, mc)},
         "monte_carlo": mc,
         "fixed_point": {"iterations": res.iterations, "converged": res.converged},
         "week_plan": [day_summary(me.players, res.labels[d], me.P[:, d], res.values[:, d], slots, day,

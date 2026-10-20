@@ -116,7 +116,13 @@ def plan(
     league_file: Annotated[Path | None, typer.Option("--league-file", help="League rosters JSON")] = None,
     opponent_slot: Annotated[int | None, typer.Option("--opponent-slot", help="Opponent team id (draft slot)")] = None,
     accumulated: Annotated[Path | None, typer.Option("--accumulated", help='JSON {"me": {fgm: .., ...}, "opp": {...}} '
-                                                     "raw totals already banked this week")] = None,
+                                                     "raw totals already banked this week (overrides the matchup "
+                                                     "score)")] = None,
+    score: Annotated[Path | None, typer.Option("--score", help="Matchup capture (scripts/yahoo/capture_matchup.js) "
+                                               "to use as the banked totals instead of the newest saved "
+                                               "matchup_score row")] = None,
+    no_score: Annotated[bool, typer.Option("--no-score", help="Do not look up the newest saved matchup_score "
+                                           "(banked totals 0 unless --accumulated/--score)")] = False,
     schedule: Annotated[Path | None, typer.Option("--schedule", help="League schedule JSON")] = None,
     nba_schedule: Annotated[Path | None, typer.Option("--nba-schedule", help="NBA games CSV")] = None,
     projections: Annotated[Path | None, typer.Option("--projections")] = None,
@@ -126,8 +132,8 @@ def plan(
                                                  "whose marginal value is negative (FG%/FT%/TO protection)")] = False,
     save: Annotated[bool, typer.Option("--save", help="Record the plan as a model_runs row (kind lineup_plan) for "
                                        "the dashboard's Lineup view; idempotent per (date, content)")] = False,
-    use_rest: Annotated[bool, typer.Option("--rest", help="With --save: write Supabase over HTTPS (cloud sessions) "
-                                           "instead of FANTASY_DB_URL")] = False,
+    use_rest: Annotated[bool, typer.Option("--rest", help="Read the saved matchup score from / write --save to "
+                                           "Supabase over HTTPS (cloud sessions) instead of FANTASY_DB_URL")] = False,
     as_json: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     try:
@@ -152,9 +158,12 @@ def plan(
               "against stale slots. Re-capture Yahoo (fantasy league sync), pass --current-slots, or --allow-stale",
               as_json, code="stale_capture", exit_code=EXIT_USAGE, slots_as_of=as_of, slots_source=as_of_src)
     me, opp, team_warnings = _load_rosters(league, my_team, opp_id, proj.df, roster, cap, as_json)
+    acc, acc_source, acc_warnings = _resolve_accumulated(accumulated, score, no_score, use_rest, d0, fw, my_team,
+                                                         opp_id, lf, sched_path, as_json)
     me, pre_warnings = _overlay_slots_and_warn(me, current_slots, d0, as_of, as_of_src, fw,
-                                               has_accumulated=accumulated is not None)
-    acc = json.loads(accumulated.read_text()) if accumulated else {}
+                                               has_accumulated=acc_source["kind"] != "none",
+                                               lookup_note=acc_source.get("note"))
+    pre_warnings += acc_warnings
     days = [d0 + timedelta(days=k) for k in range((fw.end - d0).days + 1)]
     generic = generic_per_game_values(proj, settings)
     lock_ids = tuple(x.strip() for x in locked.split(",") if x.strip())
@@ -175,12 +184,15 @@ def plan(
     out["warnings"] = pre_warnings + team_warnings + out["warnings"]
     out["slots_as_of"] = {"date": as_of.isoformat() if as_of else None, "source": as_of_src,
                           "current_slots_file": str(current_slots) if current_slots else None}
+    out["accumulated_source"] = acc_source
+    out["accumulated"] = {side: acc.get(side) for side in ("me", "opp")} if acc else None
     out["note"] = ("Run before the first tip-off of the day; after that pass --locked with the players whose games "
                    "have started (Yahoo locks each player at his own tip-off). Executor: set target_slots.")
     inputs = {"projections": (proj.path, proj.sha256), "league_file": (str(lf), sha256_file(lf) if lf.exists() else None),
               "roster_capture": (str(cap) if cap else None, sha256_file(cap) if cap else None),
               "league_schedule": (str(sched_path), sha256_file(sched_path)), "nba_schedule": (nba.source, None)}
-    out["inputs"] = _inputs_provenance(inputs, current_slots=current_slots, accumulated=accumulated)
+    out["inputs"] = _inputs_provenance(inputs, current_slots=current_slots, accumulated=accumulated,
+                                       matchup_score=score if acc_source["kind"] == "score_file" else None)
     if save:
         out["saved"] = _save_plan(out, nba, use_rest)
     if not week:
@@ -271,10 +283,77 @@ def _team_entry(league: dict[str, Any] | None, t: int) -> dict | None:
     return team if isinstance(team, dict) else None
 
 
+def _resolve_accumulated(accumulated: Path | None, score: Path | None, no_score: bool, use_rest: bool, d0: date,
+                         fw: FantasyWeek, my_team: int, opp_id: int, league_file: Path, sched_path: Path,
+                         as_json: bool) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
+    """Banked totals this week: (acc {"me": {stat: total}, "opp": ...} or {}, accumulated_source, warnings).
+
+    Precedence: `--accumulated` file > `--score` capture > the newest saved `matchup_score` row for this week with
+    me = my team, observed on or before `d0` (ET) and against this week's opponent (unless --no-score)."""
+    from fantasy.league import matchup
+
+    if accumulated is not None:
+        return (json.loads(accumulated.read_text()),
+                {"kind": "accumulated_file", "file": str(accumulated), "run_id": None, "observed_at": None}, [])
+    if score is not None:
+        from fantasy.league.matchup_cli import summary_from_capture
+
+        try:
+            s, _ = summary_from_capture(score, None, week=None, state=league_file, slot_map=None,
+                                        schedule=sched_path)
+        except matchup.MatchupError as e:
+            _fail(f"--score {score}: {e}", as_json, code="invalid_capture", exit_code=EXIT_USAGE)
+        problem = _score_mismatch(s, d0, fw, my_team, opp_id)
+        if problem:
+            _fail(f"--score {score}: {problem}", as_json, code="score_mismatch", exit_code=EXIT_USAGE)
+        return matchup.accumulated(s), _score_source(s, "score_file", run_id=matchup.run_id(s), file=str(score)), \
+            [f"matchup capture: {w}" for w in s.get("warnings", [])] + matchup.banked_checks(s, d0)
+    none: dict[str, Any] = {"kind": "none", "run_id": None, "observed_at": None}
+    if no_score:
+        return {}, {**none, "note": "--no-score"}, []
+    from fantasy.lineup import record
+
+    try:
+        st = record.store(use_rest)
+        try:
+            rows = st.rows(matchup.KIND, 500)
+        finally:
+            st.close()
+    except Exception as e:  # noqa: BLE001 - a missing/unreachable store must not block the lineup
+        return {}, {**none, "note": f"matchup_score lookup failed: {type(e).__name__}: {e}"}, []
+    row = matchup.latest_score(rows, week=fw.week, my_slot=my_team, on_or_before=d0)
+    if row is None:
+        return {}, {**none, "note": f"no saved matchup_score for week {fw.week} observed on or before {d0}"}, []
+    s = row["summary"]
+    problem = _score_mismatch(s, d0, fw, my_team, opp_id)
+    if problem:
+        return {}, {**none, "note": f"newest matchup_score {row['run_id']} not used: {problem}"}, []
+    return matchup.accumulated(s), _score_source(s, "matchup_score", run_id=row["run_id"],
+                                                 store=getattr(st, "name", None)), matchup.banked_checks(s, d0)
+
+
+def _score_mismatch(s: dict[str, Any], d0: date, fw: FantasyWeek, my_team: int, opp_id: int) -> str | None:
+    if s.get("week") != fw.week:
+        return f"it is week {s.get('week')}, the plan is for week {fw.week}"
+    if (s.get("me") or {}).get("slot") != my_team:
+        return f"its 'me' is team {(s.get('me') or {}).get('slot')}, not my team {my_team}"
+    if (s.get("opp") or {}).get("slot") != opp_id:
+        return f"its opponent is team {(s.get('opp') or {}).get('slot')}, the plan's is {opp_id}"
+    if str(s.get("date_et")) > d0.isoformat():
+        return f"it was read on {s.get('date_et')} (ET), after the plan date {d0}: it already holds later games"
+    return None
+
+
+def _score_source(s: dict[str, Any], kind: str, **extra: Any) -> dict[str, Any]:
+    return {"kind": kind, **extra, "observed_at": s.get("observed_at"), "date_et": s.get("date_et"),
+            "week": s.get("week"), "score": s.get("score")}
+
+
 def _overlay_slots_and_warn(me: list[RosterPlayer], current_slots: Path | None, d0: date, as_of: date | None,
-                            as_of_src: str, fw: FantasyWeek, has_accumulated: bool) -> tuple[list[RosterPlayer], list[str]]:
+                            as_of_src: str, fw: FantasyWeek, has_accumulated: bool,
+                            lookup_note: str | None = None) -> tuple[list[RosterPlayer], list[str]]:
     """Apply `--current-slots` (if given) and collect the warnings that precede the plan's own: current-slot
-    problems or stale slots (--allow-stale), and a mid-week plan without `--accumulated`."""
+    problems or stale slots (--allow-stale), and a mid-week plan without banked totals."""
     warnings: list[str] = []
     if current_slots is not None:
         me, slot_warnings = _apply_current_slots(me, current_slots)
@@ -283,8 +362,10 @@ def _overlay_slots_and_warn(me: list[RosterPlayer], current_slots: Path | None, 
         warnings.append(f"STALE SLOTS (--allow-stale): current slots are from {as_of} (ET) via {as_of_src}; "
                         "changes_vs_current may be wrong -- prefer target_slots")
     if d0 > fw.start and not has_accumulated:
-        warnings.append(f"MID-WEEK WITHOUT --accumulated: stats banked {fw.start}..{d0 - timedelta(days=1)} are "
-                        "assumed 0 for both teams, so the category weights ignore the current score")
+        warnings.append(f"MID-WEEK WITHOUT BANKED TOTALS: stats banked {fw.start}..{d0 - timedelta(days=1)} are "
+                        "assumed 0 for both teams, so the category weights ignore the current score (capture the "
+                        "matchup: scripts/yahoo/capture_matchup.js + `fantasy league score --save`, or pass "
+                        f"--score/--accumulated){f'; {lookup_note}' if lookup_note else ''}")
     return me, warnings
 
 
@@ -321,6 +402,13 @@ def _print(out: dict) -> None:
     typer.echo(f"Expected cats (analytic): optimized {ex['optimized']['expected_cats']:.2f}, naive "
                f"{ex['naive_season_value']['expected_cats']:.2f}, static {ex['static_current_lineup']['expected_cats']:.2f}; "
                f"P(win matchup) {ex['optimized']['p_win_matchup']:.3f}")
+    src = out.get("accumulated_source") or {}
+    if src.get("kind") != "none":
+        typer.echo(f"Banked totals: {src.get('kind')} {src.get('run_id') or src.get('file') or ''} "
+                   f"(observed {src.get('observed_at')}, score {src.get('score')})")
+    cwp = ex.get("cat_win_prob") or {}
+    if cwp:
+        typer.echo("P(win category by end of week): " + ", ".join(f"{k} {v:.2f}" for k, v in cwp.items()))
     mc = out.get("monte_carlo") or {}
     for name, r in (mc.get("plans") or {}).items():
         typer.echo(f"  MC {name}: E[cats] {r['expected_cats']:.3f} ± {r['expected_cats_se']:.3f}, "

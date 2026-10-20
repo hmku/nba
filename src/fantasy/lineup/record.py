@@ -144,7 +144,8 @@ def plan_summary(out: dict[str, Any], games: dict[str, dict[str, str]]) -> dict[
     expected: dict[str, Any] = {
         "method": ex.get("method"), "availability_assumption": ex.get("availability_assumption"),
         "evidence": "simulated (model output; availability and tag P(plays) are PRIORS)",
-        **{k: ex[k] for k in ("optimized", "naive_season_value", "static_current_lineup") if k in ex},
+        **{k: ex[k] for k in ("optimized", "naive_season_value", "static_current_lineup", "cat_win_prob",
+                              "cat_win_prob_method", "cat_win_prob_analytic") if k in ex},
     }
     if mc.get("plans"):
         expected["monte_carlo"] = {
@@ -173,6 +174,11 @@ def plan_summary(out: dict[str, Any], games: dict[str, dict[str, str]]) -> dict[
         "expected": expected,
         "fixed_point": out.get("fixed_point"),
         "slots_as_of": out.get("slots_as_of"),
+        # lineup-0.3.0 (additive): banked totals used and the per-category weights behind the plan
+        "accumulated_source": out.get("accumulated_source"),
+        "accumulated": out.get("accumulated"),
+        "category_weights": {k: {f: round(float(v), 5) for f, v in d.items()}
+                             for k, d in (out.get("category_weights") or {}).items()},
         "warnings": out.get("warnings", []),
         "model_version": out.get("model_version"),
     })
