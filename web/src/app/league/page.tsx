@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { anonClient } from "@/lib/supabase";
+import { anonClient, cachedClient } from "@/lib/supabase";
 import { defaultDraftId, loadDrafts, loadPlayers } from "@/lib/data";
-import { latestSimRuns, parseSeasonSim, pickPreseasonRun, pickSeasonRun, type SeasonSim, type TeamRow } from "@/lib/sim";
+import { loadSimPicks, parseSeasonSim, type SeasonSim, type TeamRow } from "@/lib/sim";
 import { CATS, CAT_LABEL, heatStyle } from "@/lib/categories";
 import type { Draft, DraftPick, Player } from "@/lib/types";
 import { fmt, pct, shortTime } from "@/lib/format";
@@ -16,9 +16,12 @@ export const metadata: Metadata = { title: "League" };
 
 export default async function LeaguePage() {
   const db = anonClient();
-  const [{ runs, error }, { drafts, error: dErr }] = await Promise.all([latestSimRuns(db, "season_sim", 60), loadDrafts(db)]);
-  const pre = parseSeasonSim(pickPreseasonRun(runs));
-  const post = parseSeasonSim(pickSeasonRun(runs));
+  const [{ season, preseason, error }, { drafts, error: dErr }] = await Promise.all([
+    loadSimPicks(db, cachedClient(3600), "season_sim", 60, { season: true, preseason: true }),
+    loadDrafts(db),
+  ]);
+  const pre = parseSeasonSim(preseason);
+  const post = parseSeasonSim(season);
   // Post-draft (real rosters) wins if it is newer than the pre-draft projection.
   const sim =
     post && (!pre || (post.run.created_at ?? "") >= (pre.run.created_at ?? "")) ? post : (pre ?? post);
@@ -28,12 +31,18 @@ export default async function LeaguePage() {
     (sim && !sim.isPreseason ? drafts.find((d) => d.draft_id === sim.draftId) : undefined) ??
     drafts.find((d) => d.draft_id === draftId) ??
     null;
-  const { data: pickData } = draft
-    ? await db.from("draft_picks").select("*").eq("draft_id", draft.draft_id).order("overall_pick").limit(1000)
-    : { data: [] };
+  // picks (live) and player names (cached 5 min: only name/team/positions are shown) in parallel;
+  // players are only needed when there are picks or simulated rosters.
+  const simHasRosters = !!sim && Object.keys(sim.rosters).length > 0;
+  const [{ data: pickData }, allPlayers] = await Promise.all([
+    draft
+      ? db.from("draft_picks").select("*").eq("draft_id", draft.draft_id).order("overall_pick").limit(1000)
+      : Promise.resolve({ data: [] }),
+    draft || simHasRosters ? loadPlayers(cachedClient(300)) : Promise.resolve({} as Record<string, Player>),
+  ]);
   const picks = (pickData as DraftPick[]) ?? [];
-  const needPlayers = picks.length > 0 || (sim && Object.keys(sim.rosters).length > 0);
-  const players = needPlayers ? await loadPlayers(db) : {};
+  const needPlayers = picks.length > 0 || simHasRosters;
+  const players = needPlayers ? allPlayers : {};
   const teamNames = (draft?.config?.team_names ?? {}) as Record<string, string>;
   // Names: drafts.config.team_names, else the post-draft simulation's own names (Yahoo team names)
   const simNames: Record<string, string> = {};

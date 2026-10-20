@@ -40,6 +40,15 @@ toggle. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `
 `/matchup` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
 `/agents` and `/approvals` redirect to `/activity`.
 
+**Snappiness** (keep these when adding pages): every tab has a `loading.tsx` skeleton (`src/components/Skeleton.tsx`),
+so `<Link>`'s default prefetch loads it and a tap switches instantly while the server renders. The tapped tab
+highlights on press (optimistic, `useOptimisticPath` in `Nav.tsx`; `aria-current` follows the real path). Selected tab =
+`--tab-fg` text on a `--tab-bg` pill + an accent indicator bar (WCAG AA in both themes; tokens in `globals.css`).
+The Nav badge counts approvals with a bare PostgREST `HEAD` (no supabase-js in the shared bundle — only `/draft` loads it).
+Sim pages read model runs in two steps (`loadSimPicks` in `sim.ts`): a live metadata query picks the run(s), then
+the full ~75 KB rows are fetched by `run_id` through `cachedClient(3600)` (Next Data Cache; a run row is immutable
+for its id). League player names use `cachedClient(300)`. Approvals, activity, advice and the live draft stay uncached.
+
 **Theme**: default *auto* = light 07:00–19:00 in the viewer's local time, dark otherwise (inline `<head>` script
 avoids a flash; `ThemeAuto` re-evaluates every 10 min and on tab focus). More › Theme cycles auto → light → dark,
 persisted in `localStorage.theme` (absent = auto).

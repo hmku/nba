@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { anonClient } from "@/lib/supabase";
+import { anonClient, cachedClient } from "@/lib/supabase";
 import { defaultDraftId, loadDraftLive, loadDrafts, loadValues, slimValues } from "@/lib/data";
-import { latestSimRuns, parseDraftSim, parseSeasonSim, pickPreseasonRun } from "@/lib/sim";
+import { loadSimPicks, parseDraftSim, parseSeasonSim } from "@/lib/sim";
 import { ErrorNote } from "@/components/ui";
 import DraftClient from "./DraftClient";
 import DraftModel from "./DraftModel";
@@ -48,19 +48,23 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
   const db = anonClient();
 
   if (view === "how") {
-    const d = await latestSimRuns(db, "draft_sim", 1);
+    const d = await loadSimPicks(db, db, "draft_sim", 1, {});
     return (
       <>
         <SubTabs view={view} id={id} />
-        <HowItWorks optimizerVersion={d.runs[0]?.model_version ?? null} />
+        <HowItWorks optimizerVersion={d.latestVersion} />
       </>
     );
   }
 
   if (view === "model") {
-    const [d, s] = await Promise.all([latestSimRuns(db, "draft_sim", 1), latestSimRuns(db, "season_sim", 20)]);
-    const dsim = parseDraftSim(d.runs[0] ?? null);
-    const pre = parseSeasonSim(pickPreseasonRun(s.runs));
+    const rows = cachedClient(3600); // a run row is immutable for its run_id
+    const [d, s] = await Promise.all([
+      loadSimPicks(db, rows, "draft_sim", 1, { latest: true }),
+      loadSimPicks(db, rows, "season_sim", 20, { preseason: true }),
+    ]);
+    const dsim = parseDraftSim(d.latest);
+    const pre = parseSeasonSim(s.preseason);
     return (
       <>
         <SubTabs view={view} id={id} />
@@ -71,12 +75,11 @@ export default async function DraftPage({ searchParams }: { searchParams: Promis
     );
   }
 
+  // the values bundle doesn't depend on the draft list: start both at once
+  const valuesP = loadValues(db);
   const { drafts, error } = await loadDrafts(db);
   const draftId = id && drafts.some((d) => d.draft_id === id) ? id : defaultDraftId(drafts);
-  const [live, values] = await Promise.all([
-    draftId ? loadDraftLive(db, draftId) : Promise.resolve(null),
-    loadValues(db),
-  ]);
+  const [live, values] = await Promise.all([draftId ? loadDraftLive(db, draftId) : Promise.resolve(null), valuesP]);
   return (
     <>
       <SubTabs view={view} id={id} />

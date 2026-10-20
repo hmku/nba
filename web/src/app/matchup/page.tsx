@@ -1,13 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { anonClient } from "@/lib/supabase";
+import { anonClient, cachedClient } from "@/lib/supabase";
 import { defaultDraftId, loadDrafts } from "@/lib/data";
 import {
   arr,
   currentWeek,
-  latestSimRuns,
+  loadSimPicks,
   parseSeasonSim,
-  pickSeasonRun,
   str,
   todayET,
   type SeasonSim,
@@ -33,8 +32,11 @@ export default async function MatchupPage({ searchParams }: { searchParams: Prom
   const { week: wq, opp: oq } = await searchParams;
   const db = anonClient();
   // 60: what-if `compare` / `draft-check` runs share kind season_sim and must not crowd out the season run
-  const [{ runs, error }, { drafts }] = await Promise.all([latestSimRuns(db, "season_sim", 60), loadDrafts(db)]);
-  const sim = parseSeasonSim(pickSeasonRun(runs));
+  const [{ season, error }, { drafts }] = await Promise.all([
+    loadSimPicks(db, cachedClient(3600), "season_sim", 60, { season: true }),
+    loadDrafts(db),
+  ]);
+  const sim = parseSeasonSim(season);
   const draft = drafts.find((d) => d.draft_id === defaultDraftId(drafts)) ?? null;
 
   if (!sim || sim.weeks.length === 0)
