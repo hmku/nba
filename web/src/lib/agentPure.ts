@@ -14,6 +14,65 @@ export function bearerMatches(header: string | null | undefined, expected: strin
   return timingSafeEqual(a, b) && got.length > 0;
 }
 
+/** Who is calling /api/agent/*: Muse (AGENT_API_TOKEN, full agent API) or the independent advisor
+ *  (ADVISOR_API_TOKEN, read-only + its own suggestion reports). The identity always comes from WHICH token matched,
+ *  never from anything the client claims in the body. */
+export type AgentIdentity = "muse" | "advisor";
+
+export interface AgentTokens {
+  agent?: string | null;
+  advisor?: string | null;
+}
+
+/** Endpoints the advisor token may call ("METHOD /path"). Everything else is denied (403) by default, so a new
+ *  /api/agent route that uses requireAgent() is Muse-only until it is added here on purpose.
+ *  Not included on purpose: GET /api/agent/snapshots (private league snapshots, read with the service key),
+ *  POST /api/agent/snapshot, POST /api/agent/pick, and any approval/action endpoint. */
+export const ADVISOR_ALLOWED_ENDPOINTS: readonly string[] = [
+  "GET /api/agent/state",
+  "GET /api/agent/players",
+  "POST /api/agent/report",
+];
+
+export function normEndpoint(method: string, pathname: string): string {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return `${method.toUpperCase()} ${path}`;
+}
+
+export function advisorMayCall(method: string, pathname: string): boolean {
+  return ADVISOR_ALLOWED_ENDPOINTS.includes(normEndpoint(method, pathname));
+}
+
+export type AuthResult =
+  | { ok: true; identity: AgentIdentity }
+  | { ok: false; status: 401 | 403 | 503; error: string };
+
+/** Pure auth + scope decision for /api/agent/* (unit-tested in web/tests/advisor.test.mjs).
+ *  - Muse token → allowed everywhere (unchanged behaviour).
+ *  - Advisor token → allowed only on ADVISOR_ALLOWED_ENDPOINTS, otherwise 403.
+ *  - No match → 401; no token configured at all → 503 (as before for AGENT_API_TOKEN).
+ *  If both env vars hold the same value the token is treated as Muse's and the advisor is disabled (misconfiguration). */
+export function authorizeAgentRequest(
+  header: string | null | undefined,
+  tokens: AgentTokens,
+  method: string,
+  pathname: string,
+): AuthResult {
+  const agent = tokens.agent || null;
+  const advisor = tokens.advisor && tokens.advisor !== agent ? tokens.advisor : null;
+  if (agent && bearerMatches(header, agent)) return { ok: true, identity: "muse" };
+  if (advisor && bearerMatches(header, advisor)) {
+    if (advisorMayCall(method, pathname)) return { ok: true, identity: "advisor" };
+    return {
+      ok: false,
+      status: 403,
+      error: `Forbidden: the advisor token is read-only and may call only ${ADVISOR_ALLOWED_ENDPOINTS.join(", ")}`,
+    };
+  }
+  if (!agent && !advisor) return { ok: false, status: 503, error: "AGENT_API_TOKEN not configured" };
+  return { ok: false, status: 401, error: "Unauthorized: send Authorization: Bearer <token>" };
+}
+
 /* ------------------------------------------------------------------ names */
 
 export function normName(s: string | null | undefined): string {
@@ -366,6 +425,164 @@ export function validatePick(body: unknown): { ok: true; value: PickInput } | { 
 export function museRunId(now: Date = new Date()): string {
   const day = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
   return `muse-${day}`;
+}
+
+/* ------------------------------------------------------------------ advisor suggestions (ADVISOR_API_TOKEN) */
+
+export const ADVISOR_REPORT_KINDS = ["advisor_suggestion"] as const;
+export const ADVISOR_CATEGORIES = ["lineup", "add_drop", "trade", "model", "code", "data", "process"] as const;
+/** Categories that are claims about the team or the model: they need at least one evidence item. */
+export const ADVISOR_EVIDENCE_REQUIRED: readonly string[] = ["lineup", "add_drop", "trade", "model"];
+export const EVIDENCE_LABELS = ["fitted", "simulated", "prior", "literature"] as const;
+export const ADVISOR_LEVELS = ["low", "medium", "high"] as const;
+export const ADVISOR_MAX_TITLE = 140;
+export const ADVISOR_MAX_SUMMARY = 4000;
+export const ADVISOR_MAX_EVIDENCE = 30;
+export const ADVISOR_MAX_CHANGE = 20000;
+export const ADVISOR_MAX_LINKS = 10;
+export const ADVISOR_MAX_BYTES = 40000;
+export const ADVISOR_REPORTS_PER_HOUR = 20;
+
+export const ADVISOR_SUGGESTION_SHAPE = {
+  report_kind: '"advisor_suggestion" (or kind: "advisor_suggestion")',
+  category: ADVISOR_CATEGORIES.join(" | "),
+  title: `string, required, ≤${ADVISOR_MAX_TITLE} chars`,
+  summary: `string, required, ≤${ADVISOR_MAX_SUMMARY} chars: what to change and why`,
+  evidence: `[{claim: string, value?: number|string, se?: number|string, label: ${EVIDENCE_LABELS.join("|")}, command?: string}] (≤${ADVISOR_MAX_EVIDENCE}; ≥1 for ${ADVISOR_EVIDENCE_REQUIRED.join("/")})`,
+  "proposed_change?": `string (plain text or a unified diff), ≤${ADVISOR_MAX_CHANGE} chars`,
+  confidence: ADVISOR_LEVELS.join(" | "),
+  urgency: ADVISOR_LEVELS.join(" | ") + " (high = matters before today's games or a deadline)",
+  "links?": `[https URL] (≤${ADVISOR_MAX_LINKS})`,
+};
+
+export interface EvidenceItem {
+  claim: string;
+  value?: number | string;
+  se?: number | string;
+  label: (typeof EVIDENCE_LABELS)[number];
+  command?: string;
+}
+
+export interface AdvisorSuggestion {
+  category: (typeof ADVISOR_CATEGORIES)[number];
+  title: string;
+  summary: string;
+  evidence: EvidenceItem[];
+  proposed_change: string | null;
+  confidence: (typeof ADVISOR_LEVELS)[number];
+  urgency: (typeof ADVISOR_LEVELS)[number];
+  links: string[];
+}
+
+function scalar(v: unknown, path: string, errors: string[]): number | string | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.length <= 100) return v;
+  errors.push(`${path} must be a finite number or a short string`);
+  return undefined;
+}
+
+/** Validate an advisor suggestion. Only the listed fields are kept; anything else in the body (including any
+ *  client-claimed source / reported_by / agent) is dropped, because the server sets the identity. Lists all errors. */
+export function validateAdvisorSuggestion(body: unknown): { ok: true; value: AdvisorSuggestion } | { ok: false; errors: string[] } {
+  if (!isObj(body)) return { ok: false, errors: ["Body must be a JSON object"] };
+  if (JSON.stringify(body).length > ADVISOR_MAX_BYTES) return { ok: false, errors: [`Body too large (max ${ADVISOR_MAX_BYTES} chars of JSON)`] };
+  const errors: string[] = [];
+  const kind = String(body.report_kind ?? body.kind ?? "");
+  if (!(ADVISOR_REPORT_KINDS as readonly string[]).includes(kind))
+    errors.push(`report_kind must be one of: ${ADVISOR_REPORT_KINDS.join(", ")} (the advisor token cannot post other report kinds)`);
+  const category = String(body.category ?? "");
+  if (!(ADVISOR_CATEGORIES as readonly string[]).includes(category)) errors.push(`category must be one of: ${ADVISOR_CATEGORIES.join(", ")}`);
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  if (!title) errors.push("title (non-empty string) is required");
+  else if (title.length > ADVISOR_MAX_TITLE) errors.push(`title too long (max ${ADVISOR_MAX_TITLE})`);
+  const summary = typeof body.summary === "string" ? body.summary.trim() : "";
+  if (!summary) errors.push("summary (non-empty string) is required");
+  else if (summary.length > ADVISOR_MAX_SUMMARY) errors.push(`summary too long (max ${ADVISOR_MAX_SUMMARY})`);
+
+  const evidence: EvidenceItem[] = [];
+  const ev = body.evidence ?? [];
+  if (!Array.isArray(ev)) errors.push("evidence must be an array");
+  else {
+    if (ev.length > ADVISOR_MAX_EVIDENCE) errors.push(`evidence: at most ${ADVISOR_MAX_EVIDENCE} items`);
+    ev.slice(0, ADVISOR_MAX_EVIDENCE).forEach((x, i) => {
+      const p = `evidence[${i}]`;
+      if (!isObj(x)) {
+        errors.push(`${p} must be an object`);
+        return;
+      }
+      const claim = typeof x.claim === "string" ? x.claim.trim() : "";
+      if (!claim || claim.length > 500) errors.push(`${p}.claim (string, 1-500 chars) is required`);
+      const label = String(x.label ?? "");
+      if (!(EVIDENCE_LABELS as readonly string[]).includes(label)) errors.push(`${p}.label must be one of: ${EVIDENCE_LABELS.join(", ")}`);
+      const value = scalar(x.value, `${p}.value`, errors);
+      const se = scalar(x.se, `${p}.se`, errors);
+      let command: string | undefined;
+      if (x.command != null) {
+        if (typeof x.command !== "string" || x.command.length > 500) errors.push(`${p}.command must be a string ≤500 chars`);
+        else command = x.command;
+      }
+      evidence.push({
+        claim,
+        label: label as EvidenceItem["label"],
+        ...(value !== undefined ? { value } : {}),
+        ...(se !== undefined ? { se } : {}),
+        ...(command !== undefined ? { command } : {}),
+      });
+    });
+    if (ADVISOR_EVIDENCE_REQUIRED.includes(category) && ev.length === 0)
+      errors.push(`evidence: at least one item is required for category ${category}`);
+  }
+
+  let proposed_change: string | null = null;
+  if (body.proposed_change != null) {
+    if (typeof body.proposed_change !== "string") errors.push("proposed_change must be a string (text or unified diff)");
+    else if (body.proposed_change.length > ADVISOR_MAX_CHANGE) errors.push(`proposed_change too long (max ${ADVISOR_MAX_CHANGE})`);
+    else proposed_change = body.proposed_change.trim() || null;
+  }
+  const confidence = String(body.confidence ?? "");
+  if (!(ADVISOR_LEVELS as readonly string[]).includes(confidence)) errors.push(`confidence must be one of: ${ADVISOR_LEVELS.join(", ")}`);
+  const urgency = String(body.urgency ?? "");
+  if (!(ADVISOR_LEVELS as readonly string[]).includes(urgency)) errors.push(`urgency must be one of: ${ADVISOR_LEVELS.join(", ")}`);
+  const links: string[] = [];
+  if (body.links != null) {
+    if (!Array.isArray(body.links)) errors.push("links must be an array of https URLs");
+    else {
+      if (body.links.length > ADVISOR_MAX_LINKS) errors.push(`links: at most ${ADVISOR_MAX_LINKS}`);
+      body.links.slice(0, ADVISOR_MAX_LINKS).forEach((l, i) => {
+        if (typeof l !== "string" || l.length > 500 || !/^https:\/\/\S+$/.test(l)) errors.push(`links[${i}] must be an https URL (≤500 chars)`);
+        else links.push(l);
+      });
+    }
+  }
+  if (errors.length) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      category: category as AdvisorSuggestion["category"],
+      title,
+      summary,
+      evidence,
+      proposed_change,
+      confidence: confidence as AdvisorSuggestion["confidence"],
+      urgency: urgency as AdvisorSuggestion["urgency"],
+      links,
+    },
+  };
+}
+
+/** The agent_events message + payload for an advisor suggestion. The identity fields are set here, by the server. */
+export function advisorEventPayload(s: AdvisorSuggestion): { message: string; payload: Record<string, unknown> } {
+  return {
+    message: `[${s.category}] ${s.title}`,
+    payload: { report_kind: "advisor_suggestion", source: "advisor", reported_by: "advisor", agent: "advisor", details: s },
+  };
+}
+
+/** The advisor's run id for a calendar day in US/Eastern (one agent_runs row per day, agent='advisor'). */
+export function advisorRunId(now: Date = new Date()): string {
+  const day = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  return `advisor-${day}`;
 }
 
 /* ------------------------------------------------------------------ league snapshots (read-only Yahoo observations) */

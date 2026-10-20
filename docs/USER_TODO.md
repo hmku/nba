@@ -98,6 +98,17 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
 - [ ] Apply the private-intel migration (top of this file) before asking Muse for chat digests.
 - [ ] Ask Muse for one read-only league check (rosters, my team, matchup) so the in-season loop has data.
 - [ ] Decide the third-party projections question (public repo) above.
+- [ ] **Optional: set up the read-only advisor (ChatGPT agent, ≈5 min)** — an independent reviewer that reads the
+      public repo/dashboard and sends evidence-labelled suggestions to Claude (it can't change the team, code or data):
+      1. Make a token: `openssl rand -hex 32` (must differ from Muse's token). Don't paste it into chat with Claude.
+      2. Vercel → fantasy-nba → Settings → Environment Variables: add `ADVISOR_API_TOKEN` = that token, environment
+         **Production**, mark **Sensitive** → Save.
+      3. Tell Claude: **"trigger a dashboard build for the advisor token"**; it confirms `GET /api/agent` shows
+         `advisor.configured: true`.
+      4. Paste the setup prompt from `docs/integrations/advisor.md` (section "Prompt to give the advisor", also at the
+         bottom of https://fantasy.harrisonku.com/advisor) into the ChatGPT agent, with `<ADVISOR_TOKEN>` replaced.
+      Its suggestions appear on Activity ("Suggestions from the advisor") and in `fantasy intel latest`
+      (`advisor_suggestions`). They are public like other agent logs. To revoke: change/delete the env var + rebuild.
 
 ## Done
 - [x] Network allowlist with wildcard domains (2026-10-18).

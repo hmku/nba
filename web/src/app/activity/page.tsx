@@ -10,6 +10,7 @@ import { ageSeconds, shortTime } from "@/lib/format";
 import Link from "next/link";
 import { DecideButtons } from "../approvals/DecideButtons";
 import { ChatDigests, SnapshotCard } from "./LeagueIntel";
+import { AdvisorSuggestions, isAdvisorSuggestion } from "./AdvisorSuggestions";
 import { isPrivateEvent, latestPerKind } from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
@@ -118,6 +119,15 @@ export default async function ActivityPage() {
     : [{ data: [] }, { data: [] }];
   const snapshots = latestPerKind((snapR.data as LeagueSnapshot[]) ?? []);
   const digests = (digR.data as AgentEvent[]) ?? [];
+  // advisor suggestions (ADVISOR_API_TOKEN; public like other agent logs, never chat content)
+  const advR = await db
+    .from("agent_events")
+    .select("*")
+    .like("run_id", "advisor-%")
+    .eq("payload->>report_kind", "advisor_suggestion")
+    .order("ts", { ascending: false })
+    .limit(10);
+  const advisorSuggestions = ((advR.data as AgentEvent[]) ?? []).filter(isAdvisorSuggestion);
   const { data: mrData } = await db.from("model_runs").select("run_id,kind,created_at").order("created_at", { ascending: false }).limit(60);
   const runs = (runsR.data as AgentRun[]) ?? [];
   const ids = runs.map((r) => r.run_id);
@@ -154,15 +164,15 @@ export default async function ActivityPage() {
     ["draft_sim", "draft sim", 72 * 3600],
     ["season_sim", "season sim", 72 * 3600],
   ];
-  // muse's daily run is a passive log (heartbeat only on reports), so it is never "stuck"
-  const stuck = runs.filter((r) => r.agent !== "muse" && r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
+  // muse's and the advisor's daily runs are passive logs (heartbeat only on reports), so they are never "stuck"
+  const stuck = runs.filter((r) => r.agent !== "muse" && r.agent !== "advisor" && r.status === "running" && (ageSeconds(r.heartbeat_at ?? r.started_at, now) ?? 0) > 600);
   const expiredLocks = locks.filter((l) => l.expires_at && Date.parse(l.expires_at) < now);
   const museRuns = new Set(runs.filter((r) => r.agent === "muse").map((r) => r.run_id));
   const museReports = visibleEvents
     .filter((e) => museRuns.has(e.run_id) && reportOf(e) && reportOf(e)!.kind !== "chat_digest")
     .sort((a, b) => (b.ts ?? "").localeCompare(a.ts ?? ""))
     .slice(0, 8);
-  const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, evR.error].filter(Boolean).map((e) => e!.message);
+  const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, evR.error, advR.error].filter(Boolean).map((e) => e!.message);
 
   return (
     <div className="space-y-4">
@@ -286,6 +296,8 @@ export default async function ActivityPage() {
           </ul>
         </section>
       )}
+
+      <AdvisorSuggestions events={advisorSuggestions} />
 
       {/* run timeline */}
       <section className="overflow-hidden rounded-xl border border-line bg-panel">

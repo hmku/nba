@@ -1,4 +1,7 @@
 import {
+  ADVISOR_ALLOWED_ENDPOINTS,
+  ADVISOR_REPORTS_PER_HOUR,
+  ADVISOR_SUGGESTION_SHAPE,
   CHAT_DIGEST_SHAPE,
   MAX_DETAILS_BYTES,
   MAX_DETAILS_BYTES_BY_KIND,
@@ -23,7 +26,16 @@ export async function GET() {
     auth: {
       scheme: "Authorization: Bearer <AGENT_API_TOKEN>",
       configured: !!process.env.AGENT_API_TOKEN,
-      errors: { "401": "missing/wrong token", "503": "AGENT_API_TOKEN not configured on the server" },
+      errors: { "401": "missing/wrong token", "403": "advisor token on a non-advisor endpoint", "503": "AGENT_API_TOKEN not configured on the server" },
+    },
+    advisor: {
+      instructions_url: "https://fantasy.harrisonku.com/advisor",
+      scheme: "Authorization: Bearer <ADVISOR_API_TOKEN>",
+      configured: !!process.env.ADVISOR_API_TOKEN,
+      allowed_endpoints: ADVISOR_ALLOWED_ENDPOINTS,
+      report_shape: ADVISOR_SUGGESTION_SHAPE,
+      rate_limit: `${ADVISOR_REPORTS_PER_HOUR} suggestions/hour`,
+      note: "The advisor token is read-only except for its own advisor_suggestion reports; every other endpoint answers 403.",
     },
     notes: [
       "All responses are JSON with an `ok` boolean; errors carry `error`.",
