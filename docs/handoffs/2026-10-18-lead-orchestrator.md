@@ -57,3 +57,13 @@ Supabase REST publish (network secret) ; demo rows removed.
 - Room-sim self-pick correction evaluated (1c71257): NOT adopted (worse/tie in W_mixed); stays opt-in `room_self`.
 - Placeholder variants (177675e): not adopted, opt-in.
 - Remaining USER actions: privacy SQL in Supabase SQL editor; laptop draft-prep + mock rehearsal after 22:00 UTC freeze (check value_search_status ok); `pip install -e .`.
+
+## Update 2026-10-20 ~04:00 UTC: cloud lead hands over to the user's LOCAL session
+- Draft done (13/13; handoff 2026-10-20-draft.md). Post-draft league sim on real rosters + real Yahoo schedule published
+  (sim-20261020033348-d0613f; League/Matchup tabs) - handoff 2026-10-20-post-draft-league-sim.md.
+- Week-1/streaming/trade analysis + `fantasy inseason lineup|stream|trade` - handoff 2026-10-20-week1-trades.md,
+  research docs/research/week1_and_trades_2026-10-20.md. Lineup crunch measured ~0 games (earlier concern withdrawn).
+- Open: verify the Ware+VanVleet -> J. Murray trade result independently before proposing (title +6..9 pp vs playoffs ~0
+  is unexplained; check the free-agent refill assumption); Podziemski status before Wed; privacy SQL (user);
+  roster re-capture converter after first transaction; lineup writing to Yahoo (T-005) not built.
+- Cloud twice-daily task was created then deleted at the user's request: everything runs locally now.
