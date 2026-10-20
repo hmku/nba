@@ -9,9 +9,9 @@ which is applied to every player (source recorded in `waiver_source`).
 Timing rules (league 44495 settings, `data/manual/league_settings.json`; Yahoo semantics are an ASSUMPTION, not
 verified on a processed claim yet):
 * free agent ("FA"): added today, plays from today (`weekly_deadline = daily_today`) if his game has not started.
-* waiver ("W (Mon D)"): a claim is processed on that date and the player can be started from that date on. The
-  dropped player stays on my roster (and plays) until the claim processes. Waiver order is a continual rolling
-  list, so the claim is not guaranteed (another team may claim first).
+* waiver ("W (Mon D)"): a claim is processed on that date; the player plays from that date + `lag_days` (default 1 in
+  the stream scan: plays the next day). The dropped player stays on my roster (and plays) until the claim processes.
+  Waiver order is a continual rolling list, so the claim is not guaranteed (another team may claim first).
 * a player dropped by anyone goes on waivers for `waiver_days` (2) days.
 """
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fantasy.lineup.players import OUT_TAGS, normalize_status, normalize_team, parse_positions
@@ -46,8 +46,10 @@ class FreeAgent:
     def is_out(self) -> bool:
         return self.status in OUT_TAGS
 
-    def available_from(self, today: date) -> date:
-        return max(today, self.waiver_until) if self.waiver_until else today
+    def available_from(self, today: date, lag_days: int = 0) -> date:
+        """First day he can play for me: today (free agent) or the waiver date + `lag_days` (ASSUMPTION: the claim
+        processes on the waiver date and he plays from the next day, lag 1, per the 2026-10-20 note)."""
+        return max(today, self.waiver_until + timedelta(days=lag_days)) if self.waiver_until else today
 
     @property
     def ownership(self) -> str:

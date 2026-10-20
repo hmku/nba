@@ -1,9 +1,14 @@
 """T-008: trade scan. Enumerate 1-for-1 and 2-for-1 trades with every other team, screen them cheaply, then run
-paired position-aware season sims for the shortlist under two projection sets.
+paired position-aware season sims for the shortlist under every projection set (inseason-0.3.0: see
+`tradeeval.py` for the base-with-free-move, realistic refill, schedule-neutral, seed and partner rules).
 
+0. **Base** (M1): the league with my best free roster move already made (`tradeeval.choose_free_move`: the best
+   realistic free agent for one of my lowest-value players, if it beats noise). Trades must beat that, not the
+   untouched roster, and are enumerated from it.
 1. **Enumerate** for each partner: 1-for-1 (13 x 13), I give 2 / get 1 (78 x 13) and I give 1 / get 2 (13 x 78).
-   Rosters go back to 13: a short roster adds the best *realistic* free agent of the latest Yahoo capture (not
-   tagged out; best by default-blend value), a long roster drops its lowest-value player.
+   Rosters go back to 13: a short roster adds the (k+1)-th best *realistic* free agent of the latest Yahoo capture
+   (not tagged out; `refill_skip` k, default 5) or a replacement-level player; a long roster drops its
+   lowest-value player. Drops and refill order use each projection set's own values.
 2. **Screen** (cheap, deterministic): an all-play category proxy. Each team's mean and sd of every weekly category
    come from the base season sim (regular weeks). A trade changes a team's means by the change in a linear weekly
    line, sum_i start_share(rank_i) x games/week_i x per-game line_i (percentages from makes/attempts), where
@@ -16,14 +21,17 @@ paired position-aware season sims for the shortlist under two projection sets.
    at most `partner_tol` (both PRIORS); then the top K per partner by my proxy gain, plus the top K_po by the same
    proxy anchored on the playoff weeks with playoff-week games (the regular-season screen is blind to schedule-driven
    title gains: it ranked the reviewed Murray trade 516th of 2197 Yeet trades; validation in the research note).
-3. **Simulate** the shortlist: paired position-aware season sims (common random numbers), under the default blend
-   projections and under the conservative `market` projections (`fantasy data alt-projections --blend market`).
-   Both teams' ΔP(playoffs), ΔP(title), Δ category wins ± paired SE.
-4. **Flag** `helps_both`: the trade helps me (season verdict "helps": one of ΔP(playoffs)/ΔP(title) > 2 SE, neither
-   < -2 SE) under BOTH projection sets.
-5. **Decomposition hooks**: games of the players in and out in each playoff week (schedule effect; the reviewer
-   found about half of the Murray title gain came from Denver's 4-game playoff weeks), regular-season games per
-   week, and the blend - market difference (projection disagreement).
+3. **Simulate** the shortlist (stage 1, one seed): paired position-aware season sims (common random numbers)
+   under every projection set: default blend; conservative `market` (ESPN + FantasyPros stats, OUR availability
+   model); stress `espn-only-gp` (ESPN stats AND ESPN games: independent of our availability model, M3). Both teams'
+   ΔP(playoffs), ΔP(title), Δ category wins ± paired SE; `helps_all` = season verdict "helps" (one of
+   ΔP(playoffs)/ΔP(title) > 2 SE, neither < -2 SE) under every set; `partner_ok` = partner ΔP(playoffs) >= -1 pp.
+4. **Re-simulate** the top rows (stage 2, M4): fresh seeds (>= 5), seed-averaged deltas with SEs inflated to the
+   seed-to-seed spread, schedule-neutral delta and "schedule bet" flag (M2), optimistic refill bound (M1), partner
+   acceptability by simulated ΔP(playoffs) (M5), and the decision class (`tradeeval.classify`): "helps" only if
+   ΔP(title) > 2 SE and neither ΔP(playoffs) nor Δcat-wins < -1 SE; title-only gains are "speculative".
+5. **Decomposition hooks**: games of the players in and out in each playoff week, regular-season games per
+   week, and the blend - other-set differences (projection disagreement).
 
 Trades are simulated as effective for the whole simulated season (the 2-day review is ignored): the error is at most
 the few days of week 1 before the trade would clear.
@@ -32,7 +40,7 @@ the few days of week 1 before the trade would clear.
 from __future__ import annotations
 
 import itertools
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 
@@ -41,11 +49,19 @@ import pandas as pd
 from scipy.stats import norm
 
 from fantasy.inseason.lineup import PlayerSpec, simulate_lineups
+from fantasy.inseason.possim import make_sim
 from fantasy.inseason.streamscan import season_verdict
 from fantasy.inseason.trade import Trade, apply_trade, naive_value
+from fantasy.inseason.tradeeval import (
+    PARTNER_PO_TOL,
+    EvalParams,
+    SetSpec,
+    evaluate_trade,
+    trade_world,
+)
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import SEASON_GAMES, STATS, parse_positions
-from fantasy.sim.engine import SeasonSimulator, SimResult
+from fantasy.sim.engine import SimResult
 from fantasy.sim.league import LeagueState
 from fantasy.sim.report import paired_delta
 from fantasy.sim.schedule import FantasyWeek, NBASchedule
@@ -143,10 +159,10 @@ class Screen:
         out = []
         for c in self.cats:
             if c.kind == "count":
-                out.append(line[SI[c.stat]])
+                out.append(line[SI[str(c.stat)]])
             else:
-                a = line[SI[c.den]]
-                out.append(line[SI[c.num]] / a if a > 0 else 0.0)
+                a = line[SI[str(c.den)]]
+                out.append(line[SI[str(c.num)]] / a if a > 0 else 0.0)
         return np.array(out)
 
     def score(self, changed: dict[int, list[str]]) -> dict[int, float]:
@@ -247,15 +263,47 @@ def schedule_hooks(tr: Trade, proj: pd.DataFrame, nba: NBASchedule, calendar: li
 
 
 # ---------------------------------------------------------------- simulate
-def simulate_shortlist(rows: list[dict], league: LeagueState, my_team: int, sims: dict[str, SeasonSimulator],
-                       sig: float = 2.0) -> None:
-    """Adds `sim[name] = {me, partner}` paired deltas and verdicts for every projection set (in place)."""
-    for name, sim in sims.items():
-        base = sim.run(league)
+def simulate_shortlist(rows: list[dict], base_league: LeagueState, my_team: int, sets: Mapping[str, SetSpec],
+                       roster_size: int, n_sims: int, seed: int = 0, refill_skip: int = 5,
+                       replacement: bool = False, sig: float = 2.0) -> None:
+    """Stage 1 (one seed): adds `sim[name] = {me, partner, verdict, partner_ok, refill_moves}` for every projection
+    set (in place). Each set rebuilds the trade world with its own values (partner drop, refill order) from the
+    base league (which already holds my free move)."""
+    for name, spec in sets.items():
+        sim = make_sim(spec.ctx, n_sims, seed, **spec.sim_kw)
+        base = sim.run(base_league)
+        names = spec.ctx.values["name"]
         for r in rows:
-            alt = sim.run(r["league"])
+            world, moves = trade_world(base_league, my_team, r["trade"], spec.ctx.values, roster_size, spec.pool,
+                                       refill_skip, replacement)
+            alt = sim.run(world)
             me, pt = paired_delta(base, alt, my_team), paired_delta(base, alt, r["trade"].partner)
-            r.setdefault("sim", {})[name] = {"me": me, "partner": pt, "verdict": season_verdict(me, sig)}
+            r.setdefault("sim", {})[name] = {
+                "me": me, "partner": pt, "verdict": season_verdict(me, sig),
+                "partner_ok": pt["p_playoffs"]["delta"] >= -PARTNER_PO_TOL,
+                "refill_moves": {str(t): {k: [str(names.get(p, p)) for p in v] for k, v in m.items()}
+                                 for t, m in moves.items()}}
+
+
+def resimulate_top(table: list[dict], rows_by_label: Mapping[str, dict], base_league: LeagueState, my_team: int,
+                   sets: Mapping[str, SetSpec], roster_size: int, params: EvalParams, top: int) -> None:
+    """Stage 2 (M4): the first `top` rows of the sorted table are re-simulated with fresh seeds (`params.seeds`,
+    disjoint from the screen/stage-1 seed), seed-averaged, with schedule-neutral and optimistic-refill deltas and
+    the partner check; adds `resim` to those rows and re-sorts the table (in place)."""
+    cache: dict = {}
+    for row in table[:top]:
+        tr = rows_by_label[row["trade"]]["trade"]
+        row["resim"] = evaluate_trade(tr, base_league, base_league, my_team, sets, roster_size, params, cache)
+    order = {"helps": 0, "speculative": 1, "floor_only": 2, "mixed": 3, "noise": 4, "hurts": 5}
+
+    def key(x: dict) -> tuple:
+        rs = x.get("resim")
+        if rs is None:
+            return (1, 9, 0.0)
+        ts = [r["me"]["p_title"]["delta"] or 0.0 for r in rs["by_set"].values()]
+        return (0, order.get(rs["class"], 9), -min(ts))
+
+    table.sort(key=key)
 
 
 def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: NBASchedule,
@@ -266,7 +314,7 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
     for r in rows:
         tr = r["trade"]
         sim = r.get("sim", {})
-        both = bool(sets) and all(sim.get(s, {}).get("verdict") == "helps" for s in sets)
+        helps_all = bool(sets) and all(sim.get(s, {}).get("verdict") == "helps" for s in sets)
         row = {
             "trade": tr.label(names), "partner": tr.partner, "partner_name": league.team_name(tr.partner),
             "give": [str(names.get(p, p)) for p in tr.give], "get": [str(names.get(p, p)) for p in tr.get],
@@ -281,18 +329,20 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
             "drops_incoming": [str(names.get(p, p)) for p in r["moves"].get(league.my_team, {}).get("drop", [])
                                if p in tr.get],
             "sim": sim,
-            "helps_both": both,
+            "helps_all": helps_all,
+            "partner_ok": bool(sets) and all(sim.get(s, {}).get("partner_ok", False) for s in sets),
             "decomposition": {"schedule": schedule_hooks(tr, proj, nba, calendar, playoff_weeks, gpw)},
         }
-        if len(sets) == 2 and all(s in sim for s in sets):
-            a, b = sets
+        if len(sets) >= 2 and all(s in sim for s in sets):
+            a = sets[0]
             row["decomposition"]["projection_disagreement"] = {
-                k: round(sim[a]["me"][k]["delta"] - sim[b]["me"][k]["delta"], 4) for k in ("p_playoffs", "p_title")}
+                b: {k: round(sim[a]["me"][k]["delta"] - sim[b]["me"][k]["delta"], 4) for k in ("p_playoffs", "p_title")}
+                for b in sets[1:]}
         out.append(row)
 
     def key(x: dict) -> tuple:
         ts = [x["sim"][s]["me"]["p_title"]["delta"] for s in sets if s in x["sim"]]
-        return (not x["helps_both"], -(min(ts) if ts else -1.0))
+        return (not x["helps_all"], -(min(ts) if ts else -1.0))
 
     out.sort(key=key)
     return out

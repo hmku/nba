@@ -12,20 +12,49 @@ the days first_day <= d < end_day. An add/drop effective on day e is simulated a
 the dropped one with window (None, e) and the added one with (e, None); only one of them is ever available, so
 the lineup is the 13-man lineup before and after e. Their injury-spell intervals (IL replacement) are clipped to
 the same window. No random numbers are added or removed, so runs stay paired with the unchanged league.
+
+Replacement level (`replacement_id(tag)`): an id that is not in the projections is simulated by the engine at the
+replacement line (`ctx.replacement`, gp 60, an every-other-day schedule). Ids made by `replacement_id` are also
+eligible for every position here (a replacement-level free agent at whatever position is needed); other unknown ids
+stay Util-only.
 """
 
 from __future__ import annotations
 
 from datetime import date
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import pandas as pd
 
 from fantasy.inseason.lineup import LineupSolver, bool_from_masks, masks_from_bool
 from fantasy.model.lines import parse_positions
-from fantasy.sim.engine import SeasonSimulator, SimResult
+from fantasy.sim.engine import SeasonSimulator, SimParams, SimResult
 from fantasy.sim.league import LeagueState
 
+if TYPE_CHECKING:
+    from fantasy.sim.context import SimContext
+
 Window = tuple[date | None, date | None]
+REPLACEMENT_PREFIX = "__replacement_level__"
+ALL_POSITIONS = ["PG", "SG", "SF", "PF", "C"]
+
+
+def replacement_id(tag: str | int = 0) -> str:
+    """A replacement-level free agent (not in the projections; distinct tags give distinct players)."""
+    return f"{REPLACEMENT_PREFIX}{tag}"
+
+
+def is_replacement(pid: str) -> bool:
+    return pid.startswith(REPLACEMENT_PREFIX)
+
+
+def make_sim(ctx: SimContext, n_sims: int, seed: int, proj_df: pd.DataFrame | None = None,
+             **kw: Any) -> PositionAwareSimulator:
+    """Position-aware simulator from a sim context (optionally with a modified projections frame)."""
+    return PositionAwareSimulator(ctx.proj.df if proj_df is None else proj_df, ctx.values, ctx.replacement,
+                                  ctx.settings, ctx.nba, ctx.calendar, ctx.matchups,
+                                  SimParams(n_sims=n_sims, seed=seed, **kw))
 
 
 class PositionAwareSimulator(SeasonSimulator):
@@ -42,7 +71,7 @@ class PositionAwareSimulator(SeasonSimulator):
     def _positions(self, pid: str) -> list[str]:
         if pid in self.proj.index and "positions" in self.proj.columns:
             return parse_positions(self.proj.loc[pid, "positions"])
-        return []
+        return list(ALL_POSITIONS) if is_replacement(pid) else []
 
     def _apply_windows(self, arr: dict[str, np.ndarray], pids: list[str]) -> None:
         pidx = {p: i for i, p in enumerate(pids)}
