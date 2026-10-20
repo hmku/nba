@@ -9,6 +9,7 @@ import {
   TYPE_LABEL,
   formatMetric,
   groupMoves,
+  isLongWhy,
   latestAdvice,
   linkHref,
   type Advice,
@@ -57,6 +58,98 @@ function fmtCell(v: Cell): string {
   return String(v);
 }
 
+const SUBHEAD = "text-xs font-semibold tracking-wide text-muted uppercase";
+
+/** "Why" (rationale) and "What changed" (why_now: before -> changed). */
+function WhyBody({ m }: { m: Advice }) {
+  const bullets = m.rationale.filter((r) => r.bullet);
+  return (
+    <div className="space-y-2.5">
+      {m.rationale.length > 0 && (
+        <div>
+          <div className={SUBHEAD}>Why</div>
+          {m.rationale
+            .filter((r) => !r.bullet)
+            .map((r, i) => (
+              <p key={i} className="mt-1 text-[13.5px] leading-snug">
+                {r.text}
+              </p>
+            ))}
+          {bullets.length > 0 && (
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[13.5px] leading-snug">
+              {bullets.map((r, i) => (
+                <li key={i}>{r.text}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {m.whyNow && (
+        <div>
+          <div className={SUBHEAD}>What changed</div>
+          {m.whyNow.before && (
+            <p className="mt-1 text-[13px] leading-snug text-muted">
+              <span className="font-medium text-fg">Before: </span>
+              {m.whyNow.before}
+            </p>
+          )}
+          {m.whyNow.changed.length > 0 && (
+            <ul className="mt-1 space-y-1 text-[13.5px] leading-snug">
+              {m.whyNow.changed.map((c, i) => (
+                <li key={i} className="flex gap-1.5">
+                  <span className="text-accent">→</span>
+                  <span>
+                    {c.kind && (
+                      <span className="mr-1">
+                        <Badge tone="neutral">{c.kind}</Badge>
+                      </span>
+                    )}
+                    {c.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {m.whyNow.evidence.length > 0 && (
+            <div className="mt-1 text-xs text-muted">Backed by: {m.whyNow.evidence.join(" · ")} (metrics below)</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Shown above the metrics. Long explanations collapse to a tap-to-expand block on phones only. */
+function WhySection({ m }: { m: Advice }) {
+  if (!m.rationale.length && !m.whyNow) return null;
+  const box = "mt-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2";
+  if (!isLongWhy(m.rationale, m.whyNow))
+    return (
+      <div className={box}>
+        <WhyBody m={m} />
+      </div>
+    );
+  const teaser = m.rationale[0]?.text ?? m.whyNow?.changed[0]?.text ?? m.whyNow?.before ?? "";
+  return (
+    <>
+      <div className={`${box} hidden sm:block`}>
+        <WhyBody m={m} />
+      </div>
+      <details className={`${box} group sm:hidden`}>
+        <summary className="cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
+          <span className={SUBHEAD}>Why · what changed</span>
+          <span className="ml-1 text-xs text-accent group-open:hidden">show</span>
+          <span className="ml-1 hidden text-xs text-accent group-open:inline">hide</span>
+          <p className="mt-1 line-clamp-2 text-[13.5px] leading-snug group-open:hidden">{teaser}</p>
+        </summary>
+        <div className="mt-1.5">
+          <WhyBody m={m} />
+        </div>
+      </details>
+    </>
+  );
+}
+
 function MoveCard({ m, highlight = false }: { m: Advice; highlight?: boolean }) {
   return (
     <article className={`rounded-xl border px-4 py-3 ${highlight ? "border-accent/50 bg-accent/5" : "border-line bg-panel"}`}>
@@ -78,6 +171,8 @@ function MoveCard({ m, highlight = false }: { m: Advice; highlight?: boolean }) 
           {m.verdict}
         </p>
       )}
+
+      <WhySection m={m} />
 
       {m.metrics.length > 0 && (
         <div className="scroll-thin mt-2 overflow-x-auto">

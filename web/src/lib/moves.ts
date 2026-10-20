@@ -33,6 +33,28 @@ export interface AdviceMetric {
 
 export type Cell = string | number | boolean | null;
 
+export const CHANGE_KINDS = ["news", "model", "roster", "schedule", "league", "other"] as const;
+export type ChangeKind = (typeof CHANGE_KINDS)[number];
+
+/** One thing that changed since the earlier decision (advice-0.2.0 `why_now.changed[]`). */
+export interface WhyChange {
+  text: string;
+  kind: ChangeKind | null;
+}
+
+/** advice-0.2.0 `why_now`: what we believed/decided before, and what changed since. */
+export interface WhyNow {
+  before: string;
+  changed: WhyChange[];
+  evidence: string[]; // metric labels backing the change
+}
+
+/** A rationale entry: a paragraph, or a bullet when the author wrote "- " / "• " in front. */
+export interface RationaleItem {
+  text: string;
+  bullet: boolean;
+}
+
 export interface Advice {
   runId: string;
   adviceId: string;
@@ -54,6 +76,8 @@ export interface Advice {
   risks: string[];
   links: { label: string; path: string }[];
   approvalId: string | null;
+  rationale: RationaleItem[]; // [] on rows posted before advice-0.2.0
+  whyNow: WhyNow | null;
 }
 
 export interface AdviceRow {
@@ -65,6 +89,42 @@ export interface AdviceRow {
 
 function cell(v: unknown): Cell {
   return typeof v === "string" || typeof v === "boolean" || n(v) != null ? (v as Cell) : null;
+}
+
+/** `rationale`: a list of strings (or one string); blank entries dropped; "- " / "• " marks a bullet. */
+export function parseRationale(v: unknown): RationaleItem[] {
+  const xs = typeof v === "string" ? [v] : a(v);
+  const out: RationaleItem[] = [];
+  for (const x of xs) {
+    const t = s(x)?.trim();
+    if (!t) continue;
+    const m = /^[-•*]\s+/.exec(t);
+    out.push(m ? { text: t.slice(m[0].length), bullet: true } : { text: t, bullet: false });
+  }
+  return out;
+}
+
+/** `why_now` -> WhyNow, or null unless it has a `before` text or at least one change. */
+export function parseWhyNow(v: unknown): WhyNow | null {
+  const w = o(v);
+  if (!w) return null;
+  const changed: WhyChange[] = [];
+  for (const c of a(w.changed)) {
+    const text = s(c) ?? s(o(c)?.text);
+    if (!text) continue;
+    const k = s(o(c)?.kind);
+    changed.push({ text: text.trim(), kind: k && (CHANGE_KINDS as readonly string[]).includes(k) ? (k as ChangeKind) : null });
+  }
+  const before = s(w.before)?.trim() ?? "";
+  if (!before && !changed.length) return null;
+  return { before, changed, evidence: a(w.evidence).filter((e): e is string => typeof e === "string" && !!e.trim()) };
+}
+
+/** Long explanations collapse on narrow screens: more than 2 rationale items, more than 3 changes, or > 420 chars. */
+export function isLongWhy(rationale: RationaleItem[], whyNow: WhyNow | null): boolean {
+  const chars = rationale.reduce((t, r) => t + r.text.length, 0) + (whyNow?.before.length ?? 0) +
+    (whyNow?.changed.reduce((t, c) => t + c.text.length, 0) ?? 0);
+  return rationale.length > 2 || (whyNow?.changed.length ?? 0) > 3 || chars > 420;
 }
 
 /** One `model_runs` row -> Advice, or null when the summary is not an advice/1 object. */
@@ -130,6 +190,8 @@ export function parseAdvice(row: AdviceRow): Advice | null {
       .filter((l): l is Obj => !!l && !!s(l.label) && !!s(l.path))
       .map((l) => ({ label: l.label as string, path: l.path as string })),
     approvalId: s(sm.approval_id),
+    rationale: parseRationale(sm.rationale),
+    whyNow: parseWhyNow(sm.why_now),
   };
 }
 

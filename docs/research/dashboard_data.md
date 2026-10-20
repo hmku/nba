@@ -204,7 +204,8 @@ scenario is absent or starts with `post-draft` (`web/src/lib/postDraft.ts:isSeas
 
 ## 4. `kind = 'advice'` — recommendations for the Moves view (`/moves`)
 
-_Added 2026-10-20. Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.1.0`).
+_Added 2026-10-20 (advice-0.1.0); 2026-10-20 advice-0.2.0 added `rationale` + `why_now` (additive, schema stays
+`advice/1`). Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.2.0`).
 Reader: `web/src/app/moves/page.tsx` via `web/src/lib/moves.ts`._
 
 One recommendation (trade idea, add/drop, stream, IL move, daily lineup plan) is an **item** with a stable
@@ -254,13 +255,46 @@ never authorises a Yahoo write.
   "scenarios": [{"name": "Base case", "refill": "Champagnie", "ΔP(title)": "+8.6 ± 0.6 pp"}],  // optional; scalar cells
   "risks": ["…"],
   "links": [{"label": "Trade scan", "path": "docs/research/week1_and_trades_2026-10-20.md"}],  // repo path, /route or URL
-  "approval_id": "apr-…"                 // optional: the approvals row carrying the user's decision
+  "approval_id": "apr-…",                // optional: the approvals row carrying the user's decision
+
+  // advice-0.2.0: plain-language justification + "why now" (see the rules below the block)
+  "rationale": [                         // 1-6 strings, each ≤ 600 chars (a bare string = one paragraph);
+    "Champagnie is a 3-and-D forward: threes, steals, blocks, few turnovers — categories we are thin in.",
+    "- Bailey (rookie) is the weakest bench slot by every projection set."   // "- " / "• " prefix = bullet
+  ],
+  "why_now": {
+    "before": "At the draft (draft-0.x values, ADP ~150) he ranked below our last picks: ...",  // ≤ 800 chars
+    "changed": [                         // 1-8 items, each ≤ 400 chars: a string or {"text", "kind"?}
+      "Bailey's projected minutes fell after the preseason",
+      {"text": "inseason-0.3.0 values bench depth with a refill model", "kind": "model"}
+      // kind ∈ news | model | roster | schedule | league | other (optional tag shown on the card)
+    ],
+    "evidence": ["ΔP(title), blend"]     // optional, ≤ 8: metric labels (from `metrics`) backing the change;
+  }                                      //   a label not found in `metrics` is a warning
 }
 ```
 `params`: `{"command": "post" | "status", …}` plus anything the input file's `params` holds (status rows:
 `from_status`, `to_status`, `note`, `approval_id`). `inputs`: `{"source_file", "content_sha256", …}` (status rows:
 `previous_run_id`). An input file is either the bare summary or `{"summary": {...}, "params": {...}, "inputs": {...}}`;
 seeds live in `data/advice/`.
+
+**`rationale` / `why_now` rule (advice-0.2.0).** They are *required* for actionable open items — `type` in
+{`trade`, `add_drop`, `stream`} with `status` in {`idea`, `awaiting_yes`} — but only when **new or changed content is
+posted** (a new item, or a re-post whose content hash differs): `fantasy advise post` then fails with a usage error.
+Chosen over a per-item version flag because the content hash already tells old from new: an unchanged re-post of an item
+recorded before 0.2.0 stays a no-op (with a warning), `fantasy advise status` on such an item records the status and
+warns, and `advice.validate(..., strict=False)` (used for the pre-0.2.0 seeds in tests) downgrades the error to a
+warning. Lineup and IL plans, and decided items (approved/done/rejected/expired), may omit both. `rationale` is written
+for a quant who knows little basketball (basketball context welcome); `why_now.before` says what we believed or decided
+earlier and why (draft-time model/values/ADP/roster need); `changed` lists what is new since (news, model versions,
+roster/schedule facts, other teams' moves). Numbers in these texts follow the evidence standard: put them in `metrics`
+with a label and reference them from `why_now.evidence`. Readers treat both as optional: rows without them render as
+before.
+
+**Moves card layout.** Header → title → headline → verdict → **Why** (rationale) and **What changed** (`before`, then the
+`changed` list with kind tags and the evidence refs) → metrics → scenarios → risks → links. On narrow screens (< 640 px)
+a long explanation (`isLongWhy`: > 2 rationale items, > 3 changes, or > 420 chars) collapses to a two-line teaser that
+expands on tap; on wider screens it is always open.
 
 **Moves page sections** (`groupMoves`): *Needs your yes* = status `awaiting_yes`, or `requires_user_yes` with status
 `idea`; *Today's lineup* = type `lineup` with `for_date` = today ET (or none) and not rejected/expired; *Done / rejected*

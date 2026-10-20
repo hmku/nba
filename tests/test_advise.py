@@ -38,9 +38,13 @@ def sample(**over):
         "scenarios": [{"name": "base", "ΔP(title)": "+8.6"}],
         "risks": ["health"],
         "links": [{"label": "note", "path": "docs/research/x.md"}],
+        "rationale": ["B fills our weakest category.", "- A is redundant behind C."],
+        "why_now": {"before": "At the draft we took A: higher value and ADP.",
+                    "changed": ["B's role grew (news)", {"text": "inseason-0.3.0 adds refill", "kind": "model"}],
+                    "evidence": ["ΔP(title)"]},
     }
     s.update(over)
-    return s
+    return {k: v for k, v in s.items() if v is not None}
 
 
 def write(tmp_path, name, obj):
@@ -151,8 +155,86 @@ def test_list_latest_per_item_and_filters():
 def test_seed_files_validate():
     for p in sorted((REPO / "data" / "advice").glob("*.json")):
         summary, params, inputs = advice.load_file(p)
-        s, _ = advice.validate(summary)
+        # lenient: seeds posted before advice-0.2.0 may lack rationale/why_now (a warning, not an error)
+        s, _ = advice.validate(summary, strict=False)
         assert all(m["evidence"] in advice.EVIDENCE for m in s["metrics"]), p
+
+
+def test_why_validated_and_kept():
+    s, w = advice.validate(sample())
+    assert s["rationale"] == ["B fills our weakest category.", "- A is redundant behind C."]
+    assert s["why_now"]["changed"][1] == {"text": "inseason-0.3.0 adds refill", "kind": "model"}
+    assert not w
+    s, _ = advice.validate(sample(rationale="One paragraph."))
+    assert s["rationale"] == ["One paragraph."]
+    _, w = advice.validate(sample(why_now={"before": "b", "changed": ["c"], "evidence": ["nope"]}))
+    assert any("'nope'" in x for x in w)
+
+
+@pytest.mark.parametrize("over", [
+    {"rationale": None}, {"why_now": None}, {"rationale": None, "why_now": None},
+    {"type": "add_drop", "status": "awaiting_yes", "why_now": None},
+    {"type": "stream", "rationale": None},
+])
+def test_open_actionable_items_require_why(over):
+    with pytest.raises(advice.AdviceError, match="required for an open"):
+        advice.validate(sample(**over))
+    _, w = advice.validate(sample(**over), strict=False)
+    assert any("required for an open" in x for x in w)
+
+
+@pytest.mark.parametrize("over", [
+    {"type": "lineup"}, {"type": "il"}, {"status": "done"}, {"status": "approved"}, {"status": "rejected"},
+])
+def test_why_optional_for_lineups_il_and_decided_items(over):
+    s, w = advice.validate(sample(rationale=None, why_now=None, **over))
+    assert "rationale" not in s and not any("required" in x for x in w)
+
+
+@pytest.mark.parametrize("bad, msg", [
+    ({"rationale": []}, "rationale: expected 1-6"),
+    ({"rationale": ["x"] * 7}, "rationale: expected 1-6"),
+    ({"rationale": ["ok", " "]}, r"rationale\[1\]"),
+    ({"rationale": ["x" * 601]}, "at most 600"),
+    ({"why_now": "because"}, "why_now: expected an object"),
+    ({"why_now": {"before": "b", "changed": ["c"], "after": "x"}}, "unknown keys"),
+    ({"why_now": {"changed": ["c"]}}, "why_now.before"),
+    ({"why_now": {"before": "b" * 801, "changed": ["c"]}}, "at most 800"),
+    ({"why_now": {"before": "b", "changed": []}}, "why_now.changed"),
+    ({"why_now": {"before": "b", "changed": ["c"] * 9}}, "why_now.changed"),
+    ({"why_now": {"before": "b", "changed": ["c" * 401]}}, "at most 400"),
+    ({"why_now": {"before": "b", "changed": [{"text": "c", "kind": "vibes"}]}}, "kind"),
+    ({"why_now": {"before": "b", "changed": [{"txt": "c"}]}}, "unknown keys"),
+    ({"why_now": {"before": "b", "changed": [3]}}, "string or"),
+    ({"why_now": {"before": "b", "changed": ["c"], "evidence": "ΔP"}}, "why_now.evidence"),
+])
+def test_why_validation_rejects(bad, msg):
+    with pytest.raises(advice.AdviceError, match=msg):
+        advice.validate(sample(**bad))
+
+
+def test_post_requires_why_only_for_new_content(tmp_path):
+    old = sample(rationale=None, why_now=None)
+    # an item posted before advice-0.2.0 (inserted directly, as the old writer did)
+    full = {"schema": "advice/1", "advice_id": "old-1", "version": 1, "supersedes": None, **old,
+            "status_history": [{"status": "idea", "at": "2026-10-20T00:00:00", "by": "post"}]}
+    advice.store().insert(advice._row(full, {"command": "post"}, {}))
+    # unchanged re-post of the old item: no-op with a warning, not an error
+    again = advice.post(old, advice.store(), advice_id="old-1")
+    assert again["unchanged"] and any("required for an open" in w for w in again["warnings"])
+    # a status change on it warns too
+    st = advice.set_status(advice.store(), "old-1", "awaiting_yes", note="asked")
+    assert st["warnings"] and "rationale and why_now missing" in st["warnings"][0]
+    # changed content without the why is refused (CLI: usage error)
+    with pytest.raises(advice.AdviceError, match="required for an open"):
+        advice.post({**old, "headline": "new"}, advice.store(), advice_id="old-1")
+    p = write(tmp_path, "new-item.json", sample(why_now=None))
+    res = runner.invoke(app, ["advise", "post", "--file", str(p), "--json"])
+    assert res.exit_code == 2 and json.loads(res.output)["code"] == "usage"
+    # adding the why appends a version
+    ok = advice.post(sample(), advice.store(), advice_id="old-1")
+    assert not ok["unchanged"] and ok["version"] == 3
+    assert rows()[-1]["summary"]["why_now"]["before"].startswith("At the draft")
 
 
 def test_rest_store_round_trip(tmp_path):
