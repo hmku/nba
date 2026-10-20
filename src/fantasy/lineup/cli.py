@@ -28,6 +28,7 @@ from fantasy.ops.common import EXIT_ERROR, EXIT_USAGE
 from fantasy.sim.schedule import (
     LEAGUE_SCHEDULE_PATH,
     FantasyWeek,
+    NBASchedule,
     load_nba_schedule,
     load_schedule_json,
 )
@@ -123,6 +124,10 @@ def plan(
     seed: Annotated[int, typer.Option("--seed")] = 0,
     protect_ratios: Annotated[bool, typer.Option("--protect-ratios", help="Allow benching a player with a game "
                                                  "whose marginal value is negative (FG%/FT%/TO protection)")] = False,
+    save: Annotated[bool, typer.Option("--save", help="Record the plan as a model_runs row (kind lineup_plan) for "
+                                       "the dashboard's Lineup view; idempotent per (date, content)")] = False,
+    use_rest: Annotated[bool, typer.Option("--rest", help="With --save: write Supabase over HTTPS (cloud sessions) "
+                                           "instead of FANTASY_DB_URL")] = False,
     as_json: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
     try:
@@ -176,12 +181,32 @@ def plan(
               "roster_capture": (str(cap) if cap else None, sha256_file(cap) if cap else None),
               "league_schedule": (str(sched_path), sha256_file(sched_path)), "nba_schedule": (nba.source, None)}
     out["inputs"] = _inputs_provenance(inputs, current_slots=current_slots, accumulated=accumulated)
+    if save:
+        out["saved"] = _save_plan(out, nba, use_rest)
     if not week:
         out.pop("week_plan")
     if as_json:
         typer.echo(json.dumps(out, indent=1, default=str))
         return
     _print(out)
+
+
+def _save_plan(out: dict[str, Any], nba: NBASchedule, use_rest: bool) -> dict[str, Any]:
+    """Write the `lineup_plan` row (before `week_plan` is dropped for display). A storage failure does not lose
+    the plan: it is reported in `saved.error` and the warnings."""
+    from fantasy.lineup import record
+
+    teams = {p["player_id"]: p.get("team") for p in out.get("players", [])}
+    row = record.plan_row(out, record.game_markers(nba, teams, out["days"]))
+    try:
+        st = record.store(use_rest)
+        try:
+            return record.save(row, st)
+        finally:
+            st.close()
+    except Exception as e:  # noqa: BLE001
+        out["warnings"].append(f"--save failed: {type(e).__name__}: {e}")
+        return {"run_id": row["run_id"], "inserted": False, "error": f"{type(e).__name__}: {e}"}
 
 
 def _load_rosters(league: dict[str, Any] | None, my_team: int, opp_id: int, proj: pd.DataFrame,
@@ -305,3 +330,10 @@ def _print(out: dict) -> None:
                    f"unused {d['unused_starts']} {d['unused_players']}")
     for w in out["warnings"]:
         typer.echo(f"warning: {w}")
+    if out.get("saved"):
+        sv = out["saved"]
+        typer.echo(f"saved {sv['run_id']} ({'new row' if sv.get('inserted') else 'not inserted: identical row exists or error'})")
+
+
+# registers `lineup record|backfill` on `app`
+from fantasy.lineup import record_cli as _record_cli  # noqa: E402,F401
