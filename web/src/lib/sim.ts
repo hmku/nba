@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CatKey, ModelRun } from "./types";
 import { CATS } from "./categories";
+import { isSeasonScenario, parseH2HMatrix, parseScheduleInfo, parseVsOpponents, type H2HWeek, type OppSummary, type ScheduleInfo } from "./postDraft";
 
 export type Obj = Record<string, unknown>;
 
@@ -69,13 +70,14 @@ export function pickPreseasonRun(runs: ModelRun[]): ModelRun | null {
   return runs.find((r) => runScenario(r) === PRESEASON || runCommand(r) === "preseason") ?? null;
 }
 
-/** Newest whole-season simulation from actual (draft / Yahoo) rosters (`fantasy sim season`). */
+/** Newest whole-season simulation from actual (draft / Yahoo) rosters (`fantasy sim season`; no scenario, or
+ * scenario "post-draft: actual rosters"). */
 export function pickSeasonRun(runs: ModelRun[]): ModelRun | null {
   return (
     runs.find((r) => {
       const cmd = runCommand(r);
       const s = obj(r.summary);
-      return cmd === "season" && runScenario(r) == null && obj(s?.my_team) != null;
+      return cmd === "season" && isSeasonScenario(runScenario(r)) && obj(s?.my_team) != null;
     }) ?? null
   );
 }
@@ -97,6 +99,8 @@ export interface WeekMatchup {
   catWin: Partial<Record<CatKey, number>>;
   /** optional richer per-category block (matchup command shape) */
   cats: Partial<Record<CatKey, { pWin: number | null; me: number | null; opp: number | null }>>;
+  /** the opponent comes from an assumed round robin, not Yahoo's schedule */
+  opponentAssumed: boolean;
   raw: Obj;
 }
 
@@ -128,6 +132,7 @@ export function parseWeek(v: unknown): WeekMatchup | null {
     oppGames: num(o.opp_player_games),
     catWin,
     cats,
+    opponentAssumed: o.opponent_assumed === true,
     raw: o,
   };
 }
@@ -228,6 +233,10 @@ export interface SeasonSim {
   acrossLeagues: Obj | null;
   categoryProfile: Partial<Record<CatKey, { rank: number | null; z: number | null }>>;
   leagues: { league: number; pPlayoffs: number | null; pTitle: number | null; expRank: number | null; roster: { id: string; name: string }[] }[];
+  isPostDraft: boolean;
+  schedule: ScheduleInfo | null;
+  h2h: H2HWeek[];
+  vsOpponents: OppSummary[];
 }
 
 function parseRosters(inputs: Obj | null, summary: Obj): SeasonSim["rosters"] {
@@ -275,6 +284,10 @@ export function parseSeasonSim(run: ModelRun | null): SeasonSim | null {
     warnings: arr(s.warnings).map(String),
     explanations: obj(s.explanations),
     isPreseason: runScenario(run) === PRESEASON || runCommand(run) === "preseason",
+    isPostDraft: (runScenario(run) ?? "").startsWith("post-draft"),
+    schedule: parseScheduleInfo(s),
+    h2h: parseH2HMatrix(my),
+    vsOpponents: parseVsOpponents(my),
     nLeagues: num(s.n_leagues),
     acrossLeagues: obj(my?.across_leagues),
     categoryProfile: parseCatProfile(my?.category_profile),

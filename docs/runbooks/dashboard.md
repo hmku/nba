@@ -97,8 +97,9 @@ Live room details:
     or invalid: computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`): `snake`,
     `snake_3rr` and `custom` (`drafts.config.custom_rounds`, honoured whenever valid).
 ### `/matchup`
-Latest `season_sim` row with `params.command = 'season'` and no `scenario` (i.e. `fantasy sim season` on real or
-mid-draft rosters) → `summary.my_team.weekly_matchups[]` (`week, start, end, opponent, opponent_name, p_win, p_tie,
+Latest `season_sim` row with `params.command = 'season'` and no `scenario` or a `post-draft…` scenario (i.e. `fantasy sim
+season` on real or mid-draft rosters; post-draft schema: `dashboard_data.md` section 3; pages read the newest 60
+`season_sim` rows so what-if `compare` runs cannot crowd it out) → `summary.my_team.weekly_matchups[]` (`week, start, end, opponent, opponent_name, p_win, p_tie,
 p_loss, exp_cats_won, my_player_games, opp_player_games, cat_win_probs{cat}`; optional `categories{cat:{p_win,
 me_mean, opp_mean}}` and `recommendations[]` strings are rendered if a future producer adds them). Week strip
 (P(win) per week; `?week=N`), header (week, dates, this week/next up, me vs opponent; names from
@@ -106,10 +107,16 @@ me_mean, opp_mean}}` and `recommendations[]` strings are rendered if a future pr
 table (totals = this week's projection if present, else each team's `team_profiles[t].weekly_mean` labelled "avg /
 week"), "What to do" (chase 30–70%, safe ≥80%, concede ≤20%; streaming adds pending T-004/T-006), season P(playoffs)/P(title).
 **Empty state** (no such run, i.e. before the draft) explains what will appear and links to the pre-draft projection.
+Post-draft additions: an amber "Opponents are assumed" banner while `summary.matchup_schedule.assumed_weeks` is non-empty
+(header says "assumed opponent (round robin)"); **vs every opponent** table for the selected week from
+`my_team.weekly_h2h_matrix` (P(win) this week, season-average P(win) from `vs_opponents_all_play`, 9 category-odds heat
+cells; toughest first); tapping a team opens `?week=N&opp=T` = that week against that team (what-if, e.g. Yahoo's real
+opponent). Names: `drafts.config.team_names`, else the sim's own team names.
 
 ### `/league`
-Uses the post-draft `season` run if it is newer than the pre-draft projection, else the pre-draft projection
-(labelled "pre-draft projection"; teams shown as draft slots, "Me" highlighted). Projected standings (exp. rank,
+Uses the post-draft `season` run if it is newer than the pre-draft projection (badge "post-draft · actual rosters"),
+else the pre-draft projection (labelled "pre-draft projection"; teams shown as draft slots, "Me" highlighted). Standings
+columns: exp. rank, P(playoffs), P(bye) (top-2 seed), P(title); an amber note while the matchup schedule is assumed. Projected standings (exp. rank,
 P(playoffs) with bar, P(title); ± SE in tooltips); category heatmap from `team_profiles` (rank 1–12, colour = z) or,
 pre-draft, my category strip from `my_outlook.category_profile`; rosters from `draft_picks` by `team_slot` (default
 draft, or the sim's draft post-draft; names from `drafts.config.team_names`), else the sim's rosters, else a pre-draft

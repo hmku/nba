@@ -483,3 +483,25 @@ def test_cli_export_league_and_scenario(proj_path, db_url, tmp_path):
     s = json.loads(out.output)
     assert s["scenario"] == "post-draft: actual rosters" and s["draft_id"] == "mock-x1"
     assert s["matchup_schedule"]["all_assumed"] and s["my_team"]["name"] == "T1"
+
+
+def test_from_yahoo_capture_maps_team_ids_to_slots(tmp_path):
+    from fantasy.cli import app
+    from fantasy.sim.schedule import from_yahoo_capture
+
+    cap = {"source": "test", "teams": {"11": {"name": "Me", "draft_slot": 1}, "5": {"name": "B", "draft_slot": 12},
+                                       "1": {"name": "C", "draft_slot": 3}, "2": {"name": "D", "draft_slot": 4}},
+           "weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-10-25", "matchups_yahoo_team_ids": [[11, 5], [1, 2]]},
+                     {"week": 18, "start": "2027-03-01", "end": "2027-03-07", "matchups_yahoo_team_ids": []}]}
+    out = from_yahoo_capture(cap)
+    assert out["weeks"][0]["matchups"] == [[1, 12], [3, 4]] and "matchups" not in out["weeks"][1]
+    assert out["team_names"]["12"] == "B" and out["weeks"][1]["end"] == "2027-03-07"
+    p = tmp_path / "cap.json"
+    p.write_text(json.dumps(cap))
+    dst = tmp_path / "league_schedule.json"
+    r = CliRunner().invoke(app, ["sim", "import-schedule", "--yahoo-capture", str(p), "--out", str(dst), "--json"])
+    assert r.exit_code == 0, r.output
+    assert load_schedule_json(dst).opponent(1, 1) == 12
+    cap["weeks"][0]["matchups_yahoo_team_ids"] = [[11, 99]]
+    with pytest.raises(ValueError, match="not in capture"):
+        from_yahoo_capture(cap)

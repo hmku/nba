@@ -53,11 +53,27 @@ for experiments.
 2. Mid-draft without `--complete-rosters` compares partial rosters (warned). With it, players marked
    `projected_players` are expected picks, not real.
 3. Playoff weeks 18-20 (Mar 1-7, 8-14, 15-21, 2027; 6 teams, re-seeded each round, ties to the higher
-   seed) are verified from the Yahoo settings page; the other week dates are derived (week 1 assumed
-   Oct 20 - Nov 1, All-Star week 17 = Feb 15-28) until Yahoo's schedule JSON is loaded (warning in output).
+   seed) are verified from the Yahoo settings page; since 2026-10-20 all week dates and the weeks 1-17 pairings
+   come from Yahoo (`data/manual/league_schedule.json`; week 1 = Oct 20-25, two-week weeks 7 and 17). Without
+   that file the dates are derived and the pairings an assumed round robin (warned in the output).
 4. `SimParams` are fitted since season-sim-0.4.0 (`docs/research/sim_calibration.md`: projection error, game variance, within-game correlation; injury spells validated). Since season-sim-0.5.0 the per-game variance comes from `fantasy.model.noise` (the one noise model the draft also uses; there is no `game_var` option any more); `noise_corr` (within-game correlation) is simulator-only. Still not validated end-to-end: P(win matchup) against real fantasy outcomes, streaming, lineup behaviour; the season error is fitted on the baseline (not blended) projections.
 
-## Post-draft setup (needs a local session with the browser, `yahoo-browser` skill)
+## Post-draft league (done 2026-10-20; re-run after roster changes)
+- Rosters: `fantasy sim export-league --draft-id nba.l.44495-2026 --names-file data/manual/league_team_names.json --out data/manual/league_rosters_2026-27.json`
+  (needs the draft in the DB: SQL, or in a cloud session copy `drafts` + `draft_picks` from REST into a scratch SQLite;
+  reports `unknown_players`). After waivers/trades the draft no longer equals the rosters: build the file from a Muse
+  `rosters` snapshot instead (converter: PLANNED).
+- Schedule: `data/manual/league_schedule.json` (Yahoo's real pairings weeks 1-17 + dates weeks 1-20, from
+  `fantasy sim import-schedule --yahoo-capture data/raw/yahoo/league_schedule_2026-10-20.json`) is picked up automatically.
+  Team sides may also be Yahoo team names; weeks without pairings stay an assumed round robin (`matchup_schedule.assumed_weeks`).
+  Tests isolate it (autouse fixture in `tests/conftest.py`).
+- Dashboard run: `fantasy sim season --league-file data/manual/league_rosters_2026-27.json --sims 12000 --scenario "post-draft: actual rosters" --json`
+  on a scratch SQLite, then `fantasy publish --rest --source sqlite:///<scratch.db> --tables model_runs`.
+  12k sims ≈ 15 s, SE(P(playoffs)) ≤ 0.46 pp. `my_team.weekly_h2h_matrix` = my odds vs every team in every week.
+- Results and the schedule sensitivity (mid-table P(playoffs) ±10 pp across round-robin relabellings):
+  `docs/research/season_simulator.md` "Post-draft league".
+
+## Post-draft setup from Yahoo pages (needs a local session with the browser, `yahoo-browser` skill)
 1. Read every team's roster from Yahoo (league → each team page) → `rosters.json` with player ids
    resolved via `fantasy.draft.names.resolve_player` (team ids: pick one id scheme, e.g. Yahoo team ids,
    and use it in both files).

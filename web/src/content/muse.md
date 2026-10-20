@@ -98,6 +98,16 @@ URL pattern below does not work, and tell the user which URL worked):
 - `settings` (once, then only when something changes): the league Settings page.
 - `other` (as needed): anything useful not covered above (e.g. a trade block page), with a `summary`.
 
+**Requested now (2026-10-20, post-draft): post a scoreboard snapshot (kind `scoreboard`, week 1) and the
+league schedule if visible.** The agents need who plays whom in weeks 1-17 (Yahoo league pages are
+private; the user's local session captured it once on 2026-10-20, so this mainly verifies it and catches
+changes). (1) `scoreboard` for week 1 with
+every pairing (`team_a`/`team_b`, exact Yahoo team names). (2) If Yahoo shows the full season schedule
+(League → Schedule, or each team's schedule page), post it as kind `other` with `summary: "league
+schedule"` and payload `{"weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-11-01", "matchups":
+[["Team A", "Team B"], ...]}, ...]}`: exact team names, dates as Yahoo shows them (leave `start`/`end`
+out if not shown). Even one team's schedule page (all 17 opponents of that team) helps.
+
 **How to post** a snapshot: `POST /api/agent/snapshot` with
 `{"kind": "...", "week": 3, "observed_at": "2026-11-02T09:15:00-05:00", "source_url": "https://...", "summary": "optional one line", "payload": {...}}`.
 - Copy names, statuses and numbers exactly as Yahoo shows them; do not compute or guess anything.

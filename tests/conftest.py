@@ -20,3 +20,11 @@ def db_url(tmp_path, monkeypatch) -> str:
     url = f"sqlite:///{tmp_path / 'test.db'}"
     monkeypatch.setenv("FANTASY_DB_URL", url)
     return url
+
+
+@pytest.fixture(autouse=True)
+def _no_repo_league_schedule(monkeypatch, tmp_path) -> None:
+    """`fantasy sim` defaults to data/manual/league_schedule.json when it exists; tests stay independent of repo data."""
+    import fantasy.sim.cli as sim_cli
+
+    monkeypatch.setattr(sim_cli, "LEAGUE_SCHEDULE_PATH", tmp_path / "no_league_schedule.json")

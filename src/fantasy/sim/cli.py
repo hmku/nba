@@ -204,6 +204,30 @@ def export_league(
                        f"{len(unknown)} players not in projections")
 
 
+@app.command("import-schedule")
+def import_schedule(
+    yahoo_capture: Annotated[Path, typer.Option("--yahoo-capture", help="data/raw/yahoo/league_schedule_<date>.json")],
+    out: Annotated[Path, typer.Option("--out", help="Schedule JSON to write (default for sim: data/manual/league_schedule.json)")]
+    = LEAGUE_SCHEDULE_PATH,
+    as_json: JsonOpt = False,
+) -> None:
+    """Convert a Yahoo schedule capture (Yahoo team ids) into the sim's schedule JSON (team ids = draft slots)."""
+    from fantasy.sim.schedule import MatchupSchedule, from_yahoo_capture
+
+    try:
+        data = from_yahoo_capture(json.loads(yahoo_capture.read_text()))
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        fail(f"bad capture: {e}", as_json, exit_code=2)
+    weeks = {w["week"]: [tuple(p) for p in w["matchups"]] for w in data["weeks"] if w.get("matchups")}
+    errs = MatchupSchedule(weeks=weeks, source="check").validate(sorted({int(k) for k in data["team_names"]}))
+    if errs:
+        fail("invalid schedule: " + "; ".join(errs), as_json, exit_code=2)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    emit({"ok": True, "out": str(out), "weeks": len(data["weeks"]), "weeks_with_matchups": sorted(weeks)}, as_json,
+         f"wrote {out}: {len(data['weeks'])} weeks, pairings for weeks {sorted(weeks)}")
+
+
 @app.command()
 def schedule(
     draft_id: DraftOpt = None, league_file: LeagueOpt = None, schedule: SchedOpt = None, nba_schedule: NbaOpt = None,

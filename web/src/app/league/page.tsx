@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "League" };
 
 export default async function LeaguePage() {
   const db = anonClient();
-  const [{ runs, error }, { drafts, error: dErr }] = await Promise.all([latestSimRuns(db, "season_sim", 20), loadDrafts(db)]);
+  const [{ runs, error }, { drafts, error: dErr }] = await Promise.all([latestSimRuns(db, "season_sim", 60), loadDrafts(db)]);
   const pre = parseSeasonSim(pickPreseasonRun(runs));
   const post = parseSeasonSim(pickSeasonRun(runs));
   // Post-draft (real rosters) wins if it is newer than the pre-draft projection.
@@ -35,7 +35,10 @@ export default async function LeaguePage() {
   const needPlayers = picks.length > 0 || (sim && Object.keys(sim.rosters).length > 0);
   const players = needPlayers ? await loadPlayers(db) : {};
   const teamNames = (draft?.config?.team_names ?? {}) as Record<string, string>;
-  const nameOf = (team: number, fallback?: string) => teamNames[String(team)] ?? fallback ?? `Team ${team}`;
+  // Names: drafts.config.team_names, else the post-draft simulation's own names (Yahoo team names)
+  const simNames: Record<string, string> = {};
+  if (sim && !sim.isPreseason) for (const r of sim.table) simNames[String(r.team)] = r.name;
+  const nameOf = (team: number, fallback?: string) => teamNames[String(team)] ?? fallback ?? simNames[String(team)] ?? `Team ${team}`;
 
   return (
     <div className="space-y-3">
@@ -43,7 +46,7 @@ export default async function LeaguePage() {
         <h1 className="text-xl font-semibold tracking-tight">League</h1>
         {sim && (
           <span className={`rounded-full px-2 py-0.5 text-[11px] ${sim.isPreseason ? "bg-warn/10 text-warn" : "bg-accent/10 text-accent"}`}>
-            {sim.isPreseason ? "pre-draft projection" : "from rosters"}
+            {sim.isPreseason ? "pre-draft projection" : sim.isPostDraft ? "post-draft · actual rosters" : "from rosters"}
           </span>
         )}
       </div>
@@ -65,6 +68,15 @@ export default async function LeaguePage() {
           )}
           <Standings sim={sim} nameOf={nameOf} />
           <Heatmap sim={sim} nameOf={nameOf} />
+          {!sim.isPreseason && pre && (
+            <p className="px-1 text-xs text-muted">
+              The pre-draft projection (simulated drafts, before real rosters existed) stays under{" "}
+              <Link href="/draft?view=model" className="text-accent">
+                Draft › Model &amp; sims
+              </Link>{" "}
+              and is labelled pre-draft there.
+            </p>
+          )}
         </>
       )}
 
@@ -95,6 +107,7 @@ function Standings({ sim, nameOf }: { sim: SeasonSim; nameOf: (t: number, f?: st
               <th className="py-2 pl-3 text-left font-medium">Team</th>
               <th className="px-1 text-right font-medium">Rank</th>
               <th className="px-1 text-right font-medium">Playoffs</th>
+              <th className="px-1 text-right font-medium" title="Top-2 seed: first-round bye">Bye</th>
               <th className="pr-3 pl-1 text-right font-medium">Title</th>
             </tr>
           </thead>
@@ -113,6 +126,7 @@ function Standings({ sim, nameOf }: { sim: SeasonSim; nameOf: (t: number, f?: st
                 <td className="num px-1 text-right" title={r.pPlayoffsSe != null ? `± ${pct(r.pPlayoffsSe, 1)}` : undefined}>
                   {pct(r.pPlayoffs)}
                 </td>
+                <td className="num px-1 text-right text-muted">{pct(r.pBye)}</td>
                 <td className="num pr-3 pl-1 text-right font-medium" title={r.pTitleSe != null ? `± ${pct(r.pTitleSe, 1)}` : undefined}>
                   {pct(r.pTitle)}
                 </td>
@@ -127,7 +141,20 @@ function Standings({ sim, nameOf }: { sim: SeasonSim; nameOf: (t: number, f?: st
               Real team names and rosters replace this after the draft.
             </p>
           ) : (
-            <p>Sorted by expected final regular-season rank. Top 6 make the playoffs; title = wins the 3-week playoff bracket.</p>
+            <>
+              <p>
+                Sorted by expected final regular-season rank. Top 6 make the playoffs (top 2 get a first-round bye); title = wins the
+                3-week playoff bracket. Simulated from the drafted rosters with our projections (season-sim, fitted priors); rosters frozen
+                apart from streaming, so the spread is wider in reality.
+              </p>
+              {sim.schedule && sim.schedule.assumedWeeks.length > 0 && (
+                <p className="text-warn">
+                  Weekly pairings are an assumed round robin (Yahoo&apos;s league schedule not loaded yet). Who plays whom matters: two
+                  other random round robins moved mid-table teams&apos; P(playoffs) by up to ~10 pp (mine ~1 pp; P(title) ≤ 1.3 pp), so
+                  treat the middle of the table as ± 10 pp until the real schedule is loaded.
+                </p>
+              )}
+            </>
           )}
           <Explain text={explanationText(ex, "league_table")} />
         </div>

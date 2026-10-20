@@ -84,11 +84,74 @@ prior and the injury-spell structure — calibrate those before trusting title o
   week 1 plus the All-Star merge would end week 20 on Mar 14, so the verified Mar 21 implies one more
   merged week; we assume it is week 1 (Oct 20 - Nov 1). Only the week-1 length and the regular-season
   week boundaries depend on that assumption; weeks 18-20 = Mar 1-7, 8-14, 15-21 do not (provided the
-  extra merge is before March). Load Yahoo's actual week dates + matchups with `--schedule` after the
-  draft. NBA games after Mar 21 (Mar 22 - Apr 11) do not count in this league.
+  extra merge is before March). **Resolved 2026-10-20:** Yahoo's real dates and pairings are loaded from
+  `data/manual/league_schedule.json` (week 1 = Oct 20-25; week 7 = Nov 30 - Dec 13 is the extra two-week week, not week 1); see "Post-draft league". NBA games after Mar 21 (Mar 22 - Apr 11) do not count in this league.
 - Team ids are draft slots; Yahoo team ids differ — the league/schedule JSON must use one consistent id set.
 - Mid-draft completion uses a single noisy market order per completion; `draft-check` averages 4
   completions (one completion produced a spurious +5.8 pp "edge" in testing that vanished with 4).
 - Players not in projections are simulated at the replacement line with 60 expected games (warned).
 - Draft-check reserves the candidate for me at my next pick (it answers "if I take X there", not
   "will X be there").
+
+## Post-draft league (2026-10-20, `sim-20261020033348-d0613f`)
+**Inputs.** Rosters: all 156 picks of `nba.l.44495-2026` (Supabase `draft_picks`, team id = draft slot) →
+`data/manual/league_rosters_2026-27.json` (`fantasy sim export-league --draft-id nba.l.44495-2026 --names-file
+data/manual/league_team_names.json --out ...`). Every player matched the projections (nobody at the replacement line), and
+the rosters are **identical, team by team, to the Yahoo roster capture** `data/raw/yahoo/league_rosters_2026-10-20.json`
+(independent check of `draft_picks`). Team names: current Yahoo names (slot 11 "Daniel's Definitive Team" was renamed
+"SCOTTIER BARNEY"; slot order first from Muse snapshot `snap_fa3331d5`).
+**Schedule: Yahoo's real one** (`data/raw/yahoo/league_schedule_2026-10-20.json`, captured read-only by the local session;
+converted with `fantasy sim import-schedule --yahoo-capture ...` → `data/manual/league_schedule.json`, Yahoo team ids →
+draft slots): pairings for weeks 1-17 and dates for weeks 1-20. Yahoo's calendar differs from our earlier derived one:
+week 1 = Oct 20-25 (6 days), **week 7 = Nov 30 - Dec 13 (two weeks, NBA Cup)**, week 17 = Feb 15-28 (All-Star, two weeks),
+playoffs Mar 1-7 / 8-14 / 15-21 (as verified). The derived "two-week week 1" assumption is retired.
+Projections `projections_2026_27.csv` (0.3.0 blend), NBA schedule bbref, `season-sim-0.5.0` defaults (fitted priors,
+`sim_calibration.md`), 12,000 sims, seed 0. Binomial SEs: P(playoffs) 0.25-0.46 pp, P(title) 0.14-0.43 pp (they exclude
+model/projection error).
+Command: `fantasy sim season --league-file data/manual/league_rosters_2026-27.json --sims 12000 --scenario "post-draft: actual rosters" --json`
+(the schedule file is picked up by default).
+
+**Results (simulated; in-sample optimistic for my team: same projections that drafted it, opponents never manage).**
+
+| slot | team | P(playoffs) | P(bye) | P(title) | exp. rank |
+|---|---|---|---|---|---|
+| 1 | Harrison's Best Team (me) | 91.9% | 64.7% | 33.7% | 2.63 |
+| 4 | Haagen Daz Center | 76.0% | 34.5% | 11.8% | 4.41 |
+| 8 | Ed's Extraordinary Team | 52.9% | 15.5% | 6.8% | 6.29 |
+| 6 | Yeet | 48.2% | 12.2% | 10.5% | 6.68 |
+| 5 | jesse's Phenomenal Team | 48.0% | 11.5% | 7.6% | 6.73 |
+| 12 | Joshua's Excellent Team | 47.4% | 12.6% | 4.8% | 6.76 |
+| 2 | Justin's Groovy Team | 43.2% | 9.2% | 4.0% | 7.08 |
+| 3 | Thomas's Dandy Team | 43.0% | 9.7% | 6.0% | 7.11 |
+| 9 | Jeffrey's Great Team | 42.8% | 9.9% | 2.7% | 7.13 |
+| 10 | Christian's Bad Team | 40.8% | 8.4% | 5.6% | 7.28 |
+| 11 | SCOTTIER BARNEY | 37.3% | 7.0% | 4.0% | 7.58 |
+| 7 | Andrew's Awesome Team | 28.2% | 4.8% | 2.5% | 8.31 |
+
+Yeet's title odds (10.5%) are high for its playoff odds: higher variance / playoff-week schedule (not investigated).
+My category ranks (1 = best of 12; z vs league): FG% 9 (-0.82), FT% 5 (+0.32), 3PM 2 (+1.69), PTS 1 (+1.61), REB 1 (+2.31),
+AST 2 (+1.15), STL 1 (+2.05), BLK 2 (+1.29), TO 9 (-0.59; more turnovers). Most player-games of any team (40.6/week vs
+34.7-38.9). Season-average P(win a week) vs each opponent: toughest Haagen Daz Center 63.0%, Ed's Extraordinary 68.6%,
+jesse's Phenomenal 70.5%; easiest Andrew's Awesome 76.5%, SCOTTIER BARNEY 74.7%.
+
+My regular season (Yahoo pairings): wk1 Joshua's 73%, 2 Andrew's 77%, 3 Justin's 72%, 4 Christian's 83%, 5 Thomas's 77%,
+6 Jeffrey's 64%, 7 jesse's 77% (two weeks), 8 Haagen Daz 68%, 9 Yeet 74%, 10 SCOTTIER BARNEY 76%, 11 Ed's 68%, 12 Joshua's
+69%, 13 Andrew's 77%, 14 Justin's 73%, 15 Christian's 66%, 16 Thomas's 82%, 17 Jeffrey's 76% (P(win the matchup)).
+
+**Schedule sensitivity (why loading the real schedule mattered; simulated).** Before the capture the run used an assumed
+round robin (`sim-20261020032154-05ce4d`, superseded). Two random relabellings of that round robin (12k sims each) moved
+mid-table teams' P(playoffs) by up to 10.6 pp, mine by ~1 pp, P(title) by ≤ 1.3 pp; the real schedule moved e.g. Justin's
+54.5% → 43.2% and Ed's 48.2% → 52.9%. With the real schedule loaded this uncertainty is gone; if a file is partial again,
+weeks without pairings fall back to the round robin and are flagged (`matchup_schedule.assumed_weeks`,
+`weekly_matchups[].opponent_assumed`; the dashboard shows an amber banner).
+
+**Schedule file format** (`data/manual/league_schedule.json`, default `--schedule` of every `fantasy sim` command when
+present): as in `schedule.py`, team sides as slot ids **or exact Yahoo team names**, e.g. `{"source": "...", "weeks":
+[{"week": 1, "start": "2026-10-20", "end": "2026-10-25", "matchups": [[1, 12], ...]}, ...]}`. Week dates are used only
+if they cover weeks 1-20. From a Muse `scoreboard` snapshot: `matchups = [[m.team_a, m.team_b] for m in payload.matchups]`.
+
+**New outputs** (`summary`): `scenario`, `draft_id`, `matchup_schedule {source, assumed_weeks, all_assumed, note}`;
+`my_team.weekly_h2h_matrix[]` = my P(win)/P(tie)/exp. cats/category odds against **every** opponent in **every**
+regular-season week (games per week differ by week), for what-ifs and for planning around a known opponent.
+Draft grades: no tool exists for "projected value vs expectation" per team (`fantasy draft simulate` is the
+optimizer-vs-BPA Monte Carlo), so they were skipped.

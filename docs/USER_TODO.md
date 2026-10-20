@@ -91,6 +91,10 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       watch https://fantasy.harrisonku.com/draft on your phone. Fallback steps: `docs/runbooks/live_draft.md`.
 
 ## After the draft
+- [x] **League matchup schedule (who plays whom, weeks 1-17)** — captured from Yahoo by your local session 2026-10-20
+      (`data/raw/yahoo/league_schedule_2026-10-20.json`) and loaded as `data/manual/league_schedule.json`; the dashboard now
+      uses the real opponents. If Yahoo changes the schedule, or for the week-1 live scores, ask Muse to "post a scoreboard
+      snapshot (kind scoreboard, week 1) and the league schedule if visible" (instructions on `/agent`).
 - [ ] Apply the private-intel migration (top of this file) before asking Muse for chat digests.
 - [ ] Ask Muse for one read-only league check (rosters, my team, matchup) so the in-season loop has data.
 - [ ] Decide the third-party projections question (public repo) above.

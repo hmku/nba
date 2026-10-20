@@ -169,4 +169,35 @@ optimizer from slot 1, the other 11 teams = noisy ADP), then the season simulato
 draft slot), so pre-draft matchups are always a round robin.
 
 Other `season_sim` rows (`params.command` = `season` / `compare` / `draft-check`) keep the shapes in
-`docs/research/season_simulator.md` / `src/fantasy/sim/report.py` and have no `scenario` field.
+`docs/research/season_simulator.md` / `src/fantasy/sim/report.py`; only the post-draft `season` run below has a `scenario`.
+
+## 3. `kind = 'season_sim'`, `params.command = 'season'`, `summary.scenario = 'post-draft: actual rosters'`
+
+Produced by `fantasy sim season --league-file data/manual/league_rosters_2026-27.json --scenario "post-draft: actual rosters"`
+(real drafted rosters, team id = draft slot, Yahoo team names). The dashboard's "season run" = newest `season` row whose
+scenario is absent or starts with `post-draft` (`web/src/lib/postDraft.ts:isSeasonScenario`); Matchup and League read it.
+
+```jsonc
+{
+  "scenario": "post-draft: actual rosters", "draft_id": "nba.l.44495-2026",
+  "n_sims": 12000, "seed": 0, "regular_weeks": [1..17], "playoff_weeks": [18, 19, 20],
+  "matchup_schedule": {"source": "round_robin(12 teams, 17 weeks)",   // or the league_schedule.json source
+                       "assumed_weeks": [1, ..., 17],                  // weeks whose pairings are ASSUMED (round robin)
+                       "all_assumed": true, "note": "ASSUMPTION: ..."},
+  "league_table": [{"team": 1, "name": "Harrison's Best Team", "p_playoffs", "p_playoffs_se", "p_bye", "p_final",
+                    "p_title", "p_title_se", "exp_cat_wins", "exp_cat_losses", "exp_rank", "players", "projected_players"}],
+  "team_profiles": {"1": {"name", "weekly_mean": {cat}, "rank": {cat}, "z": {cat}, "strengths", "weaknesses",
+                          "mean_player_games_per_week"}},
+  "my_team": {
+    "team": 1, "name", "p_playoffs", "p_title", "exp_rank", "final_standing_dist", ...,
+    "weekly_matchups": [{"week", "start", "end", "opponent", "opponent_name", "p_win", "p_tie", "p_loss", "exp_cats_won",
+                         "my_player_games", "opp_player_games", "cat_win_probs": {cat}, "opponent_assumed": true}],
+    "vs_opponents_all_play": {"4": {"name", "p_win_matchup_any_week", "exp_cats_won", "cat_win_rate": {cat}}},
+    "weekly_h2h_matrix": [{"week": 1, "start", "end", "scheduled_opponent": 12, "opponent_assumed": true,
+                           "my_player_games": 71.2,
+                           "vs": {"2": {"p_win", "p_tie", "exp_cats_won", "opp_player_games", "cat_win_probs": {cat}}, ...}}]
+  },
+  "warnings": ["... ASSUMED round robin ...", "Week dates derived ..."]
+}
+```
+`inputs.rosters` holds every team's player ids; `inputs.matchup_assumed_weeks` repeats the assumption.

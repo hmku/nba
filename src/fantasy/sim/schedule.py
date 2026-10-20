@@ -380,6 +380,29 @@ def schedule_to_json(s: MatchupSchedule, calendar: list[FantasyWeek]) -> str:
     return buf.getvalue()
 
 
+def from_yahoo_capture(raw: dict) -> dict:
+    """Convert a Yahoo league-schedule capture (`data/raw/yahoo/league_schedule_*.json`: `teams` = Yahoo team id ->
+    {name, draft_slot}, `weeks[].matchups_yahoo_team_ids`) into the schedule JSON above with team ids = draft slots."""
+    teams = raw.get("teams") or {}
+    slot = {int(k): int(v["draft_slot"]) for k, v in teams.items()}
+    if len(set(slot.values())) != len(slot):
+        raise ValueError("capture maps two Yahoo teams to the same draft slot")
+    weeks = []
+    for w in raw["weeks"]:
+        row: dict = {"week": int(w["week"])}
+        if w.get("start") and w.get("end"):
+            row["start"], row["end"] = w["start"], w["end"]
+        pairs = w.get("matchups_yahoo_team_ids") or []
+        if pairs:
+            try:
+                row["matchups"] = [[slot[int(a)], slot[int(b)]] for a, b in pairs]
+            except KeyError as e:
+                raise ValueError(f"week {w['week']}: Yahoo team id {e} not in capture.teams") from None
+        weeks.append(row)
+    return {"source": f"yahoo capture: {raw.get('source', '?')} (Yahoo team ids -> draft slots)",
+            "team_names": {str(v["draft_slot"]): v.get("name") for v in teams.values()}, "weeks": weeks}
+
+
 def fill_missing_weeks(s: MatchupSchedule, team_ids: list[int], regular: list[int]) -> MatchupSchedule:
     """Regular-season weeks without pairings get the round-robin assumption (recorded in `assumed_weeks`)."""
     missing = [w for w in regular if w not in s.weeks]
