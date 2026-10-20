@@ -58,11 +58,45 @@ fantasy league sync --capture data/raw/yahoo/league_rosters_<date>.json --write 
 - Exit codes: 0 ok; 2 invalid capture/state (`{"ok": false, "code": "invalid_capture"|"usage", ...}`):
   not 12 teams, a roster > 16, unknown slot, a Yahoo/our player id on two rosters, unmapped team.
 
+## 3. Matchup score (banked totals this week)
+
+Same session and lock as section 1. On `https://basketball.fantasysports.yahoo.com/nba/44495`, run
+`scripts/yahoo/capture_matchup.js` in the browser JS tool (one GET of `/nba/44495/matchup?mid1=11`; set `WEEK` in
+the script for a past week). It returns `{source, captured_at, url, week, teams: [{yahoo_team_id, name, totals:
+{fgm, fga, fg_pct, ftm, fta, ft_pct, fg3m, pts, reb, ast, stl, blk, tov}, cats_won, games_played, games_remaining}],
+problems, diagnostics}`. Save the returned string as `data/raw/yahoo/matchup_<YYYY-MM-DD>T<HHMM>Z.json` (several
+reads a day are normal), then:
+
+```bash
+fantasy league score --capture data/raw/yahoo/matchup_<stamp>.json --json          # validate + score (dry run)
+fantasy league score --capture data/raw/yahoo/matchup_<stamp>.json --save --json   # model_runs kind matchup_score
+#   cloud session: add --rest. Saved HTML instead of the JS: --html page.html --captured-at <ISO time of the read>
+```
+
+- **When:** in the morning ET, before the day's lineup plan (`fantasy lineup plan` then picks the newest saved score
+  for the week automatically; `accumulated_source` in its output names the row). A read after 12:00 ET on the plan day
+  may already include that day's games (the plan warns about double counting); a read from an earlier day misses
+  the games since (the plan warns; re-capture).
+- **Validation** (exit 2, `code: "invalid_capture"`): exactly two teams; every raw total present and >= 0;
+  FGM <= FGA, FTM <= FTA, 3PM <= FGM; my team (Yahoo id -> draft slot via the league state's `yahoo_team_id`, else
+  the newest `league_schedule_*.json` capture / `--slot-map`) is one of them; a week (capture, `--week`, or the
+  schedule week of the observed ET date). Warnings (row still written): every capture `problems` entry, displayed
+  FG%/FT% that disagree with makes/attempts by more than rounding (makes/attempts are used), PTS != 2 FGM + 3PM + FTM,
+  Yahoo's "Score" != the computed category score, the page's opponent != the schedule's.
+- **`problems` non-empty** after a Yahoo layout change: check `diagnostics.score_table_headers` (the header labels
+  the script saw) and extend `COLS` in the script and `HEADER_ALIASES` in `src/fantasy/league/matchup.py` together
+  (the Python twin is the tested one: `tests/test_matchup.py`, fixture `tests/fixtures/yahoo/matchup_week1.html`).
+  Games played / remaining: not in the assumed score table, so null; `diagnostics.remaining_hints` lists page text
+  mentioning them to extend the parser after the first live capture.
+- Idempotent: the same week, ET date and totals is one row (`ms-w<week>-<date>-<sha12>`); a changed score is a new
+  row. Schema: `docs/research/dashboard_data.md` section 7.
+
 ## Files that change
 
 | File | When |
 |---|---|
 | `data/raw/yahoo/league_rosters_<date>.json`, `free_agents_<date>.json` | `import-capture` |
+| `data/raw/yahoo/matchup_<date>T<HHMM>Z.json` | saved by hand from `capture_matchup.js` (section 3) |
 | `data/manual/league_rosters_2026-27.json` | `sync --write` (per team also `yahoo_team_id`, `lineup` {id: slot}, `status` {id: tag}, `yahoo_ids`; `fantasy.sim.league.from_json` ignores these extra keys) |
 | `data/manual/league_rosters_2026-27.prev.json` | `sync --write`: the replaced state (one generation; git keeps the history) |
 

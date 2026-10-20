@@ -218,3 +218,7 @@ def import_capture(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(result, indent=1, ensure_ascii=False) + "\n")
     emit({"ok": True, "kind": kind, "out": str(dest), **summary}, as_json, f"wrote {dest}: {summary}")
+
+
+# registers `league score` on `app`
+from fantasy.league import matchup_cli as _matchup_cli  # noqa: E402,F401

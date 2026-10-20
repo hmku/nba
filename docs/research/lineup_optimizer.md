@@ -1,4 +1,4 @@
-# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.2.0, task T-005)
+# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.3.0, task T-005)
 
 Code: `src/fantasy/lineup/` (`players.py` statuses / P(plays), `optimize.py` exact assignment, `value.py` weekly
 category model + Monte Carlo, `plan.py` planner + baselines, `cli.py`). Tests: `tests/test_lineup.py`. Validation
@@ -28,7 +28,7 @@ regular-season objective. In the playoffs (one matchup decides) P(win matchup) i
 reported but not optimised yet.
 
 Each category's final weekly margin (me - opponent) is treated as Normal(mu_c, sigma_c^2) from:
-* raw totals already banked this week (`--accumulated`, default 0);
+* raw totals already banked this week (section 8: the newest saved Yahoo matchup score, `--score` or `--accumulated`; 0 without one);
 * projected remaining totals, sum over started player-days of P(plays) x per-game line;
 * variance per player = k * var_game(m) (**fitted**, `model/noise.py`, noise-var-1.0) + Bernoulli games-played
   variance q * m^2 + season-level projection error (k m)^2 (vol_sd^2 + stat_sd^2) (**fitted**, `sim/calibration.py`
@@ -92,7 +92,7 @@ and naive plans differ only in week 1. Mean gain +0.004 cats/week (MC SE 0.0005)
 weighting rarely changes who sits. With this roster only 0-5 player-games a week exceed the slots (16 in 17 weeks;
 the C crunch costs ~0 games, matching `fantasy inseason lineup`). The value comes from setting the lineup daily
 (vs a static lineup: ~1.4 cats in week 1) and from handling statuses. Matchup weighting will matter more once
-streaming adds create a crunch and mid-week accumulated totals make some categories settled.
+streaming adds create a crunch and mid-week banked totals (section 8) make some categories settled.
 
 ## 6. Operational safeguards (lineup-0.2.0, after the independent quant review)
 * **Stale slots refused.** `changes_vs_current` is only meaningful against slots read from Yahoo *today*. The CLI
@@ -118,7 +118,7 @@ streaming adds create a crunch and mid-week accumulated totals make some categor
 * **IL tie-break.** IL_BONUS (2e-7) > KEEP_BONUS (1e-7), so an O player on the bench is moved to a free IL slot.
 * **Infeasible roster.** When there are more non-IL-eligible players than starting + bench slots (e.g. a player
   back from IL), the CLI exits 2 with `code: "infeasible_roster"` and `action: "drop ... or keep ... in IL"`.
-* **Warnings.** A mid-week plan without `--accumulated` warns that banked stats are taken as 0. Positions or NBA
+* **Warnings.** A mid-week plan without banked totals (section 8) warns that banked stats are taken as 0. Positions or NBA
   team filled from projections for a Yahoo row that lacks them (tagged rows) are also warned.
 * **Availability is explicit.** `expected.availability_assumption` states the P(plays) model. `--rest-share`
   (default 0.25, a **prior**) sets the healthy P(plays) = 1 - rest_share (1 - gp/82).
@@ -144,8 +144,57 @@ it. Today's lineup and all week-1 days are identical under both values, except t
 * Tag priors (Q 0.5, GTD 0.6, P 0.9, D 0.25, O = out all week) are uncalibrated. Calibrate them from Yahoo tag
   history against actual DNPs.
 * No game times: the decide-at-tip-off flag cannot yet say whether a swap is still possible (needs tip-off times).
-* The opponent model is static and attentive, and neither side streams. Mid-week, pass the real totals via
-  `--accumulated`.
+* The opponent model is static and attentive, and neither side streams. Mid-week the banked totals come from the
+  matchup score (section 8).
 * Analytic P(win) assumes independent categories (0.621 vs MC 0.588). Use the MC number.
 * Playoff weeks should optimise P(win matchup). Not implemented.
 * No max-games cap exists in this league (no setting in `league_settings.json`), so none is modelled.
+
+## 8. Banked stats mid-week (lineup-0.3.0)
+**Why.** On Thursday the week is partly decided. A category we lead by 40 rebounds with two days left is settled, and
+a start that adds rebounds is worth ~0; a category tied with three days left is where a start matters most. Without
+the banked totals the planner treats every week as starting from 0-0 and spreads weight as on Monday.
+
+**Model (unchanged math, new input).** The weekly margin of category c is still Normal(mu_c, sigma_c^2) (section 2),
+with
+* mu_c = (my banked + my projected remaining) - (opp banked + opp projected remaining) for counts;
+* for FG%/FT%: p_team = (banked makes + projected makes) / (banked attempts + projected attempts) per team, so the
+  banked shots enter as **makes and attempts**, never as an average of percentages (Yahoo's displayed % is only
+  cross-checked, `fantasy.league.matchup`);
+* sigma_c^2 from the **remaining** started player-days only (banked totals are known constants: no variance).
+
+So w_c = sign_c phi(z_c) / sigma_c goes to ~0 when |z_c| is large (far ahead or far behind) and is largest at a tie
+(z = 0) for a given sigma. Tests: `tests/test_matchup.py` (a 2,000-rebound banked lead gives |w_reb| < 1e-3 x the
+no-banked weight and P(win reb) > 0.999; with the banked margin set so the final margin is ~0, w_reb is the maximum
+over offsets of -2..+2 sd and below 0.2 x that at 2 sd; banked FG% with no games left equals makes/attempts
+exactly, and with games left = (banked + projected makes) / (banked + projected attempts)).
+
+**Source of the banked totals** (`accumulated_source` in the output and in the saved `lineup_plan` row):
+1. `--accumulated <json>` (`{"me": {fgm, fga, ...}, "opp": {...}}`) — manual override;
+2. `--score <capture>` — a `scripts/yahoo/capture_matchup.js` capture, validated by the same code as
+   `fantasy league score`; refused (exit 2 `score_mismatch`) if its week, my team or this week's opponent differ from
+   the plan's, or if it was read on a later ET date than `--date`;
+3. default: the newest saved `matchup_score` row (`fantasy league score --save`, dashboard_data.md section 7) for
+   this week with me = my team, observed on or before `--date` (ET), against this week's opponent
+   (`--no-score` disables; `--rest` reads Supabase over HTTPS). A store that cannot be read, or no row, is not an
+   error: banked = 0 and the MID-WEEK warning carries the reason.
+When banked totals are used, the MID-WEEK warning is dropped.
+
+**Timing (what "banked" covers).** The remaining days of the plan start at `--date`, so the banked totals should cover
+exactly the days before it: capture in the morning ET of the plan day (the daily routine's READ step, ~10:00 ET).
+Warnings (`matchup.banked_checks`): a read from an earlier ET date misses the games played after it (counted neither
+as banked nor as remaining — re-capture); a read on the plan day at or after 12:00 ET may already contain games of
+that day that also count as remaining (a weekend matinee can start at 12:00 or 15:30 ET), i.e. double counting.
+Neither is corrected automatically: there are no tip-off times in the cached schedule to split a day.
+
+**Per-category chance by Sunday.** `expected.cat_win_prob` = for the optimized plan, the Monte Carlo share of
+simulated weeks each category is won (tie = 0.5, the H2H standings credit; SE <= 0.5/sqrt(n_sims) = 0.0035 at
+20,000 sims) or, with `--sims 0`, the analytic Phi(z_c) (`cat_win_prob_method` says which;
+`cat_win_prob_analytic` is always kept). Evidence: **simulated**; the availability and tag P(plays) inputs are
+**priors** (section 3), the noise model is **fitted**. The independent-category caveat (section 7) applies to the
+matchup P(win), not to the per-category numbers.
+
+**Unverified.** The matchup page's HTML has not been seen by this code's author: the parser maps columns by header
+label (`FGM/A*`, `FG%`, ..., `Score`) and lists every field it cannot find in `problems`. Games played / remaining
+are not in the score table of the layout assumed, so they are null until the first live capture shows where Yahoo
+puts them (`diagnostics.remaining_hints`).

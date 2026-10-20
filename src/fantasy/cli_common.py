@@ -13,8 +13,8 @@ Failure JSON contract (all groups, with ``--json``)::
   (`run`, `lock`, `approval`, `txn`, `task`, `status`, `publish`) and the ops-backed draft commands
   (`prepare-pick` refusals, `confirm-pick` ledger errors) it equals ``code``; in `draft`, `sim`,
   `values`, `settings`, `league`, `lineup` it is the human message (== ``message``).
-  Group-specific codes: `lineup plan` ``stale_capture`` / ``infeasible_roster`` (exit 2);
-  `league sync|import-capture` ``invalid_capture``.
+  Group-specific codes: `lineup plan` ``stale_capture`` / ``infeasible_roster`` / ``score_mismatch`` / ``invalid_capture`` (exit 2);
+  `league sync|import-capture|score` ``invalid_capture``.
 - Exit codes are unchanged per command (``fantasy.ops.common.EXIT_*``; see docs/ARCHITECTURE.md).
 """
 

@@ -1,4 +1,4 @@
-# Dashboard data: simulation, advice and lineup rows in `model_runs`
+# Dashboard data: simulation, advice, lineup and matchup-score rows in `model_runs`
 
 _Status: 2026-10-18. Written for the web agent (dashboard in `web/`). Producer: `fantasy draft simulate`
 (kind `draft_sim`) and `fantasy sim preseason` (kind `season_sim`, `params.command = "preseason"`)._
@@ -373,7 +373,7 @@ calendar dates. Filter with `summary->>date` (PostgREST: `summary->>date=gte.202
 already reads `model_runs`, `fantasy publish` copies it, and a few rows per day need no index. A dedicated `lineups`
 table would only buy a `(date, kind)` index; revisit when rows reach thousands.
 
-### `lineup_plan` — `model_version` = the optimizer's (`lineup-0.2.0`), `params` = `LineupParams.to_dict()`
+### `lineup_plan` — `model_version` = the optimizer's (`lineup-0.3.0`; 0.2.0 rows lack the 0.3.0 keys below), `params` = `LineupParams.to_dict()`
 (`rest_share` with `rest_share_label: "prior"`, tag priors, n_sims, seed, locked), `inputs` = the plan's input files with
 sha256 + `content_sha256`.
 ```jsonc
@@ -403,12 +403,27 @@ sha256 + `content_sha256`.
     "optimized": {"expected_cats": 4.92, "p_win_matchup": 0.62},          // analytic
     "naive_season_value": {…}, "static_current_lineup": {…},
     "monte_carlo": {"n_sims": 20000, "seed": 0, "plans": {"optimized": {"expected_cats": 4.9, "expected_cats_se": 0.01,
-                    "p_win_matchup": 0.6, "p_win_matchup_se": 0.004}, …}}   // absent with --sims 0
+                    "p_win_matchup": 0.6, "p_win_matchup_se": 0.004}, …}},  // absent with --sims 0
+    // lineup-0.3.0: chance to win each category by the end of the week (Sunday) under the optimized plan,
+    // banked totals included. Monte Carlo share of weeks won (tie = 0.5) when sims ran, else analytic Phi(z).
+    "cat_win_prob": {"fg_pct": 0.24, "ft_pct": 0.46, "fg3m": 0.89, "pts": 0.56, "reb": 0.61, "ast": 0.51,
+                     "stl": 0.80, "blk": 1.0, "tov": 0.41},
+    "cat_win_prob_method": "monte_carlo: share of 20000 simulated weeks the category is won (ties 0.5); SE <= 0.0035",
+    "cat_win_prob_analytic": {…}            // always present, same keys
   },
   "fixed_point": {"iterations": 3, "converged": true},
   "slots_as_of": {"date": "2026-10-21", "source": "league file captured_at", "current_slots_file": null},
-  "warnings": ["MID-WEEK WITHOUT --accumulated: …"],
-  "model_version": "lineup-0.2.0"
+  // lineup-0.3.0: where the banked (already played) totals came from. kind: matchup_score (newest saved row of
+  // section 7 for this week, read on or before `date`) | score_file (--score capture) | accumulated_file
+  // (--accumulated) | none (banked = 0; `note` says why, e.g. no saved score yet)
+  "accumulated_source": {"kind": "matchup_score", "run_id": "ms-w1-2026-10-21-05af63388e1a", "store": "db",
+                         "observed_at": "2026-10-21T13:00:00Z", "date_et": "2026-10-21", "week": 1,
+                         "score": {"me": 5, "opp": 4, "ties": 0}},
+  "accumulated": {"me": {"fgm": 40, "fga": 85, …, "tov": 12}, "opp": {…}},   // raw totals used; null when none
+  "category_weights": {"reb": {"my_mean": 160.2, "opp_mean": 151.0, "margin": 9.2, "sd": 14.1, "p_win": 0.74,
+                               "weight": 0.023}},   // all 9 cats; weight ~0 = category settled (far ahead/behind)
+  "warnings": ["MID-WEEK WITHOUT BANKED TOTALS: …"],   // only when accumulated_source.kind = none
+  "model_version": "lineup-0.3.0"
 }
 ```
 Game markers come from the cached NBA schedule (`data/raw/bbref_schedule/nba_2027_games.csv`, no tip times, hence the
@@ -450,3 +465,62 @@ time, and the row records `derived_from`. A change whose `from` disagrees with t
 player in both plan and actual shares a row; the rest pair in order. ✓ verified = Yahoo shows the planned player (or no plan
 exists), ⚠ mismatch = Yahoo shows someone else or nobody, ◌ planned = no Yahoo read that day (or not covered by a partial
 read). Starts possible = players with a game who are not tagged out, capped at the starting slots; unused = possible − started.
+
+---
+
+## 7. `kind = 'matchup_score'` — live H2H score of my current matchup (live-score view, no migration)
+
+_Added 2026-10-20 (matchup-score-0.1.0). Producer: `fantasy league score --capture <file> --save [--rest]`
+(`src/fantasy/league/matchup{,_cli}.py`) from `scripts/yahoo/capture_matchup.js` (read-only GET of
+`/nba/44495/matchup?week=N&mid1=11`; runbook `docs/runbooks/roster_sync.md` section 3). Consumers: the web live-score
+page; `fantasy lineup plan` (banked totals, section 6 `accumulated_source`)._
+
+What Yahoo's matchup page showed at `observed_at`: both teams' raw category totals **for the week so far** (games
+already played), the current leader per category and the category score. Not a projection: the end-of-week chance per
+category is the latest `lineup_plan`'s `expected.cat_win_prob` (section 6) for the same week, whose
+`accumulated_source.run_id` names the score row it started from.
+
+`run_id = ms-w<week>-<date_et>-<sha12>`, idempotent per (week, ET date, content): sha256 of the week, date and both
+teams' slot / Yahoo id / totals / games (not names, source or `observed_at`), so re-reading an unchanged score the same
+day inserts nothing and keeps the first `observed_at`. `model_version = matchup-score-0.1.0`, `params = {"command":
+"league score"}`, `inputs = {capture_file, capture_sha256, content_sha256}`.
+**Which row to show:** the newest by `summary.observed_at` (then `created_at`) with `summary.week` = the week shown;
+for "now", the newest overall. PostgREST: `kind=eq.matchup_score&order=created_at.desc&limit=20`, then pick by
+`observed_at` (rows of an earlier date have earlier `observed_at`; a same-day re-read with changed totals is a new row).
+
+### `summary` (schema `matchup_score/1`)
+```jsonc
+{
+  "schema": "matchup_score/1",
+  "week": 1,                                  // fantasy week (Mon-Sun; week 1 = Tue 10-20 .. Sun 10-25)
+  "date_et": "2026-10-22",                    // US/Eastern date of observed_at
+  "observed_at": "2026-10-22T14:00:00Z",      // when Yahoo was read (capture captured_at), ISO UTC
+  "source": "Yahoo league 44495 matchup page read in the user's logged-in browser (…capture_matchup.js, read-only)",
+  "url": "/nba/44495/matchup?mid1=11",        // null for saved HTML
+  "capture_file": "data/raw/yahoo/matchup_2026-10-22.json",
+  "me": {
+    "slot": 1, "yahoo_team_id": 11, "name": "Harrison's Best Team",     // slot = our team id (draft slot)
+    "totals": {"fgm": 120, "fga": 250, "ftm": 40, "fta": 50, "fg3m": 30, "pts": 310, "reb": 130, "ast": 70,
+               "stl": 20, "blk": 10, "tov": 35},                         // raw, ints (floats only if Yahoo shows them)
+    "fg_pct": 0.48, "ft_pct": 0.8,            // makes / attempts (4 decimals); null when no attempts yet
+    "games_played": null, "games_remaining": null    // number | null: null = not on the page (see runbook)
+  },
+  "opp": { /* same shape; slot null if the Yahoo id is unknown (a warning says so) */ },
+  "categories": [                             // the 9 scoring categories in Yahoo order
+    {"cat": "fg_pct", "me": 0.48, "opp": 0.4583, "leader": "me"},     // % from makes/attempts, compared at 3 decimals
+    {"cat": "ft_pct", "me": 0.8, "opp": 0.75, "leader": "me"},        //   (Yahoo's display precision)
+    {"cat": "fg3m", "me": 30, "opp": 25, "leader": "me"},
+    {"cat": "pts", …}, {"cat": "reb", …}, {"cat": "ast", …}, {"cat": "stl", "me": 20, "opp": 20, "leader": "tie"},
+    {"cat": "blk", …},
+    {"cat": "tov", "me": 35, "opp": 30, "leader": "opp"}             // TO: fewer is better
+  ],                                          // me/opp null (and leader "tie") for a % with no attempts yet
+  "score": {"me": 5, "opp": 3, "ties": 1},    // categories currently led / trailed / tied (sum 9)
+  "yahoo_cats_won": {"me": 5, "opp": 3},      // Yahoo's own "Score" column (null if not shown); mismatch = warning
+  "warnings": ["capture: games_remaining not in the score table"],  // capture problems + cross-checks (displayed % vs
+                                              //  makes/attempts, PTS = 2 FGM + 3PM + FTM, Yahoo score, schedule opponent)
+  "model_version": "matchup-score-0.1.0"
+}
+```
+Display notes: show `observed_at` ("as of 10:00 ET") — Yahoo updates during games, the row does not. Format % to 3
+decimals like Yahoo. Evidence label: **observed** (read from Yahoo, not modelled); the per-category chance by Sunday is
+**simulated** (`lineup_plan.expected.cat_win_prob`, availability priors apply).
