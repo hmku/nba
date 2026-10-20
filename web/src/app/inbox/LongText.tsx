@@ -1,18 +1,18 @@
-import { splitLong } from "@/lib/feed";
+/** Chars above which a text may run past 2 lines on a phone (then it gets a "more" toggle). */
+const CLAMP_HINT = 140;
 
-/** Text that collapses after ~420 chars behind "more" (native <details>: works in server components, no JS). */
+/** Text clamped to its first 2 lines with "more" / "less". Rendered ONCE: the empty <details class="mr"> only flips the
+ *  clamp through CSS `:has()` (globals.css `.cl`), so it works in server components without JS or a second copy. */
 export function LongText({ text, className = "" }: { text: string; className?: string }) {
-  const { head, rest } = splitLong(text);
-  if (rest == null) return <div className={`whitespace-pre-wrap break-words ${className}`}>{text}</div>;
+  const long = text.length > CLAMP_HINT || text.split("\n").length > 2;
   return (
-    <details className={`group/lt ${className}`}>
-      <summary className="cursor-pointer list-none select-none [&::-webkit-details-marker]:hidden">
-        <span className="whitespace-pre-wrap break-words group-open/lt:hidden">
-          {head}… <span className="text-accent">more</span>
-        </span>
-        <span className="hidden text-xs text-accent group-open/lt:inline">less</span>
-      </summary>
-      <div className="whitespace-pre-wrap break-words">{text}</div>
-    </details>
+    <div className={`cl ${className}`}>
+      <div className="ct">{text}</div>
+      {long && (
+        <details className="mr">
+          <summary className="sm" />
+        </details>
+      )}
+    </div>
   );
 }

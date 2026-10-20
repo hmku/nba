@@ -18,11 +18,23 @@ function fmt(v: unknown): string {
   return String(v);
 }
 
-/** Labelled evidence items ({claim, value?, se?, label, command?}): advisor suggestions and thread replies. */
+/** Labelled evidence items ({claim, value?, se?, label, command?}): advisor suggestions and thread replies.
+ *  Collapsed to a count ("3 evidence items ▸"). */
 export function EvidenceList({ items }: { items: Obj[] }) {
   if (!items.length) return null;
   return (
-    <ul className="mt-1.5 space-y-1 text-xs">
+    <details className="mt-1">
+      <summary className="sm tg">
+        {items.length} evidence item{items.length === 1 ? "" : "s"}
+      </summary>
+      <EvidenceItems items={items} />
+    </details>
+  );
+}
+
+function EvidenceItems({ items }: { items: Obj[] }) {
+  return (
+    <ul className="mt-1 space-y-1 text-xs">
       {items.map((x, i) => (
         <li key={i} className="flex flex-wrap items-baseline gap-1.5">
           <Badge tone={LABEL_TONE[String(x.label)] ?? "neutral"}>{String(x.label ?? "?")}</Badge>
@@ -71,8 +83,8 @@ export function SuggestionBody({ e }: { e: AgentEvent }) {
       {summary && <LongText text={summary} className="mt-1 text-[13.5px] leading-snug text-muted" />}
       <EvidenceList items={evidence} />
       {change && (
-        <details className="mt-2 text-xs">
-          <summary className="cursor-pointer text-muted select-none">proposed change</summary>
+        <details className="mt-1 text-xs">
+          <summary className="sm tg">proposed change</summary>
           <pre className="scroll-thin mt-1 max-h-80 overflow-auto rounded border border-line bg-panel-2 p-2 text-[11.5px] leading-relaxed whitespace-pre">
             {change}
           </pre>

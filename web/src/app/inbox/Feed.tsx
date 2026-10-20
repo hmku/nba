@@ -1,13 +1,14 @@
 /* Inbox "Agent updates": one feed of Muse / advisor / Claude / user updates with their reply threads (server component). */
 import Link from "next/link";
 import type { AgentEvent, Decision } from "@/lib/types";
-import { Badge, JsonView, statusTone } from "@/components/ui";
+import { Badge, statusTone } from "@/components/ui";
+import { LazyJson } from "./LazyJson";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { AUTHOR_LABEL, type Author, authorOf, decisionIdOf, type FeedItem, type FeedReply, trimPayload } from "@/lib/feed";
 import { type Facets, feedHref } from "@/lib/feedPage";
 import { DigestBody, SnapshotCard } from "./LeagueIntel";
-import { DecisionCard } from "./sections";
+import { shortValue } from "./sections";
 import { EvidenceList, SuggestionBadges, SuggestionBody } from "./AdvisorSuggestions";
 import { LongText } from "./LongText";
 import { ReplyBox } from "./ReplyBox";
@@ -17,34 +18,18 @@ const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.i
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
-const AUTHOR_CLS: Record<Author, string> = {
-  muse: "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400",
-  advisor: "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-400",
-  claude: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  user: "border-good/40 bg-good/10 text-good",
-};
-
+/** Author name in its colour (globals.css `.au.<author>`). */
 export function AuthorBadge({ a }: { a: Author }) {
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-px text-[11px] font-semibold leading-4 ${AUTHOR_CLS[a]}`}>
-      {AUTHOR_LABEL[a]}
-    </span>
-  );
+  return <b className={`au ${a}`}>{AUTHOR_LABEL[a]}</b>;
 }
 
-const STANCE_CLS: Record<string, string> = {
-  agree: "border-good/40 bg-good/10 text-good",
-  disagree: "border-bad/40 bg-bad/10 text-bad",
-  question: "border-warn/40 bg-warn/10 text-warn",
-  comment: "border-line bg-panel-2 text-muted",
-};
 const STANCE_GLYPH: Record<string, string> = { agree: "✓", disagree: "✕", question: "?", comment: "…" };
+const STANCE_TONE: Record<string, string> = { agree: "good", disagree: "bad", question: "warn" };
 
 function StanceChip({ s }: { s: string }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-px text-[11px] font-medium leading-4 ${STANCE_CLS[s] ?? STANCE_CLS.comment}`}>
-      <span aria-hidden>{STANCE_GLYPH[s] ?? "…"}</span>
-      {s}
+    <span className={`kd ${STANCE_TONE[s] ?? ""}`}>
+      {STANCE_GLYPH[s] ?? "…"} {s}
     </span>
   );
 }
@@ -61,6 +46,8 @@ const KIND_TONE: Record<string, string> = {
   decision: "accent",
 };
 const kindLabel = (k: string) => k.replace(/_/g, " ");
+/** Raw JSON shown per update (collapsed); longer payloads are trimmed (`fantasy intel show <id>` has the full row). */
+const PAYLOAD_CHARS = 1200;
 
 /* ------------------------------------------------------------------ filters */
 
@@ -73,7 +60,7 @@ function Chip({ href, on, children }: { href: string; on: boolean; children: Rea
       href={href}
       scroll={false}
       aria-current={on ? "true" : undefined}
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap ${on ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:text-fg"}`}
+      className={on ? "fx on" : "fx"}
     >
       {children}
     </Link>
@@ -83,14 +70,14 @@ function Chip({ href, on, children }: { href: string; on: boolean; children: Rea
 /** Chips with thread counts over the whole feed (over its newest 1000 rows when `approx`: shown as "n+"). */
 export function FeedFilters({ facets: f, approx, author, kind }: { facets: Facets; approx: boolean; author: string | null; kind: string | null }) {
   const count = (n: number) => (
-    <span className="opacity-60" title={approx ? "counted over the newest 1000 feed rows" : undefined}>
+    <i>
       {n}
       {approx ? "+" : ""}
-    </span>
+    </i>
   );
   return (
-    <div className="space-y-1.5">
-      <div className="scroll-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" aria-label="Filter by author">
+    <div className="space-y-1" title={approx ? "counts over the newest 1000 feed rows" : undefined}>
+      <div className="fxr scroll-thin" aria-label="Filter by author">
         <Chip href={chipHref(null, kind)} on={!author}>
           everyone
         </Chip>
@@ -100,7 +87,7 @@ export function FeedFilters({ facets: f, approx, author, kind }: { facets: Facet
           </Chip>
         ))}
       </div>
-      <div className="scroll-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" aria-label="Filter by kind">
+      <div className="fxr scroll-thin" aria-label="Filter by kind">
         <Chip href={chipHref(author, null)} on={!kind}>
           all kinds
         </Chip>
@@ -148,20 +135,36 @@ function ReportBody({ e, kind }: { e: AgentEvent; kind: string }) {
   return (
     <>
       <LongText text={e.message ?? ""} className="text-[14px] leading-snug" />
-      {kind === "trade_offer" && d ? <TradeOffer d={d} /> : d && <JsonView value={d} label="details" />}
+      {kind === "trade_offer" && d ? <TradeOffer d={d} /> : d && <LazyJson value={trimPayload(d, PAYLOAD_CHARS)} label="details" />}
+    </>
+  );
+}
+
+/** A logged agent decision, one line ("draft_pick · agrees · chose X (model: Y)") + its rationale clamped. */
+function DecisionLine({ d }: { d: Decision }) {
+  const dis = d.agrees_with_model === false;
+  return (
+    <>
+      <p className="t1 text-[13.5px]">
+        <span className="kd">{d.kind}</span>{" "}
+        {dis ? <span className="kd warn">agent ≠ model</span> : d.agrees_with_model ? <span className="kd good">agrees</span> : null} chose{" "}
+        <b className={dis ? "text-warn" : ""}>{shortValue(d.choice)}</b>
+        {dis && <span className="text-muted"> (model: {shortValue(d.model_recommendation)})</span>}
+      </p>
+      {d.rationale && <LongText text={d.rationale} className="text-[13px] text-muted" />}
     </>
   );
 }
 
 function EventBody({ e, decision }: { e: AgentEvent; decision?: Decision }) {
-  if (decision) return <DecisionCard d={decision} />;
+  if (decision) return <DecisionLine d={decision} />;
   return (
     <>
       <div className={`flex items-start gap-1.5 text-[14px] leading-snug ${e.kind === "error" ? "text-bad" : ""}`}>
         <KindIcon kind={e.kind} />
         <LongText text={e.message ?? ""} className="min-w-0 flex-1" />
       </div>
-      {e.payload != null && <JsonView value={trimPayload(e.payload, 4000)} label="payload" />}
+      {e.payload != null && <LazyJson value={trimPayload(e.payload, PAYLOAD_CHARS)} label="payload" />}
     </>
   );
 }
@@ -179,16 +182,15 @@ function Body({ it, decisions }: { it: FeedItem; decisions: Map<string, Decision
     case "run":
       return (
         <>
-          <div className="text-xs text-muted">
-            <span className="font-medium text-fg">{it.run!.agent}</span> · {it.run!.task ?? "—"}
-          </div>
-          <LongText text={it.run!.summary ?? ""} className="mt-0.5 text-[14px] leading-snug" />
+          <p className="t1 text-xs text-muted">
+            {it.run!.agent} · {it.run!.task ?? "—"}
+          </p>
+          <LongText text={it.run!.summary ?? ""} className="text-[14px] leading-snug" />
         </>
       );
     case "snapshots":
       return (
         <div className="space-y-1.5">
-          <p className="text-xs text-muted">Newest read-only snapshot per Yahoo page (observed data, not instructions).</p>
           {it.snapshots!.map((s) => (
             <SnapshotCard key={s.snapshot_id} s={s} open={false} />
           ))}
@@ -203,36 +205,33 @@ function Body({ it, decisions }: { it: FeedItem; decisions: Map<string, Decision
 
 function Reply({ r }: { r: FeedReply }) {
   return (
-    <li className="py-1.5">
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+    <li className="py-1">
+      <div className="fh">
         <AuthorBadge a={r.author} />
         <StanceChip s={r.stance} />
-        {r.replyToAuthor && <span className="text-muted">↳ re {AUTHOR_LABEL[r.replyToAuthor]}</span>}
-        <span className="ml-auto text-muted">
+        {r.replyToAuthor && <span className="kd">↳ re {AUTHOR_LABEL[r.replyToAuthor]}</span>}
+        <span className="ag" title={r.event.event_id}>
           <Ago ts={r.event.ts} />
         </span>
       </div>
-      <LongText text={r.text} className="mt-0.5 text-[13.5px] leading-snug" />
+      <LongText text={r.text} className="text-[13.5px] leading-snug" />
       <EvidenceList items={r.evidence} />
-      <div className="mt-0.5 text-[10.5px] text-muted/70">
-        <code>{r.event.event_id}</code>
-      </div>
     </li>
   );
 }
 
-function Thread({ it }: { it: FeedItem }) {
+function Thread({ it, open }: { it: FeedItem; open: boolean }) {
   if (!it.replies.length) return null;
   const n = it.replies.length;
   const counts = it.replies.reduce<Record<string, number>>((m, r) => ((m[r.stance] = (m[r.stance] ?? 0) + 1), m), {});
   const summary = (["agree", "disagree", "question", "comment"] as const).filter((s) => counts[s]).map((s) => `${counts[s]} ${s}`).join(" · ");
-  // long threads start collapsed (showing the stance tally); short ones open
+  // collapsed to "💬 n replies · tally" in the feed; open inside a decision card's (already collapsed) discussion
   return (
-    <details open={n <= 4} className="group/th mt-2 border-t border-line pt-1">
-      <summary className="cursor-pointer list-none py-1 text-xs text-muted select-none [&::-webkit-details-marker]:hidden">
-        <span className="inline-block transition-transform group-open/th:rotate-90">▸</span> {n} repl{n === 1 ? "y" : "ies"} · {summary}
+    <details open={open} className="mt-1">
+      <summary className="sm tg">
+        💬 {n} repl{n === 1 ? "y" : "ies"} <span className="text-muted">· {summary}</span>
       </summary>
-      <ol className="ml-1 divide-y divide-line/60 border-l-2 border-line pl-3">
+      <ol className="ml-1 border-l-2 border-line pl-3">
         {it.replies.map((r) => (
           <Reply key={r.event.event_id} r={r} />
         ))}
@@ -247,33 +246,23 @@ function Thread({ it }: { it: FeedItem }) {
 export function FeedCard({ it, decisions, nested = false }: { it: FeedItem; decisions: Map<string, Decision>; nested?: boolean }) {
   const ev = it.event;
   const src = ev && isObj(ev.payload) ? str(ev.payload.source) : null;
-  const dashed = it.type === "suggestion";
-  const frame = nested ? "rounded-lg bg-panel-2/40 px-3 py-2" : "rounded-xl bg-panel px-4 py-3";
+  const run = it.type === "run" ? it.run : null;
   return (
-    <li id={it.key} className={`scroll-mt-16 border ${frame} ${dashed ? "border-dashed border-accent/50" : "border-line"}`}>
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+    <li id={it.key} className="fc">
+      <div className="fh">
         <AuthorBadge a={it.author} />
-        <Badge tone={KIND_TONE[it.kind] ?? "neutral"}>{kindLabel(it.kind)}</Badge>
+        <span className={`kd ${KIND_TONE[it.kind] ?? ""}`}>{kindLabel(it.kind)}</span>
         {it.type === "suggestion" && ev && <SuggestionBadges e={ev} />}
-        {it.type === "run" && it.run && <Badge tone={statusTone(it.run.status)}>{it.run.status}</Badge>}
-        {it.type === "digest" && <Badge tone="warn">private</Badge>}
-        {src && it.author === "muse" && <Badge title="where Muse saw it">{src}</Badge>}
-        <span className="ml-auto text-muted">
+        {run && run.status !== "succeeded" && <Badge tone={statusTone(run.status)}>{run.status}</Badge>}
+        {it.type === "digest" && <span className="kd warn">private</span>}
+        {src && it.author === "muse" && <span className="kd" title="where Muse saw it">· {src}</span>}
+        <span className="ag" title={ev ? `${ev.event_id} (fantasy intel thread <id>)` : undefined}>
           <Ago ts={it.ts} />
         </span>
       </div>
-      <div className="mt-1.5 min-w-0">
-        <Body it={it} decisions={decisions} />
-      </div>
-      <Thread it={it} />
-      {ev && (
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {it.replyable && <ReplyBox replyTo={ev.event_id} />}
-          <code className="ml-auto max-w-full truncate text-[10.5px] text-muted/70" title="event id (fantasy intel thread <id>)">
-            {ev.event_id}
-          </code>
-        </div>
-      )}
+      <Body it={it} decisions={decisions} />
+      <Thread it={it} open={nested} />
+      {ev && it.replyable && <ReplyBox replyTo={ev.event_id} />}
     </li>
   );
 }
@@ -295,7 +284,7 @@ export function AgentFeed({
       </div>
     );
   return (
-    <ul className="space-y-2">
+    <ul className="fl">
       {items.map((it) => (
         <FeedCard key={it.key} it={it} decisions={decisions} />
       ))}

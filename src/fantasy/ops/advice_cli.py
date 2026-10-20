@@ -42,7 +42,8 @@ def _line(r: dict[str, Any]) -> str:
 @handled
 def post_cmd(
     file: Annotated[Path, typer.Option("--file", "-f", help="Advice JSON (schema advice/1; open trade/add_drop/"
-                                       "stream items need rationale + why_now)")],
+                                       "stream items need rationale + why_now; new content must meet the advice-0.3.0 "
+                                       "concise limits, docs/research/dashboard_data.md section 4)")],
     advice_id: Annotated[str | None, typer.Option(
         help="Stable item id (default: the file's advice_id, else the file name stem)")] = None,
     use_rest: Rest = False,

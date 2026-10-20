@@ -10,7 +10,7 @@
  */
 import type { Author } from "./feed";
 
-export const FEED_PAGE_SIZE = 25;
+export const FEED_PAGE_SIZE = 12;
 
 /** A position in the feed: an item's posted timestamp and its feed key (event id, or `run:<run_id>`). */
 export interface Cursor {

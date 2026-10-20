@@ -13,6 +13,10 @@ advice-0.2.0 added `rationale` (plain-language why) and `why_now` (what we belie
 changed since). Both are optional in the schema (old rows still validate and render) but REQUIRED when
 posting new or changed content for an actionable open item (`WHY_TYPES` with status in `WHY_STATUSES`);
 `validate(strict=False)`, an unchanged re-post and a status change only warn.
+advice-0.3.0 added concise-content limits (`concise_problems`: title, headline, verdict, rationale,
+why_now, risks, metrics, and the optional metric `key` flag that picks the card's chips). They apply
+the same way: new or changed content that is too long is refused with one usage error listing
+everything to shorten; older rows (and `validate(strict=False)`) only warn and still render.
 
 Advice is display-only: `status = "approved"` mirrors a decision the user already made (an
 `approvals` row or an explicit yes in chat); it never authorises a Yahoo write by itself.
@@ -45,7 +49,7 @@ if TYPE_CHECKING:
     from fantasy.db.rest import RestClient
 
 ADVICE_KIND = "advice"
-ADVICE_VERSION = "advice-0.2.0"
+ADVICE_VERSION = "advice-0.3.0"
 SCHEMA = "advice/1"
 
 TYPES = ("trade", "add_drop", "stream", "lineup", "il")
@@ -75,6 +79,22 @@ MAX_CHANGED_CHARS = 400
 MAX_EVIDENCE_REFS = 8
 MAX_EVIDENCE_CHARS = 200
 LIST_LIMIT = 2000
+
+# concise-content limits (advice-0.3.0): what the Inbox card can show without a wall of text
+MAX_TITLE_CHARS = 70
+MAX_HEADLINE_CHARS = 120
+MAX_VERDICT_SENTENCES = 2
+MAX_VERDICT_CHARS = 200
+CONCISE_RATIONALE_ITEMS = 4
+CONCISE_RATIONALE_CHARS = 160
+CONCISE_BEFORE_CHARS = 200
+CONCISE_CHANGED_ITEMS = 3
+CONCISE_CHANGED_CHARS = 140
+MAX_RISKS = 4
+MAX_RISK_CHARS = 120
+MAX_METRICS = 6
+MAX_KEY_METRICS = 3
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n+")
 
 
 class AdviceError(ValueError):
@@ -117,11 +137,12 @@ def _metric(m: Any, i: int) -> dict[str, Any]:
     if ev not in EVIDENCE:
         raise AdviceError(f"{where}evidence: must be one of {list(EVIDENCE)}, got {ev!r}")
     out["evidence"] = ev
-    if m.get("delta") is not None:
-        if not isinstance(m["delta"], bool):
-            raise AdviceError(f"{where}delta: expected true/false")
-        out["delta"] = m["delta"]
-    extra = set(m) - {"label", "value", "se", "unit", "note", "evidence", "delta"}
+    for k in ("delta", "key"):
+        if m.get(k) is not None:
+            if not isinstance(m[k], bool):
+                raise AdviceError(f"{where}{k}: expected true/false")
+            out[k] = m[k]
+    extra = set(m) - {"label", "value", "se", "unit", "note", "evidence", "delta", "key"}
     if extra:
         raise AdviceError(f"{where[:-1]}: unknown keys {sorted(extra)}")
     return out
@@ -149,11 +170,65 @@ def missing_why(summary: dict[str, Any]) -> list[str]:
     return [k for k in ("rationale", "why_now") if not summary.get(k)]
 
 
+def sentences(text: str) -> list[str]:
+    """Sentences of a short text: split after . ! ? followed by whitespace, and at line breaks."""
+    return [x for x in (p.strip() for p in _SENTENCE_END.split(text)) if x]
+
+
+def concise_problems(s: dict[str, Any]) -> list[str]:
+    """What a (structurally valid) summary must shorten to meet the advice-0.3.0 limits; [] if none."""
+    out: list[str] = []
+
+    def over(where: str, text: Any, limit: int) -> None:
+        if isinstance(text, str) and len(text.strip()) > limit:
+            out.append(f"{where} {len(text.strip())} chars > {limit}")
+
+    over("title", s.get("title"), MAX_TITLE_CHARS)
+    over("headline", s.get("headline"), MAX_HEADLINE_CHARS)
+    v = s.get("verdict")
+    if isinstance(v, str):
+        over("verdict", v, MAX_VERDICT_CHARS)
+        n = len(sentences(v))
+        if n > MAX_VERDICT_SENTENCES:
+            out.append(f"verdict {n} sentences > {MAX_VERDICT_SENTENCES} (details go in rationale/risks)")
+    r = s.get("rationale") or []
+    if len(r) > CONCISE_RATIONALE_ITEMS:
+        out.append(f"rationale {len(r)} items > {CONCISE_RATIONALE_ITEMS}")
+    for i, x in enumerate(r):
+        over(f"rationale[{i}]", x, CONCISE_RATIONALE_CHARS)
+    w = s.get("why_now") or {}
+    over("why_now.before", w.get("before"), CONCISE_BEFORE_CHARS)
+    ch = w.get("changed") or []
+    if len(ch) > CONCISE_CHANGED_ITEMS:
+        out.append(f"why_now.changed {len(ch)} items > {CONCISE_CHANGED_ITEMS}")
+    for i, c in enumerate(ch):
+        over(f"why_now.changed[{i}]", c.get("text") if isinstance(c, dict) else c, CONCISE_CHANGED_CHARS)
+    risks = s.get("risks") or []
+    if len(risks) > MAX_RISKS:
+        out.append(f"risks {len(risks)} items > {MAX_RISKS}")
+    for i, x in enumerate(risks):
+        over(f"risks[{i}]", x, MAX_RISK_CHARS)
+    metrics = s.get("metrics") or []
+    if len(metrics) > MAX_METRICS:
+        out.append(f"metrics {len(metrics)} > {MAX_METRICS} (put the rest in scenarios)")
+    keys = sum(1 for m in metrics if isinstance(m, dict) and m.get("key"))
+    if keys > MAX_KEY_METRICS:
+        out.append(f"metrics flagged key: true {keys} > {MAX_KEY_METRICS} (the card shows at most "
+                   f"{MAX_KEY_METRICS} chips)")
+    return out
+
+
+def concise_error(problems: list[str]) -> str:
+    return ("too long for the Inbox card (advice-0.3.0 limits); shorten: " + "; ".join(problems)
+            + " (docs/research/dashboard_data.md section 4)")
+
+
 def validate(raw: Any, *, strict: bool = True) -> tuple[dict[str, Any], list[str]]:
     """Check an advice summary; return (normalised summary without managed keys, warnings).
 
-    `strict` (default): an actionable open item (`needs_why`) without `rationale`/`why_now` is an
-    error; otherwise only a warning (older items, unchanged re-posts)."""
+    `strict` (default): an actionable open item (`needs_why`) without `rationale`/`why_now`, or content
+    over the concise limits (`concise_problems`), is an error; otherwise only a warning (older items,
+    unchanged re-posts)."""
     if not isinstance(raw, dict):
         raise AdviceError("advice must be a JSON object")
     warnings: list[str] = []
@@ -171,6 +246,11 @@ def validate(raw: Any, *, strict: bool = True) -> tuple[dict[str, Any], list[str
         if strict:
             raise AdviceError(msg)
         warnings.append(msg)
+    long = concise_problems(s)
+    if long:
+        if strict:
+            raise AdviceError(concise_error(long))
+        warnings.append(concise_error(long))
     if not s["metrics"] and raw["type"] != "lineup":
         warnings.append("no metrics: every quantitative claim should carry an evidence label")
     if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
@@ -455,7 +535,8 @@ def post(raw: dict[str, Any], st: AdviceStore, *, params: dict[str, Any] | None 
     the latest version (its status is kept even if the file's differs: status changes go through
     `set_status`, so re-running a seed never reverts a decision); changed content appends a new
     version carrying the file's status. New or changed content of an actionable open item must carry
-    `rationale` and `why_now` (`needs_why`); an unchanged re-post of an older item only warns."""
+    `rationale` and `why_now` (`needs_why`), and all new or changed content must meet the concise
+    limits (`concise_problems`); an unchanged re-post of an older item only warns."""
     summary, warnings = validate(raw, strict=False)
     aid = advice_id or raw.get("advice_id") or (Path(source_file).stem if source_file else None) \
         or f"{now():%Y-%m-%d}-{slug(summary['title'])}"
@@ -472,6 +553,9 @@ def post(raw: dict[str, Any], st: AdviceStore, *, params: dict[str, Any] | None 
             return {"unchanged": True, "warnings": warnings, **_brief(last)}
     if missing_why(summary):
         validate(raw, strict=True)  # raises the explanatory AdviceError
+    long = concise_problems(summary)
+    if long:
+        raise AdviceError(concise_error(long))
     t = now()
     history = list((last or {}).get("summary", {}).get("status_history") or [])
     if last is None or (last.get("summary") or {}).get("status") != summary["status"]:
@@ -524,6 +608,8 @@ def set_status(st: AdviceStore, ref: str, status: str, *, note: str | None = Non
     missing = missing_why(ls)
     warnings = [f"{' and '.join(missing)} missing: this open recommendation has no plain-language "
                 "justification; re-post it with them"] if missing else []
+    if status not in CLOSED and (long := concise_problems(ls)):
+        warnings.append(concise_error(long))
     return {"unchanged": False, "previous_run_id": last["run_id"], "warnings": warnings, **_brief(row)}
 
 

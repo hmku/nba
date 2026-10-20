@@ -173,32 +173,39 @@ note with one simulated roster for me.
      `claude` daily runs excluded) and expired locks;
   2. **Needs your yes** — one card per decision (`src/lib/inbox.ts` joins advice items and approvals both ways:
      `summary.approval_id` / `payload.advice_id`; schema `docs/research/dashboard_data.md` §4 "Advice ↔ approval ↔
-     thread"): type / status / approval badges, title, headline, verdict, **Why** and **What changed** (long text
-     collapses on phones), **Key numbers** (first 3 metrics with evidence chips; "All N metrics · scenarios" expands
-     the full table), risks, then **Your call**: the approval summary, the line *"Approving counts as your yes; the next
-     daily run (7:10 ET) or the main session executes it after re-checking Yahoo."* (user decision 2026-10-20), the
-     expiry ("Expires in 20h (Oct 21, 2:04 PM ET)", amber once past) and the passphrase-gated Approve / Reject with an
-     optional note (POST `/api/approvals`). Advice awaiting a yes with no approval row yet says so (no buttons).
-     Below: **Discussion** — every thread linked to the decision (Claude's/Muse's/advisor's/your posts that name its
-     advice_id or approval_id, with their replies and per-thread Reply), plus **Comment on this decision** (when
-     unlocked: POST `/api/threads/comment` `{advice_id|approval_id, stance, text}` → a new user thread linked by
-     `details`, shown to Claude in `fantasy intel latest` → `open_threads`). Approval-only cards (no advice item) show
-     the approval summary and payload. Sorted by soonest expiry, then newest. "Nothing needs your yes right now"
-     when empty;
+     thread"). Under the heading ONE policy line: *"Approve = your yes; the next daily run executes it after
+     re-checking Yahoo."* (user decision 2026-10-20). Cards are **collapsed by default** (user feedback 2026-10-20:
+     "too much text"): type badge + title (1 line on desktop, 2 on phones, full title on hover) + age; the verdict's
+     **first sentence** only (`splitVerdict`; the rest moves into Details, so no text renders twice); up to 3
+     **key-metric chips** (`key: true` metrics, else the first three; evidence = coloured dot, legend once next to the
+     page title; value ± SE and the note on hover); the passphrase-gated **Approve / Reject** (POST `/api/approvals`;
+     an optional note behind "add note") with the expiry ("expires in 20h", amber once past). Advice awaiting a yes
+     with no approval row yet says so in one line (no buttons). Then two toggles: **Details ▸** (headline + rest of
+     the verdict, **Why** bullets, **What changed**, the full metrics table + scenarios, risks, links, the approval
+     request text, posted/updated, ids; a client component `AdviceDetails.tsx` that mounts its body on first open, so
+     the text travels once as JSON in the RSC payload instead of twice as markup) and **💬 n** (every thread linked to
+     the decision — posts that name its advice_id or approval_id, with replies and per-thread Reply — plus the
+     **Comment** box when unlocked: POST `/api/threads/comment` `{advice_id|approval_id, stance, text}` → a new user
+     thread linked by `details`, shown to Claude in `fantasy intel latest` → `open_threads`). Approval-only cards (no
+     advice item) show the approval summary as the title and the payload under Details. Sorted by soonest expiry, then
+     newest. "Nothing needs your yes right now." when empty;
   3. **Approved · queued** (only when non-empty): you said yes (approval approved, or advice `approved`) and the move
      is not `done` yet;
-  4. **Ideas**: advice with status `idea` (and today's lineup plan) as compact cards: "Why, numbers and risks ▸" and the
-     discussion collapsed. Evidence legend below;
-  5. **Agent updates**: the threaded feed, unchanged except that threads shown inside a decision card are left out
+  4. **Ideas**: advice with status `idea` (and today's lineup plan): the same card with a one-line verdict snippet and
+     the chips, Details and 💬 collapsed;
+  5. **Agent updates**: the threaded feed (one panel, a hairline between updates; header "🔒 unlock to see Muse's private
+     snapshots and chat digests" when locked); threads shown inside a decision card are left out
      (and out of the filter counts). ONE feed (`src/lib/feed.ts`, schema in `docs/research/dashboard_data.md` §5) of Muse reports
      (incl. `trade_offer` cards: who gives what), advisor suggestions (dashed card: category/urgency/confidence,
      labelled evidence, proposed change), Claude's decisions / verifications / errors and finished run summaries,
      Claude's posts, and, after the passphrase unlock only, group-chat digests (badge "private") and one card with
-     Muse's newest Yahoo snapshot per kind (each collapsed). Each card: author badge (Muse / Advisor / Claude / You),
-     kind badge, age, body (long text collapsed behind "more", raw payloads behind "details"), its **thread**
-     (replies oldest first with stance chips agree ✓ / disagree ✕ / question ? / comment …, "↳ re X" when answering
-     a reply, labelled evidence; threads with >4 replies start collapsed showing the stance tally) and the event id.
-     **Paging** (`src/lib/feedPage.ts`, tested in `tests/feedPage.test.mjs`): newest *posted* first, 25 cards per
+     Muse's newest Yahoo snapshot per kind (each collapsed). Each update: author (coloured name: Muse / Advisor /
+     Claude / You), kind, age (event id on hover), body clamped to 2 lines with "more" (`LongText`: rendered once,
+     CSS `:has()` toggle), raw payloads behind "payload"/"details" (`LazyJson`, mounted on open, ≤ 1200 chars),
+     evidence lists collapsed to "n evidence items", logged decisions as one line ("lineup · agrees · chose …") + the
+     rationale, and its **thread** collapsed to "💬 n replies · stance tally" (replies oldest first with stance agree ✓
+     / disagree ✕ / question ? / comment …, "↳ re X" when answering a reply; open inside a decision card's 💬).
+     **Paging** (`src/lib/feedPage.ts`, tested in `tests/feedPage.test.mjs`): newest *posted* first, 12 cards per
      page, "← Newer" / "Older →" links carrying a `(timestamp, key)` cursor (`?before=` / `?after=`, base64url;
      `?at=` = the page starting at one update), so pages stay put while new updates arrive; "Jump to newest" on
      older pages; filters ride along. A reply never moves its thread: a root on page k shows all its replies
@@ -226,7 +233,9 @@ note with one simulated roster for me.
   when an author filter needs a 1000-row window), finished run summaries by `ended_at`, the newest 100 replies in
   full and a run-summary count. Round 2 runs only for what is still missing (light-read roots, older replies incl.
   the cards' threads, decision cards older than the newest 100), so the usual page is one round. Local `next start` against production
-  Supabase (anon, 2026-10-20, one Inbox load): 0.16 s / 318 KB HTML (was Activity 0.11 s / 153 KB + Moves as a
+  Supabase (anon, 2026-10-20, one Inbox load): 0.16 s / 318 KB HTML → **106 KB** after the concise redesign (same
+  data, same day: collapsed cards, Details/payloads mounted on open instead of rendered twice as HTML + RSC markup,
+  short CSS classes for repeated Inbox elements in `globals.css`, 12 feed cards per page) (was Activity 0.11 s / 153 KB + Moves as a
   separate page). Older Activity numbers (median of 10, 2026-10-20): before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB →
   after 0.075 s / 158 KB, RSC 0.056 s / 84 KB (`?timeline=1`: 0.12 s / 451 KB). Cursor paging (median of 7, same
   day, more data): `?n=` version 0.105 s / 184 KB → 0.11 s / 153 KB (RSC 77 KB); `?author=claude` 0.09 s → 0.17 s
