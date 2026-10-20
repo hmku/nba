@@ -104,10 +104,12 @@ and compare every slot with the plan; `fantasy txn mark <txn_id> verified --evid
 or `failed --error`. A submitted txn is never re-clicked blindly (agent-run §7).
 
 ## 4. ASK (add/drop, trades)
-Post the recommendations to the user (expected effect ± SE, evidence labels: fitted / simulated / prior) and file
+Post the recommendations to the user (expected effect ± SE, evidence labels: fitted / simulated / prior), each with
+a plain-language **justification** and **"why now, not before"** (what we decided earlier and why — e.g. the draft-time
+recommendation/score for that player — and what changed since; unmodelled costs such as waiver priority), and file
 `fantasy approval request add_drop "<summary>" --payload '{...}'` for each. Also post each recommendation (and today's
 lineup plan, type `lineup`) to the dashboard's **Moves** tab: write an advice JSON (schema: `docs/research/dashboard_data.md`
-§4; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
+§4, including `rationale` and `why_now`; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
 `fantasy advise status <advice_id> done|rejected|expired --note "..."`. **Do not execute** unless the user replies
 "yes" for that exact move in this session; then follow agent-run §6 with the approval.
 

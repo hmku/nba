@@ -47,6 +47,10 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
   you are quoting.
 
 ## Approval policy (non-negotiable; CLAUDE.md wins on any conflict)
+Every recommendation you put to the user (and every Moves card) must include a **justification** and **"why now,
+not before"**: the earlier belief/decision (draft-time score, previous sim, earlier recommendation) and what changed
+(new info, model version, precision, roster/schedule facts), plus costs the model ignores (waiver priority, adds budget,
+upside). If the earlier decision was a statistical tie, say so with the numbers.
 Enforced by `src/fantasy/ops/policy.py` (`LIVE_ALLOWED = {lineup, draft_pick}`) plus the user's standing authorisation:
 - **Lineup changes and IL moves**: allowed **without asking**, but only inside a `live` run holding `yahoo:roster` (and
   `yahoo:browser` for the page). Plan a `lineup` txn whose payload lists the exact moves, then verify every slot by an

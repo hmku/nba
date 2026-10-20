@@ -100,6 +100,7 @@ runs (one per team); recommend only if ours improves by > 2 SE. Never propose/ac
 without approval, and never message other managers.
 
 ## 3. Recommendation format (txn `--summary`, approval payload, and the report to the user)
+Always include `rationale` (justification) and `why_now` (earlier decision + what changed) — CLAUDE.md evidence standard.
 Every recommendation is a planned txn whose payload is exact enough for a dumb executor:
 ```json
 {
@@ -120,6 +121,9 @@ Every recommendation is a planned txn whose payload is exact enough for a dumb e
   "expected": {"d_p_playoffs": 0.021, "d_p_playoffs_se": 0.006,
                "week_cat_odds": {"blk": [0.42, 0.61], "reb": [0.55, 0.63]}},
   "downside": "lose Bey's 3PM (-0.4 3PM/game); 1 of 6 weekly adds used",
+  "rationale": "Plain-language why: Reid's 4 games and blocks swing this week's BLK/REB; season odds also improve.",
+  "why_now": {"before": "At the draft Bey was rec[0] at pick 120 (score tie with Reid, 5.61 vs 5.60)",
+              "changed": ["Reid's minutes rose after the Gobert injury (news 10-24)", "paired sim now +2.1 pp > 2 SE"]},
   "intel": ["snap_... (free_agents, 3h old)", "snap_... (my_team, 3h old)"]
 }
 ```

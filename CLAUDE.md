@@ -78,6 +78,12 @@ data-auditor, draft-shadow (all read-only).
   link the research note), **literature/source** (cite it), or **prior/guess** (say so explicitly).
 - Never present a prior as fact. New model parameters start as documented priors and get calibrated
   (`docs/research/`), with out-of-sample checks where possible.
+- **Every recommended change** (add/drop, waiver claim, stream, trade, IL move, model/default change) carries a
+  plain-language **justification** and a **"why now, not before"**: what we believed or decided earlier (e.g. at the
+  draft) and why, and what changed since (new information, a model change with versions, more precise evidence,
+  other teams' moves, schedule). If nothing changed, say so and explain why the earlier decision was a near-tie or
+  wrong. Include costs the model doesn't capture (e.g. losing waiver priority). On the Moves tab these are the advice
+  fields `rationale` and `why_now`.
 
 ## Engineering conventions
 - Python ≥3.11, typed, small modules; ingestion (`data/`) separate from modeling (`model/`).
