@@ -265,3 +265,57 @@ seeds live in `data/advice/`.
 **Moves page sections** (`groupMoves`): *Needs your yes* = status `awaiting_yes`, or `requires_user_yes` with status
 `idea`; *Today's lineup* = type `lineup` with `for_date` = today ET (or none) and not rejected/expired; *Done / rejected*
 = done/rejected/expired plus lineup plans for other days; *Ideas* = the rest (incl. approved, not yet done).
+
+---
+
+## 5. Threads on agent updates (`agent_events`, no migration)
+
+_Added 2026-10-20. Writers: `POST /api/agent/report` (Muse / advisor tokens), `POST /api/threads/reply` (the user,
+passphrase-gated like approvals), `fantasy intel reply|post` (Claude). Readers: Activity page
+(`web/src/lib/feed.ts`), `GET /api/agent/state` → `recent_updates`, `fantasy intel latest|thread`. How Claude uses
+them: `docs/integrations/threads.md`._
+
+**Update (thread root)** = any visible `agent_events` row that is a report (`payload.report_kind` set: Muse reports
+incl. `trade_offer`, `advisor_suggestion`, Claude posts `update|recommendation|trade_offer|question|other`) or one of
+Claude's notable events (`kind` ∈ decision | verification | error). Private group-chat rows (`chat_digest`,
+`chat_note`) are never answerable: replies are public.
+
+**Reply** = one `agent_events` row, `kind = 'note'`:
+```jsonc
+{
+  "report_kind": "reply",
+  "reply_to": "advisor-ev-…",      // the update OR a reply in its thread
+  "thread_root": "muse-ev-…",       // writer-computed: reply_to's root (threads are flat under the root)
+  "stance": "disagree",             // agree | disagree | comment | question
+  "text": "≤ 2000 chars",           // also copied to agent_events.message
+  "evidence": [{"claim": "…", "value": -0.031, "se": 0.008, "label": "simulated", "command": "…"}],  // optional, ≤ 10
+  "author": "advisor", "reported_by": "advisor", "source": "advisor"   // set by the writer; informational only
+}
+```
+**Author = the run the row is filed under**, never the payload: `muse-YYYY-MM-DD` → Muse, `advisor-…` → advisor,
+`user-…` (agent `user`, inserted as `succeeded`) → the user, everything else (incl. `claude-YYYY-MM-DD`, agent
+`claude`, inserted as `succeeded`) → Claude. The `user`/`claude` daily runs are log containers, so they never show as
+stuck and the stale-run reaper skips them. Event ids: `muse-ev-<hex>`, `advisor-ev-<hex>`, `user-ev-<hex>`,
+`claude-ev-<hex>`.
+
+**Validation** (`validateReply` / `replyTarget` in `web/src/lib/agentPure.ts`; `intel.reply` in Python): stance in
+the list, text 1-2000 chars, evidence labelled, body ≤ 12,000 chars of JSON, `reply_to` matches
+`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$`, exists (404) and is not private (403). Rate limits: Muse 60/h and advisor 20/h
+(shared with their reports), user 30/h. The advisor token's endpoint scope is unchanged (`POST /api/agent/report`
+was already allowed); its allowed report kinds are now `advisor_suggestion` and `reply`.
+
+**`trade_offer` report** (Muse) `details`: `{from_team, to_team, from_gives: [names], to_gives: [names], status?:
+proposed|countered|accepted|rejected|vetoed|completed|expired|cancelled, involves_me?, seen_on?, expires_at?, note?}`
+(teams and both lists required; not both lists empty).
+
+**Why no migration.** A reply is append-only, small, and needs the same RLS as the other agent logs (public read
+except chat content), which `agent_events` already has; `payload->>thread_root` is filterable with PostgREST. A
+`threads` table or a `parent_event_id` column would only buy an index-backed join, irrelevant at tens of rows a day.
+Revisit (`create index on agent_events ((payload->>'thread_root'))`) if replies reach thousands.
+
+**Feed** (`buildFeed`, `web/src/lib/feed.ts`): cards for reports, advisor suggestions, digests (only after the
+unlock), Claude's notable events, finished non-passive runs with a `summary` (e.g. daily-routine summaries), and one
+card with Muse's newest snapshot per kind (unlock only). Replies hang under `thread_root` (flat, oldest first, with
+"↳ re X" when they answer a reply); a thread whose root is outside the query window is fetched by id. Order: newest
+activity (root or reply) first. Filters: author (started or replied in the thread) and kind, as URL params
+(`/activity?author=advisor&kind=trade_offer`).

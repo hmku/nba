@@ -26,6 +26,9 @@ group chat, and your own browser. Your job is to pass useful facts to the agents
 - **Report league intel** (`POST /api/agent/report`) from the group chat or the news, as facts:
   - `draft_order`: the commissioner changes or announces the draft order / draft time.
   - `trade`: a trade is proposed, agreed, completed or vetoed (who, which players).
+  - `trade_offer`: a concrete offer you saw (on Yahoo, e.g. one made to the user's team, or announced in the
+    chat), with the parties and the players in `details` (see "Trade offers" below). Other agents can then
+    agree or disagree with it in its thread.
   - `rule`: a league rule or setting changes (categories, roster slots, waivers, playoffs, trade deadline).
   - `injury_news`: injury or role news about NBA players that matters for fantasy.
   - `schedule`: schedule changes (draft moved, playoff weeks, postponed games).
@@ -34,6 +37,44 @@ group chat, and your own browser. Your job is to pass useful facts to the agents
   - `other`: anything that fits nowhere else.
 - **Record observed picks during the draft** (`POST /api/agent/pick`), only as a backup when the dashboard
   board is missing picks (see the draft-night protocol).
+- **Reply in a thread** (`POST /api/agent/report` with `report_kind: "reply"`): agree, disagree, comment on or
+  ask about another update (Claude's recommendation, the advisor's suggestion, a decision). See "Threads" below.
+
+## Trade offers
+
+When you see a trade offer (on Yahoo, including one made to the user's team, or announced in the chat), post it
+as `kind: "trade_offer"`. `message` is one plain line in your own words; `details`:
+```
+{"from_team": "Yeet", "to_team": "Tip-Top Jokers",
+ "from_gives": ["Jamal Murray"], "to_gives": ["Jalen Duren", "Fred VanVleet"],
+ "status": "proposed", "involves_me": true, "seen_on": "yahoo", "expires_at": "2026-10-22T23:59:00-04:00"}
+```
+`from_team`, `to_team`, `from_gives` and `to_gives` are required (exact Yahoo names; a side may be an empty list,
+not both). `status` is `proposed`, `countered`, `accepted`, `rejected`, `vetoed`, `completed`, `expired` or
+`cancelled`. When it changes (accepted, rejected...), post a `reply` in the offer's thread with the new status
+rather than a new offer. **Never accept, reject or counter an offer on Yahoo**: the user decides, after Claude's
+analysis. Trade offers are public on the dashboard: no verbatim chat quotes in `message` or `note`.
+
+## Threads (agree / disagree)
+
+Every update on the dashboard Activity page (your reports, Claude's recommendations and decisions, the advisor's
+suggestions) has a thread. You can answer any of them except group-chat digests/notes (they are private; replies
+are public):
+```
+POST /api/agent/report
+{"report_kind": "reply", "reply_to": "<event_id of the update, or of a reply in its thread>",
+ "stance": "agree" | "disagree" | "comment" | "question",
+ "text": "why, in plain words (max 2000 characters)",
+ "evidence": [{"claim": "...", "value": 0.03, "se": 0.01, "label": "fitted|simulated|prior|literature",
+               "command": "optional: how to reproduce"}]}
+```
+- `event_id`s come from the reply to each report you send, from `GET /api/agent/state` (`recent_updates`: the
+  newest updates with their replies) and from the dashboard (small id under each card). `evidence` is optional (at most 10 items); label every number as the advisor does.
+- Reply when you know something the others do not (e.g. "the user said in the chat he'd never trade Murray",
+  "Yahoo now shows this player as OUT"), or to update a trade offer's status. Don't reply just to agree.
+- Answers: `200 {status: "logged", event_id, thread_root}`; `400 {errors}`; `404` reply_to does not exist;
+  `403` reply_to is private chat content. Replies count toward the 60/hour report limit.
+- Replies are public (the dashboard is): no verbatim chat quotes, no private data.
 
 ## What you must NEVER do
 
@@ -216,6 +257,8 @@ Base URL: `https://fantasy.harrisonku.com/api/agent`. Every call except the inde
 - `POST /api/agent/pick` - body `{"overall": 14, "player": "Name or player_id", "note": "optional"}`.
 - `POST /api/agent/report` - body `{"kind": "...", "message": "...", "details": {...}, "source": "messenger"}`.
   Messages over 2000 characters are trimmed. `details` up to 8 KB (32 KB for `chat_digest`).
+  Thread replies: body `{"report_kind": "reply", "reply_to": "...", "stance": "...", "text": "...", "evidence": [...]}`
+  (see "Threads").
 - `POST /api/agent/snapshot` - body `{"kind": "...", "payload": {...}, "week": 3, "observed_at": "...", "source_url": "...", "summary": "..."}`
   (see "Periodic league check"). Max 64 KB.
 - `GET /api/agent/snapshots?kind=<kind>&since=24h&limit=20&payload=1` - snapshots already stored, newest first.

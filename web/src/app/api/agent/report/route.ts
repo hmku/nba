@@ -8,23 +8,36 @@ import {
   fail,
   museEventsLastHour,
   newEventId,
+  postReply,
   readJson,
   reply,
   writer,
 } from "@/lib/agentApi";
-import { ADVISOR_REPORTS_PER_HOUR, advisorEventPayload, REPORTS_PER_HOUR, validateAdvisorSuggestion, validateReport } from "@/lib/agentPure";
+import {
+  ADVISOR_REPORTS_PER_HOUR,
+  advisorEventPayload,
+  type AgentIdentity,
+  isReplyBody,
+  REPORTS_PER_HOUR,
+  validateAdvisorSuggestion,
+  validateReply,
+  validateReport,
+} from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
 
 /** POST /api/agent/report
  *  - Muse (AGENT_API_TOKEN): {kind, message, details?, source?} → agent_events 'observation' under today's agent='muse' run.
  *  - Advisor (ADVISOR_API_TOKEN): {report_kind: "advisor_suggestion", category, title, summary, evidence, ...} →
- *    'observation' under today's agent='advisor' run, with source/reported_by='advisor' set by the server. */
+ *    'observation' under today's agent='advisor' run, with source/reported_by='advisor' set by the server.
+ *  - Either token: {report_kind: "reply", reply_to, stance, text, evidence?} → a thread reply ('note') under the
+ *    caller's daily run. The author is the token's identity; reply_to must exist and must not be private chat content. */
 export async function POST(req: Request) {
   const auth = await authorizeAgent(req);
   if (auth instanceof NextResponse) return auth;
   const body = await readJson(req);
   if (body instanceof NextResponse) return body;
+  if (isReplyBody(body)) return replyReport(body, auth.identity);
   if (auth.identity === "advisor") return advisorReport(body);
 
   const v = validateReport(body);
@@ -61,6 +74,20 @@ export async function POST(req: Request) {
     truncated: r.truncated,
     note: "Logged for the agents and shown on the dashboard Activity page. No action was taken.",
   });
+}
+
+async function replyReport(body: unknown, identity: AgentIdentity): Promise<NextResponse> {
+  const v = validateReply(body);
+  if (!v.ok) return fail("Invalid reply", 400, { errors: v.errors });
+  const db = writer();
+  if (db instanceof NextResponse) return db;
+  if (identity === "advisor") {
+    if ((await advisorEventsLastHour(db)) >= ADVISOR_REPORTS_PER_HOUR)
+      return fail(`Rate limit: at most ${ADVISOR_REPORTS_PER_HOUR} advisor suggestions + replies per hour`, 429);
+  } else if ((await museEventsLastHour(db)) >= REPORTS_PER_HOUR) {
+    return fail(`Rate limit: at most ${REPORTS_PER_HOUR} reports/replies/picks per hour`, 429);
+  }
+  return postReply(db, identity, v.value);
 }
 
 async function advisorReport(body: unknown): Promise<NextResponse> {

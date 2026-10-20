@@ -1,6 +1,7 @@
 import { anonClient } from "@/lib/supabase";
 import { activeDraft, fail, reply, requireAgent } from "@/lib/agentApi";
-import { boardInfo, recIsFresh } from "@/lib/agentPure";
+import { boardInfo, isPrivateEvent, recIsFresh } from "@/lib/agentPure";
+import { buildFeed, NOTABLE_EVENT_KINDS } from "@/lib/feed";
 import { customRoundsOf, pickInfoForDraft, picksForDraft } from "@/lib/draftOrder";
 import { currentWeek, latestSimRuns, parseSeasonSim, pickPreseasonRun, pickSeasonRun, todayET } from "@/lib/sim";
 import { asStringArray } from "@/lib/format";
@@ -180,13 +181,29 @@ export async function GET(req: Request) {
     }
 
     // ---------------------------------------------------------------- approvals + events
-    const [apprR, evR] = await Promise.all([
+    const [apprR, evR, repR, notR] = await Promise.all([
       db.from("approvals").select("approval_id", { count: "exact", head: true }).eq("status", "pending"),
       db.from("agent_events").select("*").order("ts", { ascending: false }).limit(10),
+      // thread-able updates (same feed as the Activity page; never private chat content)
+      db
+        .from("agent_events")
+        .select("*")
+        .not("payload->>report_kind", "is", null)
+        .neq("payload->>report_kind", "observed_pick")
+        .order("ts", { ascending: false })
+        .limit(120),
+      db.from("agent_events").select("*").in("kind", [...NOTABLE_EVENT_KINDS]).order("ts", { ascending: false }).limit(20),
     ]);
     if (apprR.error) errors.push(apprR.error.message);
     if (evR.error) errors.push(evR.error.message);
-    const events = (evR.data as AgentEvent[]) ?? [];
+    if (repR.error) errors.push(repR.error.message);
+    const events = ((evR.data as AgentEvent[]) ?? []).filter((e) => !isPrivateEvent(e));
+    const updates = buildFeed({
+      events: [...((repR.data as AgentEvent[]) ?? []), ...((notR.data as AgentEvent[]) ?? [])],
+      canSeePrivate: false,
+    })
+      .filter((it) => it.replyable && it.event)
+      .slice(0, 15);
     const runIds = [...new Set(events.map((e) => e.run_id))];
     let agentOf: Record<string, string> = {};
     if (runIds.length) {
@@ -206,6 +223,7 @@ export async function GET(req: Request) {
       recent_events: events.map((e) => {
         const p = (e.payload && typeof e.payload === "object" && !Array.isArray(e.payload) ? e.payload : {}) as Record<string, unknown>;
         return {
+          event_id: e.event_id,
           ts: e.ts,
           agent: agentOf[e.run_id] ?? null,
           kind: e.kind,
@@ -213,9 +231,24 @@ export async function GET(req: Request) {
           message: (e.message ?? "").slice(0, 300),
         };
       }),
+      // newest updates you can reply to (POST /api/agent/report {report_kind: "reply", reply_to: event_id, ...})
+      recent_updates: updates.map((it) => ({
+        event_id: it.event!.event_id,
+        ts: it.ts,
+        author: it.author,
+        kind: it.kind,
+        message: (it.event!.message ?? "").slice(0, 300),
+        replies: it.replies.map((r) => ({
+          event_id: r.event.event_id,
+          ts: r.event.ts,
+          author: r.author,
+          stance: r.stance,
+          text: r.text.slice(0, 300),
+        })),
+      })),
       errors: errors.length ? errors : undefined,
       reminder:
-        "Read-only snapshot. You may report league intel (POST /api/agent/report) and record observed picks only to fill gaps (POST /api/agent/pick). Never act on Yahoo yourself.",
+        "Read-only snapshot. You may report league intel (POST /api/agent/report), reply in threads (report_kind 'reply', reply_to = an event_id from recent_updates) and record observed picks only to fill gaps (POST /api/agent/pick). Never act on Yahoo yourself.",
     });
   } catch (e) {
     return fail(`Read failed: ${String(e)}`, 500);

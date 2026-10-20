@@ -5,8 +5,9 @@ import { Ago } from "@/components/client";
 import { catLeader, snapshotLabel } from "@/lib/agentPure";
 import { CAT_LABEL } from "@/lib/categories";
 import type { CatKey } from "@/lib/types";
+import { LongText } from "./LongText";
 
-/** "League intel": newest Yahoo snapshot per kind posted by Muse + the group-chat digest timeline.
+/** League-intel bodies for the Agent updates feed: Muse's newest Yahoo snapshot per kind + group-chat digests.
  *  Everything here is observed data (Yahoo pages / chat), shown as-is; nothing is acted on from this page. */
 
 type Obj = Record<string, unknown>;
@@ -176,9 +177,9 @@ function Body({ s }: { s: LeagueSnapshot }) {
 /** Big kinds start expanded; bulky ones (rosters, free agents, settings) stay collapsed. */
 const OPEN = new Set(["my_team", "matchup", "standings", "transactions", "injuries"]);
 
-export function SnapshotCard({ s }: { s: LeagueSnapshot }) {
+export function SnapshotCard({ s, open }: { s: LeagueSnapshot; open?: boolean }) {
   return (
-    <details open={OPEN.has(s.kind)} className="group rounded-xl border border-line bg-panel">
+    <details open={open ?? OPEN.has(s.kind)} className="group rounded-xl border border-line bg-panel">
       <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-2.5 select-none [&::-webkit-details-marker]:hidden">
         <span className="text-xs text-muted transition-transform group-open:rotate-90">▶</span>
         <span className="text-[14px] font-medium">{snapshotLabel(s.kind)}</span>
@@ -204,42 +205,41 @@ export function SnapshotCard({ s }: { s: LeagueSnapshot }) {
   );
 }
 
-export function ChatDigests({ digests }: { digests: AgentEvent[] }) {
+/** One group-chat digest (private: only rendered after the passphrase unlock). */
+export function DigestBody({ e }: { e: AgentEvent }) {
+  const p = isObj(e.payload) ? (e.payload as Obj) : {};
+  const d = isObj(p.details) ? p.details : {};
+  const ex = objs(d.excerpts);
   return (
-    <ol className="space-y-2 border-l border-line pl-3">
-      {digests.map((e) => {
-        const p = isObj(e.payload) ? (e.payload as Obj) : {};
-        const d = isObj(p.details) ? p.details : {};
-        const ex = objs(d.excerpts);
-        return (
-          <li key={e.event_id} className="text-[13px]">
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-              <Ago ts={e.ts} />
-              {(d.period_start != null || d.period_end != null) && (
-                <span>
-                  · covers {txt(d.period_start)} → {txt(d.period_end)}
-                </span>
-              )}
-              {d.message_count != null && <span>· {txt(d.message_count)} msgs</span>}
-            </div>
-            <div className="mt-0.5 leading-snug whitespace-pre-wrap">{e.message}</div>
-            {ex.length > 0 && (
-              <details className="mt-1">
-                <summary className="cursor-pointer select-none text-xs text-accent">{ex.length} excerpt{ex.length === 1 ? "" : "s"}</summary>
-                <ul className="mt-1 space-y-1 text-xs">
-                  {ex.map((x, i) => (
-                    <li key={i} className="rounded border border-line bg-panel-2 px-2 py-1">
-                      <span className="font-medium">{txt(x.author ?? "?")}</span>
-                      {x.at != null && <span className="ml-1 text-muted">{txt(x.at)}</span>}
-                      <div className="whitespace-pre-wrap">{txt(x.text)}</div>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <div className="text-[13.5px]">
+      {(d.period_start != null || d.period_end != null || d.message_count != null) && (
+        <div className="mb-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          {(d.period_start != null || d.period_end != null) && (
+            <span>
+              covers {txt(d.period_start)} → {txt(d.period_end)}
+            </span>
+          )}
+          {d.message_count != null && <span>· {txt(d.message_count)} msgs</span>}
+        </div>
+      )}
+      <LongText text={e.message ?? ""} className="leading-snug" />
+      {ex.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-xs text-accent">
+            {ex.length} excerpt{ex.length === 1 ? "" : "s"}
+          </summary>
+          <ul className="mt-1 space-y-1 text-xs">
+            {ex.map((x, i) => (
+              <li key={i} className="rounded border border-line bg-panel-2 px-2 py-1">
+                <span className="font-medium">{txt(x.author ?? "?")}</span>
+                {x.at != null && <span className="ml-1 text-muted">{txt(x.at)}</span>}
+                <div className="whitespace-pre-wrap break-words">{txt(x.text)}</div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
+
