@@ -326,6 +326,8 @@ def test_cli_refuses_stale_capture_unless_allowed_or_current_slots(tmp_path, pro
     base, mine = _cli_world(tmp_path, proj_path, captured_at="2026-10-20T03:25:00Z")
     code, out = _run(base + ["--date", "2026-10-20"])
     assert code == 2 and out["code"] == "stale_capture" and out["slots_as_of"] == "2026-10-19"
+    # shared failure contract (fantasy.cli_common): `error` keeps the text, `message` == `error`
+    assert out["ok"] is False and out["message"] == out["error"] and "stale slots" in out["message"]
     code, out = _run(base + ["--date", "2026-10-20", "--allow-stale"])
     assert code == 0 and any("STALE" in w for w in out["warnings"])
     cs = tmp_path / "cs.json"
