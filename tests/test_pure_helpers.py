@@ -43,6 +43,40 @@ def test_check_choice_and_parse_punt_exit_2_with_json(capsys):
     assert "invalid punt category bogus" in capsys.readouterr().err
 
 
+def test_lineup_slots_as_of_sources(tmp_path):
+    from datetime import date
+
+    from fantasy.lineup.cli import slots_as_of
+
+    entry = {"players": ["a"], "lineup": {"a": "PG"}}
+    league = {"captured_at": "2026-10-20T03:25:00Z", "source": "x", "synced_at": "2026-10-21T12:00:00Z"}
+    assert slots_as_of(league, entry, None) == (date(2026, 10, 19), "league file captured_at")
+    league = {"source": "sync (captured 2026-10-20 09:10 ET)", "synced_at": "2026-10-21T12:00:00Z"}
+    assert slots_as_of(league, entry, None) == (date(2026, 10, 20), "league file source (captured ...)")
+    assert slots_as_of({"synced_at": "2026-10-21T12:00:00Z"}, entry, None) == (date(2026, 10, 21),
+                                                                               "league file synced_at")
+    # no lineup in the league entry -> the capture file decides
+    cap = tmp_path / "cap.json"
+    cap.write_text(json.dumps({"captured_at": "2026-10-22T15:00:00Z", "teams": {}}))
+    assert slots_as_of(league, {"players": ["a"]}, cap) == (date(2026, 10, 22), "cap.json captured_at")
+    cap.write_text(json.dumps({"source": "read 2026-10-23 08:00 ET", "teams": {}}))
+    assert slots_as_of(None, None, cap) == (date(2026, 10, 23), "cap.json source")
+    assert slots_as_of(None, None, tmp_path / "missing.json") == (None, "none")
+
+
+def test_lineup_current_slots_overlay_warnings(tmp_path):
+    from fantasy.lineup.cli import _apply_current_slots
+    from fantasy.lineup.players import RosterPlayer
+
+    me = [RosterPlayer("a", "A", ("PG",), "BOS", None, slot="BN"), RosterPlayer("b", "B", ("C",), "BOS", None, slot="C")]
+    cs = tmp_path / "cs.json"
+    cs.write_text(json.dumps({"slots": {"a": "PG", "zz": "SG"}}))
+    out, warnings = _apply_current_slots(me, cs)
+    assert [p.slot for p in out] == ["PG", "C"] and me[0].slot == "BN"  # input untouched
+    assert warnings == ["--current-slots: ids not on my roster ignored: ['zz']",
+                        "--current-slots: no slot given for ['b']; using the capture/league slot"]
+
+
 def test_publish_text_renderers_and_url_normalisation():
     from fantasy.ops.status import _ping_text, _psycopg_url, _publish_rest_text, _publish_sql_text
 
