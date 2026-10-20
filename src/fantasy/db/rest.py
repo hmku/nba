@@ -279,6 +279,12 @@ class RestClient:
         return len(body) if isinstance(body, list) else None
 
 
+def default_client() -> RestClient:
+    """A client for `SUPABASE_URL` (default: the production project) with the key from `api_key()` (if any)."""
+    key, _ = api_key()
+    return RestClient(base_url=os.environ.get("SUPABASE_URL", DEFAULT_SUPABASE_URL), key=key)
+
+
 def resolve_tables(names: Iterable[str] | None) -> list[Table]:
     """FK-safe order (metadata.sorted_tables), minus PUBLISH_SKIP, optionally filtered."""
     wanted: set[str] | None = None
@@ -318,8 +324,8 @@ def publish_rest(
     of `insert` tables (never overwriting online state). Returns counts, skips, policy, errors."""
     tbls = resolve_tables(tables)
     data = read_rows(source_url, tbls)
-    key, key_env = api_key()
-    cl = client or RestClient(base_url=os.environ.get("SUPABASE_URL", DEFAULT_SUPABASE_URL), key=key)
+    _, key_env = api_key()
+    cl = client or default_client()
     res: dict[str, Any] = {
         "target": cl.base_url,
         "auth": key_env or "none sent (relying on injected network secret)",
@@ -373,8 +379,8 @@ def publish_rest(
 
 def ping(client: RestClient | None = None) -> dict[str, Any]:
     """GET rest/v1/tasks?select=task_id&limit=1 -> reachability and auth status (never raises)."""
-    key, key_env = api_key()
-    cl = client or RestClient(base_url=os.environ.get("SUPABASE_URL", DEFAULT_SUPABASE_URL), key=key)
+    _, key_env = api_key()
+    cl = client or default_client()
     out: dict[str, Any] = {
         "target": cl.base_url,
         "auth": key_env or "none sent (relying on injected network secret)",

@@ -19,7 +19,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 import re
 from collections.abc import Iterable
 from datetime import datetime, timedelta
@@ -243,6 +242,8 @@ class IntelSource(Protocol):
 
     def event(self, event_id: str) -> dict[str, Any] | None: ...
 
+    def close(self) -> None: ...
+
 
 class SqlSource:
     """SQLAlchemy engine (FANTASY_DB_URL: local SQLite or Supabase Postgres)."""
@@ -252,7 +253,8 @@ class SqlSource:
     def __init__(self, url: str | None = None) -> None:
         self.eng = engine(url)
 
-    def snapshots(self, kind, since, limit, with_payload):
+    def snapshots(self, kind: str | None, since: datetime | None, limit: int,
+                  with_payload: bool) -> list[dict[str, Any]]:
         t = league_snapshots
         seen = t.c.last_seen_at
         q = select(t)
@@ -265,13 +267,14 @@ class SqlSource:
         with self.eng.connect() as c:
             return [_snapshot_out(row_dict(r), with_payload) for r in c.execute(q)]
 
-    def snapshot(self, sid):
+    def snapshot(self, sid: str) -> dict[str, Any] | None:
         with self.eng.connect() as c:
             r = row_dict(c.execute(select(league_snapshots)
                                    .where(league_snapshots.c.snapshot_id == sid)).first())
         return None if r is None else _snapshot_out(r, True)
 
-    def reports(self, kind, since, limit, source="muse"):
+    def reports(self, kind: str | None, since: datetime | None, limit: int,
+                source: str = "muse") -> list[dict[str, Any]]:
         _check_source(source)
         t = agent_events
         rk = t.c.payload["report_kind"].as_string()
@@ -285,11 +288,14 @@ class SqlSource:
             rows = [_report_out(row_dict(r)) for r in c.execute(q)]
         return [r for r in rows if r and r["run_id"].startswith(REPORT_SOURCES[source])]
 
-    def event(self, event_id):
+    def event(self, event_id: str) -> dict[str, Any] | None:
         with self.eng.connect() as c:
             r = row_dict(c.execute(select(agent_events)
                                    .where(agent_events.c.event_id == event_id)).first())
         return None if r is None else _report_out(r)
+
+    def close(self) -> None:
+        pass  # the engine is shared and cached
 
 
 class RestSource:
@@ -298,18 +304,18 @@ class RestSource:
     name = "rest"
 
     def __init__(self, client: rest.RestClient | None = None) -> None:
-        if client is None:
-            key, _ = rest.api_key()
-            client = rest.RestClient(
-                base_url=os.environ.get("SUPABASE_URL", rest.DEFAULT_SUPABASE_URL), key=key)
-        self.cl = client
+        self.cl = client if client is not None else rest.default_client()
+
+    def close(self) -> None:
+        self.cl.close()
 
     def _get(self, table: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         resp = self.cl.request("GET", table, params=params)
         self.cl.check(resp, f"read {table}")
         return resp.json()
 
-    def snapshots(self, kind, since, limit, with_payload):
+    def snapshots(self, kind: str | None, since: datetime | None, limit: int,
+                  with_payload: bool) -> list[dict[str, Any]]:
         cols = SNAPSHOT_META + (["payload"] if with_payload else [])
         params: dict[str, Any] = {
             "select": ",".join(cols),
@@ -323,11 +329,12 @@ class RestSource:
             params["or"] = f"(observed_at.gte.{iso},last_seen_at.gte.{iso})"
         return [_snapshot_out(r, with_payload) for r in self._get("league_snapshots", params)]
 
-    def snapshot(self, sid):
+    def snapshot(self, sid: str) -> dict[str, Any] | None:
         rows = self._get("league_snapshots", {"select": "*", "snapshot_id": f"eq.{sid}"})
         return _snapshot_out(rows[0], True) if rows else None
 
-    def reports(self, kind, since, limit, source="muse"):
+    def reports(self, kind: str | None, since: datetime | None, limit: int,
+                source: str = "muse") -> list[dict[str, Any]]:
         _check_source(source)
         params: dict[str, Any] = {
             "select": "event_id,run_id,ts,kind,message,payload",
@@ -341,7 +348,7 @@ class RestSource:
         rows = [_report_out(r) for r in self._get("agent_events", params)]
         return [r for r in rows if r and r["run_id"].startswith(REPORT_SOURCES[source])]
 
-    def event(self, event_id):
+    def event(self, event_id: str) -> dict[str, Any] | None:
         rows = self._get("agent_events", {"select": "event_id,run_id,ts,kind,message,payload",
                                           "event_id": f"eq.{event_id}"})
         return _report_out(rows[0]) if rows else None
@@ -474,7 +481,7 @@ def record_snapshot(kind: str, payload: dict[str, Any], *, week: int | None = No
 
 
 __all__ = [
-    "ADVISOR_NOTE", "ADVISOR_REPORT_KINDS", "REPORT_KINDS", "SNAPSHOT_KINDS", "UNTRUSTED_NOTE", "RestSource", "SqlSource", "canonical_json",
-    "latest", "list_intel", "parse_since", "payload_sha256", "record_snapshot", "show",
-    "snapshot_id", "source",
+    "ADVISOR_NOTE", "ADVISOR_REPORT_KINDS", "REPORT_KINDS", "SNAPSHOT_KINDS", "UNTRUSTED_NOTE",
+    "IntelSource", "RestSource", "SqlSource", "canonical_json", "latest", "list_intel", "parse_since",
+    "payload_sha256", "record_snapshot", "show", "snapshot_id", "source",
 ]

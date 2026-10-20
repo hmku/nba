@@ -296,6 +296,39 @@ def tipoff_notes(me: TeamSide, res: WeekResult, slots: DaySlots) -> list[dict]:
     return out
 
 
+def tagged_players(me: TeamSide, days: list[date]) -> list[dict]:
+    """My players with a Yahoo tag: next game, P(plays it), IL eligibility."""
+    out = []
+    for i, p in enumerate(me.players):
+        if p.status is None:
+            continue
+        nxt = next((d for d in range(len(days)) if me.G[i, d]), None)
+        out.append({"player_id": p.player_id, "name": p.name, "status": p.status,
+                    "next_game": days[nxt].isoformat() if nxt is not None else None,
+                    "p_play_next_game": round(float(me.P[i, nxt]), 3) if nxt is not None else 0.0,
+                    "il_eligible": p.il_eligible})
+    return out
+
+
+def il_moves(me: TeamSide, labels: list[str], slots: DaySlots) -> list[dict]:
+    """Players today's plan puts in IL who are not there yet, capped by the free IL slots."""
+    used_il = sum(1 for p in me.players if p.slot == "IL")
+    moves = [{"player_id": p.player_id, "name": p.name, "status": p.status, "from": p.slot, "to": "IL"}
+             for p, lab in zip(me.players, labels, strict=True) if lab == "IL" and p.slot != "IL"]
+    return moves[: max(slots.n_il - used_il, 0)]
+
+
+def player_rows(me: TeamSide, res: WeekResult, cats: list[Category]) -> list[dict]:
+    """Per-player table: games left, today's P(plays), matchup-aware value per game and by category."""
+    return [{"player_id": p.player_id, "name": p.name, "positions": list(p.positions), "team": p.team,
+             "status": p.status, "current_slot": p.slot, "games_left": int(me.G[i].sum()),
+             "has_game_today": bool(me.G[i, 0]), "p_play_today": round(float(me.P[i, 0]), 3),
+             "value_per_game": round(float(res.per_game[i]), 5),
+             "planned_starts": int(res.X[i].sum()),
+             "value_by_cat": {c.key: round(float(res.contrib[i, j]), 5) for j, c in enumerate(cats)}}
+            for i, p in enumerate(me.players)]
+
+
 def changes_vs_current(players: list[RosterPlayer], labels: list[str]) -> list[dict]:
     return [{"player_id": p.player_id, "name": p.name, "from": p.slot, "to": lab}
             for p, lab in zip(players, labels, strict=True) if p.slot != lab]
@@ -332,40 +365,20 @@ def build_plan(
     today = day_summary(me.players, res.labels[0], me.P[:, 0], res.values[:, 0], slots, days[0])
     start = set(slots.starting)
     tipoff = tipoff_notes(me, res, slots)
-    tagged = []
-    for i, p in enumerate(me.players):
-        if p.status is None:
-            continue
-        nxt = next((d for d in range(len(days)) if me.G[i, d]), None)
-        tagged.append({"player_id": p.player_id, "name": p.name, "status": p.status,
-                       "next_game": days[nxt].isoformat() if nxt is not None else None,
-                       "p_play_next_game": round(float(me.P[i, nxt]), 3) if nxt is not None else 0.0,
-                       "il_eligible": p.il_eligible})
-    used_il = sum(1 for p in me.players if p.slot == "IL")
-    il_moves = [{"player_id": p.player_id, "name": p.name, "status": p.status, "from": p.slot, "to": "IL"}
-                for p, lab in zip(me.players, res.labels[0], strict=True) if lab == "IL" and p.slot != "IL"]
-    il_moves = il_moves[: max(slots.n_il - used_il, 0)]
-    per_player = [{"player_id": p.player_id, "name": p.name, "positions": list(p.positions), "team": p.team,
-                   "status": p.status, "current_slot": p.slot, "games_left": int(me.G[i].sum()),
-                   "has_game_today": bool(me.G[i, 0]), "p_play_today": round(float(me.P[i, 0]), 3),
-                   "value_per_game": round(float(res.per_game[i]), 5),
-                   "planned_starts": int(res.X[i].sum()),
-                   "value_by_cat": {c.key: round(float(res.contrib[i, j]), 5) for j, c in enumerate(cats)}}
-                  for i, p in enumerate(me.players)]
     out = {
         "date": days[0].isoformat(), "days": [d.isoformat() for d in days],
         "lineup": [e for e in today["lineup"] if e["slot"] in start],
         "bench": [e for e in today["lineup"] if e["slot"] == "BN"],
         "il": [e for e in today["lineup"] if e["slot"] == "IL"],
-        "il_moves": il_moves,
+        "il_moves": il_moves(me, res.labels[0], slots),
         "changes_vs_current": changes_vs_current(me.players, res.labels[0]),
         "target_slots": {p.player_id: {"slot": lab, "name": p.name, "yahoo_player_id": p.yahoo_player_id}
                          for p, lab in zip(me.players, res.labels[0], strict=True)},
         "decide_at_tipoff": tipoff,
-        "tagged_players": tagged,
+        "tagged_players": tagged_players(me, days),
         "today": {k: today[k] for k in ("players_with_game", "started_with_game", "unused_starts", "unused_players",
                                          "empty_slots")},
-        "players": per_player,
+        "players": player_rows(me, res, cats),
         "category_weights": res.state.to_dict(),
         "expected": {
             "method": "analytic normal approximation per category; categories independent for P(win matchup)",

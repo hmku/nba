@@ -34,11 +34,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from fantasy.draft.names import NameResolutionError, resolve_player, unknown_player_id
+from fantasy.league.dates import et_date
 from fantasy.model.availability import TEAM_ALIASES
 
 VALID_SLOTS = ("PG", "SG", "G", "SF", "PF", "F", "C", "Util", "BN", "IL", "IL+")
@@ -411,17 +411,9 @@ def _duplicates(capture: Capture) -> list[str]:
 
 
 def capture_date_et(captured_at: str | None) -> str | None:
-    """US/Eastern calendar date (NBA game days) of an ISO timestamp; a naive timestamp is taken as UTC.
-    None if missing or unparseable."""
-    if not captured_at:
-        return None
-    try:
-        ts = datetime.fromisoformat(str(captured_at).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=UTC)
-    return ts.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    """`et_date` of an ISO timestamp as YYYY-MM-DD (naive = UTC); None if missing or unparseable."""
+    d = et_date(captured_at)
+    return d.isoformat() if d else None
 
 
 def normalised_capture(capture: Capture) -> dict[str, Any]:

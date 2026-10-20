@@ -24,12 +24,6 @@ Rest = Annotated[bool, typer.Option("--rest", help="Write/read Supabase over HTT
                                     "of FANTASY_DB_URL (cloud sessions)")]
 
 
-def _close(st: Any) -> None:
-    close = getattr(st, "close", None)
-    if close is not None:
-        close()
-
-
 def _rel(path: Path) -> str:
     p = path.resolve()
     try:
@@ -60,7 +54,7 @@ def post_cmd(
         res = advice.post(summary, st, params=params, inputs=inputs, source_file=_rel(file),
                           advice_id=advice_id)
     finally:
-        _close(st)
+        st.close()
     text = ("unchanged (identical to the latest version): " if res["unchanged"] else "posted: ") + _line(res)
     for w in res["warnings"]:
         text += f"\nwarning: {w}"
@@ -82,7 +76,7 @@ def status_cmd(
     try:
         res = advice.set_status(st, ref, status, note=note, approval_id=approval_id)
     finally:
-        _close(st)
+        st.close()
     emit(res, json_out, ("unchanged: " if res["unchanged"] else "status recorded: ") + _line(res))
 
 
@@ -101,6 +95,6 @@ def list_cmd(
     try:
         items = advice.list_advice(st, status=status, all_versions=all_versions, open_only=open_only, limit=limit)
     finally:
-        _close(st)
+        st.close()
     emit({"items": items, "count": len(items)}, json_out,
          "\n".join(_line(r) for r in items) if items else "no advice recorded")

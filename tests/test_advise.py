@@ -167,3 +167,42 @@ def test_rest_store_round_trip(tmp_path):
     assert item["status"] == "awaiting_yes" and item["version"] == 2
     assert item["first_created_at"] is not None and first["run_id"] != item["run_id"]
     assert all(r.headers["apikey"] == "sb_secret_TEST" for r in fake.requests)
+
+
+@pytest.mark.parametrize("bad, msg", [
+    ({"week": True}, "week"), ({"week": 0}, "week"), ({"headline": "a\nb"}, "headline: one line"),
+    ({"title": "  "}, "title"), ({"metrics": {"label": "x"}}, "metrics: expected a list"),
+    ({"metrics": [{"label": "x", "value": 1, "evidence": "prior", "delta": "yes"}]}, "delta"),
+    ({"metrics": [{"label": "x", "value": 1, "evidence": "prior", "why": 1}]}, "unknown keys"),
+    ({"risks": ["ok", " "]}, "risks"), ({"scenario_columns": ["a", ""]}, "scenario_columns"),
+    ({"links": [{"label": "x"}]}, r"links\[0\]\.path"), ({"advice_id": "Bad Id"}, "advice_id"),
+])
+def test_validation_rejects_more(bad, msg):
+    with pytest.raises(advice.AdviceError, match=msg):
+        advice.validate(sample(**bad))
+
+
+def test_validation_warnings_and_lineup_without_metrics():
+    s, w = advice.validate(sample(type="lineup", metrics=[], scenario_columns=["name", "nope"], extra=1))
+    assert s["metrics"] == [] and s["extra"] == 1
+    assert any("unknown keys" in x for x in w) and any("'nope'" in x for x in w)
+    assert not any("no metrics" in x for x in w)  # lineups may carry no metrics
+    assert any("no metrics" in x for x in advice.validate(sample(metrics=[]))[1])
+
+
+def test_slug_and_advice_id_normalisation():
+    assert advice.slug("Trade: Ware + VanVleet!") == "trade-ware-vanvleet"
+    assert advice.slug("!!!") == "advice" and len(advice.slug("x" * 200)) == 80
+    res = advice.post(sample(), advice.store(), advice_id="My Trade #1")
+    assert res["advice_id"] == "my-trade-1"
+
+
+def test_latest_per_item_groups_rows_without_advice_id_by_run_id():
+    rows = [{"run_id": "r1", "summary": {"version": 1}, "created_at": "2026-10-20T01:00:00"},
+            {"run_id": "r2", "summary": None, "created_at": "2026-10-20T02:00:00"},
+            {"run_id": "r3", "summary": {"advice_id": "a", "version": 2}, "created_at": "2026-10-20T00:00:00"},
+            {"run_id": "r4", "summary": {"advice_id": "a", "version": 1}, "created_at": "2026-10-20T03:00:00"}]
+    out = advice.latest_per_item(rows)
+    assert [r["run_id"] for r in out] == ["r2", "r1", "r3"]  # newest head first; version beats created_at
+    head = out[-1]
+    assert head["versions"] == 2 and head["first_created_at"] == "2026-10-20T03:00:00"

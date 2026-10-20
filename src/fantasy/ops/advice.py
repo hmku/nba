@@ -17,12 +17,11 @@ Advice is display-only: `status = "approved"` mirrors a decision the user alread
 from __future__ import annotations
 
 import json
-import os
 import re
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from sqlalchemy import insert, select
 
@@ -37,6 +36,9 @@ from fantasy.ops.common import (
     row_dict,
     sha256_hex,
 )
+
+if TYPE_CHECKING:
+    from fantasy.db.rest import RestClient
 
 ADVICE_KIND = "advice"
 ADVICE_VERSION = "advice-0.1.0"
@@ -128,6 +130,17 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if unknown:
         warnings.append(f"unknown keys kept as-is: {sorted(unknown)}")
     s: dict[str, Any] = {k: v for k, v in raw.items() if k not in MANAGED}
+    _validate_header(raw, s)
+    _validate_lists(raw, s, warnings)
+    if not s["metrics"] and raw["type"] != "lineup":
+        warnings.append("no metrics: every quantitative claim should carry an evidence label")
+    if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
+        raise AdviceError(f"advice_id: lowercase slug [a-z0-9._-], 3-100 chars, got {raw['advice_id']!r}")
+    return s, warnings
+
+
+def _validate_header(raw: dict[str, Any], s: dict[str, Any]) -> None:
+    """type, status, the three texts, requires_user_yes, for_date, week (normalised texts go into `s`)."""
     if raw.get("type") not in TYPES:
         raise AdviceError(f"type: must be one of {list(TYPES)}, got {raw.get('type')!r}")
     if raw.get("status") not in STATUSES:
@@ -148,6 +161,10 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if raw.get("week") is not None and (not isinstance(raw["week"], int) or isinstance(raw["week"], bool)
                                         or raw["week"] < 1):
         raise AdviceError(f"week: expected a positive integer, got {raw['week']!r}")
+
+
+def _validate_lists(raw: dict[str, Any], s: dict[str, Any], warnings: list[str]) -> None:
+    """metrics, scenarios (+ scenario_columns), risks, links, approval_id."""
     metrics = raw.get("metrics", [])
     if not isinstance(metrics, list):
         raise AdviceError("metrics: expected a list")
@@ -171,19 +188,15 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     links = raw.get("links", [])
     if not isinstance(links, list):
         raise AdviceError("links: expected a list")
-    s["links"] = [{"label": _str(lk, "label", f"links[{i}]."), "path": _str(lk, "path", f"links[{i}].")}
-                  if isinstance(lk, dict) else _bad_link(i) for i, lk in enumerate(links)]
+    s["links"] = [_link(lk, i) for i, lk in enumerate(links)]
     if raw.get("approval_id") is not None:
         s["approval_id"] = _str(raw, "approval_id", "")
-    if not s["metrics"] and raw["type"] != "lineup":
-        warnings.append("no metrics: every quantitative claim should carry an evidence label")
-    if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
-        raise AdviceError(f"advice_id: lowercase slug [a-z0-9._-], 3-100 chars, got {raw['advice_id']!r}")
-    return s, warnings
 
 
-def _bad_link(i: int) -> dict[str, str]:
-    raise AdviceError(f"links[{i}]: expected an object {{label, path}}")
+def _link(lk: Any, i: int) -> dict[str, str | None]:
+    if not isinstance(lk, dict):
+        raise AdviceError(f"links[{i}]: expected an object {{label, path}}")
+    return {"label": _str(lk, "label", f"links[{i}]."), "path": _str(lk, "path", f"links[{i}].")}
 
 
 def content_hash(summary: dict[str, Any]) -> str:
@@ -223,6 +236,8 @@ class AdviceStore(Protocol):
         """`kind = 'advice'` rows, newest first."""
         ...
 
+    def close(self) -> None: ...
+
 
 class LocalStore:
     """FANTASY_DB_URL / local SQLite via SQLAlchemy."""
@@ -239,21 +254,20 @@ class LocalStore:
                                .order_by(model_runs.c.created_at.desc()).limit(limit))
             return [row_dict(r) for r in res]
 
+    def close(self) -> None:
+        pass  # the engine is shared and cached
+
 
 class RestStore:
     """Supabase over HTTPS (cloud sessions); same auth as `fantasy publish --rest`."""
 
     name = "rest"
 
-    def __init__(self, client: Any = None) -> None:
+    def __init__(self, client: RestClient | None = None) -> None:
         from fantasy.db import rest  # local import: keeps httpx off the default path
 
         self._rest = rest
-        if client is None:
-            key, _ = rest.api_key()
-            client = rest.RestClient(base_url=os.environ.get("SUPABASE_URL", rest.DEFAULT_SUPABASE_URL),
-                                     key=key)
-        self.cl = client
+        self.cl = client if client is not None else rest.default_client()
 
     def insert(self, row: dict[str, Any]) -> None:
         payload = {k: self._rest.to_json_value(v) for k, v in row.items()}
@@ -274,7 +288,7 @@ class RestStore:
         self.cl.close()
 
 
-def store(use_rest: bool = False, client: Any = None) -> AdviceStore:
+def store(use_rest: bool = False, client: RestClient | None = None) -> AdviceStore:
     return RestStore(client) if use_rest else LocalStore()
 
 

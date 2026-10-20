@@ -22,16 +22,6 @@ Rest = Annotated[bool, typer.Option("--rest", help="Read Supabase over HTTPS (Po
 Since = Annotated[str | None, typer.Option(help="24h, 7d, 2w or an ISO date/datetime (UTC)")]
 
 
-def _src(use_rest: bool) -> intel.IntelSource:
-    return intel.source(use_rest)
-
-
-def _close(src: Any) -> None:
-    cl = getattr(src, "cl", None)
-    if cl is not None:
-        cl.close()
-
-
 def _snap_line(s: dict[str, Any]) -> str:
     wk = f"wk{s['week']}" if s.get("week") is not None else "-"
     seen = s.get("last_seen_at") or s.get("observed_at") or "-"
@@ -58,12 +48,12 @@ def list_cmd(
     json_out: JsonOut = False,
 ) -> None:
     """Snapshots (newest first by last seen) and Muse or advisor reports (newest first)."""
-    src = _src(use_rest)
+    src = intel.source(use_rest)
     try:
         res = intel.list_intel(src, kind=kind, since=intel.parse_since(since), limit=limit,
                                what=what, with_payload=payload, report_source=report_source)
     finally:
-        _close(src)
+        src.close()
     lines = [f"# {intel.UNTRUSTED_NOTE}"]
     if "advisor_note" in res:
         lines.append(f"# {res['advisor_note']}")
@@ -84,11 +74,11 @@ def show_cmd(
     json_out: JsonOut = False,
 ) -> None:
     """One snapshot (with payload) or one report (with details)."""
-    src = _src(use_rest)
+    src = intel.source(use_rest)
     try:
         res = intel.show(src, item_id)
     finally:
-        _close(src)
+        src.close()
     emit(res, json_out)
 
 
@@ -104,11 +94,11 @@ def latest_cmd(
 
     This is what the recurring in-season job reads first."""
     kinds = [k.strip() for s in (kind or []) for k in s.split(",") if k.strip()] or None
-    src = _src(use_rest)
+    src = intel.source(use_rest)
     try:
         res = intel.latest(src, kinds=kinds, since=intel.parse_since(since))
     finally:
-        _close(src)
+        src.close()
     lines = [f"# {intel.UNTRUSTED_NOTE}", "latest snapshot per kind:"]
     for k, s in res["snapshots"].items():
         lines.append(f"  {k:<12} " + ("none" if s is None else

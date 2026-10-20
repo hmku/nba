@@ -143,13 +143,18 @@ export async function playerPool(db: SupabaseClient): Promise<{ pool: PoolPlayer
 }
 
 const MUSE_TASK = "league intel from the user's assistant Meta Muse (Messenger group chat, observed picks)";
+const ADVISOR_TASK = "suggestions from the independent read-only advisor (ADVISOR_API_TOKEN)";
 
-/** Ensure today's muse run exists (agent="muse", dry_run) and refresh its heartbeat; returns its run_id. */
-export async function ensureMuseRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
-  const runId = museRunId();
+/** Ensure today's run for `agent` exists (dry_run: these agents never act on Yahoo) and refresh its heartbeat. */
+async function ensureDailyRun(
+  db: SupabaseClient,
+  agent: AgentIdentity,
+  runId: string,
+  task: string,
+): Promise<{ runId: string; error?: string }> {
   const now = new Date().toISOString();
   const ins = await db.from("agent_runs").upsert(
-    { run_id: runId, agent: "muse", task: `${MUSE_TASK} · ${runId.slice(5)}`, status: "running", mode: "dry_run", started_at: now, heartbeat_at: now },
+    { run_id: runId, agent, task: `${task} · ${runId.slice(agent.length + 1)}`, status: "running", mode: "dry_run", started_at: now, heartbeat_at: now },
     { onConflict: "run_id", ignoreDuplicates: true },
   );
   if (ins.error) return { runId, error: ins.error.message };
@@ -157,41 +162,35 @@ export async function ensureMuseRun(db: SupabaseClient): Promise<{ runId: string
   return { runId, error: upd.error?.message };
 }
 
-const ADVISOR_TASK = "suggestions from the independent read-only advisor (ADVISOR_API_TOKEN)";
+/** Ensure today's muse run exists (agent="muse", dry_run) and refresh its heartbeat; returns its run_id. */
+export function ensureMuseRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
+  return ensureDailyRun(db, "muse", museRunId(), MUSE_TASK);
+}
 
 /** Ensure today's advisor run exists (agent="advisor", dry_run: it never acts) and refresh its heartbeat. */
-export async function ensureAdvisorRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
-  const runId = advisorRunId();
-  const now = new Date().toISOString();
-  const ins = await db.from("agent_runs").upsert(
-    { run_id: runId, agent: "advisor", task: `${ADVISOR_TASK} · ${runId.slice(8)}`, status: "running", mode: "dry_run", started_at: now, heartbeat_at: now },
-    { onConflict: "run_id", ignoreDuplicates: true },
-  );
-  if (ins.error) return { runId, error: ins.error.message };
-  const upd = await db.from("agent_runs").update({ status: "running", heartbeat_at: now, ended_at: null }).eq("run_id", runId);
-  return { runId, error: upd.error?.message };
+export function ensureAdvisorRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
+  return ensureDailyRun(db, "advisor", advisorRunId(), ADVISOR_TASK);
+}
+
+/** Events in the last hour under runs named `<agent>-...` (each agent has its own budget). */
+async function eventsLastHour(db: SupabaseClient, agent: AgentIdentity): Promise<number> {
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db
+    .from("agent_events")
+    .select("event_id", { count: "exact", head: true })
+    .like("run_id", `${agent}-%`)
+    .gte("ts", since);
+  return count ?? 0;
 }
 
 /** Advisor events in the last hour (its own budget, separate from Muse's). */
-export async function advisorEventsLastHour(db: SupabaseClient): Promise<number> {
-  const since = new Date(Date.now() - 3600_000).toISOString();
-  const { count } = await db
-    .from("agent_events")
-    .select("event_id", { count: "exact", head: true })
-    .like("run_id", "advisor-%")
-    .gte("ts", since);
-  return count ?? 0;
+export function advisorEventsLastHour(db: SupabaseClient): Promise<number> {
+  return eventsLastHour(db, "advisor");
 }
 
 /** Number of muse events in the last hour (shared budget for reports and observed picks). */
-export async function museEventsLastHour(db: SupabaseClient): Promise<number> {
-  const since = new Date(Date.now() - 3600_000).toISOString();
-  const { count } = await db
-    .from("agent_events")
-    .select("event_id", { count: "exact", head: true })
-    .like("run_id", "muse-%")
-    .gte("ts", since);
-  return count ?? 0;
+export function museEventsLastHour(db: SupabaseClient): Promise<number> {
+  return eventsLastHour(db, "muse");
 }
 
 export function newEventId(): string {

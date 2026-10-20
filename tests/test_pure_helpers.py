@@ -1,6 +1,7 @@
 """Small pure helpers in league/ops/cli_common that had no direct test."""
 
 import json
+from datetime import date
 
 import pytest
 import typer
@@ -113,3 +114,44 @@ def test_status_text_labels_mock_draft():
     assert _render_text({**base, "active_draft": {"draft_id": "nba.l.1", "status": "live", "is_mock": False}}).endswith(
         "draft: nba.l.1 live")
     assert _render_text({**base, "active_draft": None}).endswith("draft: none active")
+
+
+@pytest.mark.parametrize("ts,expected", [
+    ("2026-11-01T03:59:00Z", "2026-10-31"),   # 23:59 EDT, the night before the DST change
+    ("2026-11-01T04:30:00Z", "2026-11-01"),   # 00:30 EDT
+    ("2026-11-01T06:30:00Z", "2026-11-01"),   # 01:30 EST, after the change
+    ("2027-03-14T04:59:00Z", "2027-03-13"),   # 23:59 EST before the spring change
+    ("2026-10-21T02:00:00+02:00", "2026-10-20"),
+    ("2026-10-21", "2026-10-20"),             # bare date = midnight UTC = previous ET evening (documented)
+    ("", None), (None, None), (0, None), ("2026-10-21 ~03:25 UTC", None),  # free text is the lineup parser's job
+])
+def test_et_date_edges(ts, expected):
+    from fantasy.league.dates import et_date
+    from fantasy.league.sync import capture_date_et
+    from fantasy.lineup.cli import parse_timestamp_et
+
+    d = et_date(ts)
+    assert (d.isoformat() if d else None) == expected
+    assert capture_date_et(ts) == expected
+    if expected is not None:  # the lineup parser's ISO branch is the same conversion
+        assert parse_timestamp_et(ts) == (d, str(ts))
+
+
+def test_lineup_il_moves_capped_by_free_il_slots_and_tagged_next_game():
+    import numpy as np
+
+    from fantasy.lineup.optimize import DaySlots
+    from fantasy.lineup.plan import TeamSide, il_moves, tagged_players
+    from fantasy.lineup.players import RosterPlayer
+
+    mk = lambda pid, slot, status: RosterPlayer(pid, pid.upper(), ("C",), "BOS", status, slot)  # noqa: E731
+    players = [mk("a", "IL", "O"), mk("b", "BN", "O"), mk("c", "C", "INJ"), mk("d", "PG", None)]
+    G = np.array([[False, False], [False, True], [False, False], [True, True]])
+    me = TeamSide(players, G, np.where(G, 0.9, 0.0), tw=None)  # type: ignore[arg-type]
+    slots = DaySlots(("C",), n_bench=2, n_il=2)
+    moves = il_moves(me, ["IL", "IL", "IL", "C"], slots)
+    assert [m["player_id"] for m in moves] == ["b"]  # 2 IL slots, "a" already holds one
+    assert il_moves(me, ["IL", "BN", "BN", "C"], slots) == []
+    tagged = tagged_players(me, [date(2026, 10, 21), date(2026, 10, 22)])
+    assert [(t["player_id"], t["next_game"], t["p_play_next_game"]) for t in tagged] == [
+        ("a", None, 0.0), ("b", "2026-10-22", 0.9), ("c", None, 0.0)]
