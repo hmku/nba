@@ -68,19 +68,55 @@ def header_field(label: str) -> str | None:
     return next((f for pat, f in HEADER_ALIASES if re.match(pat, n)), None)
 
 
+# Yahoo shows "-" (and "-/-" for makes/attempts) before a team has any stats this week: that is 0, not missing
+_DASH = r"[-\u2013\u2014]"
+
+
 def _num(s: str | None) -> float | None:
     t = (s or "").replace(",", "").strip()
+    if re.fullmatch(_DASH, t):
+        return 0.0
     return float(t) if re.fullmatch(r"-?\d*\.?\d+", t) else None
 
 
 def _pct(s: str | None) -> float | None:
+    """Displayed % (".474", "47.4"); "-" (no attempts yet) -> None: the % is always recomputed from makes/attempts."""
+    if re.fullmatch(_DASH, (s or "").strip()):
+        return None
     v = _num(s)
     return None if v is None else (v / 100 if v > 1 else v)
 
 
 def _pair(s: str | None) -> tuple[float | None, float | None]:
-    m = re.search(r"(\d+)\s*/\s*(\d+)", (s or "").replace(",", ""))
+    t = (s or "").replace(",", "")
+    if re.fullmatch(rf"\s*{_DASH}\s*/\s*{_DASH}\s*", t):
+        return (0.0, 0.0)
+    m = re.search(r"(\d+)\s*/\s*(\d+)", t)
     return (float(m.group(1)), float(m.group(2))) if m else (None, None)
+
+
+# games strip above the score table (2026-10-20 layout): "30 Remaining | 0/30 Games Played 0/26 | Remaining 26"
+# = left team (first table row) remaining, played/total per team, right team (second row) remaining. Matched on the
+# page's text nodes joined by single spaces (same rule in capture_matchup.js).
+GAMES_STRIP_RE = re.compile(r"(\d+)\s+Remaining\s+(\d+)\s*/\s*(\d+)\s+Games Played\s+(\d+)\s*/\s*(\d+)"
+                            r"\s+Remaining\s+(\d+)", re.I)
+GAMES_MID_RE = re.compile(r"(\d+)\s*/\s*(\d+)\s+Games Played\s+(\d+)\s*/\s*(\d+)", re.I)
+
+
+def games_strip(text: str) -> tuple[list[tuple[int, int]] | None, list[str]]:
+    """[(played, remaining) of the left team, of the right team] from the page text, and problems."""
+    m = GAMES_STRIP_RE.search(text)
+    if m:
+        rem_l, p1, tot1, p2, tot2, rem_r = (int(x) for x in m.groups())
+        problems = [f"games strip: {side} remaining {rem} != total {tot} - played {pl}"
+                    for side, rem, pl, tot in (("left", rem_l, p1, tot1), ("right", rem_r, p2, tot2))
+                    if rem != tot - pl]
+        return [(p1, rem_l), (p2, rem_r)], problems
+    m = GAMES_MID_RE.search(text)
+    if m:
+        p1, tot1, p2, tot2 = (int(x) for x in m.groups())
+        return [(p1, tot1 - p1), (p2, tot2 - p2)], []
+    return None, ["games played/remaining strip not found on the page"]
 
 
 @dataclass
@@ -89,6 +125,7 @@ class _Cell:
     text: str = ""
     title: str | None = None
     hrefs: list[str] = field(default_factory=list)
+    link_texts: list[str] = field(default_factory=list)  # text of each <a href> in the cell, in order
 
     @property
     def label(self) -> str:
@@ -111,6 +148,7 @@ class _Tables(HTMLParser):
         self._in_week_select = False
         self._in_selected_option = False
         self.text_chunks: list[str] = []
+        self._in_link = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = dict(attrs)
@@ -125,6 +163,8 @@ class _Tables(HTMLParser):
             self._cell[-1] = c
         elif tag == "a" and self._cell and self._cell[-1] is not None and a.get("href"):
             self._cell[-1].hrefs.append(str(a["href"]))
+            self._cell[-1].link_texts.append("")
+            self._in_link = True
         elif tag == "title":
             self._in_title = True
         elif tag == "select" and (a.get("name") == "week" or a.get("id") == "week"):
@@ -139,6 +179,8 @@ class _Tables(HTMLParser):
             self._cell.pop()
         elif tag in ("td", "th") and self._cell:
             self._cell[-1] = None
+        elif tag == "a":
+            self._in_link = False
         elif tag == "title":
             self._in_title = False
         elif tag == "select":
@@ -149,11 +191,13 @@ class _Tables(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._cell and self._cell[-1] is not None:
             self._cell[-1].text += " " + data
+            if self._in_link and self._cell[-1].link_texts:
+                self._cell[-1].link_texts[-1] += " " + data
         if self._in_title:
             self.title += data
         if self._in_selected_option and self.week_option is not None:
             self.week_option += data
-        if len(self.text_chunks) < 4000 and data.strip():
+        if len(self.text_chunks) < 50000 and data.strip():
             self.text_chunks.append(data.strip())
 
 
@@ -184,6 +228,8 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
     else:
         labels, team_rows = best
         fields = [header_field(x) for x in labels]
+        if fields and "cats_won" not in fields and not labels[-1].strip():
+            fields[-1] = "cats_won"  # trailing blank-header column = categories won (2026-10-20 layout)
         for need in [*sorted(_CAT_FIELDS), "cats_won"]:
             if need not in fields:
                 problems.append(f"column for {need} not found in header {labels}")
@@ -193,11 +239,14 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
                 problems.append(f"row has {len(r)} cells, header {len(fields)}: aligned from the right")
             href = next(h for c in r for h in c.hrefs if team_re.search(h))
             name_cell = next(c for c in r if any(team_re.search(h) for h in c.hrefs))
+            # the logo link comes first with no text; the name is the first non-empty team-link text
+            name = next((" ".join(x.split()) for c in r for h, x in zip(c.hrefs, c.link_texts, strict=True)
+                         if team_re.search(h) and x.strip()), name_cell.label)
             m = team_re.search(href)
             assert m is not None
             totals: dict[str, float | None] = {k: None for k in
                                                ("fgm", "fga", "fg_pct", "ftm", "fta", "ft_pct", *TOTALS[4:])}
-            t: dict[str, Any] = {"yahoo_team_id": int(m.group(1)), "name": name_cell.label, "totals": totals,
+            t: dict[str, Any] = {"yahoo_team_id": int(m.group(1)), "name": name, "totals": totals,
                                  "cats_won": None, "games_played": None, "games_remaining": None}
             for i, c in enumerate(r):
                 f = fields[i + off] if 0 <= i + off < len(fields) else None
@@ -226,8 +275,12 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
         week = int(m.group(1)) if m else None
         if week is None:
             problems.append("week not found on the page (pass --week)")
-    if teams and all(t["games_remaining"] is None for t in teams):
-        problems.append("games_remaining not in the score table")
+    if teams and all(t["games_remaining"] is None and t["games_played"] is None for t in teams):
+        games, gp_problems = games_strip(" ".join(p.text_chunks))
+        problems += gp_problems
+        if games:  # left / right of the strip = first / second table row
+            for t, (played, remaining) in zip(teams, games, strict=False):
+                t["games_played"], t["games_remaining"] = played, remaining
     return {"source": source or "saved Yahoo matchup page HTML (fantasy.league.matchup.parse_matchup_html)",
             "captured_at": captured_at, "url": None, "week": week, "teams": teams, "problems": problems,
             "diagnostics": {"score_table_headers": headers_seen[:4]}}

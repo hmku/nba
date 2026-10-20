@@ -67,7 +67,61 @@ def test_parse_matchup_html_fixture():
                             "pts": 310, "reb": 130, "ast": 70, "stl": 20, "blk": 10, "tov": 35}
     assert me["cats_won"] == 5 and opp["totals"]["blk"] == 15
     # only the genuinely absent field is flagged
-    assert cap["problems"] == ["games_remaining not in the score table"]
+    assert cap["problems"] == ["games played/remaining strip not found on the page"]
+
+
+# ---------------------------------------------------------------- parser (real 2026-10-20 layout)
+REAL_PRE = FIXTURE.parent / "matchup_real_pregame.html"  # sanitized real page section, before any game
+REAL_MID = FIXTURE.parent / "matchup_real_midweek.html"  # same markup, synthetic mid-week numbers
+
+
+def test_real_layout_pregame_dashes_are_zero():
+    cap = matchup.parse_matchup_html(REAL_PRE.read_text(), my_team=11, captured_at="2026-10-20T15:00:00Z")
+    assert cap["week"] is None and cap["problems"] == ["week not found on the page (pass --week)"]
+    me, opp = cap["teams"]
+    assert (me["yahoo_team_id"], me["name"]) == (11, "Harrison's Best Team")  # logo link (empty text) skipped
+    assert (opp["yahoo_team_id"], opp["name"]) == (5, "Joshua's Excellent Team")
+    assert me["totals"] == {**{k: 0 for k in STATS}, "fg_pct": None, "ft_pct": None}  # "-" / "-/-" = 0, "-" % = null
+    assert me["cats_won"] == 0 and opp["cats_won"] == 0  # trailing blank-header column
+    assert (me["games_played"], me["games_remaining"]) == (0, 30)
+    assert (opp["games_played"], opp["games_remaining"]) == (0, 26)
+    s = matchup.build_summary(cap, my_slot=1, slot_map={11: 1, 5: 2}, week=1, calendar=WEEK1)
+    assert s["score"] == {"me": 0, "opp": 0, "ties": 9} and s["me"]["fg_pct"] is None
+    assert s["yahoo_cats_won"] == {"me": 0, "opp": 0}
+    assert s["me"]["games_remaining"] == 30 and s["opp"]["games_remaining"] == 26
+    assert s["warnings"] == ["capture: week not found on the page (pass --week)"]
+
+
+def test_real_layout_midweek_numbers():
+    cap = matchup.parse_matchup_html(REAL_MID.read_text(), my_team=11, week=1, captured_at="2026-10-23T14:00:00Z")
+    assert cap["problems"] == []
+    me, opp = cap["teams"]
+    assert me["totals"] == {"fgm": 152, "fga": 321, "fg_pct": 0.474, "ftm": 61, "fta": 80, "ft_pct": 0.763,
+                            "fg3m": 38, "pts": 403, "reb": 190, "ast": 98, "stl": 27, "blk": 21, "tov": 55}
+    assert opp["totals"]["fga"] == 340 and opp["totals"]["ft_pct"] == 0.714 and opp["totals"]["reb"] == 201
+    assert (me["cats_won"], opp["cats_won"]) == (5, 3)
+    assert (me["games_played"], me["games_remaining"], opp["games_played"], opp["games_remaining"]) == (16, 14, 12, 14)
+    s = matchup.build_summary(cap, my_slot=1, slot_map={11: 1, 5: 2}, calendar=WEEK1)
+    assert s["week"] == 1 and s["opp"]["slot"] == 2
+    lead = {c["cat"]: c["leader"] for c in s["categories"]}
+    assert lead == {"fg_pct": "me", "ft_pct": "me", "fg3m": "me", "pts": "me", "reb": "opp", "ast": "opp",
+                    "stl": "me", "blk": "opp", "tov": "tie"}
+    assert s["score"] == {"me": 5, "opp": 3, "ties": 1} and s["warnings"] == []  # displayed %, PTS, Yahoo score agree
+    assert s["me"]["fg_pct"] == pytest.approx(152 / 321, abs=1e-4) and s["me"]["games_played"] == 16
+
+
+def test_value_formats_and_games_strip():
+    assert matchup._num("1,403") == 1403 and matchup._num("-") == 0 and matchup._num("\u2013") == 0
+    assert matchup._num("n/a") is None and matchup._num("") is None
+    assert matchup._pct(".474") == 0.474 and matchup._pct("47.4") == pytest.approx(0.474) and matchup._pct("-") is None
+    assert matchup._pair("1,052/2,210") == (1052, 2210) and matchup._pair("-/-") == (0, 0)
+    assert matchup._pair("-") == (None, None)
+    games, probs = matchup.games_strip("Week 1 30 Remaining 0/30 Games Played 0/26 Remaining 26 more")
+    assert games == [(0, 30), (0, 26)] and probs == []
+    games, probs = matchup.games_strip("10 Remaining 16/30 Games Played 12/26 Remaining 14")  # 30 - 16 != 10
+    assert games == [(16, 10), (12, 14)] and probs == ["games strip: left remaining 10 != total 30 - played 16"]
+    assert matchup.games_strip("3/30 Games Played 4/26")[0] == [(3, 27), (4, 22)]  # middle only: total - played
+    assert matchup.games_strip("nothing here") == (None, ["games played/remaining strip not found on the page"])
 
 
 def test_parse_matchup_html_reports_problems_when_layout_changes():
@@ -81,7 +135,7 @@ def test_parse_matchup_html_reports_problems_when_layout_changes():
 def test_header_aliases():
     assert matchup.header_field("FGM/A*") == "fgm_a" and matchup.header_field(" 3PTM ") == "fg3m"
     assert matchup.header_field("ST") == "stl" and matchup.header_field("TO") == "tov"
-    assert matchup.header_field("Player") is None
+    assert matchup.header_field("Player") is None and matchup.header_field("") is None
 
 
 # ---------------------------------------------------------------- summary

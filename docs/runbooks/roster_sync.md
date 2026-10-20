@@ -86,8 +86,12 @@ fantasy league score --capture data/raw/yahoo/matchup_<stamp>.json --save --json
 - **`problems` non-empty** after a Yahoo layout change: check `diagnostics.score_table_headers` (the header labels
   the script saw) and extend `COLS` in the script and `HEADER_ALIASES` in `src/fantasy/league/matchup.py` together
   (the Python twin is the tested one: `tests/test_matchup.py`, fixture `tests/fixtures/yahoo/matchup_week1.html`).
-  Games played / remaining: not in the assumed score table, so null; `diagnostics.remaining_hints` lists page text
-  mentioning them to extend the parser after the first live capture.
+  Real layout (verified 2026-10-20; fixtures `matchup_real_pregame.html` / `matchup_real_midweek.html`): before
+  any game every cell is "-" / "-/-" = 0 (FG%/FT% null, no problem); the blank-header last column is the categories
+  won; games played / remaining come from the strip above the table ("30 Remaining | 0/30 Games Played 0/26 |
+  Remaining 26", left = my team = first row; `diagnostics.games_strip` shows the matched text, a remaining that
+  is not total - played is a problem). The week is usually not on the page section the parser reads: pass `--week`
+  (or let the observed ET date pick it from the schedule) when `problems` says "week not found".
 - Idempotent: the same week, ET date and totals is one row (`ms-w<week>-<date>-<sha12>`); a changed score is a new
   row. Schema: `docs/research/dashboard_data.md` section 7.
 
