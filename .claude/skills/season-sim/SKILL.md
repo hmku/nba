@@ -73,6 +73,12 @@ for experiments.
 - Results and the schedule sensitivity (mid-table P(playoffs) ±10 pp across round-robin relabellings):
   `docs/research/season_simulator.md` "Post-draft league".
 
+## Conservative run (report alongside the headline; `docs/research/conservative_sim.md`)
+`fantasy data alt-projections --blend market --out var/projections_alt/market.csv` (ESPN+FantasyPros stats, our GP; `var/`
+is git-ignored, third-party numbers stay out of git), then `fantasy sim season --league-file data/manual/league_rosters_2026-27.json
+--projections var/projections_alt/market.csv --sims 12000 --seed 0 --no-save --json`. Post-draft: 88.0% playoffs / 27.9% title
+vs 91.9% / 33.7% with the blend (simulated). Rule: act on an add/drop/trade only if it helps under both the blend and the market run.
+
 ## Post-draft setup from Yahoo pages (needs a local session with the browser, `yahoo-browser` skill)
 1. Read every team's roster from Yahoo (league → each team page) → `rosters.json` with player ids
    resolved via `fantasy.draft.names.resolve_player` (team ids: pick one id scheme, e.g. Yahoo team ids,

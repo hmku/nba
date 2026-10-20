@@ -84,6 +84,46 @@ def build_projections(
     _emit(summary, as_json)
 
 
+ALT_PRESETS = {
+    "espn-only": "espn=1",
+    "fantasypros-only": "fantasypros=1",
+    "market": "espn=0.5,fantasypros=0.5",
+}
+
+
+@app.command("alt-projections")
+def alt_projections(
+    blend: str = typer.Option(
+        "espn-only",
+        "--blend",
+        help=f"presets {sorted(ALT_PRESETS)} | 'none' (our unblended model) | e.g. 'ours=0.2,espn=0.8'",
+    ),
+    blend_gp: str = typer.Option("", "--blend-gp", help="games too, e.g. 'espn=1' (default: ours, fitted)"),
+    out: str = typer.Option(..., "--out", help="output CSV (e.g. var/projections_alt/espn.csv; git-ignored)"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Write an alternative projections file (third-party / unblended) for `fantasy sim ... --projections`.
+
+    Never touches the default projections. Uses the committed base (unblended model) for the player
+    set and non-stat columns; players a source does not project keep our numbers (see coverage)."""
+    from pathlib import Path
+
+    from fantasy.model.blend import BASE_OUTPUT, BlendSpec, write_blend
+
+    out_path = Path(out)
+    if blend == "none":
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_bytes(BASE_OUTPUT.read_bytes())
+        _emit({"ok": True, "output": str(out_path), "blend": "none (copy of base)"}, as_json)
+        return
+    spec = BlendSpec.parse(ALT_PRESETS.get(blend, blend), blend_gp or None)
+    meta = write_blend(spec, base_path=BASE_OUTPUT, out_path=out_path)
+    _emit(
+        {k: meta.get(k) for k in ("output", "rows", "sha256", "weights", "gp_weights", "coverage", "blended_players")},
+        as_json,
+    )
+
+
 @app.command("fetch-bbref")
 def fetch_bbref(as_json: bool = typer.Option(False, "--json")) -> None:
     """Refresh Basketball-Reference tables from the sumitrodatta GitHub mirror into data/raw/."""

@@ -228,3 +228,37 @@ def test_write_default_none_copies_base(tmp_path):
     meta = BL.write_default(None, {"sha256": "x", "model_version": "m"}, out, base)
     assert out.read_bytes() == base.read_bytes()
     assert meta["blend"].startswith("none") and json.loads((tmp_path / "p.meta.json").read_text())["output"]
+
+
+def test_alt_projections_cli_writes_only_out(tmp_path, monkeypatch):
+    """`fantasy data alt-projections` writes a third-party-only file to --out and never touches
+    the default projections; uncovered players keep our numbers, games stay ours."""
+    import hashlib
+
+    from typer.testing import CliRunner
+
+    from fantasy.cli import app
+    from fantasy.model.projections import OUTPUT_PATH
+
+    ours = _ours()
+    base = tmp_path / "base.csv"
+    ours.to_csv(base, index=False)
+    ext = _ext_from(ours, 1.2, 100)
+    ext_csv = tmp_path / "espn.csv"
+    ext.to_csv(ext_csv, index=False)
+    monkeypatch.setattr(BL, "BASE_OUTPUT", base)
+    monkeypatch.setattr(external, "load", lambda s, season: ext)
+    monkeypatch.setattr(external, "csv_path", lambda s, season: ext_csv)
+    before = hashlib.sha256(OUTPUT_PATH.read_bytes()).hexdigest()
+    out = tmp_path / "alt" / "espn.csv"
+    r = CliRunner().invoke(app, ["data", "alt-projections", "--blend", "espn-only", "--out", str(out), "--json"])
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.output)["coverage"] == {"espn": 100}
+    assert hashlib.sha256(OUTPUT_PATH.read_bytes()).hexdigest() == before
+    o, a = ours.set_index("player_id"), pd.read_csv(out).set_index("player_id")
+    covered, uncovered = ext["player_id"].iloc[0], ours["player_id"].iloc[200]
+    assert a.loc[covered, "reb"] == pytest.approx(o.loc[covered, "reb"] * 1.2, abs=2e-3)
+    assert a.loc[uncovered, "reb"] == pytest.approx(o.loc[uncovered, "reb"], abs=1e-3)
+    assert (a["gp"] == o["gp"].round(1)).all()
+    r = CliRunner().invoke(app, ["data", "alt-projections", "--blend", "none", "--out", str(tmp_path / "n.csv")])
+    assert r.exit_code == 0 and (tmp_path / "n.csv").read_bytes() == base.read_bytes()
