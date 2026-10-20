@@ -8,12 +8,12 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, NoReturn
-from zoneinfo import ZoneInfo
 
 import typer
 
 from fantasy.cli_common import failure
 from fantasy.data.provenance import MANUAL_DIR, RAW_DIR, sha256_file
+from fantasy.league.dates import ET, et_date
 from fantasy.league.settings import load_settings
 from fantasy.lineup.plan import (
     LINEUP_MODEL_VERSION,
@@ -33,7 +33,6 @@ from fantasy.sim.schedule import (
 
 app = typer.Typer(no_args_is_help=True, help="Daily lineup optimizer (position-aware, matchup-aware).")
 
-ET = ZoneInfo("America/New_York")
 LEAGUE_FILE = MANUAL_DIR / "league_rosters_2026-27.json"
 YAHOO_DIR = RAW_DIR / "yahoo"
 
@@ -65,13 +64,9 @@ def parse_timestamp_et(text: object) -> tuple[date | None, str | None]:
     if not text:
         return None, None
     t = str(text)
-    try:
-        dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        return dt.astimezone(ET).date(), t
-    except ValueError:
-        pass
+    iso = et_date(t)
+    if iso is not None:
+        return iso, t
     m = _TS.search(t)
     if not m:
         return None, None

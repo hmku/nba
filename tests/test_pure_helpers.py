@@ -100,3 +100,24 @@ def test_publish_text_renderers_and_url_normalisation():
     assert _psycopg_url("postgres://u@h/db") == "postgresql+psycopg://u@h/db"
     assert _psycopg_url("postgresql://u@h/db") == "postgresql+psycopg://u@h/db"
     assert _psycopg_url("postgresql+psycopg://u@h/db") == "postgresql+psycopg://u@h/db"
+
+
+@pytest.mark.parametrize("ts,expected", [
+    ("2026-11-01T03:59:00Z", "2026-10-31"),   # 23:59 EDT, the night before the DST change
+    ("2026-11-01T04:30:00Z", "2026-11-01"),   # 00:30 EDT
+    ("2026-11-01T06:30:00Z", "2026-11-01"),   # 01:30 EST, after the change
+    ("2027-03-14T04:59:00Z", "2027-03-13"),   # 23:59 EST before the spring change
+    ("2026-10-21T02:00:00+02:00", "2026-10-20"),
+    ("2026-10-21", "2026-10-20"),             # bare date = midnight UTC = previous ET evening (documented)
+    ("", None), (None, None), (0, None), ("2026-10-21 ~03:25 UTC", None),  # free text is the lineup parser's job
+])
+def test_et_date_edges(ts, expected):
+    from fantasy.league.dates import et_date
+    from fantasy.league.sync import capture_date_et
+    from fantasy.lineup.cli import parse_timestamp_et
+
+    d = et_date(ts)
+    assert (d.isoformat() if d else None) == expected
+    assert capture_date_et(ts) == expected
+    if expected is not None:  # the lineup parser's ISO branch is the same conversion
+        assert parse_timestamp_et(ts) == (d, str(ts))
