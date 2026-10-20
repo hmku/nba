@@ -87,7 +87,10 @@ or `failed --error`. A submitted txn is never re-clicked blindly (agent-run §7)
 
 ## 4. ASK (add/drop, trades)
 Post the recommendations to the user (expected effect ± SE, evidence labels: fitted / simulated / prior) and file
-`fantasy approval request add_drop "<summary>" --payload '{...}'` for each. **Do not execute** unless the user replies
+`fantasy approval request add_drop "<summary>" --payload '{...}'` for each. Also post each recommendation (and today's
+lineup plan, type `lineup`) to the dashboard's **Moves** tab: write an advice JSON (schema: `docs/research/dashboard_data.md`
+§4; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
+`fantasy advise status <advice_id> done|rejected|expired --note "..."`. **Do not execute** unless the user replies
 "yes" for that exact move in this session; then follow agent-run §6 with the approval.
 
 ## 5. PUBLISH + LOG
