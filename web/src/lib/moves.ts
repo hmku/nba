@@ -29,6 +29,8 @@ export interface AdviceMetric {
   evidence: Evidence | null;
   note: string | null;
   delta: boolean;
+  /** advice-0.3.0: shown as one of the card's (at most 3) key-metric chips. */
+  key: boolean;
 }
 
 export type Cell = string | number | boolean | null;
@@ -120,11 +122,28 @@ export function parseWhyNow(v: unknown): WhyNow | null {
   return { before, changed, evidence: a(w.evidence).filter((e): e is string => typeof e === "string" && !!e.trim()) };
 }
 
-/** Long explanations collapse on narrow screens: more than 2 rationale items, more than 3 changes, or > 420 chars. */
-export function isLongWhy(rationale: RationaleItem[], whyNow: WhyNow | null): boolean {
-  const chars = rationale.reduce((t, r) => t + r.text.length, 0) + (whyNow?.before.length ?? 0) +
-    (whyNow?.changed.reduce((t, c) => t + c.text.length, 0) ?? 0);
-  return rationale.length > 2 || (whyNow?.changed.length ?? 0) > 3 || chars > 420;
+/** The card's chips: metrics flagged `key: true` (advice-0.3.0), else the first ones; at most `n`. */
+export function keyMetrics(metrics: AdviceMetric[], n = 3): AdviceMetric[] {
+  const flagged = metrics.filter((m) => m.key);
+  return (flagged.length ? flagged : metrics).slice(0, n);
+}
+
+/**
+ * Verdict -> its first sentence (the card's one-line verdict) and the rest (shown under Details), so no text renders
+ * twice. A sentence ends at . ! ? followed by whitespace and a capital / digit / quote, or at a line break; decimals
+ * ("8.6") and "vs." before a lowercase word do not split.
+ */
+export function splitVerdict(text: string | null): { first: string; rest: string } {
+  const t = (text ?? "").trim();
+  const m = /[.!?](?=\s+["'(\[]?[A-Z0-9])|\n/.exec(t);
+  if (!m) return { first: t, rest: "" };
+  const cut = m[0] === "\n" ? m.index : m.index + 1;
+  return { first: t.slice(0, cut).trim(), rest: t.slice(cut).trim() };
+}
+
+/** Compact metric value for a chip: value + unit, no SE (the SE is in the chip's tooltip and the Details table). */
+export function chipValue(m: Pick<AdviceMetric, "value" | "unit" | "delta">): string {
+  return formatMetric({ ...m, se: null }).replace(/ (pp|%)$/, "$1");
 }
 
 /** One `model_runs` row -> Advice, or null when the summary is not an advice/1 object. */
@@ -148,6 +167,7 @@ export function parseAdvice(row: AdviceRow): Advice | null {
       evidence: ev && (EVIDENCE as readonly string[]).includes(ev) ? (ev as Evidence) : null,
       note: s(mo.note),
       delta: mo.delta === true,
+      key: mo.key === true,
     });
   }
   const scenarios = a(sm.scenarios)

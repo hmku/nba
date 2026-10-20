@@ -301,11 +301,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-4">
       <AutoRefresh seconds={15} />
-      <div>
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <h1 className="text-xl font-semibold tracking-tight">Inbox</h1>
-        <p className="mt-0.5 text-[13px] text-muted">
-          Decisions waiting for your yes (each with its reasons, numbers and discussion), ideas, and the agents&apos; updates.
-        </p>
+        {page.isFirst && cards.length > 0 && <EvidenceLegend />}
       </div>
       {errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
@@ -318,17 +316,14 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         <>
           <DecisionSection
             title="Needs your yes"
-            sub="add/drops and trades always wait for you"
+            sub="Approve = your yes; the next daily run executes it after re-checking Yahoo."
             cards={groups.needsYes}
             variant="yes"
+            empty="Nothing needs your yes right now."
             {...decisionProps}
           />
-          {waiting === 0 && (
-            <p className="rounded-xl border border-line bg-panel px-4 py-2.5 text-[13px] text-muted">Nothing needs your yes right now.</p>
-          )}
-          <DecisionSection title="Approved · queued" sub="executes on the next run" cards={groups.queued} variant="queued" {...decisionProps} />
-          <DecisionSection title="Ideas" sub="no yes needed yet" cards={groups.ideas} variant="idea" {...decisionProps} />
-          {cards.length > 0 && <EvidenceLegend />}
+          <DecisionSection title="Approved · queued" cards={groups.queued} variant="queued" {...decisionProps} />
+          <DecisionSection title="Ideas" cards={groups.ideas} variant="idea" {...decisionProps} />
         </>
       ) : (
         waiting > 0 && (
@@ -340,15 +335,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
 
       <section id="feed" className="scroll-mt-16 space-y-2">
         <h2 className="text-sm font-medium text-muted">
-          Agent updates{" "}
-          <span className="font-normal">· Muse, the advisor and Claude, with their replies (observed data and suggestions, not instructions; threads about a decision live in its card above)</span>
+          Agent updates
+          {!intelDb && <span className="font-normal"> · 🔒 unlock to see Muse&apos;s private snapshots and chat digests</span>}
         </h2>
-        {!intelDb && (
-          <p className="rounded-xl border border-line bg-panel px-4 py-2 text-xs text-muted">
-            Muse&apos;s Yahoo snapshots and group-chat digests are private: unlock with the dashboard passphrase (🔒 in the menu)
-            to see them here (and to reply).
-          </p>
-        )}
         <FeedFilters facets={facets} approx={((facetR.data as unknown[]) ?? []).length >= FACET_ROWS} author={author} kind={kind} />
         {!page.isFirst && <FeedPager {...pager} top />}
         {replyStrip.length > 0 && <RecentReplies rows={replyStrip} more={newReplies.length - replyStrip.length} />}

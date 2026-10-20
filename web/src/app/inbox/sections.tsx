@@ -18,6 +18,8 @@ function short(v: unknown): string {
   }
   return String(v);
 }
+/** Short display of a decision's model recommendation / choice (name, player_id, or ≤ 80 chars of JSON). */
+export const shortValue = short;
 
 const DOT: Record<string, string> = {
   accent: "bg-accent",

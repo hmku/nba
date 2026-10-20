@@ -1,7 +1,17 @@
 // Moves view readers (shape: `fantasy advise post|status`, schema advice/1). Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatMetric, isLongWhy, latestAdvice, linkHref, parseAdvice, parseRationale, parseWhyNow } from "../src/lib/moves.ts";
+import {
+  chipValue,
+  formatMetric,
+  keyMetrics,
+  latestAdvice,
+  linkHref,
+  parseAdvice,
+  parseRationale,
+  parseWhyNow,
+  splitVerdict,
+} from "../src/lib/moves.ts";
 
 const base = (over = {}) => ({
   advice_id: "2026-10-20-murray-trade",
@@ -106,16 +116,40 @@ test("rationale and why_now (advice-0.2.0) parse; old rows without them still pa
   assert.deepEqual(a.whyNow.evidence, ["ΔP(title)"]);
 });
 
-test("parseRationale/parseWhyNow edge cases and isLongWhy", () => {
+test("parseRationale/parseWhyNow edge cases", () => {
   assert.deepEqual(parseRationale("one para"), [{ text: "one para", bullet: false }]);
   assert.deepEqual(parseRationale(null), []);
   assert.equal(parseWhyNow("text"), null);
   assert.equal(parseWhyNow({ before: " ", changed: [] }), null);
   assert.deepEqual(parseWhyNow({ changed: ["c"] }), { before: "", changed: [{ text: "c", kind: null }], evidence: [] });
-  const short = parseRationale(["a", "b"]);
-  const w = parseWhyNow({ before: "b", changed: ["1", "2", "3"] });
-  assert.equal(isLongWhy(short, w), false);
-  assert.equal(isLongWhy(parseRationale(["a", "b", "c"]), null), true);
-  assert.equal(isLongWhy(short, parseWhyNow({ before: "b", changed: ["1", "2", "3", "4"] })), true);
-  assert.equal(isLongWhy(parseRationale(["x".repeat(421)]), null), true);
+});
+
+test("keyMetrics: key-flagged metrics (advice-0.3.0) else the first three; old rows without `key` still work", () => {
+  const ms = (flags) =>
+    parseAdvice(row("a", null, base({ metrics: flags.map((k, i) => ({ label: `m${i}`, value: i, evidence: "prior", ...(k ? { key: true } : {}) })) })))
+      .metrics;
+  assert.deepEqual(keyMetrics(ms([false, false, false, false, false])).map((m) => m.label), ["m0", "m1", "m2"]);
+  assert.deepEqual(keyMetrics(ms([false, true, false, false, true])).map((m) => m.label), ["m1", "m4"]);
+  assert.deepEqual(keyMetrics(ms([true, true, true, true])).map((m) => m.label), ["m0", "m1", "m2"]);
+  assert.equal(ms([true])[0].key, true);
+  assert.equal(parseAdvice(row("a", null, base())).metrics[0].key, false);
+  assert.deepEqual(keyMetrics([]), []);
+});
+
+test("splitVerdict: first sentence on the card, the rest under Details (no text twice)", () => {
+  assert.deepEqual(splitVerdict("Recommended: +1.8 pp title odds. Costs ~1 pp this week."), {
+    first: "Recommended: +1.8 pp title odds.",
+    rest: "Costs ~1 pp this week.",
+  });
+  assert.deepEqual(splitVerdict("Keep 8.6 vs. lineup as is"), { first: "Keep 8.6 vs. lineup as is", rest: "" });
+  assert.deepEqual(splitVerdict("Line one\nLine two"), { first: "Line one", rest: "Line two" });
+  assert.deepEqual(splitVerdict("Do it! \"Now\" or never."), { first: "Do it!", rest: "\"Now\" or never." });
+  assert.deepEqual(splitVerdict(null), { first: "", rest: "" });
+});
+
+test("chipValue drops the SE and tightens pp/% units", () => {
+  assert.equal(chipValue({ value: 1.76, unit: "pp", delta: true }), "+1.76pp");
+  assert.equal(chipValue({ value: -0.9, unit: "pp", delta: true }), "−0.9pp");
+  assert.equal(chipValue({ value: 0.45, unit: "cat wins", delta: false }), "0.45 cat wins");
+  assert.equal(chipValue({ value: "+3.9 / +3.7", unit: "pp", delta: false }), "+3.9 / +3.7pp");
 });
