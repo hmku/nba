@@ -91,6 +91,10 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       watch https://fantasy.harrisonku.com/draft on your phone. Fallback steps: `docs/runbooks/live_draft.md`.
 
 ## After the draft
+
+- [ ] **CI mypy scope (1 min, GitHub web editor)**: agents can't edit workflow files (token lacks `workflow` scope). In
+      `.github/workflows/ci.yml` change the line `- run: mypy src/fantasy/ops src/fantasy/db ...` to `- run: mypy`
+      (the scope now lives in `[tool.mypy] files` in pyproject.toml and adds sim + lineup, which are clean).
 - [x] **League matchup schedule (who plays whom, weeks 1-17)** — captured from Yahoo by your local session 2026-10-20
       (`data/raw/yahoo/league_schedule_2026-10-20.json`) and loaded as `data/manual/league_schedule.json`; the dashboard now
       uses the real opponents. If Yahoo changes the schedule, or for the week-1 live scores, ask Muse to "post a scoreboard
