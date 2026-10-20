@@ -34,6 +34,7 @@ import argparse
 import json
 import os
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
@@ -233,6 +234,7 @@ def main() -> None:
     from multiprocessing import get_context
 
     t0 = time.time()
+    it: Iterator[dict | list[dict]]
     with get_context("fork").Pool(a.workers, initializer=_init_worker) as pool, a.out.open("a") as fh:
         if a.gen == "v2":
             it = pool.imap_unordered(_job_v2, [(s, a.seasons, a.k) for s in seeds])

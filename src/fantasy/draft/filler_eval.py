@@ -177,8 +177,9 @@ def summarize(rows: list[dict], base: str = "opt_market") -> dict:
         for truth in TRUTHS:
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["policies"][p]["grade"][truth][metric] for r in rr]) for p in specs}
-                m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
-                     for p, v in x.items()}
+                m: dict[str, dict] = {
+                    p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
+                    for p, v in x.items()}
                 for p in specs:
                     if p != base and base in x:
                         m[p]["minus_" + base] = paired(x[p], x[base])

@@ -524,7 +524,7 @@ class DraftOptimizer:
         self._filler_cache = {}
         for name, punt in strategies.items():
             w = ctx.weights(punt)
-            rows = []
+            rows: list[dict] = []
             for c in cands:
                 av = available.copy()
                 av[c] = False

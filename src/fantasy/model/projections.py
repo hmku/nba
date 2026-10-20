@@ -389,18 +389,18 @@ def _add_rookies(df: pd.DataFrame, notes: dict[str, list[str]], manual_gp: _Manu
     for pid, r in rookies.set_index("player_id").iterrows():
         if pid in df.index:
             continue
-        row = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
-        row["gp"] = manual_gp(pid, row["gp"])
+        stats = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
+        stats["gp"] = manual_gp(pid, stats["gp"])
         sd = float(r.get("gp_sd") or 12.0)
         if manual_gp.fitted:  # never tighter than the calibrated residual sd at that level
-            sd = max(sd, gp_sd_from_model(row["gp"]))
-        row.update(
+            sd = max(sd, gp_sd_from_model(stats["gp"]))
+        meta = dict(
             name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
             gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
             weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
             adp=np.nan, source="manual_rookie_prior", bbref_id="",
         )  # fmt: skip
-        df.loc[pid] = pd.Series(row)
+        df.loc[pid] = pd.Series({**stats, **meta})
         notes.setdefault(pid, []).append("rookie/no NBA history: manual conservative prior")
 
 

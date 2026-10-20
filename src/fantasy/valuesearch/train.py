@@ -204,7 +204,7 @@ def main() -> None:
         n_tr = report["seasons_per_league"][0]
         for j, tgt in enumerate(LABELS):
             y = Yh[:, j]
-            d = {"all": metrics(y, ph[tgt]), "slot1": metrics(y[s1h], ph[tgt][s1h])}
+            d: dict[str, object] = {"all": metrics(y, ph[tgt]), "slot1": metrics(y[s1h], ph[tgt][s1h])}
             if tgt in ("p_playoffs", "p_title"):  # MC noise floor of an n_tr-season estimate of the same quantity
                 d["mc_noise_rmse_at_train_seasons"] = float(np.sqrt((y * (1 - y)).mean() / n_tr))
             if (ch > 0).any():

@@ -80,7 +80,7 @@ def need_row(ctx: DraftContext, available: np.ndarray, roster: list[int], left_a
     category objective (expected category wins of roster + player + market filler for `remaining_picks`)."""
     best = bpa_row(ctx, available, roster, left_after)
     av = np.flatnonzero(available & (ctx.value >= ctx.value[best] - eps))
-    cand = np.array([r for r in av if feasible(ctx, roster, int(r), left_after)] or [best])
+    cand = np.array([int(r) for r in av if feasible(ctx, roster, int(r), left_after)] or [best])
     if len(cand) == 1:
         return int(cand[0])
     a = ctx.arrays
