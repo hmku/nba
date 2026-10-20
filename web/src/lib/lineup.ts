@@ -355,7 +355,8 @@ function rowCounts(...lists: string[][]): Map<string, number> {
  * Merge the plan and the actual lineup for one day into grid rows. Within a slot label (two C, two Util, three
  * BN/IL rows) players in both lists share a row; the rest pair up in order. A row is
  * - `verified` when Yahoo shows the planned player (or there is no plan and Yahoo was read),
- * - `mismatch` when Yahoo was read and shows someone else (or nobody) in that row,
+ * - `mismatch` when Yahoo was read and someone starts/sits differently from the plan (a slot swap between two
+ *   starters, or two bench players, is not a mismatch),
  * - `planned` when Yahoo was not read for that day (or a partial read did not include this player),
  * - `empty` when nobody is in it.
  */
@@ -383,6 +384,10 @@ export function buildDay(
     P.map((x) => x.slot),
     (A ?? []).map((x) => x.slot),
   );
+  // role = starting vs BN/IL: a swap between two starting slots (e.g. Fears PG <-> Sheppard Util) is not a mismatch
+  const roleP = new Map(P.map((x) => [key(x.c), !BENCH.has(x.slot)]));
+  const roleA = new Map((A ?? []).filter((x) => !x.inferred).map((x) => [key(x.c), !BENCH.has(x.slot)]));
+  const sameRole = (c: GridCell | null) => c == null || (roleP.has(key(c)) && roleA.has(key(c)) && roleP.get(key(c)) === roleA.get(key(c)));
   const order = [...new Set([...GRID_SLOTS, ...labels])];
   const rows: GridRow[] = [];
   for (const label of order) {
@@ -407,7 +412,7 @@ export function buildDay(
       else if (act?.inferred) state = "planned";
       else if (!p && !ac) state = "empty";
       else if (!planned) state = "verified";
-      else state = key(p) === key(ac) ? "verified" : "mismatch";
+      else state = key(p) === key(ac) || (sameRole(p) && sameRole(ac)) ? "verified" : "mismatch";
       rows.push({ slot: label, planned: p, actual: ac, shown: A ? (act ? act.c : null) : p, state });
     }
   }

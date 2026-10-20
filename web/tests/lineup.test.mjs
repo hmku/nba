@@ -257,3 +257,12 @@ test("league_weeks.json matches data/manual (regenerate: node scripts/league-wee
   assert.deepEqual(json, buildWeeks(sched, my));
   assert.ok(json.weeks.length >= 17);
 });
+
+test("slot swap between two starters is not a mismatch", () => {
+  const e = (slot, playerId) => ({ slot, playerId, name: playerId });
+  const plan = [e("PG", "a"), e("Util", "b"), e("BN", "c")];
+  const swapped = { slots: [e("PG", "b"), e("Util", "a"), e("BN", "c")], complete: true, gamesKnown: true };
+  assert.equal(buildDay("2026-10-21", plan, swapped).mismatches, 0);
+  const benchedStarter = { slots: [e("PG", "c"), e("Util", "a"), e("BN", "b")], complete: true, gamesKnown: true };
+  assert.ok(buildDay("2026-10-21", plan, benchedStarter).mismatches > 0);
+});
