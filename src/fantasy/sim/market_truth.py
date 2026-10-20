@@ -50,14 +50,14 @@ def fixed_pool_scores(
     out = {}
     for c in settings.cats:
         if c.kind == "count":
-            x, xr = eff[c.stat], ref[c.stat]
-            within = pd.Series(game_var(c.stat, xr.to_numpy()), index=xr.index)
+            x, xr = eff[c.stat_col], ref[c.stat_col]
+            within = pd.Series(game_var(c.stat_col, xr.to_numpy()), index=xr.index)
         else:
-            mr, ar = ref[c.num], ref[c.den]
+            mr, ar = ref[c.num_col], ref[c.den_col]
             p_pool = mr.loc[pool].sum() / max(ar.loc[pool].sum(), 1e-9)
-            x = eff[c.num] - p_pool * eff[c.den]
+            x = eff[c.num_col] - p_pool * eff[c.den_col]
             xr = mr - p_pool * ar
-            within = pd.Series(ratio_var(mr.to_numpy(), ar.to_numpy(), p_pool, c.den), index=ar.index)
+            within = pd.Series(ratio_var(mr.to_numpy(), ar.to_numpy(), p_pool, c.den_col), index=ar.index)
         mu, sd = xr.loc[pool].mean(), xr.loc[pool].std(ddof=0)
         denom = np.sqrt(sd**2 + kappa * within.loc[pool].mean() / GAMES_PER_WEEK)
         g = (x - mu) / max(denom, 1e-9)

@@ -92,21 +92,21 @@ def team_moments(tw: TeamWeek, X: np.ndarray, cats: list[Category]) -> TeamMomen
     makes, atts = {}, {}
     for c in cats:
         if c.kind == "count":
-            s = SI[c.stat]
+            s = SI[c.stat_col]
             x = tw.S[:, s]
-            ln_sd2 = tw.vol ** 2 + _stat_sd(c.stat) ** 2
+            ln_sd2 = tw.vol ** 2 + _stat_sd(c.stat_col) ** 2
             mean.append(tw.acc[s] + (k * x).sum())
             var.append((k * V[:, s] + q * x**2 + (k * x) ** 2 * ln_sd2).sum())
         else:
-            mi, ai = SI[c.num], SI[c.den]
+            mi, ai = SI[c.num_col], SI[c.den_col]
             m, a = tw.S[:, mi], tw.S[:, ai]
             M = tw.acc[mi] + (k * m).sum()
             A = tw.acc[ai] + (k * a).sum()
             p = M / A if A > _EPS else 0.0
             pct_sd = tw.fg_sd if c.key == "fg_pct" else tw.ft_sd
             impact = m - p * a
-            v = (k * ratio_var(m, a, p, c.den) + q * impact**2
-                 + (k * impact) ** 2 * (tw.vol**2 + _stat_sd(c.den) ** 2) + (k * a * pct_sd) ** 2).sum()
+            v = (k * ratio_var(m, a, p, c.den_col) + q * impact**2
+                 + (k * impact) ** 2 * (tw.vol**2 + _stat_sd(c.den_col) ** 2) + (k * a * pct_sd) ** 2).sum()
             mean.append(p)
             var.append(v / A**2 if A > _EPS else 0.0)
             makes[c.key], atts[c.key] = M, A
@@ -162,11 +162,11 @@ def player_deltas(S: np.ndarray, state: CatState, cats: list[Category]) -> np.nd
     out = np.zeros((S.shape[0], len(cats)))
     for j, c in enumerate(cats):
         if c.kind == "count":
-            out[:, j] = S[:, SI[c.stat]]
+            out[:, j] = S[:, SI[c.stat_col]]
         else:
             A = state.me.atts[c.key]
             p = state.me.makes[c.key] / A if A > _EPS else 0.0
-            out[:, j] = (S[:, SI[c.num]] - p * S[:, SI[c.den]]) / max(A, 1.0)
+            out[:, j] = (S[:, SI[c.num_col]] - p * S[:, SI[c.den_col]]) / max(A, 1.0)
     return out
 
 
@@ -247,11 +247,11 @@ def score_matchup(me_tot: np.ndarray, opp_tot: np.ndarray, cats: list[Category])
     res = np.zeros((me_tot.shape[0], len(cats)))
     for j, c in enumerate(cats):
         if c.kind == "count":
-            a, b = np.round(me_tot[:, SI[c.stat]]), np.round(opp_tot[:, SI[c.stat]])
+            a, b = np.round(me_tot[:, SI[c.stat_col]]), np.round(opp_tot[:, SI[c.stat_col]])
         else:
             def pct(t: np.ndarray, c: Category = c) -> np.ndarray:
-                A = t[:, SI[c.den]]
-                return np.round(np.where(A > 0, t[:, SI[c.num]] / np.maximum(A, _EPS), 0.0), 3)
+                A = t[:, SI[c.den_col]]
+                return np.round(np.where(A > 0, t[:, SI[c.num_col]] / np.maximum(A, _EPS), 0.0), 3)
             a, b = pct(me_tot), pct(opp_tot)
         d = (a - b) * (1 if c.higher_is_better else -1)
         res[:, j] = np.where(d > 0, 1.0, np.where(d == 0, 0.5, 0.0))

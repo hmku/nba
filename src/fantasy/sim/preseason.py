@@ -8,6 +8,7 @@ Summary schema `season_sim_preseason/1` (docs/research/dashboard_data.md).
 from __future__ import annotations
 
 import time
+from typing import Any
 
 import numpy as np
 
@@ -129,7 +130,7 @@ def preseason(
     N = P["playoff"].shape[0]
     rounds = int(np.ceil(np.log2(max(n_po or 2, 2))))
     byes = 2**rounds - (n_po or 0)
-    table = []
+    table: list[dict[str, Any]] = []
     for j, t in enumerate(team_ids):
         table.append({
             "team": t, "name": f"Me (slot {t})" if t == my else f"Team {t}", "is_me": t == my,

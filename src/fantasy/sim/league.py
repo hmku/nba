@@ -162,7 +162,7 @@ def complete_rosters(
     taken = {p for ps in new.rosters.values() for p in ps}
     mrank = np.arange(1, len(market) + 1, dtype=float)
     # same opponent model as `draft simulate`: players without a market ADP are noisier (season-sim-0.3.0)
-    has_adp = values["adp"].reindex(market).notna().to_numpy() if "adp" in values.columns else True
+    has_adp = values["adp"].reindex(market).notna().to_numpy() if "adp" in values.columns else np.asarray(True)
     sampled = sample_market_positions(mrank, rng, sd_mult_for(has_adp), noise)
     order = [market[i] for i in np.argsort(sampled, kind="stable")]
     slots = settings.starting_slots

@@ -32,6 +32,25 @@ class Category:
     num: str | None = None  # projection column for ratio numerator (makes)
     den: str | None = None  # projection column for ratio denominator (attempts)
 
+    # Typed accessors (str, never None) for code that has already branched on `kind`.
+    @property
+    def stat_col(self) -> str:
+        return _required(self.stat, self.key, "stat")
+
+    @property
+    def num_col(self) -> str:
+        return _required(self.num, self.key, "num")
+
+    @property
+    def den_col(self) -> str:
+        return _required(self.den, self.key, "den")
+
+
+def _required(value: str | None, key: str, field: str) -> str:
+    if value is None:
+        raise ValueError(f"category {key!r} has no {field!r} column")
+    return value
+
 
 CATEGORIES: dict[str, Category] = {
     c.key: c

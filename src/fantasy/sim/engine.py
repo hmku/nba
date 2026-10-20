@@ -365,7 +365,7 @@ class SeasonSimulator:
             counted = H & (np.cumsum(H, axis=2, dtype=np.int16) <= self.active)
             k = counted.sum(axis=3).astype(np.float64)  # (N, T, R)
             n_play = counted.sum(axis=2)  # (N, T, d) starters used per day
-            any_game = self.plays[:-1, d0:d1].any(axis=0)  # days with NBA games
+            any_game = np.asarray(self.plays[:-1, d0:d1].any(axis=0))  # days with NBA games (asarray: typing only)
             open_day = (self.active - n_play) * any_game[None, None, :]  # (N, T, d)
             if il_games is not None and il_slot_days is not None:
                 tm = self.fday_offset[d0:d1] + 0.5
@@ -415,9 +415,9 @@ class SeasonSimulator:
             for ci, c in enumerate(self.cats):
                 if c.kind == "ratio":
                     with np.errstate(divide="ignore", invalid="ignore"):
-                        totals[:, wi, :, ci] = np.where(vals[c.den] > 0, np.round(vals[c.num] / np.maximum(vals[c.den], 1), 3), 0.0)
+                        totals[:, wi, :, ci] = np.where(vals[c.den_col] > 0, np.round(vals[c.num_col] / np.maximum(vals[c.den_col], 1), 3), 0.0)
                 else:
-                    totals[:, wi, :, ci] = vals[c.stat]
+                    totals[:, wi, :, ci] = vals[c.stat_col]
             games[:, wi] = k.sum(axis=2) + g_r
             streams[:, wi] = g_s
 

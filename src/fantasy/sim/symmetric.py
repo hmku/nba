@@ -34,6 +34,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -339,7 +340,7 @@ def summarize(results: list[dict], my_slot: int = 1) -> dict:
     slot1 = {room: {truth: {m: _ms(_metric(results, room, truth, m)[:, j]) for m in metrics}
                     for truth in truths if _metric(results, room, truth, "p_title").size}
              for room in rooms}
-    by_slot = {}
+    by_slot: dict[str, Any] = {}
     for room in ("A_sym", "A_bpa", "A_full", "adp_all", "C11", "C11m"):
         if room not in rooms:
             continue

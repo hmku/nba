@@ -51,7 +51,7 @@ ignore = ["E501"]
 # `files` is what a bare `mypy` checks locally (paths on the command line override it).
 files = [
   "src/fantasy/ops", "src/fantasy/db", "src/fantasy/data", "src/fantasy/league",
-  "src/fantasy/cli.py", "src/fantasy/cli_common.py",
+  "src/fantasy/sim", "src/fantasy/lineup", "src/fantasy/cli.py", "src/fantasy/cli_common.py",
 ]
 ignore_missing_imports = true
 # Report errors only in the listed modules: an import of a not-yet-clean module (draft/, model/, sim/)

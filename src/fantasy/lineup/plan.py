@@ -13,6 +13,7 @@ Policy for the remaining days of the matchup week:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -117,7 +118,7 @@ def daily_plan(
     start = set(slots.starting)
     X = np.zeros((n, D), dtype=bool)
     labels: list[list[str]] = []
-    current = [p.slot for p in players]
+    current: Sequence[str | None] = [p.slot for p in players]
     pos = [p.positions for p in players]
     startable = [not p.is_out for p in players]
     il_ok = [p.il_eligible for p in players]

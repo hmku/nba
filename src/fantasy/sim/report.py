@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from fantasy.league.settings import CATEGORIES
@@ -42,7 +44,7 @@ def league_table(res: SimResult, league: LeagueState) -> list[dict]:
     T = len(res.team_ids)
     champ = np.bincount(res.champion, minlength=T) / n
     final = (np.bincount(res.runner_up[res.runner_up >= 0], minlength=T) / n) + champ
-    rows = []
+    rows: list[dict[str, Any]] = []
     n_po = int(res.params["playoff_teams"])
     rounds = int(np.ceil(np.log2(max(n_po, 2))))
     byes = 2**rounds - n_po

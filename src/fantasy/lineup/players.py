@@ -106,7 +106,7 @@ class RosterPlayer:
 
 def _as_int(x: object) -> int | None:
     try:
-        return int(x)  # type: ignore[arg-type]
+        return int(x)  # type: ignore[call-overload]
     except (TypeError, ValueError):
         return None
 
@@ -118,8 +118,8 @@ def _player_dicts(raw: object, draft_slot: int | None, yahoo_team_id: int | None
     if isinstance(raw, list):
         return raw
     if isinstance(raw, dict) and "teams" in raw:
-        teams = raw["teams"].items() if isinstance(raw["teams"], dict) else enumerate(raw["teams"])
-        teams = [(k, t) for k, t in teams if isinstance(t, dict)]
+        items = raw["teams"].items() if isinstance(raw["teams"], dict) else enumerate(raw["teams"])
+        teams = [(k, t) for k, t in items if isinstance(t, dict)]
         for _, t in teams:
             if draft_slot is not None and _as_int(t.get("draft_slot")) == draft_slot:
                 return list(t.get("players") or [])
