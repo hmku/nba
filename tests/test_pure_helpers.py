@@ -100,3 +100,16 @@ def test_publish_text_renderers_and_url_normalisation():
     assert _psycopg_url("postgres://u@h/db") == "postgresql+psycopg://u@h/db"
     assert _psycopg_url("postgresql://u@h/db") == "postgresql+psycopg://u@h/db"
     assert _psycopg_url("postgresql+psycopg://u@h/db") == "postgresql+psycopg://u@h/db"
+
+
+def test_status_text_labels_mock_draft():
+    from fantasy.ops.status import _render_text
+
+    base = {"as_of": __import__("datetime").datetime(2026, 10, 20), "db": "sqlite:///x", "locks": [],
+            "runs": {"active": [], "stale": []}, "approvals_pending": [], "txns_needing_reconciliation": [],
+            "tasks_open": {}, "model_freshness": []}
+    assert "draft: mock-check pending (mock)" in _render_text(
+        {**base, "active_draft": {"draft_id": "mock-check", "status": "pending", "is_mock": True}})
+    assert _render_text({**base, "active_draft": {"draft_id": "nba.l.1", "status": "live", "is_mock": False}}).endswith(
+        "draft: nba.l.1 live")
+    assert _render_text({**base, "active_draft": None}).endswith("draft: none active")

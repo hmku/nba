@@ -74,7 +74,7 @@ def collect_status(stale_minutes: float = ledger.DEFAULT_STALE_MINUTES) -> dict[
         draft_row = conn.execute(
             select(drafts)
             .where(drafts.c.status.in_(("live", "pending")))
-            .order_by((drafts.c.status == "live").desc(), drafts.c.updated_at.desc())
+            .order_by((drafts.c.status == "live").desc(), drafts.c.is_mock.asc(), drafts.c.updated_at.desc())
             .limit(1)
         ).first()
 
@@ -120,7 +120,7 @@ def _render_text(s: dict[str, Any]) -> str:
     for m in s["model_freshness"]:
         lines.append(f"  {m['kind']}: {m['run_id']} ({m['age_hours']}h old)")
     d = s["active_draft"]
-    lines.append(f"draft: {d['draft_id']} {d['status']}" if d else "draft: none active")
+    lines.append(f"draft: {d['draft_id']} {d['status']}{' (mock)' if d.get('is_mock') else ''}" if d else "draft: none active")
     return "\n".join(lines)
 
 
