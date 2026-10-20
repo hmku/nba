@@ -278,7 +278,7 @@ def assign_draft_slots(capture: Capture, previous_state: dict[str, Any] | None,
     missing = sorted(tid for tid, t in capture.teams.items() if t.draft_slot is None)
     if missing:
         raise CaptureError(f"no draft slot for Yahoo team ids {missing} (pass --slot-map)")
-    slots = [t.draft_slot for t in capture.teams.values()]
+    slots = [t.draft_slot for t in capture.teams.values() if t.draft_slot is not None]  # all set (checked above)
     if len(set(slots)) != len(slots):
         raise CaptureError(f"duplicate draft slots in capture: {sorted(slots)}")
 

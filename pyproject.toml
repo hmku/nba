@@ -15,8 +15,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# ruff/mypy pinned to a minor: their rule sets change between releases (CI must match local)
-dev = ["pytest>=8", "pytest-cov>=5", "ruff==0.16.*", "mypy==2.4.*"]
+# ruff pinned exactly (its rule set/formatting changes even in patch releases), mypy to a minor:
+# CI must match local
+dev = ["pytest>=8", "pytest-cov>=5", "ruff==0.16.10", "mypy==2.4.*"]
 nba = ["nba_api>=1.5"]
 # training the value-search model only (draft-time inference is numpy): python -m fantasy.valuesearch.train
 valuesearch = ["scikit-learn==1.5.2"]
@@ -47,6 +48,11 @@ ignore = ["E501"]
 
 [tool.mypy]
 # CI type-checks the clean subset only (.github/workflows/ci.yml); grow it module by module.
+# `files` is what a bare `mypy` checks locally (paths on the command line override it).
+files = [
+  "src/fantasy/ops", "src/fantasy/db", "src/fantasy/data", "src/fantasy/league",
+  "src/fantasy/cli.py", "src/fantasy/cli_common.py",
+]
 ignore_missing_imports = true
 # Report errors only in the listed modules: an import of a not-yet-clean module (draft/, model/, sim/)
 # must not turn the subset red. Imported modules are still analysed for types.
