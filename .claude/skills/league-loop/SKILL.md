@@ -99,6 +99,10 @@ expected category from < 0.5 to > 0.5 without costing another; respect remaining
 runs (one per team); recommend only if ours improves by > 2 SE. Never propose/accept a trade on Yahoo
 without approval, and never message other managers.
 
+**Write concisely (user requirement):** lead with the answer in one line; then ≤ 3-4 short bullets; put supporting detail
+behind "Details" (advice fields `rationale`, `why_now`, metrics table). Dashboard cards: title ≤ 70 chars, verdict ≤ 2 short
+sentences, ≤ 3 key numbers. Posts and thread replies: ≤ 3 sentences plus evidence items. No repeated text or boilerplate.
+
 ## 3. Recommendation format (txn `--summary`, approval payload, and the report to the user)
 Always include `rationale` (justification) and `why_now` (earlier decision + what changed) — CLAUDE.md evidence standard.
 Every recommendation is a planned txn whose payload is exact enough for a dumb executor:

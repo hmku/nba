@@ -120,6 +120,10 @@ against our values). Only the planned moves; never a player whose game has start
 and compare every slot with the plan; `fantasy txn mark <txn_id> verified --evidence '{"page":"/nba/44495/11","slots":{...}}'`
 or `failed --error`. Put the FULL parsed server slot map (`{player_id: slot}` for all roster players, player_ids not short names) in that evidence, then record it for the Lineup tab: `fantasy lineup record --date $D --slots '<same map>' --txn <txn_id> --how "server re-read /nba/44495/11/team?&date=$D (no-store) after the last click" --json` (once per date you edited). A submitted txn is never re-clicked blindly (agent-run §7).
 
+**Write concisely (user requirement):** lead with the answer in one line; then ≤ 3-4 short bullets; put supporting detail
+behind "Details" (advice fields `rationale`, `why_now`, metrics table). Dashboard cards: title ≤ 70 chars, verdict ≤ 2 short
+sentences, ≤ 3 key numbers. Posts and thread replies: ≤ 3 sentences plus evidence items. No repeated text or boilerplate.
+
 ## 4. ASK (add/drop, trades)
 Post the recommendations to the user (expected effect ± SE, evidence labels: fitted / simulated / prior), each with
 a plain-language **justification** and **"why now, not before"** (what we decided earlier and why — e.g. the draft-time

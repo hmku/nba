@@ -79,6 +79,10 @@ data-auditor, draft-shadow (all read-only).
   link the research note), **literature/source** (cite it), or **prior/guess** (say so explicitly).
 - Never present a prior as fact. New model parameters start as documented priors and get calibrated
   (`docs/research/`), with out-of-sample checks where possible.
+- **Be concise and readable** (user requirement): anything the user reads (chat, dashboard cards, posts, logs) leads
+  with the answer in one line, then at most a few short bullets; details go behind a link/"Details", not up front. No
+  repeated text, no walls of prose, no boilerplate. On the dashboard: title ≤ 70 chars, verdict ≤ 2 short sentences,
+  ≤ 3 key numbers (advice limits enforced by `fantasy advise post`).
 - **Every recommended change** (add/drop, waiver claim, stream, trade, IL move, model/default change) carries a
   plain-language **justification** and a **"why now, not before"**: what we believed or decided earlier (e.g. at the
   draft) and why, and what changed since (new information, a model change with versions, more precise evidence,

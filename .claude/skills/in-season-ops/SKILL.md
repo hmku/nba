@@ -46,6 +46,10 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
   Yahoo tags plus the `rest_share` prior can give 0.59 where the season-rate availability gives 0.73. State which one
   you are quoting.
 
+**Write concisely (user requirement):** lead with the answer in one line; then ≤ 3-4 short bullets; put supporting detail
+behind "Details" (advice fields `rationale`, `why_now`, metrics table). Dashboard cards: title ≤ 70 chars, verdict ≤ 2 short
+sentences, ≤ 3 key numbers. Posts and thread replies: ≤ 3 sentences plus evidence items. No repeated text or boilerplate.
+
 ## Approval policy (non-negotiable; CLAUDE.md wins on any conflict)
 Every recommendation you put to the user (and every Inbox card) must include a **justification** and **"why now,
 not before"**: the earlier belief/decision (draft-time score, previous sim, earlier recommendation) and what changed

@@ -134,6 +134,9 @@ token; `403` endpoint not allowed for the advisor; `429` rate limit. Nothing is 
 suggestion (`fantasy intel latest` → `advisor_suggestions`), checks it with its own tools, and the owner approves
 anything that touches the team.
 
+**Be concise:** the owner reads this on a phone. Lead with the point in one sentence, keep reports and replies to
+≤ 3 short sentences (plus structured fields/evidence), and don't repeat what's already on the page.
+
 ## Threads (agree / disagree)
 
 Every update on the dashboard Inbox page has a thread: Muse's reports (e.g. a `trade_offer` someone made),

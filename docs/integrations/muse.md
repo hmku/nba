@@ -55,6 +55,9 @@ not both). `status` is `proposed`, `countered`, `accepted`, `rejected`, `vetoed`
 rather than a new offer. **Never accept, reject or counter an offer on Yahoo**: the user decides, after Claude's
 analysis. Trade offers are public on the dashboard: no verbatim chat quotes in `message` or `note`.
 
+**Be concise:** the owner reads this on a phone. Lead with the point in one sentence, keep reports and replies to
+≤ 3 short sentences (plus structured fields/evidence), and don't repeat what's already on the page.
+
 ## Threads (agree / disagree)
 
 When you disagree or agree with a recommendation in a thread, give your reason in plain words; if you suggest doing
