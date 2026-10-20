@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type TouchEvent } from "react";
+import { useRef, type TouchEvent } from "react";
 import type { CellState, DaySummary, Expected, GridCell, GridRow, IlMove, TipoffItem } from "@/lib/lineup";
 
 /** One day of the grid as the page hands it over (serialisable). */
@@ -33,8 +33,8 @@ export interface DayView {
   } | null;
 }
 
-const STATE_ICON: Record<CellState, string> = { verified: "✓", planned: "◌", mismatch: "⚠", empty: "" };
-const STATE_TONE: Record<CellState, string> = { verified: "text-good", planned: "text-muted", mismatch: "text-warn", empty: "text-muted" };
+export const STATE_ICON: Record<CellState, string> = { verified: "✓", planned: "◌", mismatch: "⚠", empty: "" };
+export const STATE_TONE: Record<CellState, string> = { verified: "text-good", planned: "text-muted", mismatch: "text-warn", empty: "text-muted" };
 const STATE_HELP: Record<CellState, string> = {
   verified: "on Yahoo (read that day)",
   planned: "planned only (Yahoo not read for this day)",
@@ -42,7 +42,7 @@ const STATE_HELP: Record<CellState, string> = {
   empty: "empty slot",
 };
 
-function StatusTag({ status }: { status: string | null }) {
+export function StatusTag({ status }: { status: string | null }) {
   if (!status) return null;
   const out = ["O", "OUT", "INJ", "OFS", "NA", "SUSP", "IR"].includes(status.toUpperCase());
   return (
@@ -50,7 +50,7 @@ function StatusTag({ status }: { status: string | null }) {
   );
 }
 
-function cellTitle(r: GridRow): string {
+export function cellTitle(r: GridRow): string {
   const bits = [STATE_HELP[r.state]];
   if (r.shown) bits.unshift(`${r.slot}: ${r.shown.name}${r.shown.game ? ` (${r.shown.game})` : r.shown.hasGame === false ? " (no game)" : ""}`);
   if (r.state === "mismatch") bits.push(`plan: ${r.planned?.name ?? "empty"} · Yahoo: ${r.actual?.name ?? "empty"}`);
@@ -65,7 +65,7 @@ function Game({ c }: { c: GridCell }) {
 }
 
 /** Desktop table cell / phone list row content. */
-function CellBody({ r, compact = false }: { r: GridRow; compact?: boolean }) {
+export function CellBody({ r, compact = false }: { r: GridRow; compact?: boolean }) {
   const c = r.shown;
   if (!c) return <span className="text-[11px] text-muted/60">{r.state === "mismatch" ? <span className="text-warn">⚠ empty (plan: {r.planned?.short})</span> : "—"}</span>;
   const dim = c.hasGame === false || (BENCHY.has(r.slot) && !c.hasGame);
@@ -86,9 +86,9 @@ function CellBody({ r, compact = false }: { r: GridRow; compact?: boolean }) {
   );
 }
 
-const BENCHY = new Set(["BN", "IL", "IL+"]);
+export const BENCHY = new Set(["BN", "IL", "IL+"]);
 
-function SummaryLine({ s }: { s: DaySummary }) {
+export function SummaryLine({ s }: { s: DaySummary }) {
   if (!s.known && s.started === 0 && s.available === 0) return <span className="text-muted">games unknown</span>;
   return (
     <span>
@@ -99,137 +99,20 @@ function SummaryLine({ s }: { s: DaySummary }) {
   );
 }
 
-function pct(v: number | null | undefined): string {
-  return v == null ? "—" : `${Math.round(v * 100)}%`;
-}
-
-function Notes({ d }: { d: DayView }) {
-  const p = d.plan;
-  const ex = p?.expected;
-  return (
-    <div className="space-y-3 px-4 py-3 text-[13px]">
-      <div className="text-xs text-muted">
-        {d.actual ? (
-          <>
-            Yahoo read: <span className="text-fg">{d.actual.source === "yahoo_verified" ? "verified re-read" : "roster capture"}</span>
-            {d.actual.observedAt ? ` · ${fmtTime(d.actual.observedAt)}` : ""}
-            {d.actual.txnId ? ` · ${d.actual.txnId}` : ""}
-            {d.actual.complete === false ? " · partial (players not read keep the plan)" : ""}
-            {d.actual.how && <div className="mt-0.5 truncate" title={d.actual.how}>how: {d.actual.how}</div>}
-          </>
-        ) : (
-          <>Yahoo not read for this day yet: cells show the plan (◌).</>
-        )}
-        <div className="mt-0.5">
-          {p ? (
-            <>
-              Plan: <code className="num">{p.runId}</code> ({p.modelVersion ?? "?"}
-              {p.sameDay ? ", made that day" : `, from the ${p.date} week plan`})
-            </>
-          ) : (
-            "No saved plan for this day (fantasy lineup plan --save)."
-          )}
-        </div>
-      </div>
-
-      {p && p.tipoff.length > 0 && (
-        <div>
-          <div className="text-[11px] font-semibold tracking-wider text-muted uppercase">Decide at tip-off</div>
-          <ul className="mt-1 space-y-1.5">
-            {p.tipoff.map((t) => (
-              <li key={t.playerId}>
-                <span className="font-medium">{t.name}</span>
-                <StatusTag status={t.status} />
-                {t.pPlay != null && <span className="num ml-1 text-xs text-muted">P(plays) {pct(t.pPlay)} prior</span>}
-                {t.game && <span className="num ml-1 text-xs text-muted">{t.game}</span>}
-                {t.swapWithName && <span className="ml-1 text-xs">↔ {t.swapWithName}</span>}
-                {t.deadline && <div className="text-xs text-accent">deadline: {t.deadline}</div>}
-                {t.note && <div className="text-xs text-muted">{t.note}</div>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {p && p.ilMoves.length > 0 && (
-        <div>
-          <div className="text-[11px] font-semibold tracking-wider text-muted uppercase">IL moves</div>
-          <ul className="mt-1 space-y-0.5">
-            {p.ilMoves.map((m) => (
-              <li key={m.playerId}>
-                {m.name} <StatusTag status={m.status} /> <span className="text-muted">{m.from ?? "?"} → {m.to}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {p && p.benchWithGame.length > 0 && (
-        <div className="text-xs text-muted">
-          Benched with a game: {p.benchWithGame.map((x) => `${x.name}${x.game ? ` (${x.game})` : ""}`).join(", ")}
-        </div>
-      )}
-
-      {ex && (ex.optimized || ex.mc) && (
-        <div>
-          <div className="text-[11px] font-semibold tracking-wider text-muted uppercase">
-            Expected this week {p && !p.sameDay ? `(as of the ${p.date} plan)` : ""}
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
-            {ex.optimized && (
-              <span>
-                cats won <span className="num font-semibold">{ex.optimized.cats?.toFixed(2) ?? "—"}</span>/9 · P(win){" "}
-                <span className="num font-semibold">{pct(ex.optimized.pWin)}</span>
-                <span className="ml-1 text-xs text-muted">analytic</span>
-              </span>
-            )}
-            {ex.mc && (
-              <span>
-                <span className="num">{ex.mc.cats?.toFixed(2) ?? "—"} ± {ex.mc.catsSe?.toFixed(2) ?? "?"}</span> cats · P(win){" "}
-                <span className="num">
-                  {pct(ex.mc.pWin)} ± {ex.mc.pWinSe != null ? `${(ex.mc.pWinSe * 100).toFixed(1)}pp` : "?"}
-                </span>
-                <span className="ml-1 text-xs text-muted">Monte Carlo{ex.mc.nSims ? `, ${ex.mc.nSims} sims` : ""}</span>
-              </span>
-            )}
-            {ex.staticCurrent && (
-              <span className="text-muted">
-                vs holding the current lineup: {ex.staticCurrent.cats?.toFixed(2) ?? "—"} cats, {pct(ex.staticCurrent.pWin)}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-muted">
-            Simulated (lineup model). Availability: {ex.availability ?? "see the plan"}. {ex.method ? `Method: ${ex.method}.` : ""}
-          </p>
-        </div>
-      )}
-      {p && p.warnings.length > 0 && (
-        <details className="text-xs text-warn">
-          <summary>{p.warnings.length} plan warning{p.warnings.length > 1 ? "s" : ""}</summary>
-          <ul className="mt-1 space-y-0.5">
-            {p.warnings.map((w, i) => (
-              <li key={i}>⚠ {w}</li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </div>
-  );
-}
-
-function fmtTime(ts: string): string {
+export function fmtTime(ts: string): string {
   const t = new Date(ts);
   return Number.isNaN(t.getTime())
     ? ts
     : t.toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " ET";
 }
 
-export function LineupGrid({ days, initial }: { days: DayView[]; initial: number }) {
-  const [sel, setSel] = useState(Math.min(Math.max(initial, 0), Math.max(days.length - 1, 0)));
+/** My week grid (desktop: every day; phone: one day, swipe). Controlled: the selected day is shared with the page. */
+export function LineupGrid({ days, sel, onSel }: { days: DayView[]; sel: number; onSel: (i: number) => void }) {
+  const setSel = onSel;
   const touch = useRef<number | null>(null);
   const d = days[sel];
   if (!d) return null;
-  const go = (k: number) => setSel((i) => Math.min(Math.max(i + k, 0), days.length - 1));
+  const go = (k: number) => setSel(Math.min(Math.max(sel + k, 0), days.length - 1));
   const onStart = (e: TouchEvent) => (touch.current = e.touches[0]?.clientX ?? null);
   const onEnd = (e: TouchEvent) => {
     const x0 = touch.current;
@@ -330,12 +213,6 @@ export function LineupGrid({ days, initial }: { days: DayView[]; initial: number
         </ul>
       </div>
 
-      <div className="rounded-xl border border-line bg-panel">
-        <div className="border-b border-line px-4 py-2 text-[12px] font-semibold">
-          {d.label} notes {d.mismatches > 0 && <span className="ml-1 font-normal text-warn">· {d.mismatches} slot{d.mismatches > 1 ? "s" : ""} differ from the plan</span>}
-        </div>
-        <Notes d={d} />
-      </div>
     </div>
   );
 }

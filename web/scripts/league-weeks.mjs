@@ -1,4 +1,4 @@
-// Build web/src/content/league_weeks.json (the Lineup tab's week picker) from the league schedule
+// Build web/src/content/league_weeks.json (the This week page's week picker) from the league schedule
 // data/manual/league_schedule.json (Yahoo capture) and my team id from data/manual/league_rosters_2026-27.json.
 //   node scripts/league-weeks.mjs        # rewrite the JSON (run from web/)
 // tests/lineup.test.mjs checks the committed JSON still matches data/manual.

@@ -360,7 +360,7 @@ activity (root or reply) first. Filters: author (started or replied in the threa
 
 _Added 2026-10-20 (lineup-record-0.1.0). Producers: `fantasy lineup plan --save [--rest]` (plan),
 `fantasy lineup record`, `fantasy league sync --write --record-lineup`, `fantasy lineup backfill --write` (actual);
-code `src/fantasy/lineup/record{,_cli}.py`. Reader: `web/src/app/lineup/page.tsx` via `web/src/lib/lineup.ts`._
+code `src/fantasy/lineup/record{,_cli}.py`. Reader: `web/src/app/week/page.tsx` (This week) via `web/src/lib/lineup.ts` + `web/src/lib/week.ts`._
 
 Both are immutable `model_runs` rows, **idempotent per (date, content hash)**: `run_id = lp-<date>-<sha12>` /
 `la-<date>-<sha12>` (sha256 of the canonical summary; for actuals of `{date, team, source, slots, txn_id}` only, so

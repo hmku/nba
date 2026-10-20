@@ -7,8 +7,7 @@ import { ThemeToggle, WriteAccess } from "./client";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/env";
 
 const TABS = [
-  { href: "/matchup", label: "Matchup", icon: "⚔" },
-  { href: "/lineup", label: "Lineup", icon: "☰" },
+  { href: "/week", label: "This week", icon: "⚔" },
   { href: "/league", label: "League", icon: "▦" },
   { href: "/moves", label: "Moves", icon: "⇄" },
   { href: "/activity", label: "Activity", icon: "≋" },
@@ -68,6 +67,7 @@ const MORE = [
 ];
 
 function isActive(path: string, href: string) {
+  if (href === "/week") return path.startsWith("/week") || path.startsWith("/matchup") || path.startsWith("/lineup");
   if (href === "/activity") return path.startsWith("/activity") || path.startsWith("/agents") || path.startsWith("/approvals");
   return path.startsWith(href);
 }
@@ -200,7 +200,7 @@ export function Nav() {
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 px-[env(safe-area-inset-left)] pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-6">
           {TABS.map((t) => {
             const on = isActive(shown, t.href);
             return (
@@ -209,7 +209,7 @@ export function Nav() {
                 href={t.href}
                 onClick={onNavigate(t.href)}
                 aria-current={isActive(path, t.href) ? "page" : undefined}
-                className={`relative flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] ${on ? `font-semibold text-tab-fg ${BAR_TOP}` : "text-muted"}`}
+                className={`relative flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] whitespace-nowrap ${on ? `font-semibold text-tab-fg ${BAR_TOP}` : "text-muted"}`}
               >
                 <span className={`relative rounded-full px-3 py-0.5 text-lg leading-none ${on ? "bg-tab-bg" : ""}`}>
                   {t.icon}

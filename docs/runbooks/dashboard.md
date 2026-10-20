@@ -34,11 +34,12 @@ buttons are disabled; reads keep working. After adding them in Vercel, **redeplo
 only apply to new deployments).
 
 ## Pages
-Navigation: 6 primary tabs — **Matchup**, **Lineup**, **League**, **Moves**, **Activity** (pending-approval count badge, polled
-every 30s), **Draft** — as a bottom tab bar on phones and a top bar on desktop; **More** holds Players, History and the theme
-toggle. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `/` redirects to `/draft`, or to
-`/matchup` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
-`/agents` and `/approvals` redirect to `/activity`.
+Navigation: 5 primary tabs — **This week**, **League**, **Moves**, **Activity** (pending-approval count badge, polled
+every 30s), **Draft** — plus **More** (Players, History, theme toggle), as a 6-column bottom tab bar on phones and a top
+bar on desktop. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `/` redirects to `/draft`, or to
+`/week` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
+`/agents` and `/approvals` redirect to `/activity`; the old `/matchup` and `/lineup` redirect (307, query kept) to `/week`
+(`src/lib/routes.ts`, wired in `next.config.ts` `redirects()`).
 
 **Snappiness** (keep these when adding pages): every tab has a `loading.tsx` skeleton (`src/components/Skeleton.tsx`),
 so `<Link>`'s default prefetch loads it and a tap switches instantly while the server renders. The tapped tab
@@ -105,45 +106,56 @@ Live room details:
     `fantasy draft init|set-order`; re-run `draft init` on an older draft to backfill it). Fallback when absent
     or invalid: computed client-side (`src/lib/draftOrder.ts`, mirrors `fantasy/draft/order.py`): `snake`,
     `snake_3rr` and `custom` (`drafts.config.custom_rounds`, honoured whenever valid).
-### `/matchup`
-Latest `season_sim` row with `params.command = 'season'` and no `scenario` or a `post-draft…` scenario (i.e. `fantasy sim
-season` on real or mid-draft rosters; post-draft schema: `dashboard_data.md` section 3; pages read the newest 60
-`season_sim` rows so what-if `compare` runs cannot crowd it out) → `summary.my_team.weekly_matchups[]` (`week, start, end, opponent, opponent_name, p_win, p_tie,
-p_loss, exp_cats_won, my_player_games, opp_player_games, cat_win_probs{cat}`; optional `categories{cat:{p_win,
-me_mean, opp_mean}}` and `recommendations[]` strings are rendered if a future producer adds them). Week strip
-(P(win) per week; `?week=N`), header (week, dates, this week/next up, me vs opponent; names from
-`drafts.config.team_names` of the sim's draft), P(win) + W/T/L bar, expected cats, player-games each side, per-category
-table (totals = this week's projection if present, else each team's `team_profiles[t].weekly_mean` labelled "avg /
-week"), "What to do" (chase 30–70%, safe ≥80%, concede ≤20%; streaming adds pending T-004/T-006), season P(playoffs)/P(title).
-**Empty state** (no such run, i.e. before the draft) explains what will appear and links to the pre-draft projection.
-Post-draft additions: an amber "Opponents are assumed" banner while `summary.matchup_schedule.assumed_weeks` is non-empty
-(header says "assumed opponent (round robin)"); **vs every opponent** table for the selected week from
-`my_team.weekly_h2h_matrix` (P(win) this week, season-average P(win) from `vs_opponents_all_play`, 9 category-odds heat
-cells; toughest first); tapping a team opens `?week=N&opp=T` = that week against that team (what-if, e.g. Yahoo's real
-opponent). Names: `drafts.config.team_names`, else the sim's own team names.
-
-### `/lineup`
-Which roster ran each day and every decision behind it (`src/app/lineup/{page,LineupGrid}.tsx`, pure helpers
-`src/lib/lineup.ts`, schemas `dashboard_data.md` section 6). Week picker = `src/content/league_weeks.json` (generated from
-`data/manual/league_schedule.json` by `node scripts/league-weeks.mjs`; `tests/lineup.test.mjs` fails when they drift);
-default = the week containing today (ET), `?week=N` otherwise.
-- **Grid**: rows PG, SG, G, SF, PF, F, C, C, Util, Util, BN×3, IL×3; columns = days. Per day the newest `lineup_actual`
-  (what Yahoo showed) is merged with the plan (`lineup_plan` made that day, else the newest earlier plan's `week_plan`
-  entry): ✓ Yahoo shows the planned player (or Yahoo was read and there is no plan), ⚠ Yahoo differs (cell shows Yahoo's
-  player plus "plan: X"), ◌ planned only (Yahoo not read that day; a partial read keeps unread players as ◌). Each cell:
-  short name, game marker (`@DET` / `vs PHI` / no game / ? unknown), Q/O tag. Desktop shows the whole week (click a day
-  header for its notes); phones show one day with ‹ › buttons, swipe and dots.
-- **Week summary**: starts used / possible (players with a game who are not tagged out, capped at 10 per day), unused
-  starts, days with a mismatch. **Day notes**: how and when Yahoo was read (verified re-read vs capture, txn id), the plan
-  id, decide-at-tip-off items (who, P(plays) prior, swap partner, deadline), IL moves, benched-with-a-game, expected cats /
-  P(win) (analytic and Monte Carlo ± SE) with the availability assumption, plan warnings.
-- **Decisions · week N**: lineup/IL txns (moves, status, verification evidence or error), approvals, Moves items (with
-  rationale / why-now) and logged `decisions`, newest first; links to Activity / Moves.
-- **Speed**: one `Promise.all` round. Plans/actuals for past days through `cachedClient(300)` (immutable rows; a late
-  backfill shows within 5 min), today/future live; transactions, approvals, advice and decisions live, column lists only,
-  windowed by the week's dates.
-- **Empty week**: explains which commands produce the rows (`fantasy lineup plan --save`, `fantasy league sync --write
-  --record-lineup`, `fantasy lineup record`).
+### `/week` — This week (matchup + lineups on one page)
+`src/app/week/{page,WeekLineups,LineupGrid}.tsx`; pure helpers `src/lib/week.ts` (score, odds, games left, opponent lineup)
+and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs`, `tests/lineup.test.mjs`. Week picker =
+`src/content/league_weeks.json` (Yahoo's schedule, generated from `data/manual/league_schedule.json` by
+`node scripts/league-weeks.mjs`; `tests/lineup.test.mjs` fails when they drift); default = the week containing today (ET),
+`?week=N` otherwise. Top to bottom:
+- **Week strip**: W1…W20 with the season sim's pre-week P(win) against Yahoo's opponent (H2H-matrix cell, else the weekly row).
+- **Score header**: me vs opponent (Yahoo names from the league snapshot), categories won now **W–L(–T)** from the newest
+  `model_runs` row of kind `matchup_score` for the week (schema `matchup_score/1`, data side; FG%/FT% recomputed from
+  makes/attempts, leaders recomputed from the totals, TO lower wins), "as of <observed_at> ET", **Yahoo live ↗** (Yahoo's
+  matchup page with `mid1`/`mid2` = the two Yahoo team ids), and **P(win week)** with its label: the newest `lineup_plan`
+  of the week (Monte Carlo ± SE, else analytic; "simulated, lineup model") when that plan carries `expected.cat_win_prob`,
+  else the season sim ("simulated, season sim (pre-week)").
+- **Category strip**: per category me | opp totals (leader shaded; FG%/FT% with makes/attempts underneath) and the chance
+  to win it by Sunday (plan's `expected.cat_win_prob`, given banked stats; else the season sim's weekly odds, column
+  labelled "odds"), plus one "Swing: …" line (30–70% categories). **Before the first capture** (no `matchup_score` row):
+  a compact 3×3 (phone) / 1×9 grid of projected odds only.
+- **Lineups**: **Day** (default) with day chips, or **Week** (my plan-vs-Yahoo grid below). Day view = my lineup next to the
+  opponent's (two columns on ≥md; **Me | Them** tabs on phones). Mine = the grid day (✓ Yahoo / ◌ plan / ⚠ mismatch, see
+  Grid below); on a day with neither plan nor Yahoo read (e.g. a future week) my roster from the league snapshot. Theirs =
+  a `lineup_actual` row with `summary.team` = their slot if the data side records one, else
+  `src/content/league_state.json` (labelled "their lineup as of last capture (<time>)"; future days keep those slots with
+  that day's game markers from `src/content/nba_schedule.json`). Under each column **Games left** = remaining scheduled
+  games (today included) of rostered players not in an IL slot and not tagged O/INJ/NA/SUSP (mine from the plans' `games`
+  map, else the schedule by NBA team; theirs from the schedule), plus Yahoo's `games_remaining` when the score row has it.
+  **Day notes** under the lineups: decide-at-tip-off items and IL moves of the picked day's plan.
+- **Decisions**: the 3 newest timeline items (lineup/IL txns with verification evidence, approvals, Moves items, logged
+  `decisions`) + "Show all N".
+- **Other matchups** (collapsed): the old "vs every opponent" table from `my_team.weekly_h2h_matrix` (week P(win), season
+  average from `vs_opponents_all_play`, 9 category-odds cells); tapping a team opens `?week=N&opp=T`, a what-if view (score
+  hidden, odds and their lineup for that team, banner with a link back).
+- **How these numbers are made** (collapsed): score source/time, odds source (plan run id, method, n sims, availability
+  assumption — or season sim run id, n sims), games-left definition, where their lineup comes from, season P(playoffs) /
+  P(title), plan + sim warnings. Keep explanatory text here, not on the page body.
+- **Grid** (Week view; `LineupGrid.tsx`, controlled by the page's day state): rows PG, SG, G, SF, PF, F, C, C, Util, Util,
+  BN×3, IL×3; columns = days. Per day the newest `lineup_actual` of my team (rows without `summary.team` count as mine) is
+  merged with the plan (`lineup_plan` made that day, else the newest earlier plan's `week_plan` entry): ✓ Yahoo shows the
+  planned player (or Yahoo was read and there is no plan), ⚠ Yahoo differs, ◌ planned only. Desktop shows the whole week,
+  phones one day with ‹ › / swipe. A one-line "Week so far: used/possible starts · unused · mismatch days" appears only
+  when something is off.
+- **Speed**: one `Promise.all` round: season sim (`loadSimPicks`, full row via `cachedClient(3600)`), lineup rows for past
+  days via `cachedClient(300)` and today/future live, the week's `matchup_score` rows (live; cached once the week is over),
+  transactions / approvals / advice / decisions live — column lists only, windowed by the week's dates. The league snapshot
+  and NBA schedule are bundled JSON (no query).
+- **League snapshot freshness**: `scripts/league-state.mjs` builds `src/content/league_state.json` (every team's players with
+  Yahoo slot + injury tag from `data/manual/league_rosters_2026-27.json`, names/NBA teams from the projections CSV) and
+  `src/content/nba_schedule.json` (from `data/raw/bbref_schedule/nba_2027_games.csv`). It runs as `prebuild` (keeps the
+  committed files when the inputs are missing). Vercel only deploys pushes that touch `web/`, so after
+  `fantasy league sync --write` the daily routine should run `cd web && node scripts/league-state.mjs` and commit the
+  changed JSON — that refreshes the opponent's lineup and triggers the deploy.
 
 ### `/league`
 Uses the post-draft `season` run if it is newer than the pre-draft projection (badge "post-draft · actual rosters"),
@@ -279,7 +291,7 @@ delete from data_snapshots where snapshot_id like 'mock-%';
 ```
 
 ## Install as an app (PWA)
-The dashboard is an installable web app ("Fantasy Desk"); it opens full-screen at `/` (→ Matchup after the draft).
+The dashboard is an installable web app ("Fantasy Desk"); it opens full-screen at `/` (→ This week after the draft).
 - **iPhone/iPad (Safari only):** open https://fantasy.harrisonku.com → Share button → *Add to Home Screen* → Add.
   Unlock writes once inside the installed app (it has its own cookie jar, separate from Safari).
 - **Android (Chrome):** open the URL → ⋮ menu → *Install app* (or *Add to Home screen*) → Install.

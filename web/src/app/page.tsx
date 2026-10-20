@@ -5,7 +5,7 @@ import { defaultDraftId, loadDrafts } from "@/lib/data";
 export const dynamic = "force-dynamic";
 
 /**
- * Landing: before/during the draft → Draft room; once the (real) draft is complete → Matchup.
+ * Landing: before/during the draft → Draft room; once the (real) draft is complete → This week (matchup + lineups).
  * (The old "Team" attention page moved: approvals → Activity tab badge, data freshness → More › History.)
  */
 export default async function Home() {
@@ -21,5 +21,5 @@ export default async function Home() {
       complete = (count ?? 0) >= draft.num_teams * draft.num_rounds;
     }
   }
-  redirect(complete ? "/matchup" : "/draft");
+  redirect(complete ? "/week" : "/draft");
 }

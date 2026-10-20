@@ -75,6 +75,8 @@ export interface Expected {
   optimized: { cats: number | null; pWin: number | null } | null;
   staticCurrent: { cats: number | null; pWin: number | null } | null;
   mc: { cats: number | null; catsSe: number | null; pWin: number | null; pWinSe: number | null; nSims: number | null } | null;
+  /** chance to win each category by Sunday given the banked stats (newer plans; absent in older rows) */
+  catWinProb: Record<string, number> | null;
 }
 
 export interface LineupPlan {
@@ -99,6 +101,8 @@ export interface LineupActual {
   runId: string;
   createdAt: string | null;
   date: string;
+  /** league team (draft slot) the lineup belongs to; null in rows that predate the field (= my team) */
+  team: number | null;
   source: string;
   observedAt: string | null;
   how: string | null;
@@ -140,6 +144,15 @@ function parseGames(v: unknown): Record<string, Record<string, string>> {
 function pair(v: unknown): { cats: number | null; pWin: number | null } | null {
   const x = o(v);
   return x ? { cats: n(x.expected_cats), pWin: n(x.p_win_matchup) } : null;
+}
+
+function probMap(v: unknown): Record<string, number> | null {
+  const out: Record<string, number> = {};
+  for (const [k, x] of Object.entries(o(v) ?? {})) {
+    const p = n(x);
+    if (p != null && p >= 0 && p <= 1) out[k] = p;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 export function parsePlan(row: RunRow): LineupPlan | null {
@@ -185,6 +198,7 @@ export function parsePlan(row: RunRow): LineupPlan | null {
               nSims: n(o(ex.monte_carlo)?.n_sims),
             }
           : null,
+        catWinProb: probMap(ex.cat_win_prob),
       }
     : null;
   const opp = o(sm.opponent);
@@ -236,6 +250,7 @@ export function parseActual(row: RunRow): LineupActual | null {
     runId: row.run_id,
     createdAt: row.created_at,
     date,
+    team: n(sm.team),
     source: s(sm.source) ?? "unknown",
     observedAt: s(sm.observed_at),
     how: s(sm.how),
