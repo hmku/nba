@@ -34,6 +34,7 @@ export function DecideButtons({ id }: { id: string }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="note (optional)"
+          aria-label="Approval note (optional)"
           disabled={!can || busy}
           className="min-w-0 flex-1 rounded border border-line bg-panel-2 px-2 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-50 sm:max-w-xs"
         />

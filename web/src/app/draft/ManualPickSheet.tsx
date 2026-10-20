@@ -183,6 +183,7 @@ export function ManualPickSheet({
                     setCands(null);
                   }}
                   placeholder="Search players…"
+                  aria-label="Search players"
                   className="w-full rounded-lg border border-line bg-panel-2 px-3 py-2.5 text-base outline-none focus:border-accent"
                 />
                 {matches.length > 0 && (

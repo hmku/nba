@@ -20,7 +20,8 @@ export interface Candidate {
   rec?: RecItem;
 }
 
-export function CatStrip({ impact, scale = 0.6 }: { impact?: Record<string, number | undefined> | null; scale?: number }) {
+/** Per-category impact strip (9 heat cells) for one candidate. Not the same as viz.CatStrip (rank strip). */
+export function ImpactStrip({ impact, scale = 0.6 }: { impact?: Record<string, number | undefined> | null; scale?: number }) {
   return (
     <div className="grid grid-cols-9 gap-px overflow-hidden rounded border border-line text-center">
       {CATS.map((c) => {

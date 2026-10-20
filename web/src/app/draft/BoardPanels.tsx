@@ -144,6 +144,7 @@ export function AvailableTable({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search name / team"
+          aria-label="Search available players by name or team"
           className="w-full rounded-lg border border-line bg-panel-2 px-3 py-2 text-base outline-none focus:border-accent"
         />
         <div className="flex flex-wrap gap-1">
@@ -151,6 +152,7 @@ export function AvailableTable({
             <button
               key={p}
               onClick={() => setPos(p)}
+              aria-pressed={pos === p}
               className={`rounded-md border px-2 py-1 text-xs ${pos === p ? "border-accent bg-accent/10 text-accent" : "border-line text-muted hover:text-fg"}`}
             >
               {p}

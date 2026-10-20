@@ -14,7 +14,8 @@ const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.i
 const objs = (v: unknown): Obj[] => (Array.isArray(v) ? v.filter(isObj) : []);
 const txt = (v: unknown): string => (v == null ? "—" : Array.isArray(v) ? v.map(String).join(", ") : String(v));
 
-function statusTone(s: unknown): string {
+/** Badge tone for an injury status (healthy / DTD-GTD / out). */
+function injuryTone(s: unknown): string {
   const v = String(s ?? "healthy");
   if (v === "healthy") return "good";
   if (v === "DTD" || v === "GTD") return "warn";
@@ -70,7 +71,7 @@ function MyTeam({ p }: { p: Obj }) {
             {x.injury_note != null && <span className="ml-1 text-xs text-muted">({txt(x.injury_note)})</span>}
           </span>,
           <span key="p" className="text-muted">{txt(x.positions)}</span>,
-          <Badge key="b" tone={statusTone(x.status)}>{txt(x.status ?? "healthy")}</Badge>,
+          <Badge key="b" tone={injuryTone(x.status)}>{txt(x.status ?? "healthy")}</Badge>,
         ])}
       />
     </>
@@ -147,7 +148,7 @@ function Injuries({ p }: { p: Obj }) {
           {txt(x.name)}
           {x.note != null && <span className="ml-1 text-xs text-muted">({txt(x.note)})</span>}
         </span>,
-        <Badge key="s" tone={statusTone(x.status)}>{txt(x.status)}</Badge>,
+        <Badge key="s" tone={injuryTone(x.status)}>{txt(x.status)}</Badge>,
         <span key="t" className="text-muted">{txt(x.fantasy_team)}</span>,
       ])}
     />

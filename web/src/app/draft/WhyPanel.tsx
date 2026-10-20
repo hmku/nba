@@ -6,7 +6,7 @@ import type { PlayerRow } from "@/lib/players";
 import { Badge, JsonView } from "@/components/ui";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
-import { type Candidate, CatStrip, probTone, Expander } from "./parts";
+import { type Candidate, ImpactStrip, probTone, Expander } from "./parts";
 
 /* "Why / all options" expander and the agent activity line of the draft room. */
 
@@ -67,7 +67,7 @@ export function WhyPanel({
               {c.prob != null && <span className={`num shrink-0 text-xs ${probTone(c.prob)}`}>{pct(c.prob)}</span>}
             </div>
             <div className="mt-1">
-              <CatStrip impact={c.rec?.cat_impact} />
+              <ImpactStrip impact={c.rec?.cat_impact} />
               <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
                 <span>
                   score <span className="num text-fg">{fmt(c.rec?.score)}</span>
@@ -125,7 +125,7 @@ export function WhyPanel({
                 )}
               </div>
               <div className="mt-1">
-                <CatStrip impact={c.row?.cat_values} scale={1.5} />
+                <ImpactStrip impact={c.row?.cat_values} scale={1.5} />
                 <p className="mt-0.5 text-[11px] text-muted">
                   value <span className="num">{fmt(c.row?.value)}</span> · {c.reason}
                 </p>

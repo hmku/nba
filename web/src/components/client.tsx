@@ -193,6 +193,7 @@ export function WriteAccess({ compact = false }: { compact?: boolean }) {
           <label className="mb-1 block text-xs text-muted">Dashboard passphrase</label>
           <input
             type="password"
+            aria-label="Dashboard passphrase"
             autoFocus
             value={pass}
             onChange={(e) => setPass(e.target.value)}
