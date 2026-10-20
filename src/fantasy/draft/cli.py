@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from collections.abc import Container
+from collections.abc import Collection, Container
 from pathlib import Path
 from typing import Annotated
 
@@ -241,8 +241,13 @@ def undo(overall: int, draft_id: DraftOpt = None, as_json: JsonOpt = False) -> N
     emit({"ok": True, "draft_id": d["draft_id"], "removed": n}, as_json, f"removed {n} pick(s)")
 
 
+def board_gaps(taken: Collection[int]) -> list[int]:
+    """Unrecorded picks below the highest recorded one (sync holes)."""
+    return [k for k in range(1, max(taken, default=0)) if k not in taken]
+
+
 def behind_clock(taken: Container[int], upto: int | None) -> list[int]:
-    """Picks before `upto` (e.g. my next pick) that are not recorded. Unlike `gaps` (holes below the highest
+    """Picks before `upto` (e.g. my next pick) that are not recorded. Unlike `board_gaps` (holes below the highest
     recorded pick) this also counts picks after the last recorded one: the board is behind the clock."""
     return [] if upto is None else [k for k in range(1, upto) if k not in taken]
 
@@ -269,7 +274,7 @@ def board(draft_id: DraftOpt = None, as_json: JsonOpt = False) -> None:
         "my_upcoming": [p for p in mine if p not in taken],
         "my_roster": [taken[p] for p in mine if p in taken],
         "recent_picks": picks[-12:],
-        "gaps": [p for p in range(1, (max(taken) if taken else 0)) if p not in taken],
+        "gaps": board_gaps(taken),
     }
     # picks before my next pick not yet on the board (must be [] before prepare-pick, like gaps)
     out["behind"] = behind_clock(taken, out["my_upcoming"][0] if out["my_upcoming"] else None)
