@@ -126,17 +126,21 @@ export function missingRoots(events: AgentEvent[]): string[] {
 
 const tsOf = (v: string | null | undefined): string => v ?? "";
 
-/** Build the feed. `events` may contain duplicates (several queries); `canSeePrivate` = passphrase unlocked. */
+/** Build the feed. `events` may contain duplicates (several queries); `canSeePrivate` = passphrase unlocked.
+ *  `order`: "activity" (default: newest of the update and its replies; the agent API) or "posted" (the update's
+ *  own time: stable for the Activity page's cursor pagination, replies never move a thread). */
 export function buildFeed({
   events,
   runs = [],
   snapshots = [],
   canSeePrivate = false,
+  order = "activity",
 }: {
   events: AgentEvent[];
   runs?: AgentRun[];
   snapshots?: LeagueSnapshot[];
   canSeePrivate?: boolean;
+  order?: "posted" | "activity";
 }): FeedItem[] {
   const byId = new Map<string, AgentEvent>();
   for (const e of events) if (e && e.event_id && (canSeePrivate || !isPrivate(e))) byId.set(e.event_id, e);
@@ -174,7 +178,8 @@ export function buildFeed({
     const t = snapshots.map((s) => tsOf(s.last_seen_at ?? s.observed_at ?? s.ts)).sort().at(-1) ?? "";
     out.push({ key: "snapshots", type: "snapshots", author: "muse", kind: "yahoo snapshots", ts: t, lastActivity: t, snapshots, replies: [], replyable: false });
   }
-  return out.sort((a, b) => b.lastActivity.localeCompare(a.lastActivity) || a.key.localeCompare(b.key));
+  const at = (it: FeedItem) => (order === "activity" ? it.lastActivity : it.ts);
+  return out.sort((a, b) => at(b).localeCompare(at(a)) || a.key.localeCompare(b.key));
 }
 
 export interface FeedFilter {
@@ -212,12 +217,6 @@ export function trimPayload(v: unknown, max = 2000): unknown {
   const s = JSON.stringify(v);
   if (s.length <= max) return v;
   return { _truncated: true, chars: s.length, preview: s.slice(0, max) + "…" };
-}
-
-/** "Load more": how many feed cards to render for `?n=` (default 50, step 50, max 300). */
-export function feedLimit(n: string | null | undefined): number {
-  const v = Number(n);
-  return Number.isInteger(v) && v > 0 ? Math.min(300, Math.max(50, Math.ceil(v / 50) * 50)) : 50;
 }
 
 /** Text longer than this is collapsed behind "more" on the card. */
