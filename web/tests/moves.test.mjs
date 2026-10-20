@@ -85,3 +85,14 @@ test("formatMetric and linkHref", () => {
   assert.equal(linkHref("docs/research/x.md").href, "https://github.com/hmku/nba/blob/main/docs/research/x.md");
   assert.equal(linkHref("https://a.b/c").internal, false);
 });
+
+test("linkHref: protocol-relative and scheme paths never become internal links", () => {
+  assert.deepEqual(linkHref("/"), { href: "/", internal: true });
+  for (const p of ["//evil.example/x", "/\\evil.example/x"]) {
+    const r = linkHref(p);
+    assert.equal(r.internal, false, p);
+    assert.ok(r.href.startsWith("https://github.com/hmku/nba/blob/main/"), r.href);
+  }
+  assert.ok(linkHref("javascript:alert(1)").href.startsWith("https://github.com/"));
+  assert.equal(linkHref("./docs/a.md").href, "https://github.com/hmku/nba/blob/main/docs/a.md");
+});

@@ -223,9 +223,10 @@ export const EVIDENCE_HELP: Record<Evidence, string> = {
   literature: "From a cited external source",
 };
 
-/** Repo-relative paths -> GitHub; dashboard routes stay internal; URLs pass through. */
+/** Repo-relative paths -> GitHub; dashboard routes stay internal; URLs pass through. A protocol-relative
+ *  "//host" or "/\host" is not a dashboard route (browsers resolve it to another site): it goes to GitHub too. */
 export function linkHref(path: string): { href: string; internal: boolean } {
   if (/^https?:\/\//.test(path)) return { href: path, internal: false };
-  if (path.startsWith("/")) return { href: path, internal: true };
+  if (/^\/(?![/\\])/.test(path)) return { href: path, internal: true };
   return { href: `https://github.com/hmku/nba/blob/main/${path.replace(/^\.\//, "")}`, internal: false };
 }
