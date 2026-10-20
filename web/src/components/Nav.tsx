@@ -7,10 +7,10 @@ import { ThemeToggle, WriteAccess } from "./client";
 import { anonClient } from "@/lib/supabase";
 
 const TABS = [
-  { href: "/draft", label: "Draft", icon: "◎" },
   { href: "/matchup", label: "Matchup", icon: "⚔" },
   { href: "/league", label: "League", icon: "▦" },
   { href: "/activity", label: "Activity", icon: "≋" },
+  { href: "/draft", label: "Draft", icon: "◎" },
 ];
 
 /** Pending-approval count for the Activity badge (polls every 30s while visible). */
@@ -112,7 +112,7 @@ export function Nav() {
     <>
       <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur">
         <div className="mx-auto flex h-12 max-w-5xl items-center gap-4 px-4">
-          <Link href="/draft" className="text-[15px] font-semibold tracking-tight">
+          <Link href="/" className="text-[15px] font-semibold tracking-tight">
             Fantasy Desk
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
