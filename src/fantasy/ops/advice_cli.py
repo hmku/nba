@@ -41,7 +41,8 @@ def _line(r: dict[str, Any]) -> str:
 @app.command("post")
 @handled
 def post_cmd(
-    file: Annotated[Path, typer.Option("--file", "-f", help="Advice JSON (schema advice/1)")],
+    file: Annotated[Path, typer.Option("--file", "-f", help="Advice JSON (schema advice/1; open trade/add_drop/"
+                                       "stream items need rationale + why_now)")],
     advice_id: Annotated[str | None, typer.Option(
         help="Stable item id (default: the file's advice_id, else the file name stem)")] = None,
     use_rest: Rest = False,
@@ -77,7 +78,10 @@ def status_cmd(
         res = advice.set_status(st, ref, status, note=note, approval_id=approval_id)
     finally:
         st.close()
-    emit(res, json_out, ("unchanged: " if res["unchanged"] else "status recorded: ") + _line(res))
+    text = ("unchanged: " if res["unchanged"] else "status recorded: ") + _line(res)
+    for w in res.get("warnings", []):
+        text += f"\nwarning: {w}"
+    emit(res, json_out, text)
 
 
 @app.command("list")

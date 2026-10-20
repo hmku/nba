@@ -1,7 +1,7 @@
 // Moves view readers (shape: `fantasy advise post|status`, schema advice/1). Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatMetric, groupMoves, latestAdvice, linkHref, parseAdvice } from "../src/lib/moves.ts";
+import { formatMetric, groupMoves, isLongWhy, latestAdvice, linkHref, parseAdvice, parseRationale, parseWhyNow } from "../src/lib/moves.ts";
 
 const base = (over = {}) => ({
   advice_id: "2026-10-20-murray-trade",
@@ -95,4 +95,46 @@ test("linkHref: protocol-relative and scheme paths never become internal links",
   }
   assert.ok(linkHref("javascript:alert(1)").href.startsWith("https://github.com/"));
   assert.equal(linkHref("./docs/a.md").href, "https://github.com/hmku/nba/blob/main/docs/a.md");
+});
+
+test("rationale and why_now (advice-0.2.0) parse; old rows without them still parse", () => {
+  const old = parseAdvice(row("adv-old", null, base()));
+  assert.deepEqual(old.rationale, []);
+  assert.equal(old.whyNow, null);
+  const a = parseAdvice(
+    row("adv-new", null, base({
+      rationale: ["Champagnie shoots threes and rebounds.", "- Bailey is a raw rookie", "• cheap to try", " ", 4],
+      why_now: {
+        before: "At the draft our model ranked him below the last picks.",
+        changed: ["He started 3 preseason games", { text: "inseason-0.3.0 refill model", kind: "model" }, { text: "x", kind: "bogus" }, "", 7],
+        evidence: ["ΔP(title)", 3],
+      },
+    })),
+  );
+  assert.deepEqual(a.rationale, [
+    { text: "Champagnie shoots threes and rebounds.", bullet: false },
+    { text: "Bailey is a raw rookie", bullet: true },
+    { text: "cheap to try", bullet: true },
+  ]);
+  assert.equal(a.whyNow.before, "At the draft our model ranked him below the last picks.");
+  assert.deepEqual(a.whyNow.changed, [
+    { text: "He started 3 preseason games", kind: null },
+    { text: "inseason-0.3.0 refill model", kind: "model" },
+    { text: "x", kind: null },
+  ]);
+  assert.deepEqual(a.whyNow.evidence, ["ΔP(title)"]);
+});
+
+test("parseRationale/parseWhyNow edge cases and isLongWhy", () => {
+  assert.deepEqual(parseRationale("one para"), [{ text: "one para", bullet: false }]);
+  assert.deepEqual(parseRationale(null), []);
+  assert.equal(parseWhyNow("text"), null);
+  assert.equal(parseWhyNow({ before: " ", changed: [] }), null);
+  assert.deepEqual(parseWhyNow({ changed: ["c"] }), { before: "", changed: [{ text: "c", kind: null }], evidence: [] });
+  const short = parseRationale(["a", "b"]);
+  const w = parseWhyNow({ before: "b", changed: ["1", "2", "3"] });
+  assert.equal(isLongWhy(short, w), false);
+  assert.equal(isLongWhy(parseRationale(["a", "b", "c"]), null), true);
+  assert.equal(isLongWhy(short, parseWhyNow({ before: "b", changed: ["1", "2", "3", "4"] })), true);
+  assert.equal(isLongWhy(parseRationale(["x".repeat(421)]), null), true);
 });

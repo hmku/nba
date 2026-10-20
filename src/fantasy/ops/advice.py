@@ -9,6 +9,10 @@ item. Rows are never updated in place, matching every other `model_runs` writer,
 (`fantasy publish`, upsert by run_id) can therefore never clobber a newer status with an older one.
 
 The summary schema (`advice/1`) is documented in docs/research/dashboard_data.md section 4.
+advice-0.2.0 added `rationale` (plain-language why) and `why_now` (what we believed before and what
+changed since). Both are optional in the schema (old rows still validate and render) but REQUIRED when
+posting new or changed content for an actionable open item (`WHY_TYPES` with status in `WHY_STATUSES`);
+`validate(strict=False)`, an unchanged re-post and a status change only warn.
 
 Advice is display-only: `status = "approved"` mirrors a decision the user already made (an
 `approvals` row or an explicit yes in chat); it never authorises a Yahoo write by itself.
@@ -41,7 +45,7 @@ if TYPE_CHECKING:
     from fantasy.db.rest import RestClient
 
 ADVICE_KIND = "advice"
-ADVICE_VERSION = "advice-0.1.0"
+ADVICE_VERSION = "advice-0.2.0"
 SCHEMA = "advice/1"
 
 TYPES = ("trade", "add_drop", "stream", "lineup", "il")
@@ -54,10 +58,22 @@ EVIDENCE = ("fitted", "simulated", "prior", "literature")
 MANAGED = frozenset({"schema", "advice_id", "version", "supersedes", "status_history"})
 KNOWN = frozenset({
     "type", "title", "status", "headline", "for_date", "week", "verdict", "metrics", "scenarios",
-    "scenario_columns", "risks", "requires_user_yes", "links", "approval_id",
+    "scenario_columns", "risks", "requires_user_yes", "links", "approval_id", "rationale", "why_now",
 }) | MANAGED
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,99}$")
 MAX_VERDICT_LINES = 3
+
+# rationale / why_now (advice-0.2.0)
+WHY_TYPES = frozenset({"trade", "add_drop", "stream"})
+WHY_STATUSES = frozenset({"idea", "awaiting_yes"})
+CHANGE_KINDS = ("news", "model", "roster", "schedule", "league", "other")
+MAX_RATIONALE_ITEMS = 6
+MAX_RATIONALE_CHARS = 600  # per paragraph / bullet
+MAX_BEFORE_CHARS = 800
+MAX_CHANGED_ITEMS = 8
+MAX_CHANGED_CHARS = 400
+MAX_EVIDENCE_REFS = 8
+MAX_EVIDENCE_CHARS = 200
 LIST_LIMIT = 2000
 
 
@@ -121,8 +137,23 @@ def _scenario(s: Any, i: int) -> dict[str, Any]:
     return dict(s)
 
 
-def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
-    """Check an advice summary; return (normalised summary without managed keys, warnings)."""
+def needs_why(summary: dict[str, Any]) -> bool:
+    """True when `rationale` and `why_now` are required: an actionable (trade/add_drop/stream) open item."""
+    return summary.get("type") in WHY_TYPES and summary.get("status") in WHY_STATUSES
+
+
+def missing_why(summary: dict[str, Any]) -> list[str]:
+    """The required-but-absent explanation keys of a (validated) summary; [] when none are required."""
+    if not needs_why(summary):
+        return []
+    return [k for k in ("rationale", "why_now") if not summary.get(k)]
+
+
+def validate(raw: Any, *, strict: bool = True) -> tuple[dict[str, Any], list[str]]:
+    """Check an advice summary; return (normalised summary without managed keys, warnings).
+
+    `strict` (default): an actionable open item (`needs_why`) without `rationale`/`why_now` is an
+    error; otherwise only a warning (older items, unchanged re-posts)."""
     if not isinstance(raw, dict):
         raise AdviceError("advice must be a JSON object")
     warnings: list[str] = []
@@ -132,6 +163,14 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     s: dict[str, Any] = {k: v for k, v in raw.items() if k not in MANAGED}
     _validate_header(raw, s)
     _validate_lists(raw, s, warnings)
+    _validate_why(raw, s, warnings)
+    missing = missing_why(s)
+    if missing:
+        msg = (f"{' and '.join(missing)} required for an open {s['type']} recommendation (status "
+               "idea/awaiting_yes): say in plain language why, and what changed since we decided otherwise")
+        if strict:
+            raise AdviceError(msg)
+        warnings.append(msg)
     if not s["metrics"] and raw["type"] != "lineup":
         warnings.append("no metrics: every quantitative claim should carry an evidence label")
     if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
@@ -191,6 +230,67 @@ def _validate_lists(raw: dict[str, Any], s: dict[str, Any], warnings: list[str])
     s["links"] = [_link(lk, i) for i, lk in enumerate(links)]
     if raw.get("approval_id") is not None:
         s["approval_id"] = _str(raw, "approval_id", "")
+
+
+def _text(v: Any, where: str, limit: int) -> str:
+    if not isinstance(v, str) or not v.strip():
+        raise AdviceError(f"{where}: expected a non-empty string, got {v!r}")
+    if len(v.strip()) > limit:
+        raise AdviceError(f"{where}: at most {limit} characters (got {len(v.strip())}); keep it short")
+    return v.strip()
+
+
+def _validate_why(raw: dict[str, Any], s: dict[str, Any], warnings: list[str]) -> None:
+    """rationale: 1-6 short strings (a bare string counts as one). why_now: {before, changed:
+    [str | {text, kind?}], evidence?: [metric label]}."""
+    if raw.get("rationale") is not None:
+        r = raw["rationale"]
+        if isinstance(r, str):
+            r = [r]
+        if not isinstance(r, list) or not 1 <= len(r) <= MAX_RATIONALE_ITEMS:
+            raise AdviceError(f"rationale: expected 1-{MAX_RATIONALE_ITEMS} paragraph/bullet strings")
+        s["rationale"] = [_text(x, f"rationale[{i}]", MAX_RATIONALE_CHARS) for i, x in enumerate(r)]
+    if raw.get("why_now") is None:
+        return
+    w = raw["why_now"]
+    if not isinstance(w, dict):
+        raise AdviceError("why_now: expected an object {before, changed, evidence?}")
+    extra = set(w) - {"before", "changed", "evidence"}
+    if extra:
+        raise AdviceError(f"why_now: unknown keys {sorted(extra)}")
+    out: dict[str, Any] = {"before": _text(w.get("before"), "why_now.before", MAX_BEFORE_CHARS)}
+    ch = w.get("changed")
+    if not isinstance(ch, list) or not 1 <= len(ch) <= MAX_CHANGED_ITEMS:
+        raise AdviceError(f"why_now.changed: expected a list of 1-{MAX_CHANGED_ITEMS} items")
+    out["changed"] = [_change(c, i) for i, c in enumerate(ch)]
+    if w.get("evidence") is not None:
+        ev = w["evidence"]
+        if not isinstance(ev, list) or len(ev) > MAX_EVIDENCE_REFS:
+            raise AdviceError(f"why_now.evidence: expected a list of at most {MAX_EVIDENCE_REFS} metric labels")
+        refs = [_text(x, f"why_now.evidence[{i}]", MAX_EVIDENCE_CHARS) for i, x in enumerate(ev)]
+        labels = {m["label"] for m in s.get("metrics", [])}
+        unknown = [x for x in refs if x not in labels]
+        if unknown:
+            warnings.append(f"why_now.evidence refs not matching any metric label: {unknown}")
+        out["evidence"] = refs
+    s["why_now"] = out
+
+
+def _change(c: Any, i: int) -> str | dict[str, str]:
+    where = f"why_now.changed[{i}]"
+    if isinstance(c, str):
+        return _text(c, where, MAX_CHANGED_CHARS)
+    if not isinstance(c, dict):
+        raise AdviceError(f"{where}: expected a string or {{text, kind?}}")
+    extra = set(c) - {"text", "kind"}
+    if extra:
+        raise AdviceError(f"{where}: unknown keys {sorted(extra)}")
+    out = {"text": _text(c.get("text"), f"{where}.text", MAX_CHANGED_CHARS)}
+    if c.get("kind") is not None:
+        if c["kind"] not in CHANGE_KINDS:
+            raise AdviceError(f"{where}.kind: must be one of {list(CHANGE_KINDS)}, got {c['kind']!r}")
+        out["kind"] = c["kind"]
+    return out
 
 
 def _link(lk: Any, i: int) -> dict[str, str | None]:
@@ -354,8 +454,9 @@ def post(raw: dict[str, Any], st: AdviceStore, *, params: dict[str, Any] | None 
     """Validate and record one advice item. Re-posting identical content is a no-op that returns
     the latest version (its status is kept even if the file's differs: status changes go through
     `set_status`, so re-running a seed never reverts a decision); changed content appends a new
-    version carrying the file's status."""
-    summary, warnings = validate(raw)
+    version carrying the file's status. New or changed content of an actionable open item must carry
+    `rationale` and `why_now` (`needs_why`); an unchanged re-post of an older item only warns."""
+    summary, warnings = validate(raw, strict=False)
     aid = advice_id or raw.get("advice_id") or (Path(source_file).stem if source_file else None) \
         or f"{now():%Y-%m-%d}-{slug(summary['title'])}"
     aid = slug(aid) if not ID_RE.match(aid) else aid
@@ -369,6 +470,8 @@ def post(raw: dict[str, Any], st: AdviceStore, *, params: dict[str, Any] | None 
                 warnings.append(f"content unchanged; the latest status is {ls.get('status')!r}, not the file's "
                                 f"{summary['status']!r}: use `fantasy advise status` to change it")
             return {"unchanged": True, "warnings": warnings, **_brief(last)}
+    if missing_why(summary):
+        validate(raw, strict=True)  # raises the explanatory AdviceError
     t = now()
     history = list((last or {}).get("summary", {}).get("status_history") or [])
     if last is None or (last.get("summary") or {}).get("status") != summary["status"]:
@@ -418,7 +521,10 @@ def set_status(st: AdviceStore, ref: str, status: str, *, note: str | None = Non
                     "approval_id": approval_id},
                {"previous_run_id": last["run_id"], "content_sha256": content_hash(ls)})
     st.insert(row)
-    return {"unchanged": False, "previous_run_id": last["run_id"], **_brief(row)}
+    missing = missing_why(ls)
+    warnings = [f"{' and '.join(missing)} missing: this open recommendation has no plain-language "
+                "justification; re-post it with them"] if missing else []
+    return {"unchanged": False, "previous_run_id": last["run_id"], "warnings": warnings, **_brief(row)}
 
 
 def list_advice(st: AdviceStore, *, status: str | None = None, all_versions: bool = False,
