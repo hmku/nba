@@ -221,6 +221,7 @@ class DraftOptimizer:
         if self.params.room_self not in ("best", "skip", "plan"):
             raise ValueError(f"unknown room_self {self.params.room_self!r} (best | skip | plan)")
         self._table: dict[int, np.ndarray] | None = None  # sim availability for the board being scored
+        self._filler_cache: dict[tuple, dict[int, Line]] = {}  # research board fillers, reset per recommend
 
     def _pa(self, at_pick: int, current: int, idx: np.ndarray | None = None) -> np.ndarray:
         """P(available at `at_pick` | on the board now), for all rows or rows `idx`."""
@@ -249,7 +250,6 @@ class DraftOptimizer:
                                      [pk.slot for pk in ctx.order], current, targets, my_slot,
                                      room=prm.room, n_sims=prm.room_sims, skip_my_current=skip_my_current,
                                      self_pick=prm.room_self, plan=plan)
-        self._filler_cache: dict[tuple, dict[int, Line]] = {}
 
     # ------------------------------------------------------------------ helpers
     def _objective(self, P: np.ndarray, w: np.ndarray) -> np.ndarray:
@@ -413,29 +413,18 @@ class DraftOptimizer:
 
     # ------------------------------------------------------------------ public API
     def recommend(self, state: DraftState, draft_id: str = "local", model_run_id: str | None = None) -> dict:
+        """Rank candidates for my next pick on the board `state` (strategy scan + rollouts) and build the payload."""
         ctx, prm = self.ctx, self.params
         n_total = len(ctx.order)
         current = state.current_pick(n_total)
-        taken_ids = set(state.taken.values())
-        unknown = sorted(t for t in taken_ids if t not in ctx.pos)
-        available = np.ones(len(ctx.ids), dtype=bool)
-        for t in taken_ids:
-            if t in ctx.pos:
-                available[ctx.pos[t]] = False
+        available, unknown = self._available(state.taken)
         my_all = self.my_picks(state.my_slot)
         my_roster_ids = [state.taken[p] for p in my_all if p in state.taken]
         roster = [ctx.pos[p] for p in my_roster_ids if p in ctx.pos]
         future = [p for p in my_all if p >= current and p not in state.taken]
         on_clock_slot = ctx.order[current - 1].slot if current <= n_total else None
         my_turn = on_clock_slot == state.my_slot
-        warnings: list[str] = []
-        if state.gaps():
-            warnings.append(f"Picks {state.gaps()} not recorded: some listed players may already be gone; sync the board.")
-        if unknown:
-            warnings.append(f"{len(unknown)} drafted player(s) not in projections: {', '.join(unknown[:5])}")
-        unverified = ctx.settings.unverified_fields()
-        if unverified:
-            warnings.append("League settings not yet verified from Yahoo: " + ", ".join(unverified))
+        warnings = self._board_warnings(state, unknown)
         if not future:
             return {"draft_id": draft_id, "as_of_pick": current - 1, "for_pick": None, "my_next_picks": [],
                     "recommendations": [], "warnings": warnings + ["No remaining picks for my slot."],
@@ -444,25 +433,94 @@ class DraftOptimizer:
         decision_pick, later = future[0], future[1:]
         self._table = (self._sim_table(available, current, future, state.my_slot, state=state)
                        if prm.availability == "sim" else None)
-        # candidates: best by value + best by market among available
+        cands = self._candidates(available, current, decision_pick, roster, len(later))
+        strategies, strat_results, per_strategy_cands = self._scan_strategies(cands, available, roster, later,
+                                                                              current)
+        chosen = self._choose_strategy(strat_results)
+        rows = per_strategy_cands[chosen]
+        next_pick = later[0] if later else None
+        pa_disp = self._display_availability(available, current, future, state.my_slot, my_turn, next_pick)
+        recs = self._recommendation_rows(rows, pa_disp, decision_pick, next_pick)
+        research = prm.rollout_mode == "expected" and (prm.filler != "market" or prm.refine_passes > 0)
+        if research:
+            for rec_, r in zip(recs, rows, strict=True):
+                rec_["score_passes"] = [round(x, 4) for x in r["obj_passes"]]
+        top = recs[0]
+        out = {
+            "draft_id": draft_id,
+            "as_of_pick": current - 1,
+            "for_pick": decision_pick,
+            "on_the_clock": {"overall": current, "slot": on_clock_slot, "is_me": my_turn},
+            "picks_until_mine": decision_pick - current,
+            "my_next_picks": future,
+            "model_run_id": model_run_id,
+            "generated_at": _now(),
+            "objective": prm.objective,
+            "optimizer_version": OPTIMIZER_VERSION,
+            "rollout_mode": prm.rollout_mode,
+            "availability": prm.availability if prm.availability == "adp" else f"sim:{prm.room}x{prm.room_sims}"
+                            + ("" if prm.room_self == "best" else f":self={prm.room_self}"),
+            "recommendations": recs,
+            "strategy": {"name": chosen, "punt": strategies[chosen],
+                         "notes": _strategy_note(chosen, strat_results), "scan": strat_results},
+            "team_profile": self._team_profile(roster, top, strategies[chosen]),
+            "planned_picks": [{"pick": p, "player_id": pid, "name": str(ctx.values.loc[pid, "name"])}
+                              for p, pid in zip(later, top["plan"], strict=False)],
+            "roster": self._roster_payload(state, my_all),
+            "open_starting_slots": unfilled_slots([ctx.positions[i] for i in roster], ctx.settings.starting_slots),
+            "warnings": warnings,
+        }
+        if research:  # research options only: default payloads stay identical to optimizer-0.2.0
+            out["filler"] = {"mode": prm.filler, "refine_passes": prm.refine_passes,
+                             "convergence": _convergence(rows),
+                             "evidence": "docs/research/optimizer_placeholders.md"}
+        return out
+
+    def _available(self, taken: dict[int, str]) -> tuple[np.ndarray, list[str]]:
+        """(availability mask over ctx rows, sorted drafted ids that are not in the projections)."""
+        ctx = self.ctx
+        taken_ids = set(taken.values())
+        unknown = sorted(t for t in taken_ids if t not in ctx.pos)
+        available = np.ones(len(ctx.ids), dtype=bool)
+        for t in taken_ids:
+            if t in ctx.pos:
+                available[ctx.pos[t]] = False
+        return available, unknown
+
+    def _board_warnings(self, state: DraftState, unknown: list[str]) -> list[str]:
+        warnings: list[str] = []
+        if state.gaps():
+            warnings.append(f"Picks {state.gaps()} not recorded: some listed players may already be gone; sync the board.")
+        if unknown:
+            warnings.append(f"{len(unknown)} drafted player(s) not in projections: {', '.join(unknown[:5])}")
+        unverified = self.ctx.settings.unverified_fields()
+        if unverified:
+            warnings.append("League settings not yet verified from Yahoo: " + ", ".join(unverified))
+        return warnings
+
+    def _candidates(self, available: np.ndarray, current: int, decision_pick: int, roster: list[int],
+                    n_later: int) -> list[int]:
+        """Rows to score: best by value + best by market among available (only feasible ones, if any are)."""
+        ctx, prm = self.ctx, self.params
         avail_idx = np.flatnonzero(available)
-        by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
-        by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
         if decision_pick > current:
             # not on the clock yet: only consider players with a real chance of lasting to my pick
             p_dec = self._pa(decision_pick, current, avail_idx)
             avail_idx = avail_idx[p_dec >= 0.15]
-            by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
-            by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
+        by_val = avail_idx[np.argsort(-ctx.value[avail_idx])][: prm.n_candidates]
+        by_mkt = avail_idx[np.argsort(ctx.market_rank[avail_idx])][:4]
         cands = list(dict.fromkeys([*by_val.tolist(), *by_mkt.tolist()]))
-        cands = [c for c in cands if self._feasible_rows(roster, np.array([c]), len(later))[0]] or cands
+        return [c for c in cands if self._feasible_rows(roster, np.array([c]), n_later)[0]] or cands
 
-        # --- strategy scan
+    def _scan_strategies(
+        self, cands: list[int], available: np.ndarray, roster: list[int], later: list[int], current: int,
+    ) -> tuple[dict[str, list[str]], dict[str, dict], dict[str, list[dict]]]:
+        """Score every candidate under each punt strategy. Returns (strategies scanned, best result per strategy,
+        candidate rows per strategy sorted by objective)."""
+        ctx, prm = self.ctx, self.params
         strategies = prm.strategies if prm.strategy is None else {prm.strategy: prm.strategies[prm.strategy]}
-        w_full = ctx.weights([])
         strat_results: dict[str, dict] = {}
         per_strategy_cands: dict[str, list[dict]] = {}
-        research = prm.rollout_mode == "expected" and (prm.filler != "market" or prm.refine_passes > 0)
         self._filler_cache = {}
         for name, punt in strategies.items():
             w = ctx.weights(punt)
@@ -479,33 +537,48 @@ class DraftOptimizer:
             best = rows[0]
             strat_results[name] = {"punt": punt, "best_player": ctx.ids[best["row"]],
                                    "expected_category_wins": best["cat_wins"], "matchup_win_prob": best["matchup"]}
+        return strategies, strat_results, per_strategy_cands
+
+    def _choose_strategy(self, strat_results: dict[str, dict]) -> str:
+        """Best-scoring strategy; a punt must beat balanced by `strategy_switch_margin`."""
+        prm = self.params
+        n_cats = len(self.ctx.weights([]))
 
         def strat_score(name: str) -> float:
             r = strat_results[name]
-            return r["matchup_win_prob"] if prm.objective == "matchup" else r["expected_category_wins"] / len(w_full)
+            return r["matchup_win_prob"] if prm.objective == "matchup" else r["expected_category_wins"] / n_cats
 
         chosen = max(strat_results, key=strat_score)
         if "balanced" in strat_results and chosen != "balanced":
             if strat_score(chosen) - strat_score("balanced") < prm.strategy_switch_margin:
                 chosen = "balanced"
-        rows = per_strategy_cands[chosen]
-        best_obj = rows[0]["obj"]
-        second_obj = rows[1]["obj"] if len(rows) > 1 else best_obj
-        next_pick = later[0] if later else None
+        return chosen
 
-        # Displayed availability. The decision table above lets the simulated me take the best-value player at
-        # my current pick (so he shows P = 0 at every later pick, even back-to-back); for display, answer
-        # "if I pass on him now, is he there at my next pick?" from a table that skips my own current pick
-        # (same seeds). Decision path, scores and ranking are unchanged.
+    def _display_availability(self, available: np.ndarray, current: int, future: list[int], my_slot: int,
+                              my_turn: bool, next_pick: int | None) -> Callable[[int, int], float]:
+        """P(row available at pick) as displayed.
+
+        The decision table lets the simulated me take the best-value player at my current pick (so he shows P = 0
+        at every later pick, even back-to-back); for display, answer "if I pass on him now, is he there at my next
+        pick?" from a table that skips my own current pick (same seeds). Decision path, scores and ranking are
+        unchanged."""
         disp = self._table
-        if self._table is not None and my_turn and next_pick and prm.room_self == "best":  # non-best: already skips
-            disp = self._sim_table(available, current, future, state.my_slot, skip_my_current=True)
+        if self._table is not None and my_turn and next_pick and self.params.room_self == "best":
+            disp = self._sim_table(available, current, future, my_slot, skip_my_current=True)  # non-best: skips
 
         def pa_disp(at: int, c: int) -> float:
             if disp is not None and at in disp:
                 return float(disp[at][c])
             return float(self._pa(at, current, np.array([c]))[0])
 
+        return pa_disp
+
+    def _recommendation_rows(self, rows: list[dict], pa_disp: Callable[[int, int], float], decision_pick: int,
+                             next_pick: int | None) -> list[dict]:
+        """One payload row per scored candidate (in score order), with its reason."""
+        ctx = self.ctx
+        best_obj = rows[0]["obj"]
+        second_obj = rows[1]["obj"] if len(rows) > 1 else best_obj
         recs = []
         for r in rows:
             c = r["row"]
@@ -536,52 +609,24 @@ class DraftOptimizer:
             })
         for rec in recs:
             rec["reason"] = self._reason(rec, recs[0], next_pick)
+        return recs
 
-        if research:
-            for rec_, r in zip(recs, rows, strict=True):
-                rec_["score_passes"] = [round(x, 4) for x in r["obj_passes"]]
-        top = recs[0]
+    def _team_profile(self, roster: list[int], top: dict, punts: list[str]) -> dict:
+        """Category profile of the projected final roster (current roster + top recommendation + its plan)."""
+        ctx = self.ctx
         final_team = roster + [ctx.pos[top["player_id"]]] + [ctx.pos[p] for p in top["plan"]]
         team_eval = ctx.model.evaluate_team(final_team)
         current_eval = ctx.model.evaluate_team(roster) if roster else None
-        out = {
-            "draft_id": draft_id,
-            "as_of_pick": current - 1,
-            "for_pick": decision_pick,
-            "on_the_clock": {"overall": current, "slot": on_clock_slot, "is_me": my_turn},
-            "picks_until_mine": decision_pick - current,
-            "my_next_picks": future,
-            "model_run_id": model_run_id,
-            "generated_at": _now(),
-            "objective": prm.objective,
-            "optimizer_version": OPTIMIZER_VERSION,
-            "rollout_mode": prm.rollout_mode,
-            "availability": prm.availability if prm.availability == "adp" else f"sim:{prm.room}x{prm.room_sims}"
-                            + ("" if prm.room_self == "best" else f":self={prm.room_self}"),
-            "recommendations": recs,
-            "strategy": {"name": chosen, "punt": strategies[chosen],
-                         "notes": _strategy_note(chosen, strat_results), "scan": strat_results},
-            "team_profile": {
-                "categories": {k: {"win_prob": round(p, 3), "mean": round(team_eval["cat_means"][k], 3),
-                                   "league_avg": round(team_eval["opp_means"][k], 3)}
-                               for k, p in team_eval["cat_win_probs"].items()},
-                "punts": strategies[chosen],
-                "expected_category_wins": round(team_eval["expected_category_wins"], 3),
-                "matchup_win_prob": round(team_eval["matchup_win_prob"], 3),
-                "basis": "projected final roster if the top recommendation and its planned (most likely) picks are taken",
-                "current_roster_cat_win_probs": current_eval["cat_win_probs"] if current_eval else None,
-            },
-            "planned_picks": [{"pick": p, "player_id": pid, "name": str(ctx.values.loc[pid, "name"])}
-                              for p, pid in zip(later, top["plan"], strict=False)],
-            "roster": self._roster_payload(state, my_all),
-            "open_starting_slots": unfilled_slots([ctx.positions[i] for i in roster], ctx.settings.starting_slots),
-            "warnings": warnings,
+        return {
+            "categories": {k: {"win_prob": round(p, 3), "mean": round(team_eval["cat_means"][k], 3),
+                               "league_avg": round(team_eval["opp_means"][k], 3)}
+                           for k, p in team_eval["cat_win_probs"].items()},
+            "punts": punts,
+            "expected_category_wins": round(team_eval["expected_category_wins"], 3),
+            "matchup_win_prob": round(team_eval["matchup_win_prob"], 3),
+            "basis": "projected final roster if the top recommendation and its planned (most likely) picks are taken",
+            "current_roster_cat_win_probs": current_eval["cat_win_probs"] if current_eval else None,
         }
-        if research:  # research options only: default payloads stay identical to optimizer-0.2.0
-            out["filler"] = {"mode": prm.filler, "refine_passes": prm.refine_passes,
-                             "convergence": _convergence(rows),
-                             "evidence": "docs/research/optimizer_placeholders.md"}
-        return out
 
     def _roster_payload(self, state: DraftState, my_all: list[int]) -> list[dict]:
         out = []
