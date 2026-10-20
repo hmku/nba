@@ -1,4 +1,4 @@
-# Dashboard data: pre-draft simulation rows in `model_runs`
+# Dashboard data: simulation and advice rows in `model_runs`
 
 _Status: 2026-10-18. Written for the web agent (dashboard in `web/`). Producer: `fantasy draft simulate`
 (kind `draft_sim`) and `fantasy sim preseason` (kind `season_sim`, `params.command = "preseason"`)._
@@ -201,3 +201,67 @@ scenario is absent or starts with `post-draft` (`web/src/lib/postDraft.ts:isSeas
 }
 ```
 `inputs.rosters` holds every team's player ids; `inputs.matchup_assumed_weeks` repeats the assumption.
+
+## 4. `kind = 'advice'` — recommendations for the Moves view (`/moves`)
+
+_Added 2026-10-20. Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.1.0`).
+Reader: `web/src/app/moves/page.tsx` via `web/src/lib/moves.ts`._
+
+One recommendation (trade idea, add/drop, stream, IL move, daily lineup plan) is an **item** with a stable
+`summary.advice_id`. Every change is a new **version**: its own immutable `model_runs` row (`run_id = adv-YYYYmmddHHMMSS-xxxxxx`).
+Readers show the newest version per `advice_id` (highest `summary.version`, then `created_at`).
+
+**Why no migration.** `model_runs` already has everything a recommendation needs (typed JSON `summary`/`params`/`inputs`,
+`git_sha`, `model_version`, `created_at`), the dashboard already reads it with the anon key, and `fantasy publish`
+already copies it. A dedicated `advice` table would buy server-side status filtering and a mutable status column; neither
+is needed at a few items per day, and a mutable status would break the `model_runs` convention that rows are never
+edited (and `publish`'s upsert-by-run_id would then let a stale local copy overwrite a newer status). Revisit if items
+reach thousands or the dashboard needs to *write* status (it does not: it is read-only; approvals stay in `approvals`).
+
+**Status changes are append-only.** `fantasy advise status <advice_id|run_id> <status> [--note] [--approval-id]` copies
+the latest summary, sets `status`, bumps `version`, sets `supersedes` to the previous `run_id` and appends to
+`status_history`. `fantasy advise post` with content identical to the latest version (ignoring `status` and the
+writer-managed keys) is a no-op, so re-running a seed never reverts a status; changed content appends a new version with
+the file's status. `approved` requires `--approval-id` or `--note` (where the user said yes); it mirrors a decision and
+never authorises a Yahoo write.
+
+### `summary` (schema `advice/1`)
+```jsonc
+{
+  "schema": "advice/1",                 // writer-managed
+  "advice_id": "2026-10-20-murray-trade",// writer-managed (default: input file stem); stable across versions
+  "version": 2,                          // writer-managed, 1-based
+  "supersedes": "adv-…",                 // writer-managed: previous version's run_id (null for v1)
+  "status_history": [{"status": "idea", "at": "<iso>", "by": "post"},
+                     {"status": "awaiting_yes", "at": "<iso>", "by": "status", "from": "idea", "note": "…"}],
+
+  "type": "trade",                       // trade | add_drop | stream | lineup | il
+  "title": "Trade Ware + VanVleet for Jamal Murray (Yeet)",
+  "status": "idea",                      // idea | awaiting_yes | approved | done | rejected | expired
+  "headline": "one line",
+  "for_date": "2026-10-21",              // optional, YYYY-MM-DD (ET); lineup plans: the day they are for
+  "week": 1,                             // optional fantasy week
+  "verdict": "1-3 lines",
+  "requires_user_yes": true,             // policy: add/drops and trades always true
+  "metrics": [                           // ordered; every number carries an evidence label
+    {"label": "ΔP(title), blend + Champagnie refill", "value": 8.6, "se": 0.6, "unit": "pp",
+     "delta": true,                      // optional: show a + sign on positive values
+     "evidence": "simulated",            // fitted | simulated | prior | literature
+     "note": "paired, position-aware, seed 0"},
+    {"label": "Yeet's ΔP(playoffs)", "value": "+2 to +10", "unit": "pp", "evidence": "simulated"}  // value may be text
+  ],
+  "scenario_columns": ["name", "refill", "ΔP(title)"],   // optional column order (jsonb does not keep key order)
+  "scenarios": [{"name": "Base case", "refill": "Champagnie", "ΔP(title)": "+8.6 ± 0.6 pp"}],  // optional; scalar cells
+  "risks": ["…"],
+  "links": [{"label": "Trade scan", "path": "docs/research/week1_and_trades_2026-10-20.md"}],  // repo path, /route or URL
+  "approval_id": "apr-…"                 // optional: the approvals row carrying the user's decision
+}
+```
+`params`: `{"command": "post" | "status", …}` plus anything the input file's `params` holds (status rows:
+`from_status`, `to_status`, `note`, `approval_id`). `inputs`: `{"source_file", "content_sha256", …}` (status rows:
+`previous_run_id`). An input file is either the bare summary or `{"summary": {...}, "params": {...}, "inputs": {...}}`;
+seeds live in `data/advice/`.
+
+**Moves page sections** (`groupMoves`): *Needs your yes* = status `awaiting_yes`, or `requires_user_yes` with status
+`idea`; *Today's lineup* = type `lineup` with `for_date` = today ET (or none) and not rejected/expired; *Done / rejected*
+= done/rejected/expired plus lineup plans for other days; *Ideas* = the rest (incl. approved, not yet done).

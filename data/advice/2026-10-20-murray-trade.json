@@ -1,0 +1,42 @@
+{
+  "summary": {
+    "type": "trade",
+    "title": "Trade Ware + VanVleet for Jamal Murray (Yeet)",
+    "status": "idea",
+    "headline": "2-for-1 consolidation: Kel'el Ware + Fred VanVleet to Yeet (slot 6) for Jamal Murray, then refill the open roster spot from free agency.",
+    "week": 1,
+    "verdict": "Pursue only if we can land Julian Champagnie (best FA; on waivers until Oct 22) to fill the open roster spot; main risk Murray's health.",
+    "requires_user_yes": true,
+    "metrics": [
+      {"label": "ΔP(title), blend projections + Champagnie refill", "value": 8.6, "se": 0.6, "unit": "pp", "delta": true, "evidence": "simulated", "note": "paired, position-aware season sim, seed 0"},
+      {"label": "ΔP(playoffs), blend projections + Champagnie refill", "value": 1.5, "se": 0.3, "unit": "pp", "delta": true, "evidence": "simulated", "note": "paired, position-aware season sim, seed 0"},
+      {"label": "ΔP(title), market projections + Champagnie refill", "value": 6.9, "se": 0.6, "unit": "pp", "delta": true, "evidence": "simulated"},
+      {"label": "ΔP(playoffs), market projections + Champagnie refill", "value": 1.3, "se": 0.4, "unit": "pp", "delta": true, "evidence": "simulated"},
+      {"label": "Yeet's ΔP(playoffs) (why they might accept)", "value": "+2 to +10", "unit": "pp", "evidence": "simulated", "note": "range across the scenarios below"},
+      {"label": "Share of the title gain from Denver's 4-game weeks 19-20", "value": "about half", "evidence": "simulated", "note": "Murray shares Jokić's (Denver) schedule; the fantasy playoff weeks are where it pays"}
+    ],
+    "scenario_columns": ["name", "projections", "refill", "ΔP(title)", "ΔP(playoffs)"],
+    "scenarios": [
+      {"name": "Base case", "projections": "blend", "refill": "Champagnie", "ΔP(title)": "+8.6 ± 0.6 pp", "ΔP(playoffs)": "+1.5 ± 0.3 pp"},
+      {"name": "Market projections", "projections": "market", "refill": "Champagnie", "ΔP(title)": "+6.9 ± 0.6 pp", "ΔP(playoffs)": "+1.3 ± 0.4 pp"},
+      {"name": "Conservative refill", "projections": "blend", "refill": "Aldama", "ΔP(title)": "+6.0 pp", "ΔP(playoffs)": "−0.5 pp"},
+      {"name": "Market + conservative refill", "projections": "market", "refill": "Aldama", "ΔP(title)": "+3.5 pp", "ΔP(playoffs)": "−2.0 pp"},
+      {"name": "Murray plays only 50 games (prior)", "projections": "market", "refill": "Champagnie", "ΔP(title)": "+4.1 pp", "ΔP(playoffs)": "−2.2 pp"},
+      {"name": "IL replacement on", "projections": "blend", "refill": "Champagnie / Aldama", "ΔP(title)": "verdict unchanged", "ΔP(playoffs)": "verdict unchanged"}
+    ],
+    "risks": [
+      "Murray's health: with a 50-game prior (an assumption, not fitted) the title gain shrinks to +4.1 pp and P(playoffs) turns negative (−2.2 pp).",
+      "The refill matters: if Champagnie is claimed first (waivers clear Oct 22) and we end up with Aldama, P(playoffs) falls slightly (−0.5 to −2.0 pp) while P(title) still rises.",
+      "About half the title gain rests on Denver's 4-game weeks 19-20 (schedule, not player quality).",
+      "± values are Monte Carlo SEs only; they exclude projection and model error, and the simulator is optimistic for our team (opponents never manage their rosters).",
+      "Yahoo trades go through commissioner review with a 2-day veto window, and the follow-up free-agent add is a separate move that also needs your yes."
+    ],
+    "links": [
+      {"label": "Trade scan (week 1 research note)", "path": "docs/research/week1_and_trades_2026-10-20.md"},
+      {"label": "IL-replacement check", "path": "docs/research/il_replacement.md"},
+      {"label": "Session handoff with the market re-check", "path": "docs/handoffs/2026-10-20-main-session.md"}
+    ]
+  },
+  "params": {"source": "season sim, paired, position-aware, seed 0", "partner_slot": 6, "give": ["Kel'el Ware", "Fred VanVleet"], "get": ["Jamal Murray"]},
+  "inputs": {"research_notes": ["docs/research/week1_and_trades_2026-10-20.md", "docs/research/il_replacement.md"]}
+}

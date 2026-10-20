@@ -9,6 +9,7 @@ import { anonClient } from "@/lib/supabase";
 const TABS = [
   { href: "/matchup", label: "Matchup", icon: "⚔" },
   { href: "/league", label: "League", icon: "▦" },
+  { href: "/moves", label: "Moves", icon: "⇄" },
   { href: "/activity", label: "Activity", icon: "≋" },
   { href: "/draft", label: "Draft", icon: "◎" },
 ];
@@ -135,7 +136,7 @@ export function Nav() {
       </header>
       {/* phone: bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 px-[env(safe-area-inset-left)] pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {TABS.map((t) => (
             <Link
               key={t.href}

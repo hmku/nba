@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "type": "stream",
+    "title": "Week 1 streaming: no add/drop",
+    "status": "done",
+    "headline": "No add/drop in week 1: best streamers gain < 2.5 per-game G units vs dropping Fears costing 2-4 pp P(playoffs) (simulated).",
+    "week": 1,
+    "verdict": "Keep the roster as is in week 1. A streamer only pays when a slot is genuinely free (an IL move or a 2-for-1 trade); revisit then.",
+    "requires_user_yes": false,
+    "metrics": [
+      {"label": "Best streamer gain, Oct 26-Nov 1 (Lively)", "value": 2.31, "unit": "per-game G units", "evidence": "simulated", "note": "position-aware lineup over the window; < 2.5 for every candidate"},
+      {"label": "ΔP(playoffs), add Lively / drop Fears for the season", "value": -3.5, "se": 0.4, "unit": "pp", "delta": true, "evidence": "simulated", "note": "paired, 4000 sims"},
+      {"label": "ΔP(playoffs), add Grayson Allen / drop Fears", "value": -2.2, "se": 0.3, "unit": "pp", "delta": true, "evidence": "simulated", "note": "paired, 4000 sims"},
+      {"label": "ΔP(playoffs), add Robert Williams / drop Fears", "value": -2.8, "se": 0.4, "unit": "pp", "delta": true, "evidence": "simulated", "note": "paired, 4000 sims"}
+    ],
+    "risks": [
+      "Streamer values are opponent-agnostic per-game G-scores; matchup-specific category weights are not yet used."
+    ],
+    "links": [
+      {"label": "Week 1 research note (streaming section)", "path": "docs/research/week1_and_trades_2026-10-20.md"}
+    ]
+  },
+  "params": {"source": "fantasy inseason stream + paired season sim"},
+  "inputs": {"research_notes": ["docs/research/week1_and_trades_2026-10-20.md"]}
+}

@@ -34,8 +34,8 @@ buttons are disabled; reads keep working. After adding them in Vercel, **redeplo
 only apply to new deployments).
 
 ## Pages
-Navigation: 4 primary tabs — **Draft**, **Matchup**, **League**, **Activity** (pending-approval count badge, polled
-every 30s) — as a bottom tab bar on phones and a top bar on desktop; **More** holds Players, History and the theme
+Navigation: 5 primary tabs — **Matchup**, **League**, **Moves**, **Activity** (pending-approval count badge, polled
+every 30s), **Draft** — as a bottom tab bar on phones and a top bar on desktop; **More** holds Players, History and the theme
 toggle. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `/` redirects to `/draft`, or to
 `/matchup` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
 `/agents` and `/approvals` redirect to `/activity`.
@@ -130,6 +130,13 @@ note with one simulated roster for me.
   error counts flagged; runs with a disagreement tinted amber). Tap to expand: summary, decisions,
   events (kind icons, payloads), transactions, ids. Held locks as one line; past approvals and
   decisions/transactions not tied to a listed run under a collapsed expander. Auto-refresh 15s.
+- `/moves`: recommendations from `fantasy advise post` (`model_runs` kind `advice`, newest version per
+  `summary.advice_id`; schema in `docs/research/dashboard_data.md` section 4). Sections: **Needs your yes**
+  (status `awaiting_yes`, or `requires_user_yes` with status `idea`), **Today's lineup** (type `lineup` for today ET),
+  **Ideas**, and a collapsed **Done / rejected** (plus lineup plans for other days). Each card: type + status badges,
+  headline, verdict, metrics table (value ± SE, evidence chip: fitted / simulated / prior / literature), scenario
+  table, risks, links (repo paths open on GitHub), posted/updated time. Read-only: no buttons; approvals stay on
+  `/activity` and in chat. Pure readers in `src/lib/moves.ts` (tested in `tests/moves.test.mjs`).
 - `/players` (More): latest valuation + projections joined; toggle category values / per-game
   projections; sortable; row click opens detail drawer.
 - `/history` (More): latest model run per kind + data snapshots per source (freshness, moved from the
