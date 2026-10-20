@@ -25,7 +25,7 @@ Rosters: `--draft-id` (default: latest non-mock draft, or `$FANTASY_DRAFT_ID`) o
 `--schedule yahoo_schedule.json` (`{"source": "...", "weeks": [{"week": 1, "start": "2026-10-20", "end":
 "2026-10-25", "matchups": [[1, 7], ...]}, ...]}`); default is a round robin with derived dates.
 Other knobs: `--week1-end`, `--no-merge-allstar`, `--playoff-teams`, `--playoff-weeks 18,19,20`,
-`--no-streaming`, `--projections`, `--nba-schedule`. `season`, `compare`, `draft-check` record a
+`--no-streaming`, `--il-replacement` (opt-in IL replacement of long-injured players, `season|matchup|compare`; priors, see `docs/research/il_replacement.md`), `--projections`, `--nba-schedule`. `season`, `compare`, `draft-check` record a
 `model_runs` row (kind `season_sim`, summary JSON) unless `--no-save`; use `--no-save` and a scratch DB
 for experiments.
 

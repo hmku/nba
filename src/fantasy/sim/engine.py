@@ -25,6 +25,12 @@ numbers for everyone else):
 4. Streaming: each team adds up to `stream_games` replacement-level games per week (default
    adds_per_week x games_per_add x stream_usage = 6 x 2 x 0.5 = 6), limited by its open starting
    slot-days that week. Replacement line = valuation's replacement level.
+4b. IL replacement (opt-in, `il_replacement`; docs/research/il_replacement.md): while a rostered player is in
+   an injury spell of at least `il_min_spell_days` days (proxy for Yahoo's "Out" status, which IL slots
+   require), his team carries one replacement-level player in his place, up to `il_slots` at a time. Each
+   replacement plays the expected games of a typical NBA team that day (share of the 30 teams playing) times
+   `il_rep_availability`, and fills open starting slots after the roster's players and before streamers. No
+   extra random numbers are drawn, so runs with and without it stay paired. Default off (output unchanged).
 5. Weekly team totals: given the counted games k, team attempts/counting stats ~ Normal with mean
    sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the one game-noise model
    shared with the draft, var = a * mean + b * mean^2 (fantasy.model.noise). Noise is drawn at team level,
@@ -87,6 +93,12 @@ class SimParams:
     games_per_add: float = 2.0
     stream_usage: float = 0.5  # share of the weekly add budget actually used on streamers
     streaming: bool = True
+    # IL replacement (opt-in; all PRIORS, docs/research/il_replacement.md): a player in an injury spell of at
+    # least il_min_spell_days days is replaced by a replacement-level player for the spell, up to il_slots per team
+    il_replacement: bool = False
+    il_slots: int | None = None  # default: settings.roster_slots["IL"] (league 44495: 3)
+    il_min_spell_days: float = 7.0
+    il_rep_availability: float = 0.85  # share of his team's games the replacement plays (rest/minor injuries)
     # playoffs
     playoff_teams: int | None = None  # default: settings.playoff_teams
     playoff_weeks: list[int] | None = None  # default: settings.playoff_weeks
@@ -137,6 +149,8 @@ class SimResult:
     sources: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     seconds: float = 0.0
+    il_games: np.ndarray | None = None  # (N, W, T) IL-replacement games counted (None when il_replacement is off)
+    il_slot_days: np.ndarray | None = None  # (N, W, T) IL slots occupied, summed over the week's days
 
     @property
     def n(self) -> int:
@@ -199,6 +213,9 @@ class SeasonSimulator:
         else:
             self._stat_sd_vec = np.array([float(self.p.stat_sds.get(s, 0.0)) for s in FACTOR_STATS])
         self._chol = np.linalg.cholesky(np.array(cal.NOISE_CORR)) if self.p.noise_corr else None
+        self.il_slots = int(self.p.il_slots if self.p.il_slots is not None else settings.roster_slots.get("IL", 0))
+        # expected games of a typical NBA team on each fantasy day (share of the NBA teams playing)
+        self.team_game_share = self.plays[:-1].mean(axis=0)
         assert cal.NOISE_ORDER == NOISE_STATS
 
     def error_sds(self, mpg: float) -> tuple[float, float, float]:
@@ -220,6 +237,10 @@ class SeasonSimulator:
         df = self.proj
         mu = np.zeros((N, P, len(STATS)), dtype=np.float64)
         health = np.zeros((N, P + 1, D), dtype=bool)  # last row = padding (never plays)
+        il_on = self.p.il_replacement
+        # long-spell intervals [start, end) on the season-day axis, 2 per player (empty: start = end = 0)
+        il_start = np.zeros((N, P + 1, 2)) if il_on else None
+        il_end = np.zeros((N, P + 1, 2)) if il_on else None
         team_rows = np.full(P + 1, -1, dtype=int)
         fi = [SI[s] for s in FACTOR_STATS]
         t_mid = self.fday_offset + 0.5
@@ -272,6 +293,11 @@ class SeasonSimulator:
             x, y = rng.random(N) * free, rng.random(N) * free
             a1 = np.where(out_now, 0.0, np.minimum(x, y))
             a2 = np.maximum(x, y) + L1
+            if il_start is not None and il_end is not None:
+                for k_, (st_, ln_) in enumerate(((a1, L1), (a2, L2))):
+                    long_ = ln_ >= self.p.il_min_spell_days
+                    il_start[:, j, k_] = np.where(long_, st_, 0.0)
+                    il_end[:, j, k_] = np.where(long_, st_ + ln_, 0.0)
             in_spell = ((t_mid[None, :] >= a1[:, None]) & (t_mid[None, :] < (a1 + L1)[:, None])) | (
                 (t_mid[None, :] >= a2[:, None]) & (t_mid[None, :] < (a2 + L2)[:, None]))
             rest_draw = rng.integers(0, 256, (N, D), dtype=np.uint8)
@@ -281,7 +307,10 @@ class SeasonSimulator:
                 extra = rng.integers(0, 256, (N, int(self.po_days.sum())), dtype=np.uint8)
                 healthy[:, self.po_days] &= extra >= round((1.0 - pmult) * 256)
             health[:, j, :] = healthy & self.plays[team_rows[j]][None, :]
-        return {"mu": mu, "health": health}
+        out = {"mu": mu, "health": health}
+        if il_start is not None and il_end is not None:
+            out["il_start"], out["il_end"] = il_start, il_end
+        return out
 
     # ------------------------------------------------------------------ main
     def run(self, league: LeagueState) -> SimResult:
@@ -324,6 +353,11 @@ class SeasonSimulator:
         totals = np.zeros((N, W, T, C), dtype=np.float32)
         games = np.zeros((N, W, T), dtype=np.float32)
         streams = np.zeros((N, W, T), dtype=np.float32)
+        il_on = self.p.il_replacement
+        il_games = np.zeros((N, W, T), dtype=np.float32) if il_on else None
+        il_slot_days = np.zeros((N, W, T), dtype=np.float32) if il_on else None
+        if il_on:
+            il_s, il_e = arr["il_start"][:, idx], arr["il_end"][:, idx]  # (N, T, R, 2)
         team_rngs = [np.random.default_rng([self.p.seed, 7_000_003, int(t)]) for t in team_ids]
         noise_i = {s: k for k, s in enumerate(NOISE_STATS)}
         for wi, (d0, d1) in enumerate(self.week_slices):
@@ -332,10 +366,25 @@ class SeasonSimulator:
             k = counted.sum(axis=3).astype(np.float64)  # (N, T, R)
             n_play = counted.sum(axis=2)  # (N, T, d) starters used per day
             any_game = self.plays[:-1, d0:d1].any(axis=0)  # days with NBA games
-            open_slots = ((self.active - n_play) * any_game[None, None, :]).sum(axis=2)
-            g_s = np.minimum(self.stream_cap, open_slots).astype(np.float64)  # (N, T)
-            E = np.einsum("ntr,ntrs->nts", k, muTR) + g_s[..., None] * rep
-            V = np.einsum("ntr,ntrs->nts", k, var_g) + g_s[..., None] * self.game_variance(rep)
+            open_day = (self.active - n_play) * any_game[None, None, :]  # (N, T, d)
+            if il_games is not None and il_slot_days is not None:
+                tm = self.fday_offset[d0:d1] + 0.5
+                in_il = ((tm >= il_s[..., None]) & (tm < il_e[..., None])).any(axis=3)  # (N, T, R, d)
+                n_il = np.minimum(in_il.sum(axis=2), self.il_slots)  # (N, T, d)
+                per_rep = self.team_game_share[d0:d1] * self.p.il_rep_availability
+                g_il_day = np.minimum(n_il * per_rep[None, None, :], open_day)
+                g_il = g_il_day.sum(axis=2)
+                open_slots = (open_day - g_il_day).sum(axis=2)
+                il_games[:, wi] = g_il
+                il_slot_days[:, wi] = n_il.sum(axis=2)
+                g_s = np.minimum(self.stream_cap, open_slots).astype(np.float64)  # (N, T)
+                g_r = g_s + g_il  # replacement-level games: streamers + IL replacements
+            else:
+                open_slots = open_day.sum(axis=2)
+                g_s = np.minimum(self.stream_cap, open_slots).astype(np.float64)  # (N, T)
+                g_r = g_s
+            E = np.einsum("ntr,ntrs->nts", k, muTR) + g_r[..., None] * rep
+            V = np.einsum("ntr,ntrs->nts", k, var_g) + g_r[..., None] * self.game_variance(rep)
             Z = np.stack([rng.standard_normal((N, len(NOISE_STATS))) for rng in team_rngs], axis=1)  # (N,T,10)
             if self._chol is not None:
                 Z = Z @ self._chol.T
@@ -352,7 +401,7 @@ class SeasonSimulator:
                 binv = np.einsum("ntr,ntr->nt", k, a_p * pp * (1 - pp))
                 mix = np.einsum("ntr,ntr->nt", k, var_g[..., a_idx[den]] * (pp - p_team[..., None]) ** 2)
                 prep = rep[SI[num]] / rep[SI[den]] if rep[SI[den]] > 0 else 0.0
-                binv = binv + g_s * rep[SI[den]] * prep * (1 - prep)
+                binv = binv + g_r * rep[SI[den]] * prep * (1 - prep)
                 scale = np.where(EA > 0, A / np.maximum(EA, 1e-9), 0.0)
                 M = p_team * A + np.sqrt(np.maximum(binv + mix, 0) * scale) * Z[..., noise_i[num]]
                 vals[den] = np.round(A)
@@ -369,10 +418,13 @@ class SeasonSimulator:
                         totals[:, wi, :, ci] = np.where(vals[c.den] > 0, np.round(vals[c.num] / np.maximum(vals[c.den], 1), 3), 0.0)
                 else:
                     totals[:, wi, :, ci] = vals[c.stat]
-            games[:, wi] = k.sum(axis=2) + g_s
+            games[:, wi] = k.sum(axis=2) + g_r
             streams[:, wi] = g_s
 
         res = self._score(totals, games, streams, team_ids, warnings)
+        res.il_games, res.il_slot_days = il_games, il_slot_days
+        if il_on:
+            res.params["il_slots"] = self.il_slots
         res.seconds = time.perf_counter() - t0
         return res
 

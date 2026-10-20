@@ -505,3 +505,79 @@ def test_from_yahoo_capture_maps_team_ids_to_slots(tmp_path):
     cap["weeks"][0]["matchups_yahoo_team_ids"] = [[11, 99]]
     with pytest.raises(ValueError, match="not in capture"):
         from_yahoo_capture(cap)
+
+
+# ---------------------------------------------------------------- IL replacement (opt-in)
+def _sim_with(ctx, df, **kw):
+    from fantasy.sim.engine import SeasonSimulator
+
+    return SeasonSimulator(df, ctx.values, ctx.replacement, ctx.settings, ctx.nba, ctx.calendar, ctx.matchups,
+                           _params(**kw))
+
+
+def test_il_replacement_off_paths_reproduce_default_exactly(ctx):
+    lg = _snake_league(ctx)
+    base = ctx.simulator(_params(n_sims=80)).run(lg)
+    assert base.il_games is None
+    for kw in ({"il_slots": 0}, {"il_min_spell_days": 1e9}):
+        r = ctx.simulator(_params(n_sims=80, il_replacement=True, **kw)).run(lg)
+        assert np.array_equal(base.totals, r.totals) and np.array_equal(base.games, r.games)
+        assert np.array_equal(base.rank, r.rank) and np.array_equal(base.champion, r.champion)
+        assert r.il_games is not None and r.il_games.sum() == 0
+
+
+def test_il_replacement_adds_games_only_during_long_spells(ctx):
+    lg = _snake_league(ctx)
+    off = ctx.simulator(_params(n_sims=150)).run(lg)
+    sim = ctx.simulator(_params(n_sims=150, il_replacement=True, il_min_spell_days=10))
+    on = sim.run(lg)
+    assert on.il_games.sum() > 0
+    assert (on.games >= off.games - 1e-4).all()  # IL fills open slots; streaming is still capped
+    assert on.stream_games.max() <= 6 + 1e-6
+    # independently: recorded spells are >= the threshold and the player is never healthy inside them
+    pids = list(dict.fromkeys(p for t in lg.team_ids for p in lg.rosters[t]))
+    arr = sim._player_arrays(pids)
+    s, e = arr["il_start"][:, :-1], arr["il_end"][:, :-1]
+    ln = e - s
+    assert ((ln == 0) | (ln >= 10)).all() and (ln > 0).any()
+    t_mid = sim.fday_offset + 0.5
+    inside = ((t_mid >= s[..., None]) & (t_mid < e[..., None])).any(axis=2)  # (N, P, D)
+    assert not (inside & arr["health"][:, :-1]).any()
+    # team-week IL slot-days = sum over days of min(#rostered players inside a long spell, il_slots)
+    pidx = {p: i for i, p in enumerate(pids)}
+    for ti, t in enumerate(lg.team_ids[:3]):
+        js = [pidx[p] for p in lg.rosters[t]]
+        n = np.minimum(inside[:, js].sum(axis=1), 3)  # (N, D)
+        want = np.stack([n[:, a:b].sum(1) for a, b in sim.week_slices], axis=1)
+        assert np.array_equal(on.il_slot_days[:, :, ti], want)
+
+
+def test_il_replacement_capped_at_il_slots_and_symmetric(ctx):
+    lg = _snake_league(ctx)
+    df = ctx.proj.df.copy()
+    hurt = lg.rosters[1][:5]
+    df.loc[hurt, "status"] = "out_for_season"
+    df.loc[hurt, "gp"] = 0.0
+    sim = _sim_with(ctx, df, n_sims=60, il_replacement=True)
+    r = sim.run(lg)
+    days = np.array([b - a for a, b in sim.week_slices], dtype=float)
+    assert (r.il_slot_days <= 3 * days[None, :, None] + 1e-6).all()
+    assert np.allclose(r.il_slot_days[:, :, 0], 3 * days[None, :])  # 5 out all season -> 3 slots every day
+    per_rep = sim.team_game_share * sim.p.il_rep_availability
+    max_wk = np.array([3 * per_rep[a:b].sum() for a, b in sim.week_slices])
+    assert (r.il_games[:, :, 0] <= max_wk[None, :] + 1e-4).all() and r.il_games[:, :, 0].mean() > 0
+    # symmetric: swapping two teams' rosters swaps their IL usage exactly (player-keyed random streams)
+    sw = LeagueState(rosters={**lg.rosters, 1: lg.rosters[2], 2: lg.rosters[1]}, my_team=1, source="t")
+    r2 = sim.run(sw)
+    assert np.array_equal(r.il_games[:, :, 0], r2.il_games[:, :, 1])
+    assert np.array_equal(r.il_slot_days[:, :, 1], r2.il_slot_days[:, :, 0])
+
+
+def test_il_replacement_position_aware(ctx):
+    from fantasy.inseason.possim import PositionAwareSimulator
+
+    lg = _snake_league(ctx)
+    mk = lambda **kw: PositionAwareSimulator(ctx.proj.df, ctx.values, ctx.replacement, ctx.settings, ctx.nba,  # noqa: E731
+                                             ctx.calendar, ctx.matchups, _params(n_sims=60, **kw))
+    off, on = mk().run(lg), mk(il_replacement=True).run(lg)
+    assert on.il_games.sum() > 0 and (on.games >= off.games - 1e-4).all()
