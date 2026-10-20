@@ -98,6 +98,19 @@ def _opt_int(v: Any) -> int | None:
     return int(v)
 
 
+def _parse_player(p: dict[str, Any], where: str, errors: list[str]) -> CapturePlayer:
+    """One captured player; problems (unknown slot, empty name) are appended to `errors`."""
+    slot, name = str(p.get("slot") or ""), str(p.get("name") or "").strip()
+    if slot not in VALID_SLOTS:
+        errors.append(f"{where} ({name}): unknown slot {slot!r}")
+    if not name:
+        errors.append(f"{where}: empty name")
+    status = (str(p["status"]).strip() or None) if p.get("status") else None
+    return CapturePlayer(
+        slot=slot, name=name, player_id=p.get("player_id") or None, team=norm_team(p.get("team")),
+        positions=p.get("positions") or None, status=status, yahoo_player_id=_opt_int(p.get("yahoo_player_id")))
+
+
 def parse_capture(raw: dict[str, Any], path: str = "<memory>", num_teams: int = NUM_TEAMS,
                   max_roster: int = MAX_ROSTER) -> Capture:
     """Validate a capture dict: `num_teams` teams, rosters <= `max_roster`, known lineup slots."""
@@ -111,18 +124,7 @@ def parse_capture(raw: dict[str, Any], path: str = "<memory>", num_teams: int = 
         except ValueError:
             errors.append(f"team key {k!r} is not a Yahoo team id")
             continue
-        players = []
-        for i, p in enumerate(v.get("players") or []):
-            slot, name = str(p.get("slot") or ""), str(p.get("name") or "").strip()
-            if slot not in VALID_SLOTS:
-                errors.append(f"team {tid} player {i} ({name}): unknown slot {slot!r}")
-            if not name:
-                errors.append(f"team {tid} player {i}: empty name")
-            status = (str(p["status"]).strip() or None) if p.get("status") else None
-            players.append(CapturePlayer(
-                slot=slot, name=name, player_id=p.get("player_id") or None, team=norm_team(p.get("team")),
-                positions=p.get("positions") or None, status=status,
-                yahoo_player_id=_opt_int(p.get("yahoo_player_id"))))
+        players = [_parse_player(p, f"team {tid} player {i}", errors) for i, p in enumerate(v.get("players") or [])]
         if len(players) > max_roster:
             errors.append(f"team {tid}: {len(players)} players > max roster {max_roster}")
         if not players:
