@@ -337,3 +337,20 @@ def test_publish_policy_covers_every_table():
     assert rest.publish_policy("locks") == "skip"
     assert rest.publish_policy("some_future_table") == "insert"  # safe default
     assert not (rest.PUBLISH_MERGE & rest.PUBLISH_INSERT_ONLY)
+
+
+def test_to_json_value_is_jsonable_with_finite_floats():
+    # one serialiser for ops rows (fantasy.ops.common.jsonable); the REST variant also nulls NaN/inf
+    from datetime import date
+
+    from fantasy.ops.common import jsonable
+
+    naive = datetime(2026, 10, 20, 12, 0)
+    row = {"t": naive, "d": date(2026, 10, 21), "x": float("nan"), "y": [float("inf"), 1.5, (2, None)],
+           "n": {"z": float("-inf"), "s": "a"}}
+    out = rest.to_json_value(row)
+    assert out == {"t": "2026-10-20T12:00:00+00:00", "d": "2026-10-21", "x": None, "y": [None, 1.5, [2, None]],
+                   "n": {"z": None, "s": "a"}}
+    json.dumps(out, allow_nan=False)  # PostgREST-safe
+    plain = jsonable(row)
+    assert plain["t"] == out["t"] and plain["x"] != plain["x"]  # ops CLI output keeps NaN as before

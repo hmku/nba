@@ -21,14 +21,13 @@ import os
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import date, datetime
 from typing import Any
 
 import httpx
 from sqlalchemy import Table, create_engine, select
 
 from fantasy.db.schema import metadata
-from fantasy.ops.common import OpsError, as_utc, row_dict
+from fantasy.ops.common import OpsError, jsonable, row_dict
 
 DEFAULT_SUPABASE_URL = "https://bdzpkdkhlzjzddkptjex.supabase.co"
 KEY_ENVS = ("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY")
@@ -130,17 +129,7 @@ def unique_clashes(
 
 def to_json_value(v: Any) -> Any:
     """Row value -> JSON: datetimes as ISO UTC, NaN/inf as null, JSON columns passed through."""
-    if isinstance(v, datetime):
-        return as_utc(v).isoformat()
-    if isinstance(v, date):
-        return v.isoformat()
-    if isinstance(v, float) and not math.isfinite(v):
-        return None
-    if isinstance(v, dict):
-        return {k: to_json_value(x) for k, x in v.items()}
-    if isinstance(v, list | tuple):
-        return [to_json_value(x) for x in v]
-    return v
+    return jsonable(v, finite=True)
 
 
 def api_key() -> tuple[str | None, str | None]:

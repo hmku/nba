@@ -134,15 +134,20 @@ def sha256_hex(text: str) -> str:
 # ------------------------------------------------------------------ serialisation
 
 
-def jsonable(value: Any) -> Any:
+def jsonable(value: Any, *, finite: bool = False) -> Any:
+    """Ops-row serialisation: datetimes -> ISO UTC, dates -> ISO, dicts/lists/tuples recursed, everything
+    else unchanged. `finite=True` also maps NaN/inf floats to None (PostgREST rejects them; the REST
+    publisher/ledger use it via `fantasy.db.rest.to_json_value`)."""
     if isinstance(value, datetime):
         return as_utc(value).isoformat()
     if isinstance(value, date):
         return value.isoformat()
+    if finite and isinstance(value, float) and not math.isfinite(value):
+        return None
     if isinstance(value, dict):
-        return {k: jsonable(v) for k, v in value.items()}
+        return {k: jsonable(v, finite=finite) for k, v in value.items()}
     if isinstance(value, list | tuple):
-        return [jsonable(v) for v in value]
+        return [jsonable(v, finite=finite) for v in value]
     return value
 
 
