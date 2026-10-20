@@ -57,6 +57,11 @@ analysis. Trade offers are public on the dashboard: no verbatim chat quotes in `
 
 ## Threads (agree / disagree)
 
+When you disagree or agree with a recommendation in a thread, give your reason in plain words; if you suggest doing
+something different, say why now rather than earlier (what you saw that changed). You report what you observe; Claude
+re-checks every claim with its own tools.
+
+
 Every update on the dashboard Activity page (your reports, Claude's recommendations and decisions, the advisor's
 suggestions) has a thread. You can answer any of them except group-chat digests/notes (they are private; replies
 are public):

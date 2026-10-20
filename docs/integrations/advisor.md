@@ -88,6 +88,12 @@ The owner is a quantitative person and the main agent works the same way. Every 
 
 Give the exact `command` that reproduces each number, and the git commit you ran it on (`git rev-parse --short HEAD`).
 
+**Justify every suggested change and say "why now, not before".** In `summary` (or `proposed_change`) explain in
+plain language why the change is good, what we believed or decided earlier (e.g. the draft-time pick and score for that
+player, an earlier recommendation) and what changed since (new information, a model version, more precise evidence,
+other teams' moves, schedule). If nothing changed, say why the earlier decision was a near-tie or wrong. Mention costs
+the models don't capture (waiver priority, adds budget, rookie upside). Suggestions without this are triaged last.
+
 ## Report format
 
 `POST https://fantasy.harrisonku.com/api/agent/report` with JSON:
