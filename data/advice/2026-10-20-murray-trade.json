@@ -1,11 +1,11 @@
 {
  "summary": {
   "type": "trade",
-  "title": "Trades for Jamal Murray (Yeet): speculative schedule bet — not recommended now",
+  "title": "Murray trades: schedule bet, not now",
   "status": "idea",
-  "headline": "Re-evaluated with inseason-0.3.0 against a base that already includes the Champagnie/Bailey claim, realistic refill (6th-best FA), fresh seeds, three projection sets.",
+  "headline": "Ware + VanVleet (or Brunson + Bailey) for Jamal Murray. Revisit near the Mar 4 deadline.",
   "week": 1,
-  "verdict": "Not recommended ahead of the free Champagnie claim. Most of the title gain is Denver's 4-game playoff weeks 19-20 (schedule bet).\nBrunson+Bailey→Murray helps but Yeet loses 1-6 pp playoffs (unlikely to accept); Ware+VanVleet→Murray is speculative (title up, playoffs and cat-wins down).\nRevisit closer to the deadline (Mar 4) when playoff schedules and health are clearer.",
+  "verdict": "Not now: most of the gain is Denver's playoff-week schedule, and Yeet likely says no.",
   "requires_user_yes": true,
   "metrics": [
    {
@@ -13,20 +13,21 @@
     "value": "+4.1 / +5.7 / +8.2",
     "unit": "pp",
     "evidence": "simulated",
-    "note": "6 seeds × 2000, SE 0.4-0.7"
+    "key": true
    },
    {
     "label": "T1 schedule-neutral ΔP(title), blend / market / stress",
     "value": "−0.7 / +0.5 / +3.3",
     "unit": "pp",
-    "evidence": "simulated"
+    "evidence": "simulated",
+    "key": true
    },
    {
     "label": "T1 Yeet ΔP(playoffs)",
     "value": "−0.8 / −3.2 / −5.8",
     "unit": "pp",
     "evidence": "simulated",
-    "note": "fails partner check"
+    "key": true
    },
    {
     "label": "T2 Ware+VanVleet→Murray ΔP(title), blend / market / stress",
@@ -106,9 +107,8 @@
    }
   ],
   "risks": [
-   "Earlier +8.6 pp figure was inflated: about half was the free Champagnie move (no trade needed) and seed-0 luck.",
-   "Schedule bet: the gain depends on Denver's extra games in weeks 19-20 (rest/injury in March).",
-   "Murray's health (prior: injury-prone); ± are Monte Carlo SEs only."
+   "Murray's health.",
+   "Gain depends on 4-game playoff weeks."
   ],
   "links": [
    {
@@ -121,24 +121,18 @@
    }
   ],
   "rationale": [
-   "Jamal Murray (Denver) is a high-volume scoring guard. The idea is to consolidate two of our players into one better one, then use the open roster spot on a free agent.",
-   "Most of the simulated title gain comes from the NBA schedule, not Murray's quality: Denver plays 4 games in each of fantasy playoff weeks 19 and 20 vs 3 for the players we'd give, and an extra game in a championship week matters a lot.",
-   "Brunson+Bailey→Murray helps us but costs Yeet 1-6 pp of playoff odds, so they would likely refuse; Ware+VanVleet→Murray raises title odds but lowers our playoff odds and category wins (speculative).",
-   "- Not recommended now. Better to make the free Champagnie claim first and revisit trades nearer the Mar 4 deadline, when health and rest patterns for the playoff weeks are clearer."
+   "- Brunson+Bailey→Murray: title +4 to +8 pp, but Yeet loses 1-6 pp playoffs.",
+   "- Ware+VanVleet→Murray: title up, playoffs and category wins down (speculative)."
   ],
   "why_now": {
-   "before": "Trades only became possible after the draft. Last night's first scan reported +8.6 pp title odds for Ware+VanVleet→Murray and suggested pursuing it with a Champagnie refill.",
+   "before": "Last night's first scan showed +8.6 pp title odds.",
    "changed": [
     {
-     "text": "An independent review found the +8.6 pp was inflated: about half was the free Champagnie pickup (no trade needed), plus best-case refill and lucky seed reuse.",
+     "text": "Review: about half was the free Champagnie pickup, plus lucky seeds.",
      "kind": "model"
     },
     {
-     "text": "inseason-0.3.0 re-measured against a base that already includes the free move, with a realistic refill, fresh seeds and a schedule-neutral comparison: most of the remaining gain is Denver's playoff-week schedule.",
-     "kind": "model"
-    },
-    {
-     "text": "Partner check added: Yeet's own odds fall in the bigger version, so it's unlikely to be accepted.",
+     "text": "Schedule-neutral, the gain mostly disappears.",
      "kind": "model"
     }
    ],

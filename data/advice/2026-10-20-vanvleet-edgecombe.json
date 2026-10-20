@@ -1,34 +1,30 @@
 {
  "summary": {
   "type": "trade",
-  "title": "Trade idea: Fred VanVleet for VJ Edgecombe + Jusuf Nurkić (jesse's Phenomenal Team)",
-  "status": "idea",
-  "headline": "1-for-2 with jesse's Phenomenal Team (slot 5): we give VanVleet, get Edgecombe + Nurkić (Out), then drop Nurkić and keep the open spot for a free agent.",
+  "title": "Offer VanVleet for Edgecombe + Nurkić (Jesse)",
+  "status": "awaiting_yes",
+  "headline": "Give Fred VanVleet; get VJ Edgecombe + Jusuf Nurkić (Out), then drop Nurkić and add a free agent.",
   "week": 1,
-  "verdict": "Worth proposing if you're open to moving VanVleet: helps playoff odds, title odds and category wins under all three projection sets.\nThe partner's own playoff odds dip slightly (−0.3 to −2.5 pp), so expect a counter; Dyson Daniels + Nurkić is a similar alternative.\nNeeds your explicit yes before anything is offered on Yahoo.",
+  "verdict": "Worth offering: helps under all three projection sets. Expect a counter.",
   "requires_user_yes": true,
   "rationale": [
-   "Fred VanVleet is a 32-year-old point guard (Houston) projected for ~58 games; VJ Edgecombe is a young guard (Philadelphia, PG/SG) projected to play more and contribute steals, threes and rebounds.",
-   "Taking Nurkić (currently Out) and dropping him gives us an extra open roster spot that we refill from free agency, which is where part of the gain comes from.",
-   "Simulated effect (5 fresh seeds, base already includes the Champagnie claim): title odds +3.9 / +3.7 / +2.5 pp, playoff odds +0.9 / +1.3 / +1.1 pp, +0.5 to +0.8 category wins per season (blend / market / ESPN stress).",
-   "- Not mainly a schedule bet: Edgecombe's Philadelphia plays 4/3/4 games in playoff weeks 18-20 vs VanVleet's Houston 4/3/3 (one extra game).",
-   "- Costs the model doesn't see: one add to refill, and Edgecombe is a second-year player whose role could change."
+   "- Edgecombe: young guard, more games, steals and threes; VanVleet is 32.",
+   "- Title +2.5 to +3.9 pp, playoffs +0.9 to +1.3 pp, +0.5 to +0.8 cat wins (simulated).",
+   "- Not a schedule bet: only one extra playoff-week game."
   ],
   "why_now": {
-   "before": "Trades weren't possible before the draft, and last night's scan focused on Jamal Murray; it didn't evaluate this partner specifically.",
+   "before": "Trades weren't possible before the draft; last night's scan didn't target this team.",
    "changed": [
     {
-     "text": "There is now a willing partner who has asked about VanVleet (observed by Muse; details private).",
+     "text": "A partner is interested in VanVleet (details private).",
      "kind": "league"
     },
     {
-     "text": "A targeted inseason-0.3.0 scan of this partner's roster (base incl. Champagnie/Bailey, realistic refill, 5 fresh seeds, 3 projection sets) found this counter helps under all three.",
+     "text": "A targeted scan found this counter helps in all 3 projection sets.",
      "kind": "model"
     }
    ],
-   "evidence": [
-    "ΔP(title), blend / market / stress"
-   ]
+   "evidence": []
   },
   "metrics": [
    {
@@ -36,20 +32,20 @@
     "value": "+3.9 / +3.7 / +2.5",
     "unit": "pp",
     "evidence": "simulated",
-    "note": "SE 0.5-0.8; 5 seeds × 2000"
+    "key": true
    },
    {
     "label": "ΔP(playoffs), blend / market / stress",
     "value": "+0.9 / +1.3 / +1.1",
     "unit": "pp",
     "evidence": "simulated",
-    "note": "SE 0.2-0.4"
+    "key": true
    },
    {
     "label": "Δcategory wins/season",
     "value": "+0.78 / +0.75 / +0.50",
     "evidence": "simulated",
-    "note": "SE 0.06"
+    "key": true
    },
    {
     "label": "Partner ΔP(playoffs)",
@@ -89,9 +85,8 @@
    }
   ],
   "risks": [
-   "± are Monte Carlo SEs only; the simulator is optimistic for us (opponents never manage rosters).",
-   "Partner may counter; any counter gets re-evaluated before you decide.",
-   "Trades go through a 2-day commissioner review."
+   "Partner's playoff odds dip 0.3-2.5 pp, so a counter is likely.",
+   "2-day commissioner review."
   ],
   "links": [
    {

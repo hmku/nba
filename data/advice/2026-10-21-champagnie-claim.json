@@ -1,11 +1,11 @@
 {
  "summary": {
   "type": "add_drop",
-  "title": "Claim Julian Champagnie (waivers) and drop Ace Bailey",
+  "title": "Claim Champagnie, drop Bailey",
   "status": "awaiting_yes",
-  "headline": "Waiver claim on Julian Champagnie (SAS SF/PF; waivers clear Thu Oct 22; we hold priority 1, user-reported), dropping Ace Bailey.",
+  "headline": "Waiver claim on Julian Champagnie (SAS, SF/PF); drop Ace Bailey. Claim before Thu Oct 22.",
   "week": 1,
-  "verdict": "Recommended: the only free move that improves P(playoffs), P(title) and category wins by > 2 SE under all three projection sets.\nCosts ~1 pp of this week's P(win) (Champagnie plays 2 games from Oct 23, Bailey loses 2).\nNeeds your explicit yes before I place the claim; the claim must be in before waivers process on Oct 22.",
+  "verdict": "Recommended: helps under all three projection sets. Costs ~1 pp this week.",
   "requires_user_yes": true,
   "metrics": [
    {
@@ -14,49 +14,46 @@
     "se": 0.15,
     "unit": "pp",
     "evidence": "simulated",
-    "note": "8 seeds × 2000 paired, position-aware, season-sim-0.6.0"
+    "key": true
    },
    {
     "label": "ΔP(title), blend",
     "value": 1.76,
     "se": 0.27,
     "unit": "pp",
-    "evidence": "simulated"
+    "evidence": "simulated",
+    "key": true
    },
    {
     "label": "Δcategory wins/season, blend",
     "value": 0.45,
     "se": 0.03,
-    "evidence": "simulated"
+    "evidence": "simulated",
+    "key": false
    },
    {
     "label": "ΔP(playoffs), market projections",
     "value": 1.06,
     "se": 0.17,
     "unit": "pp",
-    "evidence": "simulated"
+    "evidence": "simulated",
+    "key": false
    },
    {
     "label": "ΔP(title), market projections",
     "value": 1.57,
     "se": 0.26,
     "unit": "pp",
-    "evidence": "simulated"
+    "evidence": "simulated",
+    "key": false
    },
    {
     "label": "ΔP(title), ESPN stats + ESPN games (stress)",
     "value": 2.36,
     "se": 0.26,
     "unit": "pp",
-    "evidence": "simulated"
-   },
-   {
-    "label": "Δ this week's P(win) vs Joshua's",
-    "value": -0.9,
-    "se": 0.45,
-    "unit": "pp",
     "evidence": "simulated",
-    "note": "lineup model, 4000 paired MC"
+    "key": false
    }
   ],
   "scenario_columns": [
@@ -92,10 +89,8 @@
    }
   ],
   "risks": [
-   "Cells are ΔP(playoffs) pp / ΔP(title) pp / Δcat-wins; ± are Monte Carlo SEs only (seed-aware), not model error.",
-   "Another manager may claim Champagnie; waiver priority 1 is user-reported, not verified on Yahoo.",
-   "Bailey is a 20-year-old rookie: projections for rookies are least certain (upside not captured).",
-   "Simulator is optimistic for us (opponents never manage rosters); the gain is small but consistent across projection sets."
+   "Another team may claim him first.",
+   "± are Monte Carlo SEs only."
   ],
   "links": [
    {
@@ -104,36 +99,24 @@
    }
   ],
   "rationale": [
-   "Julian Champagnie is a 3-and-D forward (San Antonio, SF/PF): he hits threes, rebounds a bit, and rarely turns it over. Ace Bailey is a 20-year-old rookie scorer whose role and efficiency are uncertain.",
-   "Over a full season Champagnie is projected to play ~10 more games (72 vs 62) and to give us more 3-pointers and rebounds at better efficiency; Bailey gives a bit more points and assists.",
-   "The paired season simulations favour Champagnie under all three projection sets (ours, the ESPN+FantasyPros market blend, and ESPN-only): about +1.6 to +2.4 pp title odds and +0.7 to +1.1 pp playoff odds, each > 2 SE.",
-   "- Cost this week: about −1 pp of P(win vs Joshua's) — Bailey loses 2 games before Champagnie can play (claim clears Oct 22, he plays from Oct 23).",
-   "- Cost the model doesn't capture: our waiver priority goes from 1st to last (rolling list), so we'd be behind everyone for the next breakout pickup; and Bailey's rookie upside (if he wins a bigger role, his value could rise mid-season)."
+   "- Champagnie: 3s, rebounds, few turnovers; ~10 more games than Bailey (72 vs 62).",
+   "- Title odds +1.6 to +2.4 pp, playoffs +0.7 to +1.1 pp (simulated, > 2 SE).",
+   "- Unmodelled costs: we drop to last waiver priority; lose Bailey's rookie upside."
   ],
   "why_now": {
-   "before": "At the draft (pick 156, our last) the model had Bailey and Champagnie in an exact tie: optimizer score 5.617 vs 5.617, and the 48-rollout season simulation gave Bailey 35.18% vs 34.99% title odds — a 0.2 pp gap well inside its noise. Our rule was 'always take the top recommendation', so the tie went to Bailey.",
+   "before": "Draft pick 156 was an exact tie (5.617 vs 5.617); the tie-break rule picked Bailey.",
    "changed": [
     {
-     "text": "Much more precise evidence: 8 seeds × 2,000 paired seasons per projection set instead of 48 rollouts, so a 1.5-2 pp edge is now clearly above noise.",
+     "text": "Much more precise sims (8 seeds × 2,000) now separate them.",
      "kind": "model"
     },
     {
-     "text": "Robustness across projection sets (new since the draft): the market projections value Bailey far lower (0.59 vs Champagnie 0.97), our own model slightly lower (1.08 vs 1.26).",
+     "text": "All 3 projection sets favour Champagnie; the market rates Bailey far lower.",
      "kind": "model"
-    },
-    {
-     "text": "Simulator upgrades since the draft: position-aware daily lineups and IL replacement (season-sim-0.6.0); the C/PF crunch costs ~0 games, so Bailey's SF eligibility (a draft-time roster need) no longer buys anything — Champagnie is SF/PF too.",
-     "kind": "model"
-    },
-    {
-     "text": "Champagnie went undrafted and is free to claim; no games have been played yet, so this is not a reaction to on-court news.",
-     "kind": "league"
     }
    ],
    "evidence": [
-    "ΔP(title), blend",
-    "ΔP(title), market projections",
-    "ΔP(title), ESPN stats + ESPN games (stress)"
+    "ΔP(title), blend"
    ]
   }
  },
