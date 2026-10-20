@@ -1,24 +1,23 @@
 ---
 name: yahoo-browser
-description: How to operate Yahoo Fantasy (league 44495) safely in the user's Chrome via Claude in Chrome - prerequisites, the yahoo:browser lock, read-before-write, independent verification after every action, evidence without secrets, login/2FA handling, known league URLs, and logging browser_action/verification events. Use whenever you need to read or change anything on basketball.fantasysports.yahoo.com (settings, draft order, draft room, pre-draft rankings, rosters, players, transactions).
+description: How to operate Yahoo Fantasy (league 44495) safely in the user's logged-in browser (whichever browser tools are available - the Claude desktop app's built-in browser or Claude in Chrome) - prerequisites, the yahoo:browser lock, read-before-write, independent verification after every action, evidence without secrets, login/2FA handling, known league URLs, and logging browser_action/verification events. Use whenever you need to read or change anything on basketball.fantasysports.yahoo.com (settings, draft order, draft room, pre-draft rankings, rosters, players, transactions).
 ---
 
 # Operating Yahoo in the browser
 
-Python never touches Yahoo's UI; you do, in the user's real, logged-in Chrome, with the user able to
-watch. The Yahoo API client (`src/fantasy/league/yahoo_api.py`) is read-only and cannot draft.
+Python never touches Yahoo's UI; you do, in the user's logged-in browser, with the user able to watch. The Yahoo API client (`src/fantasy/league/yahoo_api.py`) is read-only and cannot draft.
 Background: `docs/research/browser_integration.md`, `docs/research/draft_order.md`.
 
 ## Prerequisites (check before promising anything)
-- **Local** Claude Code session started with `claude --chrome` (or `/chrome` -> Enabled), Claude in
-  Chrome extension installed and signed in to the same claude.ai account. Cloud sessions
-  (`CLAUDE_CODE_REMOTE=true`) have no browser access to Yahoo: say so and stop.
-- Tools are `mcp__claude-in-chrome__*`. If they are deferred, load them with one ToolSearch call
-  (`select:` the ones you need, or keyword "claude-in-chrome"). If the `chrome-browser` skill is
-  available, read it first for tab handling and dialog caveats.
-- Site permission: the user should have chosen "allow all actions on this site" for
-  `basketball.fantasysports.yahoo.com` (a permission prompt during a 60 s draft clock is fatal).
-- Work in **your own tab** (tab group of this session); don't navigate the user's other tabs.
+- A **local** session with browser tools that reach the user's logged-in Yahoo. Use whichever are
+  available: the Claude desktop app's built-in browser (`mcp__Claude_Browser__*`; read the
+  `built-in-browser` skill first if listed) or Claude in Chrome (`mcp__claude-in-chrome__*`, session
+  started with `claude --chrome` / `/chrome` -> Enabled; read the `chrome-browser` skill if listed). If the
+  tools are deferred, load them with one ToolSearch call. Cloud sessions (`CLAUDE_CODE_REMOTE=true`)
+  without a linked browser have no access to Yahoo: say so and stop.
+- Site permission: allow all actions on `basketball.fantasysports.yahoo.com` up front (a permission
+  prompt during a 60 s draft clock is fatal).
+- Work in **your own tab**; don't navigate the user's other tabs.
 
 ## Safety rules
 1. **Lock**: `fantasy lock acquire yahoo:browser --ttl 1800 --purpose "<what>" --json` before driving
@@ -42,8 +41,8 @@ Background: `docs/research/browser_integration.md`, `docs/research/draft_order.m
 7. **Login / 2FA / CAPTCHA / "Are you sure?" dialogs**: stop and ask the user to handle it in the
    browser (you cannot and must not enter credentials). JS alert/confirm dialogs block the extension:
    ask the user to dismiss them.
-8. If the extension disconnects ("Receiving end does not exist", "No tab available"): ask the user to
-   run `/chrome` -> Reconnect, then re-read state before continuing.
+8. If the browser tools disconnect (Claude in Chrome: "Receiving end does not exist", "No tab available" ->
+   ask the user to run `/chrome` -> Reconnect; built-in browser: reopen the pane), re-read state before continuing.
 
 ## Logging pattern (inside a run)
 ```bash
@@ -54,7 +53,7 @@ fantasy run event verification "draft log shows #24 Jamal Murray -> my team" --p
 ```
 
 ## League 44495 pages
-Base: `https://basketball.fantasysports.yahoo.com/nba/44495`. Only the base URL is documented in
+Base: `https://basketball.fantasysports.yahoo.com/nba/44495`. Only the base URL and `draftresults` are verified in
 this repo; the rest are Yahoo's usual patterns and are **UNVERIFIED** - navigate from the league home
 menu if a URL 404s, then update this table (and say so in your handoff).
 
@@ -62,7 +61,7 @@ menu if a URL 404s, then update this table (and say so in your handoff).
 |---|---|---|---|
 | League home | `/nba/44495` | referenced in docs | standings, menu, my team link |
 | Settings | `/nba/44495/settings` | unverified | categories, roster slots, draft type/time, waivers, trades, playoffs |
-| Draft results / order | `/nba/44495/draftresults` | unverified | pre-draft: may show order; post-draft: all picks |
+| Draft results / order | `/nba/44495/draftresults` | verified 2026-10-19 (draft order + my slot read there, commit 436c3ba) | pre-draft: order; post-draft: all picks |
 | Draft room | "Enter Live Draft" button on league home (opens a draftclient window) | unverified | live draft, pick log, player list with ADP/rank |
 | Pre-Draft Rankings | league home -> My Team -> "Edit Pre-Draft Rankings" (pattern `/nba/44495/<team_id>/prerank`) | unverified | autopick safety net |
 | Draft analysis (ADP) | `https://basketball.fantasysports.yahoo.com/nba/draftanalysis` | unverified | Yahoo ADP / avg round / % drafted |

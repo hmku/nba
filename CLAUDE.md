@@ -25,10 +25,10 @@ start/end of each session and the `agent-run` skill for any run/lock/txn work.
 - **Always commit and push** (user requirement): commit only your paths, `git pull --rebase --autostash origin main && git push origin main`.
 
 ## Layout
-See `docs/ARCHITECTURE.md`. Python package `src/fantasy/` (league, data, model, draft, ops, db);
+See `docs/ARCHITECTURE.md`. Python package `src/fantasy/` (league, data, model, draft, valuesearch, sim, ops, db);
 dashboard `web/` (Next.js → Vercel); DB schema `src/fantasy/db/schema.py` → `supabase/migrations/`.
 Research notes: `docs/research/`. Runbooks: `docs/runbooks/`.
-Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval,
+Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval, season-sim,
 agent-run, handoff, in-season-ops (Phase 2 placeholder),
 league-loop (in-season Muse READ -> Claude THINK -> user APPROVE -> EXECUTE -> VERIFY loop; design in `docs/research/league_loop.md`). Subagents (`.claude/agents/`): quant-reviewer,
 data-auditor, draft-shadow (all read-only).
@@ -40,8 +40,10 @@ data-auditor, draft-shadow (all read-only).
 | League settings / verify | `fantasy settings show`, `fantasy settings verify <fields> --source browser` |
 | Projections | `fantasy data build-projections`, `fantasy data top` |
 | Valuation | `fantasy values build [--punt ft_pct]` |
-| Draft | `fantasy draft init|board|pick|undo|recommend|watch|simulate|order` |
-| Ops ledger | `fantasy run ...`, `fantasy lock ...`, `fantasy approval ...`, `fantasy txn ...`, `fantasy task ...` |
+| Draft | `fantasy draft init|board|pick|undo|recommend|watch|simulate|order|set-order|queue|prepare-pick|confirm-pick` (`recommend` default = value search + sim/mixed availability, recommend-0.2.0) |
+| Season sim | `fantasy sim season|matchup|compare|draft-check|preseason|schedule` |
+| Muse intel (read-only) | `fantasy intel latest|list|show [--rest]` |
+| Ops ledger | `fantasy run ...`, `fantasy lock ...`, `fantasy approval ...`, `fantasy txn ...`, `fantasy task ...` (add `--rest` in cloud sessions) |
 
 ## Environments & data
 - `FANTASY_DB_URL` unset → local SQLite `var/fantasy.db` (dev/tests). Production = Supabase Postgres
@@ -50,8 +52,9 @@ data-auditor, draft-shadow (all read-only).
 - Cloud sessions: the environment allowlist covers basketball-reference, nba.com (stats.nba.com times out),
   Yahoo public pages/API, ESPN, CBS, Rotowire, FantasyPros, GitHub and package registries. Postgres is NOT
   reachable from cloud (HTTPS proxy only): publish with `fantasy publish --rest` (Supabase auth injected by a
-  network secret). Yahoo *account* operations (league pages, draft room) require a **local** Claude Code
-  session with Claude in Chrome (`claude --chrome`).
+  network secret); ledger commands take `--rest`. Yahoo *account* operations (league pages, draft room) require a
+  **local** session with browser tools — whichever are available (the Claude desktop app's built-in browser, or
+  Claude in Chrome via `claude --chrome`).
 - Research agents: don't leave main red — run `python -m pytest -q` and `ruff check src tests` before pushing.
 
 ## Safety rules (non-negotiable)

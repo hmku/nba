@@ -16,8 +16,9 @@ Markdown holds knowledge (docs, handoffs); the DB holds state (runs, tasks, txns
    `fantasy task claim T-00N --owner <your-agent-name>` (exit 3 = someone else owns it: pick another
    or ask). `fantasy task show T-00N --json` for the description.
 4. Anything touching Yahoo or the ops ledger: follow the `agent-run` skill.
-5. Know where you are: cloud sessions (`CLAUDE_CODE_REMOTE=true`) cannot reach Yahoo, stats.nba.com
-   or basketball-reference; Yahoo work needs a local `claude --chrome` session.
+5. Know where you are: cloud sessions (`CLAUDE_CODE_REMOTE=true`) reach the allowlisted public sources
+   (basketball-reference, Yahoo public pages/API, ESPN, CBS, ...; stats.nba.com times out) and Supabase only via
+   `--rest`; Yahoo *account* work needs a local session with browser tools (`yahoo-browser` skill).
 
 ## Session end (mandatory, also when stopping early)
 1. **Tests**: `pytest` and `ruff check src tests` (plus `cd web && npm run build` if `web/` changed).

@@ -18,12 +18,11 @@ the base file and `data/raw/espn/projections_2026_27.csv`. Code: `src/fantasy/mo
 ## Network reality
 | Where | Works | Blocked |
 |---|---|---|
-| Cloud session (curl/python) | raw.githubusercontent.com, PyPI, GitHub API | stats.nba.com, basketball-reference, Yahoo, hashtag/fantasypros/espn |
+| Cloud session (curl/python) | environment allowlist (CLAUDE.md): GitHub mirror, PyPI, basketball-reference, Yahoo public pages/API (`fetch-yahoo`), ESPN/CBS (`fetch-injuries`, `fetch-external`), Rotowire, FantasyPros | stats.nba.com (times out), cdn.nba.com (403), Yahoo account pages |
 | Cloud WebSearch tool | model-summarised snippets with URLs (news, injuries, ADP) | - |
-| Cloud WebFetch | GitHub pages | most sports sites (DNS failure) |
 | User's machine | everything, incl. `fantasy data fetch-nba-api` | - |
-So in the cloud: stats come from the GitHub mirror; news comes from WebSearch summaries (medium
-confidence - say so in `source`). Never invent numbers; if you can't source it, leave it blank.
+Stats come from the GitHub mirror of bbref (verified identical to bbref.com 2026-10-18); news from the injury
+fetchers or WebSearch summaries (medium confidence - say so in `source`). Never invent numbers; if you can't source it, leave it blank.
 
 ## 1. Raw sources (cached, with provenance)
 ```bash

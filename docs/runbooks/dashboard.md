@@ -59,7 +59,7 @@ Model-run readers live in `src/lib/sim.ts` (defensive: missing fields → sectio
   column, first 15 then "show all"); strategy scan; example rosters (best/median/worst); caveats + warnings. Text
   comes from the rows' own `explanations` ("What these numbers mean" expanders).
 - **How it works** (`?view=how`): static explainer (`src/app/draft/HowItWorks.tsx`) — league basics, projections,
-  G-score valuation, category-win model, rollout optimizer + ADP availability + 3RR, draft sim, season sim, caveats.
+  G-score valuation, category-win model, rollout optimizer + simulated-room availability (analytic ADP model as the older alternative) + value search + 3RR, draft sim, season sim, caveats.
   Facts come from STATUS / research notes; update it when model versions change.
 
 Live room details:
@@ -154,6 +154,10 @@ anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src
   with `candidates`; `allow_unknown` records `unknown:<canonical id>` exactly like `fantasy draft pick --allow-unknown` (same id on both sides,
   so the same unknown player is caught as a duplicate). Default `overall` = lowest
   unrecorded pick. Also logs an `observation` (`payload.report_kind = "observed_pick"`) in the muse run.
+- `POST /api/agent/snapshot {kind, payload, week?, observed_at?, source_url?, summary?}` — stores a read-only
+  observation of a Yahoo league page in `league_snapshots` (validated, hashed, deduped on kind+week+payload sha;
+  size and hourly limits in `src/lib/agentPure.ts`). `GET /api/agent/snapshots?kind=&since=&limit=&payload=1` — what
+  has been sent. Agents read them with `fantasy intel ... [--rest]`.
 - `POST /api/agent/report {kind, message, details?, source?}` — kinds `draft_order|trade|rule|injury_news|schedule|
   chat_note|other`; message trimmed to 2000 chars, details ≤ 8000 chars JSON. Upserts the day's run
   `muse-YYYY-MM-DD` (US/Eastern; agent `muse`, mode `dry_run`, status `running`, heartbeat refreshed) and inserts an

@@ -5,9 +5,10 @@ description: Run the user's live Yahoo draft (or a mock/rehearsal) — sync pick
 
 # Live draft protocol
 
-Requires a **local** Claude Code session started with `claude --chrome` (Claude in Chrome tools
-`mcp__claude-in-chrome__*`), the user logged in to Yahoo, and `fantasy` installed. Cloud sessions
-cannot reach Yahoo. Read `docs/runbooks/live_draft.md` once for context.
+Requires a **local** session with browser tools that can drive the user's logged-in Yahoo — whichever
+browser tools are available (the Claude desktop app's built-in browser `mcp__Claude_Browser__*`, or Claude in
+Chrome `mcp__claude-in-chrome__*` from `claude --chrome`; see `yahoo-browser`), and `fantasy` installed. Cloud
+sessions cannot reach Yahoo. Read `docs/runbooks/live_draft.md` once for context.
 
 League: 12 teams, 13 rounds, my slot 1, 60 s per pick. Draft id: `nba.l.44495-2026` (use `mock-<n>` for rehearsals).
 Every `fantasy draft ...` JSON includes the `draft_id` it resolved - check it is the draft you mean.
@@ -103,7 +104,10 @@ Then run the loop below, applying the value-model guard (§1) on every recommend
 4. **Prepare (one call — logs decision vs model, plans txn, checks policy+lock, marks submitted):**
    `fantasy draft prepare-pick "<Name>" --overall N --rationale "<why>" --json`
    - `action: CLICK` (exit 0) → in the draft room search the exact name, check team/position match
-     `team` in the output, click **Draft**, confirm.
+     `team` in the output, click **Draft**, confirm. Glance at `warnings`: "latest recommendation is for an
+     older board" / "was for pick X, not N" means the decision was logged against a stale recommendation (you
+     skipped the step-3 re-run, or it ran with `--no-save`); the txn is already `submitted`, so do not re-prepare —
+     mention it in the run log after the pick.
    - exit 4 `DO_NOT_CLICK` → do not click. Reasons (`message`): dry_run, lock missing, `--overall` is not
      my pick per the stored order (`my_picks` listed), that pick is already recorded on the board, the
      player is already recorded as drafted, or `board not synced: picks [...] not recorded` (`behind` lists them:

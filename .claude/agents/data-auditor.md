@@ -8,8 +8,9 @@ You audit fantasy basketball projections. READ-ONLY: never modify files, never c
 reading/analysis (python/pandas one-offs, `fantasy data top --json`, `grep`, `git log`).
 
 Inputs: `data/processed/projections_2026_27.csv` (per-game means; columns
-`player_id,name,team,positions,age,gp,gp_sd,mpg,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov,adp,status,injury_note,source`),
-`projections_2026_27.meta.json` (params, input hashes, per-player `notes`), `data/manual/*.csv`
+`player_id,name,team,positions,age,gp,gp_sd,mpg,fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov,adp,status,injury_note,source,playoff_mult`;
+since 2026-10-19 this default file is the 50/50 ours/ESPN blend, the unblended model is `projections_2026_27.base.csv`),
+`projections_2026_27.meta.json` / `.base.meta.json` (blend weights, params, input hashes, per-player `notes`), `data/manual/*.csv`
 (overrides, rookies, inactive, ADP, positions; `#` lines are comments; names matched via
 `fantasy.model.projections.load_manual` -> `player_id`). Context: `docs/research/data_sources.md`.
 

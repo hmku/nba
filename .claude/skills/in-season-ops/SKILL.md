@@ -6,22 +6,22 @@ description: PLACEHOLDER for Phase 2 (in-season management after the 2026-10-19 
 # In-season operations (Phase 2 - mostly NOT built yet)
 
 ## What does NOT exist yet (do not pretend otherwise)
-| Capability | Task | State on 2026-10-18 |
+| Capability | Task | State on 2026-10-20 |
 |---|---|---|
 | Yahoo roster sync (my roster, all rosters, FAs, transactions -> DB) | T-004 | not built. `src/fantasy/league/yahoo_api.py` has read-only parsers (`parse_roster`, `parse_players`, `parse_teams`) but no sync command and no OAuth tokens yet (T-003). |
 | Daily lineup optimizer | T-005 | not built. No `fantasy lineup ...` command. |
 | Waiver / streaming optimizer | T-006 | not built. |
 | Weekly H2H matchup simulation | T-007 | **built (MVP)**: `fantasy sim season|matchup|compare` — see `.claude/skills/season-sim/SKILL.md`. Needs Yahoo rosters + schedule JSON post-draft. |
 | Trade evaluator | T-008 | not built. |
-| Scheduled morning agent | T-011 | not built. |
+| Scheduled morning agent | T-011 | not built as a job; the protocol it would run is the `league-loop` skill (THINK side BUILT on `fantasy intel` + `fantasy sim`; converter, action queue and lineup/stream/trade tools PLANNED). |
 | NBA schedule / games-per-week data | - | ingested from basketball-reference (`fantasy sim schedule`, `data/raw/bbref_schedule/`); fantasy week calendar unverified vs Yahoo. |
 Check `fantasy task list --area season` and `docs/STATUS.md` - if any of these became `done`, a newer
 skill or runbook should replace this placeholder; update this file.
 
 ## What an agent MAY do today
 - **Read Muse's intel** with `fantasy intel ...` (section below) - works from cloud sessions.
-- **Read-only inspection** (local `claude --chrome` session, `yahoo-browser` skill, inside a `dry_run`
-  run): read my roster, the matchup page, standings, injury tags, the league transactions log, free
+- **Read-only inspection** (local session with whichever browser tools are available, `yahoo-browser` skill,
+  inside a `dry_run` run): read my roster, the matchup page, standings, injury tags, the league transactions log, free
   agents; record findings as `observation` events.
 - **Analysis with existing tools**: `fantasy values build --json` for rest-of-season per-player
   category values (season-long, not schedule-aware), `fantasy data top`, projections lookups. Be
@@ -72,8 +72,9 @@ fantasy intel show snap_<id> --rest --json    # one snapshot with payload (or a 
   page -> mark verified). The approval summary must state the expected category impact and the
   downside (who we lose). The user approves on the dashboard `/approvals` or in chat; never run
   `fantasy approval decide` yourself.
-- League limits (unverified, `fantasy settings show`): `max_weekly_adds` 6, waivers 2 days, continual
-  rolling list. Check remaining adds before proposing.
+- League limits (verified 2026-10-18 from the Yahoo settings page, `fantasy settings show`): `max_weekly_adds` 6,
+  waivers 2 days, continual rolling list, daily lineups (`weekly_deadline: daily_today`), 3 IL slots. Check remaining
+  adds before proposing. The recurring review loop itself: `league-loop` skill.
 
 ## When Phase 2 is built
 Replace this file with the real protocol (sync -> optimize -> plan txns -> approval if needed ->

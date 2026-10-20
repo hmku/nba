@@ -1,7 +1,7 @@
 # Your to-do list (human-only actions)
 
 _Maintained by the lead agent. Agents: add items here when something needs the user; tick them off when confirmed._
-Draft: **Mon 2026-10-19, 10:00 PM ET.**
+Draft: **Mon 2026-10-19, 10:00 PM ET — under way.** Pre-draft sections below are history; post-draft items are at the end.
 
 ## Can do from your phone now
 - [ ] **Make Muse's league intel private (1 min, phone OK):** Supabase → fantasy-nba → SQL Editor → New query, paste the contents of
@@ -10,7 +10,7 @@ Draft: **Mon 2026-10-19, 10:00 PM ET.**
       Until then don't ask Muse for chat digests. Tell Claude when done; it verifies the policies.
 - [x] **League settings screenshots** — received and recorded 2026-10-18 (`data/manual/league_settings.json`):
       categories, roster (3 IL, not 4), trades, waivers, playoffs (weeks 18-20, ending Sun Mar 21, 2027).
-  - [ ] **Draft order: user believes 1, 24, 36, 37, … is right (2026-10-18); Muse's read of Yahoo (2026-10-19 01:16 UTC) agrees: 3RR, slot 1** — laptop session still confirms on Yahoo before pick 1.
+  - [x] **Draft order: 3RR, slot 1 (picks 1, 24, 36, 37, …)** — verified on Yahoo's draftresults page 2026-10-19 (commit 436c3ba).
         Previously: — screenshot the Draft Order page if available (Yahoo → League →
         Draft Order / draft room), else it gets checked in the laptop session (draft-prep step 4). Confirm
         your picks are 1, 24, 36, 37, 60, 61, … (3rd-round reversal) and that you pick #1.
@@ -63,7 +63,7 @@ Read and follow https://fantasy.harrisonku.com/agent (instructions + API). Your 
 ```
 5. [x] (2026-10-19 01:16 UTC: Muse wrote a settings snapshot, the round 1-3 draft order (3RR, slot 1) and an IL-rule report; verified in Supabase) Ask Muse to send one test report (e.g. "chat_note: setup test"); check it appears on the dashboard's **Activity** tab
        under "League intel from Muse".
-       After the draft (once the `league_snapshots` migration is applied), ask Muse to do one read-only league check now;
+       After the draft, ask Muse to do one read-only league check now (the `league_snapshots` table exists; Muse wrote a settings snapshot 2026-10-19);
        its snapshots (my roster, matchup, ...) appear on the **Activity** tab under "League intel".
        Muse needs its browser logged in to your Yahoo account for this (read-only use); never give it your password in the group chat.
 6. To revoke later: change/delete `AGENT_API_TOKEN` in Vercel and ask Claude to trigger a build.
@@ -74,7 +74,7 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
 2. [ ] `git clone https://github.com/hmku/nba && cd nba && pip install -e ".[dev]"` (Python ≥ 3.11).
 3. [ ] `export FANTASY_DB_URL='<session pooler URI>'` (put it in your shell rc or a git-ignored `.env`); check `fantasy status` works.
 4. [ ] Chrome: install the **Claude** extension, sign in with the same account, log in to Yahoo Fantasy.
-5. [ ] In the repo run `claude --chrome`; `/chrome` should say Enabled. When Claude first opens Yahoo choose
+5. [ ] In the repo run `claude --chrome`; `/chrome` should say Enabled (or use the Claude desktop app's built-in browser). When Claude first opens Yahoo choose
       "allow all actions on this site" for `basketball.fantasysports.yahoo.com`.
 6. [ ] Tell Claude: **"Run the draft-prep skill."** It will (with you watching):
       - verify league settings (categories, roster slots) and the **actual draft order** (Yahoo has no native 3RR —
@@ -85,10 +85,15 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       then once in live mode in a mock to test clicking.
 
 ## Draft night
-- [ ] 9:30 PM ET: laptop plugged in, sleep off, Chrome on the draft room, `claude --chrome` in the repo.
+- [ ] 9:30 PM ET: laptop plugged in, sleep off, Claude running in the repo with its browser (desktop app's built-in browser, or `claude --chrome`) on the draft room.
 - [ ] Say: **"Run the live-draft skill for the real draft nba.l.44495-2026 in live mode. You are authorised to make my picks."**
 - [ ] Optional: `fantasy draft watch` in a second terminal (recomputes recs when picks are entered on the dashboard);
       watch https://fantasy.harrisonku.com/draft on your phone. Fallback steps: `docs/runbooks/live_draft.md`.
+
+## After the draft
+- [ ] Apply the private-intel migration (top of this file) before asking Muse for chat digests.
+- [ ] Ask Muse for one read-only league check (rosters, my team, matchup) so the in-season loop has data.
+- [ ] Decide the third-party projections question (public repo) above.
 
 ## Done
 - [x] Network allowlist with wildcard domains (2026-10-18).

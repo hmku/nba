@@ -19,6 +19,7 @@ before quoting numbers to the user). Code: `src/fantasy/sim/`. Version `SIM_VERS
 | Mid-draft advisory | `fantasy sim draft-check --draft-id <id> --candidates "A,B,C" [--sims 800 --completions 4] --json` |
 | Calendar / games per week / matchups | `fantasy sim schedule [--out schedule.json]` (writes a JSON template for Yahoo's real schedule) |
 | Refresh NBA schedule (network, 7 polite requests) | `fantasy sim fetch-schedule` → `data/raw/bbref_schedule/` + provenance |
+| Optimism decomposition (research) | `fantasy sim symmetric ...` (rooms where 0/3/6/11/all opponents use our optimizer; `docs/research/optimism_decomposition.md`) |
 Rosters: `--draft-id` (default: latest non-mock draft, or `$FANTASY_DRAFT_ID`) or `--league-file rosters.json`
 (`{"my_team": 1, "teams": {"1": {"name": "...", "players": [player_ids]}, ...}}`). Schedule:
 `--schedule yahoo_schedule.json` (`{"source": "...", "weeks": [{"week": 1, "start": "2026-10-20", "end":

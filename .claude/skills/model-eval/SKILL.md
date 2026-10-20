@@ -7,9 +7,12 @@ description: Evaluate and improve the quant models - Monte Carlo draft simulatio
 
 Pipeline: projections (`model/projections.py`, per-game means) -> per-game lines & variance
 (`model/lines.py`) -> valuation (`model/valuation.py`: G-scores over replacement, makes/attempts for
-FG%/FT%, availability + streaming) -> category win model (`model/catmodel.py`) -> rollout draft
-optimizer (`draft/optimizer.py`) with ADP availability (`draft/availability.py`) -> simulation
-(`draft/simulate.py`). The user is a quant: be rigorous, report uncertainty (sd / n), don't
+FG%/FT%, availability + streaming; game noise `model/noise.py`) -> category win model (`model/catmodel.py`) ->
+rollout draft optimizer (`draft/optimizer.py`, `optimizer-0.4.0`) with simulated-room availability (default
+`sim`/room `mixed`, `draft/room_sim.py`; analytic Normal(ADP) `draft/availability.py` via `--availability adp`) ->
+value search re-ranking the optimizer's top 6 (`src/fantasy/valuesearch/`, `value-model-0.2.0`; together the
+default `recommend-0.2.0` policy) -> simulation (`draft/simulate.py`; policy evaluation under the season
+simulator: `draft/policy_eval.py`, `docs/research/draft_policy.md`). The user is a quant: be rigorous, report uncertainty (sd / n), don't
 over-claim from small simulations.
 
 ## 1. Draft simulation (optimizer vs BPA)
@@ -29,16 +32,19 @@ use `--no-save` for experiments. `summary` also has `edge.{expected_category_win
 win probs. Compute a paired SE from `sims[]` (`expected_category_wins` vs
 `baseline_bpa_expected_category_wins`) before calling an edge real. Opponents draft by noisy ADP and
 the opponent in the win model is a league-average team, so absolute win probabilities are optimistic;
-compare relatively. Caveat: `simulate` uses the formula order from settings, not a custom order
-stored with `draft set-order`.
+compare relatively. `simulate` replays the optimizer only (`value_search_replayed: false`); to compare full
+policies (value search, BPA, rooms) under the season simulator use
+`python -m fantasy.draft.policy_eval run|summary` (docstring; results in `docs/research/draft_policy.md`).
+Order: without `--draft-id` the formula order from settings; with `--draft-id` (or `FANTASY_DRAFT_ID`)
+that draft's custom order from `draft set-order` (`custom_order: true`).
 
 ## 2. Sensitivity
 | Lever | Command | Notes |
 |---|---|---|
 | kappa (0 = z-scores, 1 = G-scores) | `fantasy values build --kappa 0 --no-save --top 40 --json` | compare `top[]` ranks vs default |
 | punt | `fantasy values build --punt ft_pct,tov --no-save --json` | category keys: `fg_pct ft_pct fg3m pts reb ast stl blk tov`. Unknown names exit 2 with the `valid` list. `fantasy draft recommend --kappa K --punt ...` applies the same valuation params to recommendations. |
-| strategy in the draft | `fantasy draft recommend --strategy punt_ft --no-save --json`; `strategy.scan` in a normal recommend | names: balanced, punt_ft, punt_fg, punt_tov, punt_ast, punt_pts, punt_fg3m, punt_ft_tov. Unknown name -> KeyError traceback (exit 1). |
-| objective | `fantasy draft recommend --objective matchup --no-save --json` (default `cat_wins`) | on a 2026-10-18 test board the two objectives gave very different top-3 - worth investigating before trusting `matchup`. Unknown values are not validated. |
+| strategy in the draft | `fantasy draft recommend --strategy punt_ft --no-save --json`; `strategy.scan` in a normal recommend | names: balanced, punt_ft, punt_fg, punt_tov, punt_ast, punt_pts, punt_fg3m, punt_ft_tov. Unknown name -> exit 2 with `valid`. |
+| objective | `fantasy draft recommend --objective matchup --no-save --json` (default `cat_wins`) | on a 2026-10-18 test board the two objectives gave very different top-3 - worth investigating before trusting `matchup`. With the default value search `--objective` also accepts the value objectives `blend` (default) / `title` / `playoffs` / `rank`; unknown values exit 2 with `valid`. |
 | opponent noise | `simulate --noise` | |
 Use `--no-save` for experiments so they don't pollute `model_runs` / `draft_recommendations`, and a
 scratch DB (`export FANTASY_DB_URL=sqlite:///<scratch>/eval.db; fantasy db init`) plus a `--mock`
@@ -48,7 +54,7 @@ draft for recommend experiments - never experiment on the real draft record.
 | Prior | Where | Current | Calibrate on |
 |---|---|---|---|
 | Game-to-game noise var(stat, m) = a·m + b·m² (ONE model for valuation G-scores, the optimizer's category model and the season simulator; `noise_model` = noise-var-1.0 in run params) | `src/fantasy/model/noise.py` | **fitted** (valuation-0.3.0, season-sim-0.5.0); beats a constant CV out of sample on every stat; the constant-CV models and `FANTASY_GAME_CV` were deleted 2026-10-19 (git history keeps them) | done: `docs/research/sim_calibration.md` sections 2 and 8. Open: 15-24 mpg FGA/PTS/REB game variance still ~10-40% under-stated (minutes volatility) |
-| ADP sd = `SD_FLOOR + SD_SLOPE * adp` | `src/fantasy/draft/availability.py` | 2.5 + 0.18*adp | Yahoo draft results vs ADP (pick - ADP residuals) |
+| ADP sd = `SD_FLOOR + SD_SLOPE * adp` (analytic `--availability adp` and the noisy-ADP drafters in the simulated rooms) | `src/fantasy/draft/availability.py` | 2.5 + 0.18*adp | Yahoo draft results vs ADP (pick - ADP residuals); tonight's real draft is the first sample |
 | `USAGE` share of rostered games that count | `src/fantasy/model/catmodel.py` | 0.85 | in-season lineup data |
 | `stream_recovery` share of missed games recovered by streamers | `ValuationParams` in `src/fantasy/model/valuation.py` | 0.5 | waiver activity / replacement-level games |
 | Projection params (`Params`, `AGE_CURVE`, `MPG_GROWTH`, gp prior 68) | `src/fantasy/model/projections.py` | heuristics | backtest (T-010) |
@@ -63,12 +69,17 @@ target season; manual overrides can't be replayed, so backtest the baseline only
 
 ## 5. Rules for model changes
 - **Bump the version** of the component whose outputs change: `MODEL_VERSION` in
-  `src/fantasy/model/projections.py` (projections) or `src/fantasy/model/valuation.py` (valuation;
-  also bump it for changes in `lines.py`/`catmodel.py`/`optimizer.py` that change values or
-  recommendations - only valuation runs are recorded in `model_runs`, and recommendations link to them).
+  `src/fantasy/model/projections.py` (projections), `PROJECTIONS_VERSION` in `model/blend.py` (blend),
+  `MODEL_VERSION` in `src/fantasy/model/valuation.py` (valuation; also for `lines.py`/`catmodel.py`/`noise.py`
+  changes that move values), `NOISE_MODEL_VERSION` (`model/noise.py`), `OPTIMIZER_VERSION`
+  (`draft/optimizer.py`, room sim), `RECOMMEND_VERSION` (`draft/cli_recommend.py`, default policy),
+  `SIM_VERSION` (`sim/__init__.py`), value model `MODEL_VERSION` (`valuesearch/train.py`; artifact + the
+  live-draft guard's expected version). `model_runs` records valuation, `draft_sim` and `season_sim` runs;
+  recommendations carry `optimizer_version` / `recommend_policy`.
 - **Tests**: add or update tests with synthetic data (`tests/synthetic.py`, `tests/test_scoring.py`,
   `tests/test_optimizer.py`, `tests/test_projections.py`); no network; deterministic seeds.
 - Percent categories stay makes/attempts based; never average percentages.
 - Keep `recommend` under ~3-5 s (60 s draft clock): check `compute_seconds`.
 - Report before/after: top-30 rank changes, simulation edge with SE, latency. Ask the `quant-reviewer`
-  subagent to review the diff. Don't change the model on draft day without the user's OK.
+  subagent to review the diff. Don't change the model on draft day without the user's OK (draft-path code
+  under `src/` and `web/` is frozen while the draft is running).

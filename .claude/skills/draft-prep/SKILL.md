@@ -6,8 +6,8 @@ description: Day-of-draft preparation checklist for league 44495 - refresh proje
 # Draft prep (day of the draft)
 
 Real draft: **Mon 2026-10-19 22:00 ET**, draft id `nba.l.44495-2026`, 12 teams, 13 rounds, my slot 1,
-60 s/pick, H2H 9-cat. Steps 3-4 and 7-8 need a **local** `claude --chrome` session (`yahoo-browser`
-skill); steps 1-2, 5-6 work anywhere. Tick off the tasks as you go: T-001 (settings), T-015 (order),
+60 s/pick, H2H 9-cat. Steps 3-4 and 7-8 need a **local** session with browser tools (whichever are
+available: the desktop app's built-in browser or Claude in Chrome; `yahoo-browser` skill); steps 1-2, 5-6 work anywhere. Tick off the tasks as you go: T-001 (settings), T-015 (order),
 T-014 (pre-ranks), T-002 (rehearsal), T-013 (DB URL).
 
 ## 0. Setup
@@ -28,9 +28,11 @@ Re-check news for top-150 players (injuries, trades since 2026-10-18) and encode
 `projections-update` skill (`data/manual/player_overrides_2026_27.csv`).
 
 ## 2. Close the ADP / position gap
-Only ~50 players have ADP (`data/manual/adp_yahoo_2026_27.csv`); blanks fall back to
-`model rank * 1.15 + 3` in `fantasy.model.valuation.market_order`, which makes the availability
-model (`prob_available_next`) unreliable after ~round 4. Positions are medium confidence.
+Since 2026-10-18 Yahoo ADP covers ~293 players and Yahoo positions the top 250 (`fantasy data fetch-yahoo --apply`
+writes `data/manual/adp_yahoo_2026_27.csv`); blanks fall back to `model rank * 1.15 + 3` in
+`fantasy.model.valuation.market_order`. The simulated rooms behind `prob_available_next` (ADP drafters) use the same
+market order, so check coverage of the top ~180 before trusting late-round availability. Manual browser reads
+below are only for gaps.
 
 **Where to read (local browser):** Yahoo Draft Analysis / ADP page, the league's Players page, or the
 draft room / mock draft room player list (shows Yahoo rank, ADP and positions). See `yahoo-browser`
@@ -66,14 +68,14 @@ Commit the manual CSVs + `data/processed/*` (handoff skill) so the dashboard and
 
 ## 3. Verify league settings (T-001)
 **Mostly done (2026-10-18):** the Yahoo league Settings page (user's screenshots) is recorded in
-`data/manual/league_settings.json` (source `yahoo_settings_screenshot`): 12 teams, H2H categories,
+`data/manual/league_settings.json` (source `yahoo_settings_screenshot`, now `browser` after the 2026-10-19 order/slot verification): 12 teams, H2H categories,
 the 9 categories, roster PG/SG/G/SF/PF/F/C/C/Util/Util + 3 BN + **3 IL** (13 drafted rounds), live
 standard draft Mon 2026-10-19 22:00 ET with a 60 s clock, 6 adds/week (no season cap), trades until
 2027-03-04 (commissioner review, no draft-pick trades), waivers 2 days continual rolling, daily
 lineups (today), playoffs 6 teams weeks 18-20 ending Sun 2027-03-21, re-seeded, ties to the higher seed.
-`fantasy settings show --json` → `unverified` should be exactly `["draft_order_type", "my_slot"]`.
-Remaining: the **draft order / 3RR and my slot** are not on the settings page — confirm them on the
-Draft Order page / draft room (step 4), then
+**Done 2026-10-19 (commit 436c3ba):** draft order (3RR) and my slot 1 verified from the Yahoo draftresults page;
+`fantasy settings show --json` → `unverified` is `[]`. If you re-check: the **draft order / 3RR and my slot** are
+not on the settings page — confirm them on the Draft Order page / draft room (step 4), then
 `fantasy settings verify draft_order_type my_slot --source browser --json` and commit the file.
 If anything on the Settings page differs from the file: edit the values in
 `data/manual/league_settings.json`, `verify` the fields, rebuild values (step 5) and **tell the user**
@@ -105,11 +107,22 @@ params (unless given `--kappa/--punt`) and reuses/creates the matching valuation
 `--punt/--kappa` here are for analysis only - punting during the draft is decided by `recommend`'s strategy scan.
 Unknown `--punt` names exit 2.
 
+**Recommend guard (same as `live-draft` §1):** after `draft init`, in the shell that will draft:
+```bash
+unset FANTASY_VALUE_MODEL
+fantasy draft recommend --no-save --json | python3 -c "import json,sys;p=json.load(sys.stdin)['recommend_policy'];print(p['value_search_status'],p['value_model_version'],p['is_default'])"
+# must print: ok value-model-0.2.0 True   (default policy: value search + sim/mixed availability, recommend-0.2.0 / optimizer-0.4.0)
+```
+Anything else: stop and tell the user before the draft.
+
 ## 6. Simulate
 ```bash
 fantasy draft simulate --sims 20 --seed 1 --draft-id nba.l.44495-2026 --json     # ~4 s per sim
 ```
-Read `summary`: `optimizer.expected_category_wins_mean` vs `baseline_bpa.expected_category_wins_mean`,
+`simulate` replays the **optimizer** (default sim/mixed availability, `optimizer-0.4.0`) without the value search
+(`summary.value_search_replayed: false`) against noisy-ADP opponents, graded by expected category wins; the default
+policy itself was evaluated with the season simulator in `python -m fantasy.draft.policy_eval`
+(`docs/research/draft_policy.md`). Read `summary`: `optimizer.expected_category_wins_mean` vs `baseline_bpa.expected_category_wins_mean`,
 `edge_category_wins` (optimizer minus best-player-available; expect >= ~0, small at n=20),
 `first_pick_counts`, `strategy_counts`. Report these to the user; don't overinterpret absolute win
 probabilities (opponent = league-average team). With `--draft-id` (or `FANTASY_DRAFT_ID`) `simulate` uses

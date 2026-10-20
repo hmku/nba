@@ -14,6 +14,7 @@ always use `--json` and branch on the exit code.
 | 5 | duplicate transaction (JSON includes `existing`) |
 | 6 | not found |
 | 7 | invalid state transition (txn, already-decided approval, run not running) |
+| 8 | still pending (`approval show --wait N` timed out) |
 
 ## 0. Orient first
 
@@ -196,8 +197,9 @@ fantasy task add|list|show|claim|update|done ... --rest
   not land, the error is returned and the command is safe to re-run.
 - Auth: same as publish (network secret injects an `sb_secret_` key = Supabase `service_role`, which
   bypasses RLS; the anon/publishable key has SELECT-only policies and could not write). League intel
-  (`league_snapshots`, chat_digest/chat_note events) has no anon read at all
-  (`20261019120000_private_league_intel.sql`); `fantasy intel --rest` reads it with that key.
+  (`league_snapshots`, chat_digest/chat_note events) loses its anon read once
+  `20261019120000_private_league_intel.sql` is applied (**pending user action**, `docs/USER_TODO.md`; until then it is
+  anon-readable); `fantasy intel --rest` reads it with the service key either way.
 
 ## 6. Tasks (backlog)
 
