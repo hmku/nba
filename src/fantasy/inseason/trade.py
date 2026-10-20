@@ -36,11 +36,12 @@ def rostered(league: LeagueState) -> set[str]:
 
 
 def apply_trade(league: LeagueState, my_team: int, trade: Trade, values: pd.DataFrame, roster_size: int,
-                refill_skip: int = 0) -> tuple[LeagueState, dict]:
+                refill_skip: int = 0, fa_pool: Sequence[str] | None = None) -> tuple[LeagueState, dict]:
     """New league with the trade applied and both rosters refilled/trimmed to `roster_size`.
 
     A short roster adds the best undrafted player after skipping the `refill_skip` best (0 = optimistic:
-    we win the waiver claim; 11 = the 12th-best, i.e. everyone else claimed first)."""
+    we win the waiver claim; 11 = the 12th-best, i.e. everyone else claimed first). `fa_pool` (best first,
+    e.g. the realistic free agents of the latest Yahoo capture) restricts the refill candidates."""
     mine, theirs = league.rosters[my_team], league.rosters[trade.partner]
     for p in trade.give:
         if p not in mine:
@@ -52,7 +53,9 @@ def apply_trade(league: LeagueState, my_team: int, trade: Trade, values: pd.Data
     new.rosters[my_team] = [p for p in mine if p not in trade.give] + list(trade.get)
     new.rosters[trade.partner] = [p for p in theirs if p not in trade.get] + list(trade.give)
     val = values["value"]
-    pool = [p for p in values.index if p not in rostered(new)][refill_skip:]  # values sorted best first
+    taken = rostered(new)
+    order = list(fa_pool) if fa_pool is not None else list(values.index)  # values sorted best first
+    pool = [p for p in order if p not in taken][refill_skip:]
     moves: dict[int, dict[str, list[str]]] = {}
     for t in (my_team, trade.partner):
         ps = new.rosters[t]

@@ -1,4 +1,4 @@
-"""Season simulator with position-aware daily lineups.
+"""Season simulator with position-aware daily lineups (and mid-season roster changes).
 
 `fantasy.sim.engine.SeasonSimulator` counts each day's games for the first `active` (=10) healthy
 players by projected value, ignoring slot eligibility. This subclass keeps everything else identical
@@ -6,9 +6,17 @@ players by projected value, ignoring slot eligibility. This subclass keeps every
 the games of players who could not be slotted that day (priority-greedy matching, `lineup.LineupSolver`).
 The engine's count cap then never binds, and its streaming term fills the remaining empty slots
 (streamers are assumed to have a fitting position: optimistic for a slot that only a C could fill).
+
+Mid-season changes (`windows`): {player_id: (first_day | None, end_day | None)} restricts a rostered player to
+the days first_day <= d < end_day. An add/drop effective on day e is simulated as one roster holding both players,
+the dropped one with window (None, e) and the added one with (e, None); only one of them is ever available, so
+the lineup is the 13-man lineup before and after e. Their injury-spell intervals (IL replacement) are clipped to
+the same window. No random numbers are added or removed, so runs stay paired with the unchanged league.
 """
 
 from __future__ import annotations
+
+from datetime import date
 
 import numpy as np
 
@@ -17,24 +25,44 @@ from fantasy.model.lines import parse_positions
 from fantasy.sim.engine import SeasonSimulator, SimResult
 from fantasy.sim.league import LeagueState
 
+Window = tuple[date | None, date | None]
+
 
 class PositionAwareSimulator(SeasonSimulator):
     _league: LeagueState | None = None
+    _windows: dict[str, Window] | None = None
 
-    def run(self, league: LeagueState) -> SimResult:
-        self._league = league
+    def run(self, league: LeagueState, windows: dict[str, Window] | None = None) -> SimResult:
+        self._league, self._windows = league, windows or None
         try:
             return super().run(league)
         finally:
-            self._league = None
+            self._league, self._windows = None, None
 
     def _positions(self, pid: str) -> list[str]:
         if pid in self.proj.index and "positions" in self.proj.columns:
             return parse_positions(self.proj.loc[pid, "positions"])
         return []
 
+    def _apply_windows(self, arr: dict[str, np.ndarray], pids: list[str]) -> None:
+        pidx = {p: i for i, p in enumerate(pids)}
+        days = np.array([(d - self.season_start).days for d in self.fdays])
+        for pid, (a, b) in (self._windows or {}).items():
+            j = pidx.get(pid)
+            if j is None:
+                continue
+            lo = (a - self.season_start).days if a else -10**6
+            hi = (b - self.season_start).days if b else 10**6
+            arr["health"][:, j, :] &= ((days >= lo) & (days < hi))[None, :]
+            if "il_start" in arr:
+                s = np.clip(arr["il_start"][:, j], lo, hi)
+                e = np.clip(arr["il_end"][:, j], lo, hi)
+                arr["il_start"][:, j], arr["il_end"][:, j] = s, np.maximum(e, s)
+
     def _player_arrays(self, pids: list[str]) -> dict[str, np.ndarray]:
         arr = super()._player_arrays(pids)
+        if self._windows:
+            self._apply_windows(arr, pids)
         league = self._league
         if league is None:
             return arr
