@@ -25,7 +25,7 @@ numbers for everyone else):
 4. Streaming: each team adds up to `stream_games` replacement-level games per week (default
    adds_per_week x games_per_add x stream_usage = 6 x 2 x 0.5 = 6), limited by its open starting
    slot-days that week. Replacement line = valuation's replacement level.
-4b. IL replacement (opt-in, `il_replacement`; docs/research/il_replacement.md): while a rostered player is in
+4b. IL replacement (default on since season-sim-0.6.0, `il_replacement`; docs/research/il_replacement.md): while a rostered player is in
    an injury spell of at least `il_min_spell_days` days (proxy for Yahoo's "Out" status, which IL slots
    require), his team carries one replacement-level player in his place, up to `il_slots` at a time. Each
    replacement plays the expected games of a typical NBA team that day (share of the 30 teams playing) times
@@ -93,9 +93,9 @@ class SimParams:
     games_per_add: float = 2.0
     stream_usage: float = 0.5  # share of the weekly add budget actually used on streamers
     streaming: bool = True
-    # IL replacement (opt-in; all PRIORS, docs/research/il_replacement.md): a player in an injury spell of at
+    # IL replacement (default on since 0.6.0; all PRIORS, docs/research/il_replacement.md): a player in an injury spell of at
     # least il_min_spell_days days is replaced by a replacement-level player for the spell, up to il_slots per team
-    il_replacement: bool = False
+    il_replacement: bool = True  # default since season-sim-0.6.0 (user-approved 2026-10-20)
     il_slots: int | None = None  # default: settings.roster_slots["IL"] (league 44495: 3)
     il_min_spell_days: float = 7.0
     il_rep_availability: float = 0.85  # share of his team's games the replacement plays (rest/minor injuries)

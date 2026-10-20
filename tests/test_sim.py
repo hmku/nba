@@ -38,7 +38,8 @@ def _snake_league(ctx, seed=0, noise=1.0):
 
 
 def _params(**kw):
-    base = dict(n_sims=300, seed=1)
+    # mechanics tests run without IL replacement (the default since season-sim-0.6.0); IL tests opt in explicitly
+    base = dict(n_sims=300, seed=1, il_replacement=False)
     base.update(kw)
     return SimParams(**base)
 
@@ -581,3 +582,9 @@ def test_il_replacement_position_aware(ctx):
                                              ctx.calendar, ctx.matchups, _params(n_sims=60, **kw))
     off, on = mk().run(lg), mk(il_replacement=True).run(lg)
     assert on.il_games.sum() > 0 and (on.games >= off.games - 1e-4).all()
+
+
+def test_il_replacement_is_default_since_0_6_0():
+    from fantasy.sim import SIM_VERSION
+    assert SimParams().il_replacement is True
+    assert SIM_VERSION == "season-sim-0.6.0"

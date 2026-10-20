@@ -11,4 +11,4 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 # 0.5.0: per-game variance from the one game-noise model shared with the draft (fantasy.model.noise,
 #        noise-var-1.0; same a*m + b*m^2 values); the constant-CV option (SimParams.game_var="cv") is deleted.
 #        Drafted rosters change via valuation-0.3.0 / optimizer-0.3.0. Run params record "noise_model".
-SIM_VERSION = "season-sim-0.5.0"
+SIM_VERSION = "season-sim-0.6.0"

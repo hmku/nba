@@ -54,7 +54,7 @@ StreamOpt = Annotated[bool, typer.Option("--streaming/--no-streaming", help="Mod
 SaveOpt = Annotated[bool, typer.Option("--save/--no-save", help="Record a model_runs row")]
 ILOpt = Annotated[bool, typer.Option(
     "--il-replacement/--no-il-replacement",
-    help="Replace players in long injury spells with replacement-level players (IL slots; opt-in, priors: "
+    help="Replace players in long injury spells with replacement-level players (IL slots; default on since season-sim-0.6.0, priors: "
          "docs/research/il_replacement.md)")]
 ILDaysOpt = Annotated[float, typer.Option("--il-min-spell-days", help="Shortest spell (days) that triggers an IL move (prior 7)")]
 
@@ -271,7 +271,7 @@ def season(
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     my_plan: MyPlanOpt = "market", team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True,
     playoff_teams: POTeamsOpt = None, playoff_weeks: POWeeksOpt = None, streaming: StreamOpt = True,
-    save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = False, il_min_spell_days: ILDaysOpt = 7.0,
+    save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = True, il_min_spell_days: ILDaysOpt = 7.0,
     scenario: Annotated[str | None, typer.Option(
         "--scenario", help='Label stored as summary.scenario, e.g. "post-draft: actual rosters" (dashboard)')] = None,
     as_json: JsonOpt = False,
@@ -320,7 +320,7 @@ def matchup(
     draft_id: DraftOpt = None, league_file: LeagueOpt = None, sims: SimsOpt = 2000, seed: SeedOpt = 0,
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True, streaming: StreamOpt = True,
-    projections: ProjOpt = None, il_replacement: ILOpt = False, il_min_spell_days: ILDaysOpt = 7.0,
+    projections: ProjOpt = None, il_replacement: ILOpt = True, il_min_spell_days: ILDaysOpt = 7.0,
     as_json: JsonOpt = False,
 ) -> None:
     """Week-N matchup breakdown for my team: per-category win probabilities, expected totals, games."""
@@ -351,7 +351,7 @@ def compare(
     draft_id: DraftOpt = None, league_file: LeagueOpt = None, sims: SimsOpt = 2000, seed: SeedOpt = 0,
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True, streaming: StreamOpt = True,
-    save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = False,
+    save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = True,
     il_min_spell_days: ILDaysOpt = 7.0, as_json: JsonOpt = False,
 ) -> None:
     """Change in P(playoffs)/P(title) for a roster change (add/drop), paired with common random numbers."""
