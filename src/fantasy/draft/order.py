@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -44,6 +45,7 @@ def draft_order(
             if sorted(rnd) != list(range(1, num_teams + 1)):
                 raise ValueError(f"round {i} must contain each slot 1..{num_teams} exactly once: {rnd}")
     picks: list[Pick] = []
+    slots: Sequence[int]
     for r in range(1, num_rounds + 1):
         if custom_rounds:
             slots = custom_rounds[r - 1]

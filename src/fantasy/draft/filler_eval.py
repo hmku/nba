@@ -33,6 +33,7 @@ import numpy as np
 
 from fantasy.draft.optimizer import DraftContext, DraftOptimizer, DraftState, OptimizerParams
 from fantasy.draft.policy import board_state, bpa_row
+from fantasy.draft.policy_eval import load, paired
 
 EVAL_VERSION = "filler-eval-0.1.0"
 VARIANTS: dict[str, dict] = {
@@ -157,17 +158,6 @@ def run_job(job: tuple[int, int, str, list[str]]) -> dict:
 
 
 # ---------------------------------------------------------------- summary
-def load(path: Path) -> list[dict]:
-    return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
-
-
-def paired(a: np.ndarray, b: np.ndarray) -> dict:
-    d = a - b
-    se = float(d.std(ddof=1) / np.sqrt(len(d))) if len(d) > 1 else float("nan")
-    return {"mean": round(float(d.mean()), 4), "se": round(se, 4),
-            "z": round(float(d.mean()) / se, 2) if se > 0 else None}
-
-
 def summarize(rows: list[dict], base: str = "opt_market") -> dict:
     out: dict = {}
     for slot, regime in sorted({(r["slot"], r["regime"]) for r in rows}):
@@ -177,8 +167,9 @@ def summarize(rows: list[dict], base: str = "opt_market") -> dict:
         for truth in TRUTHS:
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["policies"][p]["grade"][truth][metric] for r in rr]) for p in specs}
-                m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
-                     for p, v in x.items()}
+                m: dict[str, dict] = {
+                    p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
+                    for p, v in x.items()}
                 for p in specs:
                     if p != base and base in x:
                         m[p]["minus_" + base] = paired(x[p], x[base])

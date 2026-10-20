@@ -92,7 +92,6 @@ class Recommender:
         self.ctx, self.cfg, self.projections = ctx, cfg, projections
         self.opt = DraftOptimizer(ctx, cfg.optimizer_params())
         self._vs = None
-        self._vs_error: str | None = None
 
     def value_search(self):  # noqa: ANN201 — ValueSearch, imported lazily
         if self._vs is None:
@@ -217,7 +216,7 @@ def recommend(
     rec["compute_seconds"] = round(time.time() - t0, 2)
     rec["ok"] = True
     rec["valuation_params"] = {"kappa": vp.kappa, "punt": vp.punt}
-    gaps = [p for p in range(1, (max(state.taken) if state.taken else 0)) if p not in state.taken]
+    gaps = state.gaps()
     if gaps and not any("not recorded" in w for w in rec["warnings"]):  # the optimizer usually warned already
         rec["warnings"].append(f"Picks {gaps} not recorded — availability may be wrong; sync the board first.")
     rec["behind"] = behind_clock(state.taken, rec.get("for_pick"))

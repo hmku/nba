@@ -10,7 +10,7 @@ import typer
 
 from fantasy.cli_common import emit, fail, failure
 from fantasy.draft import store
-from fantasy.draft.cli import DraftOpt, JsonOpt, ProjOpt, _load_draft, app, behind_clock
+from fantasy.draft.cli import DraftOpt, JsonOpt, ProjOpt, _load_draft, app, behind_clock, board_gaps
 from fantasy.draft.names import NameResolutionError, resolve_player
 from fantasy.draft.order import order_for_draft
 from fantasy.model.lines import load_projections
@@ -135,7 +135,7 @@ def _vs_latest_recommendation(
     top = {k: recs[0].get(k) for k in ("player_id", "name", "score")} if recs else None
     rank_in_recs = next((i for i, r in enumerate(recs) if r.get("player_id") == pid), None)
     warnings = []
-    gaps = [k for k in range(1, max(taken, default=0)) if k not in taken]
+    gaps = board_gaps(taken)
     if gaps:
         warnings.append(f"Picks {gaps} not recorded — availability may be wrong; sync the board first.")
     if rec.get("for_pick") not in (None, overall):

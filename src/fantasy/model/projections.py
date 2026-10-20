@@ -197,6 +197,7 @@ def derive_positions(pbp: pd.DataFrame, weights: dict[int, float]) -> dict[str, 
 
 
 def baseline(params: Params | None = None) -> pd.DataFrame:
+    """Statistical per-game projection for every player with enough recent minutes (no manual data yet)."""
     params = params or Params()
     w = params.season_weights
     tot = load_totals()
@@ -208,16 +209,7 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         .drop_duplicates("player_id")
         .set_index("player_id")
     )
-
-    # position-group league mean per-minute rates (rotation players, latest season)
-    latest = tot[(tot["season"] == max(w)) & (tot["mp"] >= 500)].copy()
-    latest["grp"] = latest["pos"].map(_pos_group)
-    grp_rates = (
-        latest.groupby("grp")[RATE_STATS].sum().div(latest.groupby("grp")["mp"].sum(), axis=0)
-    )
-    # replacement-ish prior: scale down production (low-minute players are below average),
-    # but keep shooting percentages at the group mean (makes and attempts scaled together)
-    grp_rates = grp_rates * 0.85
+    grp_rates = _group_prior_rates(tot, max(w))
 
     rows = []
     for pid, g in tot.groupby("player_id"):
@@ -226,67 +218,11 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         if wmin / sum(w.values()) * 2 < params.min_total_minutes:  # tiny samples
             continue
         last = g.iloc[-1]
-        grp = _pos_group(last["pos"])
-        prior = grp_rates.loc[grp]
-        rate = {}
-        for s in RATE_STATS:
-            rate[s] = ((g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (
-                wmin + params.prior_min
-            )
-        # keep makes <= attempts after regression
-        rate["fgm"] = min(rate["fgm"], rate["fga"])
-        rate["ftm"] = min(rate["ftm"], rate["fta"])
-        rate["fg3m"] = min(rate["fg3m"], rate["fgm"])
-
         # age in 2026-27 = last observed age + years since
         age_now = float(last["age"]) + (2027 - int(last["season"]))
-        m = age_mult(age_now)
-        for s in ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk"]:
-            rate[s] *= m
-
-        # minutes: recency-weighted mpg over seasons with >= 10 games
-        gg = g[g["g"] >= 10]
-        if gg.empty:
-            gg = g
-        mpg_hist = gg["mp"] / gg["g"].clip(lower=1)
-        rw = gg["season"].map({max(w): 0.6, max(w) - 1: 0.3, max(w) - 2: 0.1})
-        mpg = float((mpg_hist * rw).sum() / rw.sum())
-        # small samples (e.g. late-season minutes on tanking teams, two-way players): shrink
-        # minutes toward a bench prior; players with >= 80 career games (in window) are untouched
-        g_total = float(g["g"].sum())
-        shrink = (
-            params.mpg_prior_games
-            / (g_total + params.mpg_prior_games)
-            * float(np.clip((80.0 - g_total) / 50.0, 0.0, 1.0))
-        )
-        mpg = (1 - shrink) * mpg + shrink * params.mpg_prior
-        if mpg < 30:
-            mpg += MPG_GROWTH.get(int(round(age_now)), 0.0)
-        if age_now >= 33:
-            mpg -= 0.5 * (age_now - 32)
-        # players whose last season is old (missed latest season entirely) keep their minutes
-        mpg = float(np.clip(mpg, 4.0, params.mpg_max))
-
-        # games: season-weighted games (missing seasons are NOT counted as zero; those are
-        # usually full-season injuries whose return is handled by manual overrides)
-        games = g["g"].astype(float).clip(upper=82)
-        gw = g["w"]
-        n_eff = gw.sum() / max(w.values())
-        g_mean = float((games * gw).sum() / gw.sum())
-        g1_latest = float(games.iloc[-1])
-        if params.gp_model == "fitted":
-            gp, gp_sd = _fitted_gp(g, max(w), age_now, params.gp_max)
-        else:
-            gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (
-                n_eff + params.gp_prior_weight
-            )
-            gp = float(np.clip(gp, params.gp_min, params.gp_max))
-            hist_sd = (
-                float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum()))
-                if len(g) > 1
-                else 10.0
-            )
-            gp_sd = float(np.sqrt(params.gp_sd_base**2 + (0.6 * hist_sd) ** 2))
+        rate = _per_minute_rates(g, wmin, grp_rates.loc[_pos_group(last["pos"])], age_now, params)
+        mpg = _project_mpg(g, max(w), age_now, params)
+        gp, gp_sd, g1_latest = _project_gp(g, w, age_now, params)
 
         pg = {s: rate[s] * mpg for s in RATE_STATS}
         cinfo = career.loc[pid] if pid in career.index else None
@@ -313,6 +249,90 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
     # Rows from earlier seasons only (e.g. retired / out of league) are dropped unless a manual
     # override re-activates them; players who sat out 2025-26 injured are re-added via manual.
     return df
+
+
+def _group_prior_rates(tot: pd.DataFrame, latest_season: int) -> pd.DataFrame:
+    """Position-group league mean per-minute rates (rotation players, latest season), scaled to a prior."""
+    latest = tot[(tot["season"] == latest_season) & (tot["mp"] >= 500)].copy()
+    latest["grp"] = latest["pos"].map(_pos_group)
+    grp_rates = (
+        latest.groupby("grp")[RATE_STATS].sum().div(latest.groupby("grp")["mp"].sum(), axis=0)
+    )
+    # replacement-ish prior: scale down production (low-minute players are below average),
+    # but keep shooting percentages at the group mean (makes and attempts scaled together)
+    return grp_rates * 0.85
+
+
+def _per_minute_rates(
+    g: pd.DataFrame, wmin: float, prior: pd.Series, age_now: float, params: Params
+) -> dict[str, float]:
+    """Season-weighted per-minute rates regressed toward the group `prior`, then age-adjusted."""
+    rate = {}
+    for s in RATE_STATS:
+        rate[s] = ((g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (
+            wmin + params.prior_min
+        )
+    # keep makes <= attempts after regression
+    rate["fgm"] = min(rate["fgm"], rate["fga"])
+    rate["ftm"] = min(rate["ftm"], rate["fta"])
+    rate["fg3m"] = min(rate["fg3m"], rate["fgm"])
+    m = age_mult(age_now)
+    for s in ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk"]:
+        rate[s] *= m
+    return rate
+
+
+def _project_mpg(g: pd.DataFrame, latest_season: int, age_now: float, params: Params) -> float:
+    """Minutes: recency-weighted mpg over seasons with >= 10 games, small-sample shrinkage, age trends."""
+    gg = g[g["g"] >= 10]
+    if gg.empty:
+        gg = g
+    mpg_hist = gg["mp"] / gg["g"].clip(lower=1)
+    rw = gg["season"].map({latest_season: 0.6, latest_season - 1: 0.3, latest_season - 2: 0.1})
+    mpg = float((mpg_hist * rw).sum() / rw.sum())
+    # small samples (e.g. late-season minutes on tanking teams, two-way players): shrink
+    # minutes toward a bench prior; players with >= 80 career games (in window) are untouched
+    g_total = float(g["g"].sum())
+    shrink = (
+        params.mpg_prior_games
+        / (g_total + params.mpg_prior_games)
+        * float(np.clip((80.0 - g_total) / 50.0, 0.0, 1.0))
+    )
+    mpg = (1 - shrink) * mpg + shrink * params.mpg_prior
+    if mpg < 30:
+        mpg += MPG_GROWTH.get(int(round(age_now)), 0.0)
+    if age_now >= 33:
+        mpg -= 0.5 * (age_now - 32)
+    # players whose last season is old (missed latest season entirely) keep their minutes
+    return float(np.clip(mpg, 4.0, params.mpg_max))
+
+
+def _project_gp(
+    g: pd.DataFrame, w: dict[int, float], age_now: float, params: Params
+) -> tuple[float, float, float]:
+    """(expected games, gp_sd, games in the latest played season) under `params.gp_model`.
+
+    Season-weighted games: missing seasons are NOT counted as zero; those are usually full-season
+    injuries whose return is handled by manual overrides."""
+    games = g["g"].astype(float).clip(upper=82)
+    gw = g["w"]
+    n_eff = gw.sum() / max(w.values())
+    g_mean = float((games * gw).sum() / gw.sum())
+    g1_latest = float(games.iloc[-1])
+    if params.gp_model == "fitted":
+        gp, gp_sd = _fitted_gp(g, max(w), age_now, params.gp_max)
+    else:
+        gp = (g_mean * n_eff + params.gp_prior * params.gp_prior_weight) / (
+            n_eff + params.gp_prior_weight
+        )
+        gp = float(np.clip(gp, params.gp_min, params.gp_max))
+        hist_sd = (
+            float(np.sqrt(((games - g_mean) ** 2 * gw).sum() / gw.sum()))
+            if len(g) > 1
+            else 10.0
+        )
+        gp_sd = float(np.sqrt(params.gp_sd_base**2 + (0.6 * hist_sd) ** 2))
+    return gp, gp_sd, g1_latest
 
 
 def _fitted_gp(g: pd.DataFrame, latest: int, age: float, cap: float) -> tuple[float, float]:
@@ -369,18 +389,18 @@ def _add_rookies(df: pd.DataFrame, notes: dict[str, list[str]], manual_gp: _Manu
     for pid, r in rookies.set_index("player_id").iterrows():
         if pid in df.index:
             continue
-        row = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
-        row["gp"] = manual_gp(pid, row["gp"])
+        stats = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
+        stats["gp"] = manual_gp(pid, stats["gp"])
         sd = float(r.get("gp_sd") or 12.0)
         if manual_gp.fitted:  # never tighter than the calibrated residual sd at that level
-            sd = max(sd, gp_sd_from_model(row["gp"]))
-        row.update(
+            sd = max(sd, gp_sd_from_model(stats["gp"]))
+        meta = dict(
             name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
             gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
             weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
             adp=np.nan, source="manual_rookie_prior", bbref_id="",
         )  # fmt: skip
-        df.loc[pid] = pd.Series(row)
+        df.loc[pid] = pd.Series({**stats, **meta})
         notes.setdefault(pid, []).append("rookie/no NBA history: manual conservative prior")
 
 
@@ -458,6 +478,7 @@ def _apply_manual(
 
 
 def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
+    """Baseline + manual overlays -> the processed projections table (COLUMNS) and per-player notes."""
     params = params or Params()
     notes: dict[str, list[str]] = {}
     df = baseline(params)
@@ -469,22 +490,7 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
         playoff_mult(t, None if pd.isna(g1) else float(g1))
         for t, g1 in zip(df["team"], df["g1_latest"], strict=True)
     ]
-
-    # rookies: positions from manual file; others missing -> bbref listed pos
-    miss = df["positions"].isna() | (df["positions"] == "")
-    df.loc[miss, "positions"] = df.loc[miss, "bbref_pos"].map(
-        lambda p: "|".join(x for x in str(p).split("-") if x in POSITIONS) or "SF"
-    )
-    rk = load_manual("rookies_2026_27.csv")
-    if not rk.empty:
-        rk_pos = rk.set_index("player_id")["positions"]
-        m = df["player_id"].isin(rk_pos.index) & (df["source"] == "manual_rookie_prior")
-        df.loc[m, "positions"] = df.loc[m, "player_id"].map(rk_pos)
-    pov = load_manual("positions_overrides.csv")
-    if not pov.empty:
-        pmap = pov.set_index("player_id")["positions"]
-        m = df["player_id"].isin(pmap.index)
-        df.loc[m, "positions"] = df.loc[m, "player_id"].map(pmap)
+    _fill_positions(df)
 
     # consistency
     df["fgm"] = np.minimum(df["fgm"], df["fga"])
@@ -493,20 +499,7 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
     df["pts"] = 2 * df["fgm"] + df["fg3m"] + df["ftm"]
     df["gp"] = df["gp"].clip(params.gp_min, 82)
 
-    # keep the most fantasy-relevant rows: rank by simple volume proxy
-    # Players with a manual override are always kept: someone deliberately projected them (often
-    # injured players whose low expected gp would otherwise push them below the cut).
-    df["_rel"] = df["mpg"] * df["gp"].clip(lower=20)
-    df = df.sort_values(["_rel", "player_id"], ascending=[False, True])
-    forced = set(load_manual("player_overrides_2026_27.csv").get("player_id", []))
-    below = df.iloc[params.max_rows :]
-    rescued = below[below["player_id"].isin(forced)]
-    for pid in rescued["player_id"]:
-        notes.setdefault(pid, []).append(
-            f"kept despite max_rows={params.max_rows} volume cut (manual override)"
-        )
-    df = pd.concat([df.head(params.max_rows), rescued])
-
+    df = _volume_cut(df, params.max_rows, notes)
     num = [
         "age",
         "gp",
@@ -531,6 +524,41 @@ def build(params: Params | None = None) -> tuple[pd.DataFrame, dict]:
     out = df[COLUMNS].sort_values("player_id").reset_index(drop=True)
     assert out["player_id"].is_unique, out[out["player_id"].duplicated()]
     return out, notes
+
+
+def _fill_positions(df: pd.DataFrame) -> None:
+    """Positions (in place): missing -> bbref listed pos; rookies from the rookie file; then manual overrides."""
+    miss = df["positions"].isna() | (df["positions"] == "")
+    df.loc[miss, "positions"] = df.loc[miss, "bbref_pos"].map(
+        lambda p: "|".join(x for x in str(p).split("-") if x in POSITIONS) or "SF"
+    )
+    rk = load_manual("rookies_2026_27.csv")
+    if not rk.empty:
+        rk_pos = rk.set_index("player_id")["positions"]
+        m = df["player_id"].isin(rk_pos.index) & (df["source"] == "manual_rookie_prior")
+        df.loc[m, "positions"] = df.loc[m, "player_id"].map(rk_pos)
+    pov = load_manual("positions_overrides.csv")
+    if not pov.empty:
+        pmap = pov.set_index("player_id")["positions"]
+        m = df["player_id"].isin(pmap.index)
+        df.loc[m, "positions"] = df.loc[m, "player_id"].map(pmap)
+
+
+def _volume_cut(df: pd.DataFrame, max_rows: int, notes: dict[str, list[str]]) -> pd.DataFrame:
+    """Keep the `max_rows` most fantasy-relevant rows by a simple volume proxy (mpg x gp).
+
+    Players with a manual override are always kept: someone deliberately projected them (often
+    injured players whose low expected gp would otherwise push them below the cut)."""
+    df["_rel"] = df["mpg"] * df["gp"].clip(lower=20)
+    df = df.sort_values(["_rel", "player_id"], ascending=[False, True])
+    forced = set(load_manual("player_overrides_2026_27.csv").get("player_id", []))
+    below = df.iloc[max_rows:]
+    rescued = below[below["player_id"].isin(forced)]
+    for pid in rescued["player_id"]:
+        notes.setdefault(pid, []).append(
+            f"kept despite max_rows={max_rows} volume cut (manual override)"
+        )
+    return pd.concat([df.head(max_rows), rescued])
 
 
 def inputs_manifest() -> list[dict]:

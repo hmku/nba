@@ -93,8 +93,9 @@ TEAM_ALIASES = {"BKN": "BRK", "CHA": "CHO", "PHX": "PHO", "NOH": "NOP", "GS": "G
                 "NY": "NYK", "NO": "NOP", "UTAH": "UTA", "WSH": "WAS"}  # fmt: skip
 
 
-def _nan(x: float | None) -> bool:
-    return x is None or (isinstance(x, float) and math.isnan(x))
+def _present(x: float | None) -> float | None:
+    """`x` unchanged, or None when it is missing (None or NaN)."""
+    return None if x is None or (isinstance(x, float) and math.isnan(x)) else x
 
 
 def predict_gp(lags: list[float | None], age: float, cap: float = 80.0) -> float:
@@ -103,7 +104,8 @@ def predict_gp(lags: list[float | None], age: float, cap: float = 80.0) -> float
     `lags[0]` must be present (the latest season the player played); missing older seasons
     (rookie years, seasons out of the league) use the fitted missing-season constants.
     """
-    g = [None if _nan(v) else float(min(v, 82.0)) for v in (list(lags) + [None, None, None])[:3]]
+    lags3 = (list(lags) + [None, None, None])[:3]
+    g = [None if v is None else float(min(v, 82.0)) for v in map(_present, lags3)]
     if g[0] is None:
         raise ValueError("predict_gp needs the most recent season's games")
     c = GP_COEF
@@ -135,6 +137,7 @@ def playoff_mult(team: str | None, g1: float | None) -> float:
     """
     c = PLAYOFF_COEF
     m = c["const"] + c["tank"] * (0.5 - team_prev_wpct(team))
-    if not _nan(g1):
+    g1 = _present(g1)
+    if g1 is not None:
         m += c["injury"] * max(0.0, 60.0 - float(g1)) / 10.0
     return float(np.clip(m, *PLAYOFF_MULT_RANGE))

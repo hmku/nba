@@ -141,6 +141,7 @@ class MyPolicy:
             rec = self._rec(which, taken, slot)
             d = decide(ctx, rec, taken, slot, PolicyParams("optimizer"))
         elif name == "value_search" or name in VS_SIM:
+            assert self.vsp is not None  # built in __init__ for every value-search spec
             row = self.vsp.pick(board, overall, slot)
             if name in VS_SIM:
                 self._sim_opt(VS_SIM[name])
@@ -369,7 +370,7 @@ def grade(rosters: dict[int, list[str]], me: int, seed: int) -> dict:
     from fantasy.sim.engine import SimParams
     from fantasy.sim.league import LeagueState
 
-    out = {}
+    out: dict[str, dict] = {}
     for name in TRUTHS:
         res = _E["truths"][name].simulator(SimParams(n_sims=_E["n_eval"], seed=seed)).run(
             LeagueState(rosters=rosters, my_team=me, source="policy_eval"))
@@ -436,8 +437,9 @@ def summarize(rows: list[dict], base: str = "bpa") -> dict:
                 continue
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["policies"][p]["grade"][truth][metric] for r in rr]) for p in specs}
-                m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
-                     for p, v in x.items()}
+                m: dict[str, dict] = {
+                    p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
+                    for p, v in x.items()}
                 if base in x:
                     for p in specs:
                         if p != base:
@@ -477,7 +479,7 @@ def main() -> None:
                 got.setdefault(rg, []).append(pos)
                 print(f"{k + 1}/{len(rjobs)} room drafts", flush=True)
         init_worker(a.projections, a.n_eval, a.opt_strategy, None)
-        np.savez_compressed(a.out, ids=np.array(_E["ctx"].ids), **{k: np.stack(v) for k, v in got.items()})
+        np.savez_compressed(a.out, ids=np.array(_E["ctx"].ids), **{k: np.stack(v) for k, v in got.items()})  # type: ignore[arg-type]
         return
     specs = a.policies.split(",")
     done = {(r["seed"], r["slot"], r["regime"]) for r in load(a.out)} if a.out.exists() else set()

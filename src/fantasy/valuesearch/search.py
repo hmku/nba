@@ -102,7 +102,7 @@ class ValueSearch:
         preds = {k: v.reshape(M, N).T for k, v in pred.items()}
         means = obj.mean(axis=1)
         best = int(np.argmax(means))
-        out_c = []
+        out_c: list[dict] = []
         for i, c in enumerate(cands):
             d = obj[i] - obj[0]
             se = float(d.std(ddof=1) / np.sqrt(M)) if M > 1 else None

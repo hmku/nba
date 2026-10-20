@@ -174,7 +174,7 @@ def availability_table(
             chosen.append(pid)
     rows = [ctx.pos[p] for p in chosen]
     pa = pav(chosen)
-    players = []
+    players: list[dict] = []
     for k, pid in enumerate(chosen):
         v = ctx.values.loc[pid]
         adp = v.get("adp")

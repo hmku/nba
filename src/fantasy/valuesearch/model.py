@@ -71,7 +71,7 @@ class TreeEnsemble:
         n = max(len(p.nodes) for p in preds)
 
         def stack(field: str, fill: float, dtype: type) -> np.ndarray:
-            out = np.full((len(preds), n), fill, dtype=dtype)
+            out: np.ndarray = np.full((len(preds), n), fill, dtype=dtype)
             for i, p in enumerate(preds):
                 out[i, : len(p.nodes)] = p.nodes[field]
             return out
@@ -162,7 +162,7 @@ class ValueModel:
         for k, e in self.ensembles.items():
             arrs |= e.arrays(k)
         arrs["feature_names"] = np.array(self.feature_names)
-        np.savez_compressed(path, **arrs)
+        np.savez_compressed(path, **arrs)  # type: ignore[arg-type]  # numpy stubs type **kwds as allow_pickle
         path.with_suffix(".card.json").write_text(json.dumps(self.card, indent=2) + "\n")
 
     @classmethod

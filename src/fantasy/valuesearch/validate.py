@@ -117,6 +117,7 @@ def run_seed(job: tuple[int, list[str]]) -> dict:
         res = {}
         for name in POLICIES:
             t1 = time.perf_counter()
+            me: OptimizerPolicy | BPAPolicy | ValueSearchPolicy
             if name == "optimizer":
                 me = OptimizerPolicy(ctx)
             elif name == "bpa":
@@ -128,7 +129,7 @@ def run_seed(job: tuple[int, list[str]]) -> dict:
             t2 = time.perf_counter()
             res[name] = {"grade": _grade(rosters, truths, seed), "roster": rosters[1], "league": rosters,
                          "draft_s": round(t2 - t1, 2), "grade_s": round(time.perf_counter() - t2, 2)}
-            if name == "value_search":
+            if isinstance(me, ValueSearchPolicy):
                 res[name]["log"] = me.log
         out["regimes"][regime] = res
     out["seconds"] = round(time.perf_counter() - t0, 1)
@@ -147,8 +148,9 @@ def summarize(rows: list[dict]) -> dict:
             out[key] = {"n": len(rr)}
             for metric in ("p_playoffs", "p_title", "e_rank"):
                 x = {p: np.array([r["regimes"][regime][p]["grade"][truth][metric] for r in rr]) for p in POLICIES}
-                m = {p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
-                     for p, v in x.items()}
+                m: dict[str, dict] = {
+                    p: {"mean": round(float(v.mean()), 4), "se": round(float(v.std(ddof=1) / np.sqrt(len(v))), 4)}
+                    for p, v in x.items()}
                 for a, b in (("value_search", "optimizer"), ("optimizer", "bpa"), ("value_search", "bpa")):
                     d = x[a] - x[b]
                     se = float(d.std(ddof=1) / np.sqrt(len(d)))
