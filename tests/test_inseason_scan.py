@@ -10,11 +10,13 @@ from fantasy.inseason.freeagents import FreeAgent, load_free_agents, realistic_r
 from fantasy.inseason.possim import PositionAwareSimulator
 from fantasy.inseason.streamscan import StreamParams, scan_streams, season_verdict
 from fantasy.inseason.trade import Trade, apply_trade
+from fantasy.inseason.tradeeval import EvalParams, SetSpec
 from fantasy.inseason.tradescan import (
     ScanParams,
     Screen,
     enumerate_trades,
     games_per_week,
+    resimulate_top,
     screen_trades,
     simulate_shortlist,
     start_shares,
@@ -129,7 +131,8 @@ def test_scan_streams_week_and_rule(ctx, proj_path):
         d = {"delta": 0.03 if up else 0.0, "delta_se": 0.005}
         return {"p_playoffs": d, "p_title": d, "exp_cat_wins": d}
 
-    params = StreamParams(week_sims=300, season_top=4)
+    params = StreamParams(week_sims=300, season_top=4, waiver_lag=0)
+    assert fas[1].available_from(d0, 1) == days[6]  # default lag: plays the day after the claim processes
     rep = scan_streams(df, st, nba, me, opp, fas, days, generic, vals["value"], params, season_eval=stub)
     assert rep["n_pairs_scanned"] == 2 * 3  # 2 eligible free agents x 3 default drops
     rows = {(r["add"], r["drop"]): r for r in rep["pairs"]}
@@ -189,13 +192,22 @@ def test_trade_scan_pipeline(ctx):
                                           top_po_per_team=1), po)
     assert 1 <= len(rows_po) <= 3 and len({id(r) for r in rows_po}) == len(rows_po)
     assert all(r["proxy_me"] > 0 or r["proxy_po_me"] > 0 for r in rows_po)
-    simulate_shortlist(rows, lg, 1, {"blend": sim, "market": sim})
+    spec = SetSpec(ctx, pool, sim_kw={"playoff_teams": 2})
+    simulate_shortlist(rows, lg, 1, {"blend": spec, "market": spec}, 13, n_sims=60, seed=3, refill_skip=0)
     table = trade_rows(rows, ctx.values, ctx.proj.df, ctx.nba, ctx.calendar, st.playoff_weeks, gpw, lg,
                        ["blend", "market"])
     for r in table:
         a, b = r["sim"]["blend"], r["sim"]["market"]
-        assert a["me"] == b["me"]  # same simulator twice -> identical paired deltas
-        assert r["helps_both"] == (a["verdict"] == "helps")
+        assert a["me"] == b["me"]  # same set twice -> identical paired deltas
+        assert r["helps_all"] == (a["verdict"] == "helps")
+        assert r["partner_ok"] == (a["partner"]["p_playoffs"]["delta"] >= -0.01)
         sched = r["decomposition"]["schedule"]
         assert len(sched["d_playoff_games_by_week"]) == len(st.playoff_weeks)
-        assert r["decomposition"]["projection_disagreement"] == {"p_playoffs": 0.0, "p_title": 0.0}
+        assert r["decomposition"]["projection_disagreement"] == {"market": {"p_playoffs": 0.0, "p_title": 0.0}}
+    # stage 2 (M4): fresh seeds, seed-averaged, sorted by class
+    by_label = {r["trade"].label(ctx.values["name"]): r for r in rows}
+    ep = EvalParams(n_sims=40, seeds=(11, 12), refill_skip=0)
+    resimulate_top(table, by_label, lg, 1, {"blend": spec}, 13, ep, top=1)
+    rs = table[0]["resim"]
+    assert rs["seeds"] == [11, 12] and rs["by_set"]["blend"]["me"]["p_title"]["n_seeds"] == 2
+    assert rs["class"] in {"helps", "speculative", "floor_only", "noise", "hurts", "mixed"}

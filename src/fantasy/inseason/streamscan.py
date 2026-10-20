@@ -13,28 +13,34 @@ For every (free agent c, drop candidate x) pair:
   - `week_d_exp_cats` / `week_d_p_win`: the planner re-optimised with c in and x out (fixed point), evaluated
     with full moments (analytic normal model); and, for the shortlist, a paired Monte Carlo (common random
     numbers keyed by player id) giving the SE.
-* **Season**: paired position-aware season simulation (`possim.PositionAwareSimulator` with windows: x until
-  the effective day, c from it), ΔP(playoffs), ΔP(title), Δ category wins ± paired SE (`sim.report.paired_delta`).
-  This is the full cost of losing x for the rest of the season (and includes this week, at season-rate
-  availability). It is expensive, so only a shortlist gets it: half by this week's gain and half by the cheap
-  `season_proxy_d_value` = valuation value(c) - value(x) (season G-score totals above replacement; its agreement
-  with the sim is checked in docs/research/streaming_and_trade_scan.md).
+* **Season** (inseason-0.3.0, review finding B1): paired position-aware season simulation
+  (`possim.PositionAwareSimulator` with windows) of the *stream chain*: x until the effective day, c for his stint
+  only (effective day -> end of the matchup week, or `--stint-days`), then the k-th best realistic free agent F_k
+  for the rest of the season (k = 0, `chain_k` (default 5) and replacement level; the streamer is excluded from the
+  pool). A streamer is not kept all season, so the season cost is ~(x - F_k) x games, not (x - c). Also reported:
+  the *direct* move (x -> F_k from the effective day, no stream) and `stream_vs_direct` (chain minus direct, paired)
+  = what the stream itself adds. Every projection set passed (blend, market, ...) is simulated. ΔP(playoffs),
+  ΔP(title), Δ category wins ± paired SE (`sim.report.paired_delta`). Expensive, so only a shortlist gets it: half
+  by this week's gain and half by the cheap `season_proxy_d_value` = valuation value(c) - value(x).
 
-Decision rule (`decision_rule` in the output): recommend a pair only when its *season* effect beats noise (ΔP(playoffs)
-or ΔP(title) > 2 paired SE, neither < -2 SE); the season sim includes this week. A pair whose only significant gain
-is this week's ΔP(win) is listed under `week_only` with its season ΔP(title) lower bound, never recommended.
+Decision rule (`decision_rule` in the output): recommend a pair only when its *season* chain effect (realistic chain
+F_k, k = `chain_k`) beats noise under EVERY projection set (ΔP(playoffs) or ΔP(title) > 2 paired SE, neither < -2 SE)
+and the stream is not significantly worse than the direct move (stream_vs_direct >= -2 SE); the season sim includes
+this week. A pair whose only significant gain is this week's ΔP(win) is listed under `week_only` with its season
+ΔP(title) lower bound, never recommended.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
 
 from fantasy.inseason.freeagents import FreeAgent
+from fantasy.inseason.possim import PositionAwareSimulator, Window, replacement_id
 from fantasy.league.settings import LeagueSettings
 from fantasy.lineup.optimize import DaySlots
 from fantasy.lineup.plan import (
@@ -49,9 +55,13 @@ from fantasy.lineup.plan import (
 )
 from fantasy.lineup.players import REST_SHARE, RosterPlayer
 from fantasy.lineup.value import draw, per_game_value, score_matchup, simulate_totals
+from fantasy.sim.engine import SimResult
+from fantasy.sim.league import LeagueState
+from fantasy.sim.report import paired_delta
 from fantasy.sim.schedule import NBASchedule
 
 SeasonEval = Callable[[str, str | None, date], dict]
+METRICS = ("p_playoffs", "p_title", "exp_cat_wins")
 
 
 @dataclass
@@ -64,6 +74,9 @@ class StreamParams:
     seed: int = 0
     rest_share: float = REST_SHARE  # PRIOR (lineup planner): share of a healthy player's misses that are rests
     sig: float = 2.0  # a delta counts only when |delta| >= sig * SE
+    chain_k: int = 5  # PRIOR: after the stint we hold the (k+1)-th best realistic free agent (others claim first)
+    stint_days: int | None = None  # streamer kept this many days from his effective day (None: to the week's end)
+    waiver_lag: int = 1  # ASSUMPTION: a waiver claim processes on its date and the player plays from the next day
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -111,6 +124,110 @@ def season_verdict(me: dict, sig: float = 2.0) -> str:
     if a < 0 or b < 0:
         return "tradeoff" if (a > 0 or b > 0) else "hurts"
     return "helps" if (a > 0 or b > 0) else "noise"
+
+
+def adds_needed(eff: date, week_end: date, stint_days: int | None = None) -> dict:
+    """Adds a stream chain uses: the stream claim (counted in the week it processes) and the follow-up claim of
+    the chain free agent on the stint's end day."""
+    end = stint_end(eff, week_end, stint_days)
+    this = int(eff <= week_end) + int(end <= week_end)
+    return {"this_week": this, "next_week": 2 - this, "chain_claim_day": end.isoformat()}
+
+
+# ---------------------------------------------------------------- season: the stream chain (B1)
+@dataclass(frozen=True)
+class Chain:
+    label: str  # "fa0", "fa5", "replacement"
+    player: str  # player id (or a possim.replacement_id)
+
+
+def chain_specs(pool: Sequence[str], exclude: set[str], ks: Sequence[int] = (0, 5),
+                replacement: bool = True) -> list[Chain]:
+    """Who we hold after the stint: the k-th best realistic free agent (pool best first, streamer excluded) for each
+    k, and a replacement-level player."""
+    p = [x for x in pool if x not in exclude]
+    out = [Chain(f"fa{k}", p[k]) for k in dict.fromkeys(ks) if 0 <= k < len(p)]
+    if replacement:
+        out.append(Chain("replacement", replacement_id("chain")))
+    return out
+
+
+def stint_end(eff: date, week_end: date, stint_days: int | None = None) -> date:
+    """First day the streamer is gone (exclusive end of his stint)."""
+    return eff + timedelta(days=stint_days) if stint_days is not None else week_end + timedelta(days=1)
+
+
+def make_stream_season_eval(
+    sims: Mapping[str, PositionAwareSimulator],
+    league: LeagueState,
+    me_id: int,
+    pool: Sequence[str],
+    week_end: date,
+    chain_k: int = 5,
+    stint_days: int | None = None,
+    names: Mapping[str, str] | None = None,
+    bases: Mapping[str, SimResult] | None = None,
+) -> SeasonEval:
+    """Season effect of a stream chain (x -> c for the stint -> F_k), under every simulator in `sims` (projection
+    sets), paired with the unchanged league. Returns season_eval(add, drop, eff) for `scan_streams`."""
+    base = {k: (bases or {}).get(k) or s.run(league) for k, s in sims.items()}
+    nm = names or {}
+    direct_cache: dict[tuple, SimResult] = {}
+
+    def run(name: str, adds: list[str], windows: dict[str, Window]) -> SimResult:
+        new = league.copy()
+        new.rosters[me_id] = [*new.rosters[me_id], *adds]
+        return sims[name].run(new, windows)
+
+    def ev(add: str, drop: str | None, eff: date) -> dict:
+        end = stint_end(eff, week_end, stint_days)
+        chains = chain_specs(pool, {add}, sorted({0, chain_k}), True)
+        primary = f"fa{chain_k}" if any(c.label == f"fa{chain_k}" for c in chains) else chains[-1].label
+        by_set: dict[str, dict] = {}
+        for name in sims:
+            res = {}
+            for ch in chains:
+                w: dict[str, Window] = {add: (eff, end), ch.player: (end, None)}
+                wd: dict[str, Window] = {ch.player: (eff, None)}
+                if drop is not None:
+                    w[drop] = wd[drop] = (None, eff)
+                key = (name, drop, ch.player, eff)
+                if key not in direct_cache:
+                    direct_cache[key] = run(name, [ch.player], wd)
+                direct = direct_cache[key]
+                chain = run(name, [add, ch.player], w) if end > eff else direct
+                res[ch.label] = {"stream": paired_delta(base[name], chain, me_id),
+                                 "direct": paired_delta(base[name], direct, me_id),
+                                 "stream_vs_direct": paired_delta(direct, chain, me_id)}
+            by_set[name] = res
+        first = next(iter(sims))
+        return {
+            **by_set[first][primary]["stream"],  # display: first set (blend), realistic chain
+            "primary_chain": primary, "display_set": first,
+            "stint": [eff.isoformat(), end.isoformat()], "stint_days": max(0, (end - eff).days),
+            "chains": {c.label: {"player_id": c.player, "name": nm.get(c.player, c.player)} for c in chains},
+            "by_set": by_set,
+        }
+
+    return ev
+
+
+def stream_verdict(season: dict, sig: float = 2.0) -> str:
+    """Verdict of a season result. Chain results (`by_set`): 'helps' only if the realistic chain helps under every
+    projection set and the stream is not significantly worse than the direct move (else 'direct_better'); otherwise
+    the worst set's verdict ('hurts' before 'tradeoff' before 'noise'). Plain results: `season_verdict`."""
+    if "by_set" not in season:
+        return season_verdict(season, sig)
+    prim = season["primary_chain"]
+    rs = list(season["by_set"].values())
+    vs = [season_verdict(r[prim]["stream"], sig) for r in rs]
+    if all(v == "helps" for v in vs):
+        worse = any(sig_sign(r[prim]["stream_vs_direct"][m], sig) < 0 for r in rs for m in ("p_playoffs", "p_title"))
+        return "direct_better" if worse else "helps"
+    for v in ("hurts", "tradeoff", "noise"):
+        if v in vs:
+            return v
+    return "noise"
 
 
 def scan_streams(
@@ -162,7 +279,7 @@ def scan_streams(
     for fa in free_agents:
         if fa.is_out or fa.player_id in mine or fa.player_id not in df.index or fa.team is None:
             continue
-        eff = fa.available_from(days[0])
+        eff = fa.available_from(days[0], params.waiver_lag)
         k = next((i for i, d in enumerate(days) if d >= eff), D)
         rp = RosterPlayer(fa.player_id, fa.name, fa.positions, fa.team, fa.status, None,
                           float(df.loc[fa.player_id, "gp"]))
@@ -189,6 +306,7 @@ def scan_streams(
                 "week_linear_gain": round(float((X_lin * v_lin).sum()) - base_lin, 4),
                 "week_d_exp_cats": round(res.final_state.expected_cats - e0, 4),
                 "week_d_p_win": round(res.final_state.matchup_win_prob - w0, 4),
+                "adds_needed": adds_needed(eff, days[-1], params.stint_days),
                 "season_proxy_d_value": round(float(val.get(fa.player_id, np.nan)) - drop_val, 3),
             }
             alts[id(row)] = (alt, res.X)
@@ -205,7 +323,7 @@ def scan_streams(
     if season_eval is not None:
         for r in short:
             r["season"] = season_eval(r["add"], r["drop"], date.fromisoformat(r["effective"]))
-            r["season_verdict"] = season_verdict(r["season"], params.sig)
+            r["season_verdict"] = stream_verdict(r["season"], params.sig)
     remaining = settings.max_weekly_adds - adds_used
     recs, week_only = [], []
     for r in short:
@@ -214,8 +332,9 @@ def scan_streams(
         week_sig = bool(wk and wk["d_p_win"] > 0 and wk["d_p_win"] >= params.sig * wk["d_p_win_se"])
         pick = {k: r[k] for k in ("add", "add_name", "drop", "drop_name", "ownership", "effective")}
         if v == "helps":
-            recs.append(pick | {"why": "season ΔP(playoffs) or ΔP(title) beyond noise, neither down",
-                                "season": r["season"], "week_mc": wk})
+            recs.append(pick | {"why": "season ΔP(playoffs) or ΔP(title) of the realistic stream chain beyond noise "
+                                       "under every projection set, neither down",
+                                "adds_needed": r["adds_needed"], "season": r["season"], "week_mc": wk})
         elif v == "noise" and week_sig:
             s_t = r["season"]["p_title"]
             week_only.append(pick | {
@@ -227,6 +346,8 @@ def scan_streams(
     blocked = None
     if remaining <= 0:
         blocked, recs = f"no adds left this week ({adds_used}/{settings.max_weekly_adds} used)", []
+    else:
+        recs = [x for x in recs if x["adds_needed"]["this_week"] <= remaining]
     shortlisted = {id(r) for r in short}
     listed = [r for r in rows if id(r) in shortlisted] + [r for r in rows if id(r) not in shortlisted][: params.top]
     return {
@@ -239,7 +360,8 @@ def scan_streams(
             {"player_id": d, "name": str(df.loc[d, "name"]) if d in df.index else d,
              "season_value": round(float(val.get(d, np.nan)), 3)} for d in drops]},
         "adds": {"max_weekly": settings.max_weekly_adds, "used": adds_used, "remaining": remaining,
-                 "note": "a waiver claim counts against the week in which it is processed"},
+                 "note": "a waiver claim counts against the week in which it is processed; each pair's adds_needed "
+                         "counts the stream add and the follow-up chain claim (this week / next week)"},
         "n_pairs_scanned": len(rows),
         "n_season_simulated": sum(1 for r in short if "season" in r),
         "pairs": listed,
@@ -247,9 +369,11 @@ def scan_streams(
         "recommendation": recs[0] if recs else None,
         "week_only": week_only,
         "blocked": blocked,
-        "decision_rule": (f"recommend a pair only if its season ΔP(playoffs) or ΔP(title) is > {params.sig:g} paired SE "
-                          f"and neither is < -{params.sig:g} SE (the season sim includes this week); otherwise recommend "
-                          "nothing. Pairs whose only significant gain is this week's ΔP(win) are listed in week_only "
+        "decision_rule": (f"recommend a pair only if its season stream chain (streamer for the stint, then the "
+                          f"{params.chain_k + 1}-th best realistic free agent) has ΔP(playoffs) or ΔP(title) > "
+                          f"{params.sig:g} paired SE and neither < -{params.sig:g} SE under every projection set, and "
+                          f"the stream is not < -{params.sig:g} SE vs the direct move (the season sim includes this "
+                          "week); otherwise recommend nothing. Pairs whose only significant gain is this week's ΔP(win) are listed in week_only "
                           "with the season ΔP(title) lower bound, for the user to weigh. Every add/drop needs approval."),
         "params": params.to_dict(),
     }

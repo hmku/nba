@@ -4,4 +4,4 @@ Analysis only: nothing here touches Yahoo. Adds/drops/trades always need the use
 (CLAUDE.md safety rules). Research note: docs/research/week1_and_trades_2026-10-20.md.
 """
 
-INSEASON_VERSION = "inseason-0.2.0"
+INSEASON_VERSION = "inseason-0.3.0"
