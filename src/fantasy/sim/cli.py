@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date
 from pathlib import Path
@@ -17,8 +18,17 @@ from fantasy.model.lines import load_projections
 from fantasy.sim import SIM_VERSION
 from fantasy.sim.context import SimContext, build_context
 from fantasy.sim.engine import SimParams
-from fantasy.sim.league import LeagueState, complete_rosters, from_draft, from_json, remaining_order
+from fantasy.sim.league import (
+    LeagueState,
+    complete_rosters,
+    from_draft,
+    from_json,
+    league_json_from_draft,
+    parse_team_names,
+    remaining_order,
+)
 from fantasy.sim.report import matchup_report, paired_delta, season_summary
+from fantasy.sim.schedule import LEAGUE_SCHEDULE_PATH
 
 app = typer.Typer(no_args_is_help=True, help="Season simulator: P(playoffs)/P(title), matchups, roster changes.")
 
@@ -28,7 +38,9 @@ DraftOpt = Annotated[str | None, typer.Option("--draft-id", envvar="FANTASY_DRAF
 LeagueOpt = Annotated[Path | None, typer.Option("--league-file", help="Rosters JSON (post-draft Yahoo sync) instead of a draft")]
 SimsOpt = Annotated[int, typer.Option("--sims")]
 SeedOpt = Annotated[int, typer.Option("--seed")]
-SchedOpt = Annotated[Path | None, typer.Option("--schedule", help="Matchup schedule JSON (Yahoo); default round robin")]
+SchedOpt = Annotated[Path | None, typer.Option(
+    "--schedule", help="Matchup schedule JSON (Yahoo); default data/manual/league_schedule.json if present, else an "
+                       "assumed round robin")]
 NbaOpt = Annotated[Path | None, typer.Option("--nba-schedule", help="NBA games CSV (default data/raw/bbref_schedule)")]
 CompleteOpt = Annotated[bool, typer.Option("--complete-rosters", help="Mid-draft: fill remaining picks with expected picks")]
 MyPlanOpt = Annotated[str, typer.Option("--my-plan", help="How to complete MY roster: market | optimizer")]
@@ -79,10 +91,12 @@ def _setup(
     if league_file:
         settings = settings.model_copy(update={"num_teams": len(league.rosters)})
     proj = load_projections(projections)
+    if schedule is None and LEAGUE_SCHEDULE_PATH.exists():
+        schedule = LEAGUE_SCHEDULE_PATH
     try:
         ctx = build_context(proj, settings, league.team_ids, schedule_file=schedule, nba_schedule_file=nba_schedule,
                             week1_end=date.fromisoformat(week1_end) if week1_end else None,
-                            merge_allstar=merge_allstar)
+                            merge_allstar=merge_allstar, team_names=league.names)
     except ValueError as e:
         fail(str(e), as_json, exit_code=2)
     full = settings.num_rounds
@@ -126,7 +140,7 @@ def _save(save: bool, kind_detail: str, params: SimParams, setup: _Setup, summar
         from fantasy.sim.persist import save_sim_run
 
         inputs = {**setup.ctx.inputs(), "league_source": setup.league.source,
-                  "draft_id": setup.draft["draft_id"] if setup.draft else None,
+                  "draft_id": setup.draft["draft_id"] if setup.draft else setup.league.draft_id,
                   "rosters": setup.league.to_json()["teams"], **(extra_inputs or {})}
         return save_sim_run("season_sim", {**params.to_dict(), "command": kind_detail}, inputs, summary)
     except Exception as e:  # recording must never block the answer
@@ -154,6 +168,40 @@ def fetch_schedule(season_end_year: Annotated[int, typer.Option("--season")] = 2
     except Exception as e:
         fail(f"fetch failed: {e}", as_json)
     emit({"ok": True, **res}, as_json, f"cached {res['games']} games -> {res['path']}")
+
+
+@app.command("export-league")
+def export_league(
+    out: Annotated[Path, typer.Option("--out", help="Where to write the --league-file JSON")],
+    draft_id: DraftOpt = None,
+    names_file: Annotated[Path | None, typer.Option(
+        "--names-file", help="Team names: JSON list in slot order (Yahoo round-1 draft order) or {slot: name}")] = None,
+    source: Annotated[str | None, typer.Option("--source", help="Provenance label stored in the file")] = None,
+    as_json: JsonOpt = False,
+) -> None:
+    """Write the actual rosters of a draft (team id = draft slot) as a `--league-file` JSON, with team names.
+    Reports players missing from the projections (simulated at the replacement line)."""
+    draft = store.get_draft(draft_id)
+    if not draft:
+        fail(f"draft not found: {draft_id or '(none exist)'}", as_json, code="not_found")
+    assert draft is not None
+    picks = store.get_picks(draft["draft_id"])
+    try:
+        names = parse_team_names(json.loads(names_file.read_text()), int(draft["num_teams"])) if names_file else None
+    except (ValueError, json.JSONDecodeError) as e:
+        fail(f"bad --names-file: {e}", as_json, exit_code=2)
+    data = league_json_from_draft(draft, picks, names, source)
+    known = set(load_projections(None).df.index)
+    unknown = [{"team": int(t), "player_id": p} for t, v in data["teams"].items() for p in v["players"] if p not in known]
+    data["unknown_players"] = unknown
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    res = {"ok": True, "out": str(out), "draft_id": draft["draft_id"], "draft_status": draft["status"],
+           "picks_recorded": data["picks_recorded"], "picks_total": data["picks_total"],
+           "teams": {t: {"name": v["name"], "players": len(v["players"])} for t, v in data["teams"].items()},
+           "unknown_players": unknown}
+    emit(res, as_json, f"wrote {out}: {data['picks_recorded']}/{data['picks_total']} picks, "
+                       f"{len(unknown)} players not in projections")
 
 
 @app.command()
@@ -194,7 +242,10 @@ def season(
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     my_plan: MyPlanOpt = "market", team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True,
     playoff_teams: POTeamsOpt = None, playoff_weeks: POWeeksOpt = None, streaming: StreamOpt = True,
-    save: SaveOpt = True, projections: ProjOpt = None, as_json: JsonOpt = False,
+    save: SaveOpt = True, projections: ProjOpt = None,
+    scenario: Annotated[str | None, typer.Option(
+        "--scenario", help='Label stored as summary.scenario, e.g. "post-draft: actual rosters" (dashboard)')] = None,
+    as_json: JsonOpt = False,
 ) -> None:
     """Simulate the season: P(playoffs), P(title), expected category wins, weekly matchups, opponents."""
     if my_plan not in ("market", "optimizer"):
@@ -208,9 +259,12 @@ def season(
         fail(f"unknown team {t}; teams: {st.league.team_ids}", as_json, exit_code=2)
     summary = season_summary(res, st.league, t)
     summary["warnings"] = list(dict.fromkeys(st.ctx.warnings + summary["warnings"]))
+    summary["matchup_schedule"] = st.ctx.matchup_info()
+    summary["draft_id"] = st.draft["draft_id"] if st.draft else st.league.draft_id
+    if scenario:
+        summary["scenario"] = scenario
     run_id = _save(save, "season", params, st, summary)
-    out = {"ok": True, "sim_version": SIM_VERSION, "run_id": run_id,
-           "draft_id": st.draft["draft_id"] if st.draft else None, **summary,
+    out = {"ok": True, "sim_version": SIM_VERSION, "run_id": run_id, **summary,
            "rosters": st.league.to_json()["teams"]}
     emit(out, as_json, _season_text(summary))
 

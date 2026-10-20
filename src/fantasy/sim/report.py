@@ -95,6 +95,7 @@ def my_outlook(res: SimResult, league: LeagueState, team: int) -> dict:
     T = len(res.team_ids)
     p_po = float(res.playoff[:, i].mean())
     p_title = float((res.champion == i).mean())
+    assumed = set(getattr(res.matchups, "assumed_weeks", []) or [])
     weekly = []
     for w in res.regular_weeks:
         opp = res.matchups.opponent(team, w)
@@ -110,6 +111,7 @@ def my_outlook(res: SimResult, league: LeagueState, team: int) -> dict:
             "my_player_games": _r(res.games[:, wi, i].mean(), 1),
             "opp_player_games": _r(res.games[:, wi, res.tindex(opp)].mean(), 1),
             "cat_win_probs": {c: _r(p, 3) for c, p in zip(res.cats, h["cat_win"], strict=True)},
+            "opponent_assumed": w in assumed,
         })
     vs = {}
     for t in res.team_ids:
@@ -129,8 +131,33 @@ def my_outlook(res: SimResult, league: LeagueState, team: int) -> dict:
                                 enumerate(np.bincount(res.rank[:, i], minlength=T + 1)[1:] / n, start=1)},
         "weekly_matchups": weekly,
         "vs_opponents_all_play": vs,
+        "weekly_h2h_matrix": weekly_h2h_matrix(res, team),
         "roster": league.rosters[team], "projected_picks": league.projected.get(team, []),
     }
+
+
+def weekly_h2h_matrix(res: SimResult, team: int, weeks: list[int] | None = None) -> list[dict]:
+    """My odds against EVERY other team in each week (whoever the schedule says I play): per week the
+    games-per-week schedule differs, so the same opponent can be a different matchup in week 3 and week 9.
+    Useful while the league's real pairings are unknown, and for planning around a known opponent."""
+    out = []
+    i = res.tindex(team)
+    for w in weeks or res.regular_weeks:
+        wi = res.week_index(w)
+        s, e = week_dates(res, w)
+        vs = {}
+        for t in res.team_ids:
+            if t == team:
+                continue
+            h = head_to_head(res, team, t, [w])
+            vs[str(t)] = {"p_win": _r(h["p_win"], 3), "p_tie": _r(h["p_tie"], 3),
+                          "exp_cats_won": _r(h["exp_cats_won"], 2),
+                          "opp_player_games": _r(res.games[:, wi, res.tindex(t)].mean(), 1),
+                          "cat_win_probs": {c: _r(p, 3) for c, p in zip(res.cats, h["cat_win"], strict=True)}}
+        out.append({"week": w, "start": s, "end": e, "scheduled_opponent": res.matchups.opponent(team, w),
+                    "opponent_assumed": w in set(getattr(res.matchups, "assumed_weeks", []) or []),
+                    "my_player_games": _r(res.games[:, wi, i].mean(), 1), "vs": vs})
+    return out
 
 
 def matchup_report(res: SimResult, league: LeagueState, team: int, week: int, opponent: int | None = None) -> dict:
@@ -165,6 +192,8 @@ def season_summary(res: SimResult, league: LeagueState, team: int | None = None)
     return {
         "n_sims": res.n, "seed": res.params["seed"], "compute_seconds": round(res.seconds, 2),
         "league_source": league.source, "sources": res.sources,
+        "matchup_schedule": {"source": res.matchups.source,
+                             "assumed_weeks": list(getattr(res.matchups, "assumed_weeks", []) or [])},
         "regular_weeks": res.regular_weeks, "playoff_weeks": res.playoff_weeks,
         "params": res.params,
         "my_team": my_outlook(res, league, team),

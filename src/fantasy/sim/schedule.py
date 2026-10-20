@@ -17,7 +17,11 @@ Schedule JSON (all keys optional except `weeks`):
   {"source": "yahoo 2026-10-25",
    "weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-10-25", "matchups": [[1, 7], [2, 8], ...]}, ...]}
 Team ids in `matchups` are the league-state team ids (draft slots unless the league state JSON says
-otherwise).
+otherwise) or exact Yahoo team names (case-insensitive; resolved through the league's team names), e.g.
+`[["Harrison's Best Team", "Yeet"], ...]`. The file may be partial: weeks without `matchups` keep the
+round-robin assumption (listed as `assumed_weeks`), and week dates are only used when they cover every
+week through the last playoff week. When present, `data/manual/league_schedule.json`
+(`LEAGUE_SCHEDULE_PATH`) is the default schedule of `fantasy sim ...` (`--schedule` overrides).
 """
 
 from __future__ import annotations
@@ -33,7 +37,13 @@ from pathlib import Path
 
 import numpy as np
 
-from fantasy.data.provenance import RAW_DIR, read_provenance, sha256_file, write_provenance
+from fantasy.data.provenance import (
+    MANUAL_DIR,
+    RAW_DIR,
+    read_provenance,
+    sha256_file,
+    write_provenance,
+)
 
 SEASON_END_YEAR = 2027
 NBA_OPENING_DAY = date(2026, 10, 20)
@@ -44,6 +54,8 @@ BBREF_MONTHS = ["october", "november", "december", "january", "february", "march
 CACHE_DIR = RAW_DIR / "bbref_schedule"
 UA = "Mozilla/5.0 (fantasy-nba research; low-volume schedule fetch)"
 UNIFORM_GAMES_PER_WEEK = 3.5
+# Yahoo's actual fantasy matchup schedule (manual, from Muse / the user); default for `fantasy sim`
+LEAGUE_SCHEDULE_PATH = MANUAL_DIR / "league_schedule.json"
 
 _ROW = re.compile(r'<tr\s*><th scope="row"[^>]*data-stat="date_game"[^>]*csk="(\d{8})[^"]*"[^>]*>.*?</tr>', re.S)
 _VIS = re.compile(r'data-stat="visitor_team_name"[^>]*csk="([A-Z]{3})\.')
@@ -286,6 +298,7 @@ class MatchupSchedule:
     weeks: dict[int, list[tuple[int, int]]]  # regular-season week -> pairs of team ids
     source: str
     calendar: list[FantasyWeek] | None = None  # explicit week dates (from JSON), else derived
+    assumed_weeks: list[int] = field(default_factory=list)  # weeks whose pairings are round-robin assumptions
 
     def opponent(self, team: int, week: int) -> int | None:
         for a, b in self.weeks.get(week, []):
@@ -325,14 +338,30 @@ def round_robin(team_ids: list[int], n_weeks: int) -> MatchupSchedule:
     return MatchupSchedule(weeks=weeks, source=f"round_robin({len(team_ids)} teams, {n_weeks} weeks)")
 
 
-def load_schedule_json(path: Path) -> MatchupSchedule:
+def _team_id(x: object, names: dict[str, int] | None) -> int:
+    """A matchup side: an int team id, a numeric string, or a team name (case-insensitive)."""
+    if isinstance(x, bool):
+        raise ValueError(f"bad team reference {x!r}")
+    if isinstance(x, int):
+        return x
+    sx = str(x).strip()
+    if sx.isdigit():
+        return int(sx)
+    lookup = {k.strip().casefold(): v for k, v in (names or {}).items()}
+    if sx.casefold() in lookup:
+        return lookup[sx.casefold()]
+    raise ValueError(f"unknown team {sx!r} in schedule (known: {sorted(names or {})})")
+
+
+def load_schedule_json(path: Path, names: dict[str, int] | None = None) -> MatchupSchedule:
+    """Load a matchup schedule; `names` maps team name -> team id for name-based matchups."""
     raw = json.loads(Path(path).read_text())
     weeks: dict[int, list[tuple[int, int]]] = {}
     cal: list[FantasyWeek] = []
     for w in raw["weeks"]:
         k = int(w["week"])
         if w.get("matchups"):
-            weeks[k] = [(int(a), int(b)) for a, b in w["matchups"]]
+            weeks[k] = [(_team_id(a, names), _team_id(b, names)) for a, b in w["matchups"]]
         if w.get("start") and w.get("end"):
             cal.append(FantasyWeek(k, date.fromisoformat(w["start"]), date.fromisoformat(w["end"])))
     cal.sort(key=lambda fw: fw.week)
@@ -349,3 +378,15 @@ def schedule_to_json(s: MatchupSchedule, calendar: list[FantasyWeek]) -> str:
         weeks.append(row)
     json.dump({"source": s.source, "weeks": weeks}, buf, indent=1)
     return buf.getvalue()
+
+
+def fill_missing_weeks(s: MatchupSchedule, team_ids: list[int], regular: list[int]) -> MatchupSchedule:
+    """Regular-season weeks without pairings get the round-robin assumption (recorded in `assumed_weeks`)."""
+    missing = [w for w in regular if w not in s.weeks]
+    if not missing:
+        return s
+    rr = round_robin(team_ids, max(regular))
+    weeks = {**s.weeks, **{w: rr.weeks[w] for w in missing}}
+    src = s.source if not s.weeks else f"{s.source}+round_robin(weeks {missing[0]}-{missing[-1]})"
+    return MatchupSchedule(weeks=weeks, source=src if s.weeks else rr.source, calendar=s.calendar,
+                           assumed_weeks=sorted(set(s.assumed_weeks) | set(missing)))

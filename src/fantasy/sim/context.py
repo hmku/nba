@@ -19,9 +19,9 @@ from fantasy.sim.schedule import (
     NBASchedule,
     allstar_break,
     build_calendar,
+    fill_missing_weeks,
     fit_week1_end,
     load_schedule_json,
-    round_robin,
     season_schedule,
 )
 
@@ -42,9 +42,19 @@ class SimContext:
         return SeasonSimulator(self.proj.df, self.values, self.replacement, self.settings, self.nba,
                                self.calendar, self.matchups, params)
 
+    def matchup_info(self) -> dict:
+        """Where the weekly pairings come from; `assumed_weeks` are round-robin assumptions, not Yahoo's."""
+        assumed = list(self.matchups.assumed_weeks)
+        note = ("Yahoo's league schedule (who plays whom each week)" if not assumed else
+                f"ASSUMPTION: weeks {assumed[0]}-{assumed[-1]} use a Yahoo-style round robin (circle method, every "
+                "pair meets once per 11 weeks) because the league's real matchup schedule is not loaded "
+                "(data/manual/league_schedule.json); the opponent shown for those weeks is not the real one")
+        return {"source": self.matchups.source, "assumed_weeks": assumed, "all_assumed": bool(assumed) and set(self.matchups.weeks) <= set(assumed), "note": note}
+
     def inputs(self) -> dict:
         return {"projections_path": self.proj.path, "projections_sha256": self.proj.sha256,
                 "nba_schedule_source": self.nba.source, "matchup_schedule_source": self.matchups.source,
+                "matchup_assumed_weeks": list(self.matchups.assumed_weeks),
                 "calendar": [{"week": w.week, "start": w.start.isoformat(), "end": w.end.isoformat()}
                              for w in self.calendar]}
 
@@ -60,6 +70,7 @@ def build_context(
     merge_allstar: bool = True,
     playoff_weeks: list[int] | None = None,
     val_params: ValuationParams | None = None,
+    team_names: dict[int, str] | None = None,
 ) -> SimContext:
     warnings: list[str] = []
     values, _, replacement = compute_values(proj, settings, val_params)
@@ -68,11 +79,14 @@ def build_context(
         nba, w = season_schedule(nba_schedule_file, teams)
         warnings += w
     last_week = max(playoff_weeks or settings.playoff_weeks)
-    matchups = load_schedule_json(schedule_file) if schedule_file else None
+    by_name = {v: k for k, v in (team_names or {}).items()}
+    matchups = load_schedule_json(schedule_file, by_name) if schedule_file else None
+    if matchups is not None and matchups.calendar and max(w.week for w in matchups.calendar) < last_week:
+        warnings.append(f"Schedule file gives week dates only through week {max(w.week for w in matchups.calendar)} "
+                        f"(< {last_week}); its dates are ignored and the derived calendar is used.")
+        matchups.calendar = None
     if matchups is not None and matchups.calendar:
         calendar = matchups.calendar
-        if max(w.week for w in calendar) < last_week:
-            raise ValueError(f"schedule file calendar ends at week {max(w.week for w in calendar)} < {last_week}")
     else:
         merge = None
         if merge_allstar:
@@ -89,9 +103,11 @@ def build_context(
         warnings.append(f"Week dates derived (assumption until Yahoo's schedule is loaded with --schedule): {basis}.")
     first_po = min(playoff_weeks or settings.playoff_weeks)
     regular = [w.week for w in calendar if w.week < first_po]
-    if matchups is None or not matchups.weeks:
-        rr = round_robin(team_ids, len(regular))
-        matchups = MatchupSchedule(weeks=rr.weeks, source=rr.source, calendar=matchups.calendar if matchups else None)
+    matchups = fill_missing_weeks(matchups or MatchupSchedule(weeks={}, source="none"), team_ids, regular)
+    if matchups.assumed_weeks:
+        a = matchups.assumed_weeks
+        warnings.append(f"Matchups for weeks {a[0]}-{a[-1]} are an ASSUMED round robin (league schedule not loaded: "
+                        "data/manual/league_schedule.json); weekly opponents there are not Yahoo's.")
     errs = matchups.validate(team_ids)
     missing = [w for w in regular if w not in matchups.weeks]
     if missing:

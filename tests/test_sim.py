@@ -392,3 +392,94 @@ def test_cli_season_compare_and_draft_check(proj_path, db_url, tmp_path):
     assert dc["candidates"][1]["my_completed_roster"][0] == "player-001"
     out = r.invoke(app, ["sim", "season", "--draft-id", "nope", *common])
     assert out.exit_code == 1 and not json.loads(out.output)["ok"]
+
+
+# ---------------------------------------------------------------- post-draft: names, partial schedules, H2H matrix
+def test_schedule_json_team_names_and_partial_weeks(tmp_path, proj_path):
+    from fantasy.sim.schedule import fill_missing_weeks
+
+    names = {f"Team {t}": t for t in TEAMS}
+    p = tmp_path / "s.json"
+    wk1 = [["team 1", "Team 7"], [2, 8], ["3", 9], [4, 10], [5, 11], [6, 12]]
+    p.write_text(json.dumps({"source": "muse scoreboard wk1", "weeks": [{"week": 1, "matchups": wk1}]}))
+    s = load_schedule_json(p, names)
+    assert s.weeks[1][0] == (1, 7) and s.weeks[1][2] == (3, 9) and s.calendar is None
+    filled = fill_missing_weeks(s, TEAMS, list(range(1, 18)))
+    assert filled.assumed_weeks == list(range(2, 18)) and filled.weeks[1] == s.weeks[1]
+    assert filled.opponent(1, 1) == 7 and "round_robin" in filled.source
+    p.write_text(json.dumps({"weeks": [{"week": 1, "matchups": [["Nobody", "Team 2"]]}]}))
+    with pytest.raises(ValueError, match="unknown team"):
+        load_schedule_json(p, names)
+    # through build_context: partial week dates are ignored with a warning; names resolve via team_names
+    p.write_text(json.dumps({"weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-10-25", "matchups": wk1}]}))
+    c = build_context(load_projections(proj_path), LeagueSettings(), TEAMS, schedule_file=p,
+                      nba=uniform_schedule(["TST"]), team_names={t: f"Team {t}" for t in TEAMS})
+    assert c.matchups.opponent(1, 1) == 7 and c.matchups.assumed_weeks == list(range(2, 18))
+    assert any("ignored" in w for w in c.warnings) and any("ASSUMED round robin" in w for w in c.warnings)
+    info = c.matchup_info()
+    assert info["assumed_weeks"][0] == 2 and not info["all_assumed"]
+
+
+def test_no_schedule_is_all_assumed(ctx):
+    info = ctx.matchup_info()
+    assert info["all_assumed"] and info["assumed_weeks"] == list(range(1, 18)) and "ASSUMPTION" in info["note"]
+
+
+def test_weekly_h2h_matrix(ctx):
+    from fantasy.sim.report import season_summary
+
+    lg = _snake_league(ctx)
+    res = ctx.simulator(_params(n_sims=100)).run(lg)
+    s = season_summary(res, lg, 1)
+    mx = s["my_team"]["weekly_h2h_matrix"]
+    assert [w["week"] for w in mx] == list(range(1, 18)) and set(mx[0]["vs"]) == {str(t) for t in TEAMS[1:]}
+    # the scheduled opponent's cell equals that week's weekly_matchups entry
+    w3 = mx[2]
+    wm = next(w for w in s["my_team"]["weekly_matchups"] if w["week"] == 3)
+    assert w3["scheduled_opponent"] == wm["opponent"] and w3["vs"][str(wm["opponent"])]["p_win"] == wm["p_win"]
+    assert wm["opponent_assumed"] and s["matchup_schedule"]["assumed_weeks"] == list(range(1, 18))
+    assert set(w3["vs"]["2"]["cat_win_probs"]) == set(res.cats)
+
+
+def test_team_names_and_league_json_from_draft():
+    from fantasy.sim.league import league_json_from_draft, parse_team_names
+
+    assert parse_team_names(["A", "B"], 12) == {1: "A", 2: "B"}
+    assert parse_team_names({"names": {"2": "B"}}, 12) == {2: "B"}
+    with pytest.raises(ValueError):
+        parse_team_names(["A", "A"], 12)
+    with pytest.raises(ValueError):
+        parse_team_names({"13": "X"}, 12)
+    draft = {"draft_id": "d1", "num_teams": 2, "num_rounds": 2, "order_type": "snake", "my_slot": 1, "config": {}}
+    picks = [{"overall_pick": 1, "team_slot": 1, "player_id": "a"}, {"overall_pick": 2, "team_slot": 2, "player_id": "b"},
+             {"overall_pick": 3, "team_slot": 2, "player_id": "c"}]
+    js = league_json_from_draft(draft, picks, {1: "Me", 2: "You"}, "test")
+    assert js["teams"]["2"] == {"name": "You", "players": ["b", "c"]} and js["draft_id"] == "d1"
+    assert js["picks_recorded"] == 3 and js["picks_total"] == 4 and js["source"] == "test"
+
+
+def test_cli_export_league_and_scenario(proj_path, db_url, tmp_path):
+    from fantasy.cli import app
+
+    r = CliRunner()
+    from fantasy.draft import store
+
+    assert r.invoke(app, ["draft", "init", "--draft-id", "mock-x1", "--mock", "--json"]).exit_code == 0
+    d = store.get_draft("mock-x1")
+    for i in range(12):
+        store.record_pick(d, i + 1, f"player-{i:03d}", f"P{i}", "manual")
+    names = tmp_path / "names.json"
+    names.write_text(json.dumps({"source": "t", "names": [f"T{i}" for i in range(1, 13)]}))
+    lf = tmp_path / "league.json"
+    out = r.invoke(app, ["sim", "export-league", "--draft-id", "mock-x1", "--names-file", str(names), "--out", str(lf),
+                         "--json"])
+    assert out.exit_code == 0, out.output
+    js = json.loads(out.output)
+    assert js["picks_recorded"] == 12 and js["teams"]["3"]["name"] == "T3"
+    out = r.invoke(app, ["sim", "season", "--league-file", str(lf), "--sims", "40", "--projections", str(proj_path),
+                         "--nba-schedule", str(tmp_path / "none.csv"), "--scenario", "post-draft: actual rosters",
+                         "--json"])
+    assert out.exit_code == 0, out.output
+    s = json.loads(out.output)
+    assert s["scenario"] == "post-draft: actual rosters" and s["draft_id"] == "mock-x1"
+    assert s["matchup_schedule"]["all_assumed"] and s["my_team"]["name"] == "T1"

@@ -97,7 +97,43 @@ def from_json(path: Path | str) -> LeagueState:
             if v.get("name"):
                 names[t] = str(v["name"])
     return LeagueState(rosters=rosters, my_team=int(raw.get("my_team", 1)),
-                       source=str(raw.get("source") or f"json:{Path(path).name}"), names=names)
+                       source=str(raw.get("source") or f"json:{Path(path).name}"), names=names,
+                       draft_id=raw.get("draft_id"))
+
+
+def parse_team_names(raw: object, num_teams: int) -> dict[int, str]:
+    """Team names by slot from a list (index 0 = slot 1, e.g. Yahoo's round-1 draft order) or a
+    {slot: name} mapping, optionally wrapped as {"source": ..., "names": <list|mapping>}."""
+    if isinstance(raw, dict) and "names" in raw:
+        raw = raw["names"]
+    if isinstance(raw, list):
+        names = {i + 1: str(n) for i, n in enumerate(raw)}
+    elif isinstance(raw, dict):
+        names = {int(k): str(v) for k, v in raw.items()}
+    else:
+        raise ValueError("team names must be a list (slot order) or a {slot: name} object")
+    bad = sorted(t for t in names if not 1 <= t <= num_teams)
+    if bad:
+        raise ValueError(f"team slots out of range 1..{num_teams}: {bad}")
+    if len(set(names.values())) != len(names):
+        raise ValueError("duplicate team names")
+    return names
+
+
+def league_json_from_draft(draft: dict, picks: list[dict], names: dict[int, str] | None = None,
+                           source: str | None = None) -> dict:
+    """The `--league-file` JSON for a finished (or partial) draft: team id = draft slot, players in
+    pick order, names from `names` (else drafts.config.team_names)."""
+    st = from_draft(draft, picks)
+    if names:
+        st.names = {**st.names, **names}
+    out = st.to_json()
+    out["source"] = source or st.source
+    out["picks_recorded"] = sum(1 for p in picks if p.get("player_id"))
+    out["picks_total"] = int(draft["num_teams"]) * int(draft["num_rounds"])
+    for t in out["teams"].values():
+        t.pop("projected_players", None)
+    return out
 
 
 def remaining_order(draft: dict, picks: list[dict]) -> list[tuple[int, int]]:
