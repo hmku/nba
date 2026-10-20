@@ -1,7 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { bearerMatches, museRunId } from "./agentPure";
+import { advisorRunId, authorizeAgentRequest, museRunId, type AgentIdentity } from "./agentPure";
 import { serviceClient } from "./supabase-admin";
 import { loadPlayers } from "./data";
 import type { Draft, Player, PlayerValue } from "./types";
@@ -16,16 +16,27 @@ export function fail(error: string, status: number, extra: Record<string, unknow
   return reply({ ...extra, ok: false, error }, status);
 }
 
-/** Bearer-token gate for /api/agent/*. Returns an error response, or null when authorised.
+/** Bearer-token gate + scope check for /api/agent/*. Muse's AGENT_API_TOKEN may call every endpoint; the
+ *  advisor's ADVISOR_API_TOKEN only the read endpoints and its own reports (ADVISOR_ALLOWED_ENDPOINTS, default deny →
+ *  403). Returns the caller's identity (derived from which token matched) or an error response.
  *  The token itself is never logged or echoed. */
+export async function authorizeAgent(req: Request): Promise<{ identity: AgentIdentity } | NextResponse> {
+  const res = authorizeAgentRequest(
+    req.headers.get("authorization"),
+    { agent: process.env.AGENT_API_TOKEN, advisor: process.env.ADVISOR_API_TOKEN },
+    req.method,
+    new URL(req.url).pathname,
+  );
+  if (res.ok) return { identity: res.identity };
+  if (res.status === 401) await new Promise((r) => setTimeout(r, 400));
+  return fail(res.error, res.status);
+}
+
+/** Gate for routes that do not care who is calling (returns null when authorised). The advisor is still limited
+ *  to ADVISOR_ALLOWED_ENDPOINTS, so Muse-only routes (snapshot, pick, ...) answer it with 403. */
 export async function requireAgent(req: Request): Promise<NextResponse | null> {
-  const expected = process.env.AGENT_API_TOKEN;
-  if (!expected) return fail("AGENT_API_TOKEN not configured", 503);
-  if (!bearerMatches(req.headers.get("authorization"), expected)) {
-    await new Promise((r) => setTimeout(r, 400));
-    return fail("Unauthorized: send Authorization: Bearer <token>", 401);
-  }
-  return null;
+  const a = await authorizeAgent(req);
+  return a instanceof NextResponse ? a : null;
 }
 
 export function writer(): SupabaseClient | NextResponse {
@@ -144,6 +155,32 @@ export async function ensureMuseRun(db: SupabaseClient): Promise<{ runId: string
   if (ins.error) return { runId, error: ins.error.message };
   const upd = await db.from("agent_runs").update({ status: "running", heartbeat_at: now, ended_at: null }).eq("run_id", runId);
   return { runId, error: upd.error?.message };
+}
+
+const ADVISOR_TASK = "suggestions from the independent read-only advisor (ADVISOR_API_TOKEN)";
+
+/** Ensure today's advisor run exists (agent="advisor", dry_run: it never acts) and refresh its heartbeat. */
+export async function ensureAdvisorRun(db: SupabaseClient): Promise<{ runId: string; error?: string }> {
+  const runId = advisorRunId();
+  const now = new Date().toISOString();
+  const ins = await db.from("agent_runs").upsert(
+    { run_id: runId, agent: "advisor", task: `${ADVISOR_TASK} · ${runId.slice(8)}`, status: "running", mode: "dry_run", started_at: now, heartbeat_at: now },
+    { onConflict: "run_id", ignoreDuplicates: true },
+  );
+  if (ins.error) return { runId, error: ins.error.message };
+  const upd = await db.from("agent_runs").update({ status: "running", heartbeat_at: now, ended_at: null }).eq("run_id", runId);
+  return { runId, error: upd.error?.message };
+}
+
+/** Advisor events in the last hour (its own budget, separate from Muse's). */
+export async function advisorEventsLastHour(db: SupabaseClient): Promise<number> {
+  const since = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db
+    .from("agent_events")
+    .select("event_id", { count: "exact", head: true })
+    .like("run_id", "advisor-%")
+    .gte("ts", since);
+  return count ?? 0;
 }
 
 /** Number of muse events in the last hour (shared budget for reports and observed picks). */

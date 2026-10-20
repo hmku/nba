@@ -14,7 +14,8 @@ from fantasy.ops import intel
 from fantasy.ops.cli import JsonOut, emit, handled
 
 app = typer.Typer(no_args_is_help=True,
-                  help="League intel from Meta Muse: Yahoo snapshots + group-chat reports (read-only)")
+                  help="League intel from Meta Muse (Yahoo snapshots + group-chat reports) and "
+                       "advisor suggestions (read-only)")
 
 Rest = Annotated[bool, typer.Option("--rest", help="Read Supabase over HTTPS (PostgREST) instead "
                                     "of FANTASY_DB_URL (cloud sessions)")]
@@ -39,7 +40,8 @@ def _snap_line(s: dict[str, Any]) -> str:
 
 def _report_line(r: dict[str, Any]) -> str:
     msg = (r.get("message") or "").replace("\n", " ")
-    return f"{r['event_id']}  {r['report_kind']:<12} {r.get('ts') or '-'}  {msg[:120]}"
+    tag = "[advisor] " if r.get("source") == "advisor" and r["run_id"].startswith("advisor-") else ""
+    return f"{r['event_id']}  {r['report_kind']:<12} {r.get('ts') or '-'}  {tag}{msg[:120]}"
 
 
 @app.command("list")
@@ -50,17 +52,21 @@ def list_cmd(
     limit: Annotated[int, typer.Option(help="Max rows per section")] = 50,
     what: Annotated[str, typer.Option(help="all | snapshots | reports")] = "all",
     payload: Annotated[bool, typer.Option("--payload", help="Include snapshot payloads")] = False,
+    report_source: Annotated[str, typer.Option(
+        "--source", help="Reports from: muse (default) | advisor (advisor suggestions only) | all")] = "muse",
     use_rest: Rest = False,
     json_out: JsonOut = False,
 ) -> None:
-    """Snapshots (newest first by last seen) and Muse reports (newest first)."""
+    """Snapshots (newest first by last seen) and Muse or advisor reports (newest first)."""
     src = _src(use_rest)
     try:
         res = intel.list_intel(src, kind=kind, since=intel.parse_since(since), limit=limit,
-                               what=what, with_payload=payload)
+                               what=what, with_payload=payload, report_source=report_source)
     finally:
         _close(src)
     lines = [f"# {intel.UNTRUSTED_NOTE}"]
+    if "advisor_note" in res:
+        lines.append(f"# {res['advisor_note']}")
     if "snapshots" in res:
         lines.append(f"snapshots ({len(res['snapshots'])}):")
         lines += ["  " + _snap_line(s) for s in res["snapshots"]]
@@ -112,4 +118,7 @@ def latest_cmd(
     lines += ["  " + _report_line(r) for r in res["chat_digests"]]
     lines.append(f"reports since {res['reports_since']} ({len(res['reports'])}):")
     lines += ["  " + _report_line(r) for r in res["reports"]]
+    lines.append(f"advisor suggestions since {res['reports_since']} ({len(res['advisor_suggestions'])}) "
+                 f"# {intel.ADVISOR_NOTE}")
+    lines += ["  " + _report_line(r) for r in res["advisor_suggestions"]]
     emit(res, json_out, "\n".join(lines))
