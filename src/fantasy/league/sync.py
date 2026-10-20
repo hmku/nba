@@ -43,7 +43,6 @@ from fantasy.model.availability import TEAM_ALIASES
 
 VALID_SLOTS = ("PG", "SG", "G", "SF", "PF", "F", "C", "Util", "BN", "IL", "IL+")
 BENCH_SLOTS = ("BN", "IL", "IL+")
-KNOWN_TAGS = ("Q", "O", "P", "NA", "GTD", "DTD", "INJ", "SUSP")
 OUT_TAGS = ("O", "INJ", "SUSP", "NA")  # not expected to play today
 MAX_ROSTER = 16
 NUM_TEAMS = 12

@@ -53,7 +53,6 @@ ALLSTAR_BREAK_GUESS = (date(2027, 2, 19), date(2027, 2, 24))
 BBREF_MONTHS = ["october", "november", "december", "january", "february", "march", "april"]
 CACHE_DIR = RAW_DIR / "bbref_schedule"
 UA = "Mozilla/5.0 (fantasy-nba research; low-volume schedule fetch)"
-UNIFORM_GAMES_PER_WEEK = 3.5
 # Yahoo's actual fantasy matchup schedule (manual, from Muse / the user); default for `fantasy sim`
 LEAGUE_SCHEDULE_PATH = MANUAL_DIR / "league_schedule.json"
 

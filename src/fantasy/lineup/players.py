@@ -19,7 +19,7 @@ P(plays a scheduled game) -- see docs/research/lineup_optimizer.md section 3:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -210,8 +210,3 @@ def load_team(
         raise ValueError(f"no roster for team {draft_slot}")
     players, w = roster_from_records(records, proj, ids)
     return players, warnings + w
-
-
-def with_status(players: list[RosterPlayer], overrides: dict[str, str | None]) -> list[RosterPlayer]:
-    return [replace(p, status=normalize_status(overrides[p.player_id])) if p.player_id in overrides else p
-            for p in players]
