@@ -82,6 +82,7 @@ class RosterPlayer:
     status: str | None  # normalised Yahoo tag, None = healthy
     slot: str | None = None  # current Yahoo slot (PG, ..., Util, BN, IL), None = unknown
     gp: float = 70.0  # projected games played (for the healthy P(plays))
+    yahoo_player_id: int | None = None
 
     @property
     def is_out(self) -> bool:
@@ -91,11 +92,11 @@ class RosterPlayer:
     def il_eligible(self) -> bool:
         return self.status in IL_TAGS
 
-    def p_play(self, first_game: bool) -> float:
+    def p_play(self, first_game: bool, rest_share: float = REST_SHARE) -> float:
         """P(plays a scheduled game). `first_game`: this is his next scheduled game (the tag applies)."""
         if self.is_out:
             return 0.0
-        healthy = 1.0 - REST_SHARE * (1.0 - min(max(self.gp, 0.0), SEASON_GAMES) / SEASON_GAMES)
+        healthy = 1.0 - rest_share * (1.0 - min(max(self.gp, 0.0), SEASON_GAMES) / SEASON_GAMES)
         if self.status in TAG_PRIORS and first_game:
             return TAG_PRIORS[self.status]
         if self.status is not None and self.status not in TAG_PRIORS and first_game:
@@ -154,14 +155,23 @@ def roster_from_records(
         if row is None:
             warnings.append(f"{pid}: not in projections -> zero stats")
         pos = parse_positions(r.get("positions"))
+        filled = []
         if not pos and row is not None:
             pos = parse_positions(list(row["positions"]))
-        team = normalize_team(r.get("team")) or (normalize_team(row["team"]) if row is not None else None)
+            filled.append("positions")
+        team = normalize_team(r.get("team"))
+        if team is None and row is not None:
+            team = normalize_team(row["team"])
+            filled.append("NBA team")
+        if filled and ("positions" in r or "team" in r):  # Yahoo row with them blank (usually a tagged row)
+            warnings.append(f"{pid}: {' and '.join(filled)} not in the Yahoo row (status {r.get('status')!r}); "
+                            f"using projections ({'|'.join(pos)}, {team}) -- check eligibility on Yahoo")
         status = normalize_status(r["status"]) if "status" in r else (
             normalize_status(row["status"]) if row is not None else None)
         out.append(RosterPlayer(
             player_id=pid, name=str(r.get("name") or (row["name"] if row is not None else pid)), positions=pos,
-            team=team, status=status, slot=r.get("slot"), gp=float(row["gp"]) if row is not None else 0.0))
+            team=team, status=status, slot=r.get("slot"), gp=float(row["gp"]) if row is not None else 0.0,
+            yahoo_player_id=_as_int(r.get("yahoo_player_id"))))
     return out, warnings
 
 
@@ -192,6 +202,8 @@ def load_team(
                 r["slot"] = lineup.get(pid)
             if status is not None:
                 r["status"] = status.get(pid)
+            if (lt.get("yahoo_ids") or {}).get(pid) is not None:
+                r["yahoo_player_id"] = lt["yahoo_ids"][pid]
             merged.append(r)
         records = merged
     if ids is None and not records:

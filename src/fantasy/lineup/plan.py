@@ -20,8 +20,8 @@ import numpy as np
 import pandas as pd
 
 from fantasy.league.settings import Category, LeagueSettings
-from fantasy.lineup.optimize import DaySlots, solve_day
-from fantasy.lineup.players import TAG_PRIORS, RosterPlayer
+from fantasy.lineup.optimize import DaySlots, eligible, solve_day
+from fantasy.lineup.players import REST_SHARE, TAG_PRIORS, RosterPlayer
 from fantasy.lineup.value import (
     CatState,
     TeamWeek,
@@ -36,7 +36,7 @@ from fantasy.model.lines import SEASON_GAMES, STATS, ProjectionSet
 from fantasy.model.valuation import compute_values
 from fantasy.sim.schedule import NBASchedule
 
-LINEUP_MODEL_VERSION = "lineup-0.1.0"
+LINEUP_MODEL_VERSION = "lineup-0.2.0"
 GAME_FLOOR = 1e-5  # a player with a game is worth at least this (so he never sits for a player without one)
 
 
@@ -47,12 +47,21 @@ class LineupParams:
     seed: int = 0
     protect_ratios: bool = False  # allow benching a player with a game whose marginal value is negative
     tag_priors: dict[str, float] = field(default_factory=lambda: dict(TAG_PRIORS))
+    # PRIOR: share of a healthy player's missed games that are one-game rests (P(plays) = 1 - rest_share (1 - gp/82)).
+    # 1.0 = plain season-average availability gp/82 (what `fantasy sim` uses for a random week).
+    rest_share: float = REST_SHARE
+    locked: tuple[str, ...] = ()  # player ids whose game has started today: pinned to their current slot
 
     def to_dict(self) -> dict:
-        from fantasy.lineup.players import REST_SHARE
         return {"iterations": self.iterations, "n_sims": self.n_sims, "seed": self.seed,
-                "protect_ratios": self.protect_ratios, "tag_priors": self.tag_priors, "rest_share": REST_SHARE,
+                "protect_ratios": self.protect_ratios, "tag_priors": self.tag_priors,
+                "rest_share": self.rest_share, "rest_share_label": "prior", "locked": list(self.locked),
                 "game_floor": GAME_FLOOR, "objective": "expected_categories_won"}
+
+    def availability_assumption(self) -> str:
+        return (f"healthy players play each scheduled game with P = 1 - {self.rest_share:g} x (1 - gp/82) "
+                f"(rest_share {self.rest_share:g} is a PRIOR; 1.0 = season-average availability gp/82); "
+                f"tagged players' next game: {self.tag_priors} (PRIORS); O/INJ/NA/SUSP = 0")
 
 
 def games_matrix(players: list[RosterPlayer], days: list[date], nba: NBASchedule) -> tuple[np.ndarray, list[str]]:
@@ -67,13 +76,13 @@ def games_matrix(players: list[RosterPlayer], days: list[date], nba: NBASchedule
     return G, warnings
 
 
-def p_matrix(players: list[RosterPlayer], G: np.ndarray) -> np.ndarray:
+def p_matrix(players: list[RosterPlayer], G: np.ndarray, rest_share: float = REST_SHARE) -> np.ndarray:
     P = np.zeros(G.shape)
     for i, p in enumerate(players):
         first = True
         for d in range(G.shape[1]):
             if G[i, d]:
-                P[i, d] = p.p_play(first_game=first)
+                P[i, d] = p.p_play(first_game=first, rest_share=rest_share)
                 first = False
     return P
 
@@ -92,8 +101,18 @@ def team_week(players: list[RosterPlayer], proj: pd.DataFrame, P: np.ndarray, ac
 
 def daily_plan(
     players: list[RosterPlayer], values: np.ndarray, P: np.ndarray, slots: DaySlots, protect_ratios: bool = False,
+    locked: tuple[str, ...] | frozenset[str] = (),
 ) -> tuple[np.ndarray, list[list[str]]]:
-    """Solve each day; values (n, D) = expected value if started. Returns (X started (n, D), labels per day)."""
+    """Solve each day; values (n, D) = expected value if started. Returns (X started (n, D), labels per day).
+
+    Unless `protect_ratios`, values of players with a game are shifted monotonically, v - min(v over players with a
+    game) + GAME_FLOOR, so they are all positive (a player with a game always beats one without) while their order
+    is kept. Shifting all weights of a transversal matroid by a constant does not change which feasible set of
+    starters is best among the maximum ones. `locked` players are pinned to their current slot on day 0."""
+    for pid in locked:
+        p = next((q for q in players if q.player_id == pid), None)
+        if p is None or p.slot is None:
+            raise ValueError(f"locked player {pid!r} is not on the roster or has no known current slot")
     n, D = P.shape
     start = set(slots.starting)
     X = np.zeros((n, D), dtype=bool)
@@ -104,9 +123,12 @@ def daily_plan(
     il_ok = [p.il_eligible for p in players]
     for d in range(D):
         has = P[:, d] > 0
-        v = values[:, d] if protect_ratios else np.maximum(values[:, d], 0.0)
+        v = values[:, d]
+        if not protect_ratios and has.any():
+            v = v - v[has].min()
         v = np.where(has, v + GAME_FLOOR, 0.0)
-        lab = solve_day(pos, v, startable, il_ok, slots, current)
+        fixed = [p.slot if (d == 0 and p.player_id in locked) else None for p in players]
+        lab = solve_day(pos, v, startable, il_ok, slots, current, fixed=fixed if any(fixed) else None)
         labels.append(lab)
         X[:, d] = [lab_i in start and h for lab_i, h in zip(lab, has, strict=True)]
         current = lab
@@ -159,7 +181,7 @@ def optimize_week(
 ) -> tuple[WeekResult, np.ndarray, list[list[str]]]:
     """Fixed-point matchup-aware plan. Returns (result, baseline X, baseline labels)."""
     gv = generic_values(me.players, generic)
-    X0, lab0 = daily_plan(me.players, gv[:, None] * me.P, me.P, slots)
+    X0, lab0 = daily_plan(me.players, gv[:, None] * me.P, me.P, slots, locked=params.locked)
     X, labels = X0, lab0
     converged = False
     it = 0
@@ -167,7 +189,7 @@ def optimize_week(
         state = cat_state(me.tw, X, opp.tw, opp_X, cats)
         pg, contrib = per_game_value(me.tw.S, state, cats)
         values = me.P * pg[:, None]
-        X_new, labels = daily_plan(me.players, values, me.P, slots, params.protect_ratios)
+        X_new, labels = daily_plan(me.players, values, me.P, slots, params.protect_ratios, params.locked)
         if np.array_equal(X_new, X):
             converged = True
             X = X_new
@@ -237,6 +259,42 @@ def day_summary(players: list[RosterPlayer], labels: list[str], P_d: np.ndarray,
             "empty_slots": len(slots.starting) - started_with_game, "lineup": lineup}
 
 
+def tipoff_notes(me: TeamSide, res: WeekResult, slots: DaySlots) -> list[dict]:
+    """Tagged players with a game today, with a slot-dependent instruction for the executor at tip-off."""
+    start = set(slots.starting)
+    lab = res.labels[0]
+    val = res.values[:, 0]
+    out = []
+    for i, p in enumerate(me.players):
+        if me.P[i, 0] <= 0 or p.status is None:
+            continue
+        row = {"player_id": p.player_id, "name": p.name, "status": p.status, "p_play": round(float(me.P[i, 0]), 3),
+               "slot": lab[i]}
+        if lab[i] in start:
+            subs = [j for j in range(len(me.players)) if lab[j] == "BN" and me.P[j, 0] > 0
+                    and eligible(me.players[j].positions, lab[i])]
+            sub = max(subs, key=lambda j: (val[j], me.players[j].player_id)) if subs else None
+            row["swap_with"] = me.players[sub].player_id if sub is not None else None
+            row["note"] = (f"starting: if he is ruled out before his tip-off, swap him out for "
+                           f"{me.players[sub].name if sub is not None else 'a bench player with a game (re-run the plan)'}")
+        else:
+            # value if confirmed active (P = 1) vs the weakest starter with a game he can replace
+            confirmed = float(res.per_game[i])
+            cands = [j for j in range(len(me.players)) if lab[j] in start and me.P[j, 0] > 0
+                     and eligible(p.positions, lab[j])]
+            weakest = min(cands, key=lambda j: (val[j], me.players[j].player_id)) if cands else None
+            if weakest is not None and confirmed > val[weakest]:
+                x = me.players[weakest]
+                row["swap_with"] = x.player_id
+                row["note"] = (f"benched: if confirmed active, start him in place of {x.name} ({lab[weakest]}) -- "
+                               f"only before {x.name}'s tip-off (value {confirmed:.4f} vs {val[weakest]:.4f})")
+            else:
+                row["swap_with"] = None
+                row["note"] = "benched: stays benched even if confirmed active (lower value than every starter he can replace)"
+        out.append(row)
+    return out
+
+
 def changes_vs_current(players: list[RosterPlayer], labels: list[str]) -> list[dict]:
     return [{"player_id": p.player_id, "name": p.name, "from": p.slot, "to": lab}
             for p, lab in zip(players, labels, strict=True) if p.slot != lab]
@@ -257,7 +315,7 @@ def build_plan(
     def side(players: list[RosterPlayer], acc: dict | None) -> TeamSide:
         G, w = games_matrix(players, days, nba)
         warnings.extend(w)
-        P = p_matrix(players, G)
+        P = p_matrix(players, G, params.rest_share)
         return TeamSide(players, G, P, team_week(players, proj, P, acc))
 
     me, opp = side(me_players, acc_me), side(opp_players, acc_opp)
@@ -272,10 +330,7 @@ def build_plan(
 
     today = day_summary(me.players, res.labels[0], me.P[:, 0], res.values[:, 0], slots, days[0])
     start = set(slots.starting)
-    tipoff = [{"player_id": p.player_id, "name": p.name, "status": p.status, "p_play": round(float(me.P[i, 0]), 3),
-               "slot": res.labels[0][i],
-               "note": "lineup locks at his own tip-off: re-check his status ~30 min before and swap if ruled out"}
-              for i, p in enumerate(me.players) if me.P[i, 0] > 0 and p.status is not None]
+    tipoff = tipoff_notes(me, res, slots)
     tagged = []
     for i, p in enumerate(me.players):
         if p.status is None:
@@ -303,6 +358,8 @@ def build_plan(
         "il": [e for e in today["lineup"] if e["slot"] == "IL"],
         "il_moves": il_moves,
         "changes_vs_current": changes_vs_current(me.players, res.labels[0]),
+        "target_slots": {p.player_id: {"slot": lab, "name": p.name, "yahoo_player_id": p.yahoo_player_id}
+                         for p, lab in zip(me.players, res.labels[0], strict=True)},
         "decide_at_tipoff": tipoff,
         "tagged_players": tagged,
         "today": {k: today[k] for k in ("players_with_game", "started_with_game", "unused_starts", "unused_players",
@@ -311,6 +368,7 @@ def build_plan(
         "category_weights": res.state.to_dict(),
         "expected": {
             "method": "analytic normal approximation per category; categories independent for P(win matchup)",
+            "availability_assumption": params.availability_assumption(),
             "optimized": summarize_state(res.final_state),
             "naive_season_value": summarize_state(naive_state),
             "static_current_lineup": summarize_state(static_state)},

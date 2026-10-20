@@ -214,7 +214,7 @@ def test_cli_plan_json_smoke(tmp_path, proj_path):
     sched = tmp_path / "sched.json"
     sched.write_text(json.dumps({"weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-10-25",
                                             "matchups": [[1, 2]]}]}))
-    cap = {"teams": {}}
+    cap = {"captured_at": "2026-10-21T13:05:00Z", "teams": {}}
     for yid, (slot, pids) in enumerate([(1, ids[0:26:2]), (2, ids[1:26:2])], start=1):
         cap["teams"][str(yid)] = {"draft_slot": slot, "players": [
             {"player_id": p, "name": p, "team": teams_codes[k % 3], "positions": "|".join(proj.df.loc[p, "positions"]),
@@ -229,7 +229,7 @@ def test_cli_plan_json_smoke(tmp_path, proj_path):
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["week"] == 1 and out["opponent"]["team_id"] == 2 and len(out["week_plan"]) == 5
-    assert out["model_version"] == "lineup-0.1.0"
+    assert out["model_version"] == "lineup-0.2.0"
     assert {"lineup", "bench", "il_moves", "changes_vs_current", "decide_at_tipoff", "category_weights",
             "expected", "inputs", "params"} <= set(out)
     assert out["inputs"]["accumulated"]["sha256"]
@@ -283,3 +283,192 @@ def test_load_team_null_draft_slot_and_league_lineup_status_maps(tmp_path, proj_
     assert [p.slot for p in players] == ["Util", "BN", "SF"]
     assert [p.status for p in players] == [None, None, "O"]
     assert players[0].team == "CHO" and players[1].positions == ("C",)
+
+
+# ---------------------------------------------------------------- review fixes (lineup-0.2.0)
+def _cli_world(tmp_path, proj_path, captured_at="2026-10-21T13:05:00Z", n_me=13, statuses=None, slots=None):
+    proj = load_projections(proj_path)
+    ids = list(proj.df.index)
+    games = tmp_path / "games.csv"
+    rows = ["date,visitor,home"] + [f"{(D0 + timedelta(days=k)).isoformat()},BOS,DET" for k in range(6)]
+    games.write_text("\n".join(rows) + "\n")
+    mine, theirs = ids[0:2 * n_me:2], ids[1:26:2]
+    lf = tmp_path / "league.json"
+    lf.write_text(json.dumps({"my_team": 1, "teams": {"1": {"name": "Me", "players": mine},
+                                                      "2": {"name": "Them", "players": theirs}}}))
+    sched = tmp_path / "sched.json"
+    sched.write_text(json.dumps({"weeks": [{"week": 1, "start": "2026-10-20", "end": "2026-10-25",
+                                            "matchups": [[1, 2]]}]}))
+    cols = slots or SLOTS.columns
+    cap = {"captured_at": captured_at, "teams": {}}
+    for yid, (slot, pids) in enumerate([(1, mine), (2, theirs)], start=1):
+        cap["teams"][str(yid)] = {"draft_slot": slot, "players": [
+            {"player_id": p, "name": p, "team": "BOS" if k % 2 else "DET", "yahoo_player_id": 1000 + k,
+             "positions": "|".join(proj.df.loc[p, "positions"]),
+             "status": (statuses or {}).get(k) if slot == 1 else None, "slot": cols[k] if k < len(cols) else "BN"}
+            for k, p in enumerate(pids)]}
+    capf = tmp_path / "cap.json"
+    capf.write_text(json.dumps(cap))
+    base = ["lineup", "plan", "--json", "--projections", str(proj_path), "--league-file", str(lf), "--schedule",
+            str(sched), "--nba-schedule", str(games), "--capture", str(capf), "--sims", "0"]
+    return base, mine
+
+
+def _run(args):
+    from fantasy.cli import app
+
+    r = CliRunner().invoke(app, args)
+    return r.exit_code, json.loads(r.output)
+
+
+def test_cli_refuses_stale_capture_unless_allowed_or_current_slots(tmp_path, proj_path):
+    # 03:25 UTC on 10-20 is 23:25 ET on 10-19: stale for a 10-20 plan
+    base, mine = _cli_world(tmp_path, proj_path, captured_at="2026-10-20T03:25:00Z")
+    code, out = _run(base + ["--date", "2026-10-20"])
+    assert code == 2 and out["code"] == "stale_capture" and out["slots_as_of"] == "2026-10-19"
+    code, out = _run(base + ["--date", "2026-10-20", "--allow-stale"])
+    assert code == 0 and any("STALE" in w for w in out["warnings"])
+    cs = tmp_path / "cs.json"
+    cs.write_text(json.dumps({p: ("BN" if k >= 10 else SLOTS.columns[k]) for k, p in enumerate(mine)}))
+    code, out = _run(base + ["--date", "2026-10-20", "--current-slots", str(cs)])
+    assert code == 0 and not any("STALE" in w for w in out["warnings"])
+    assert set(out["target_slots"]) == set(mine)
+    assert out["target_slots"][mine[0]]["yahoo_player_id"] == 1000
+
+
+def test_parse_timestamp_et():
+    from fantasy.lineup.cli import parse_timestamp_et
+
+    assert parse_timestamp_et("2026-10-20T03:25:00Z")[0] == date(2026, 10, 19)
+    assert parse_timestamp_et("pages read ..., 2026-10-20 ~03:25 UTC")[0] == date(2026, 10, 19)
+    assert parse_timestamp_et("read 2026-10-20 09:10 ET")[0] == date(2026, 10, 20)
+    assert parse_timestamp_et("2026-10-21T13:05:00+00:00")[0] == date(2026, 10, 21)
+    assert parse_timestamp_et(None)[0] is None
+
+
+def test_cli_midweek_without_accumulated_warns(tmp_path, proj_path):
+    base, _ = _cli_world(tmp_path, proj_path)
+    code, out = _run(base + ["--date", "2026-10-21"])
+    assert code == 0 and any("MID-WEEK" in w for w in out["warnings"])
+    assert "rest_share" in out["expected"]["availability_assumption"] or "PRIOR" in out["expected"]["availability_assumption"]
+
+
+def test_cli_infeasible_roster_returns_json(tmp_path, proj_path):
+    base, _ = _cli_world(tmp_path, proj_path, n_me=14)
+    code, out = _run(base + ["--date", "2026-10-21"])
+    assert code == 2 and out["code"] == "infeasible_roster" and "drop" in out["action"]
+
+
+def test_cli_locked_player_stays_in_current_slot(tmp_path, proj_path):
+    base, mine = _cli_world(tmp_path, proj_path)
+    code, free = _run(base + ["--date", "2026-10-21"])
+    moved = [c["player_id"] for c in free["changes_vs_current"]]
+    assert moved, "fixture should produce at least one move"
+    code, out = _run(base + ["--date", "2026-10-21", "--locked", ",".join(moved)])
+    assert code == 0
+    assert not {c["player_id"] for c in out["changes_vs_current"]} & set(moved)
+
+
+def test_monotone_shift_keeps_order_of_negative_values():
+    """Two players with a game and negative matchup value compete for one slot: the less negative one starts."""
+    from fantasy.lineup.plan import daily_plan
+
+    a = RosterPlayer("a", "A", ("C",), "AAA", None, "BN", 70.0)
+    b = RosterPlayer("b", "B", ("C",), "AAA", None, "C", 70.0)  # current starter: keep-bonus must not decide
+    slots = DaySlots(("C",), 1, 0)
+    P = np.ones((2, 1))
+    X, labels = daily_plan([a, b], np.array([[-0.01], [-0.02]]), P, slots)
+    assert labels[0] == ["C", "BN"]
+    c = RosterPlayer("c", "C", ("C",), "AAA", None, "BN", 70.0)
+    X, labels = daily_plan([b, c], np.array([[-0.5], [0.0]]), np.array([[1.0], [0.0]]), slots)
+    assert labels[0] == ["C", "BN"]  # a player with a game (even negative) beats one without
+
+
+def test_out_player_on_bench_moved_to_free_il():
+    positions = [("PG",), ("C",)]
+    slots = DaySlots(("PG",), 1, 1)
+    labels = solve_day(positions, np.array([1.0, 0.0]), [True, False], [False, True], slots, current=["PG", "BN"])
+    assert labels == ["PG", "IL"]
+
+
+def test_tipoff_notes_depend_on_slot(world):
+    proj, settings, days, nba, me, opp, generic = world
+    aaa = [k for k, p in enumerate(me) if p.team == "AAA"]
+    tagged = list(me)
+    for k in aaa[:2]:
+        tagged[k] = RosterPlayer(me[k].player_id, me[k].name, me[k].positions, "AAA", "Q", None, me[k].gp)
+    out = build_plan(tagged, opp, proj.df, nba, days, settings, generic, params=LineupParams(n_sims=0))
+    for t in out["decide_at_tipoff"]:
+        if t["slot"] in SLOTS.starting:
+            assert t["note"].startswith("starting: if he is ruled out")
+        else:
+            assert t["note"].startswith("benched:")
+
+
+def _fd_world(world):
+    from fantasy.lineup.plan import TeamSide, p_matrix, team_week
+    from fantasy.lineup.value import cat_state
+
+    proj, settings, days, nba, me, opp, generic = world
+    from fantasy.lineup.plan import games_matrix
+
+    def side(players, acc=None):
+        G, _ = games_matrix(players, days, nba)
+        P = p_matrix(players, G)
+        return TeamSide(players, G, P, team_week(players, proj.df, P, acc))
+
+    return settings.cats, side, cat_state
+
+
+def test_weights_match_finite_differences(world):
+    from fantasy.model.lines import STATS
+
+    cats, side, cat_state = _fd_world(world)
+    me, opp = side(world[4]), side(world[5])
+    X_me, X_opp = me.P > 0, opp.P > 0
+    st = cat_state(me.tw, X_me, opp.tw, X_opp, cats)
+    w = st.weights()
+    keys = [c.key for c in cats]
+    for j, c in enumerate(cats):
+        if c.kind != "count":
+            continue
+        h = 1e-3 * max(st.sigma[j], 1.0)
+        me.tw.acc[STATS.index(c.stat)] += h
+        up = cat_state(me.tw, X_me, opp.tw, X_opp, cats).expected_cats
+        me.tw.acc[STATS.index(c.stat)] -= 2 * h
+        dn = cat_state(me.tw, X_me, opp.tw, X_opp, cats).expected_cats
+        me.tw.acc[STATS.index(c.stat)] += h
+        assert (up - dn) / (2 * h) == pytest.approx(w[j], rel=1e-3, abs=1e-9), keys[j]
+    # FG%: one extra make (no extra attempt) -> d E ~ w_fg * (1 / A_me) (variance changes are second order)
+    j = keys.index("fg_pct")
+    A = st.me.atts["fg_pct"]
+    h = 0.05
+    me.tw.acc[STATS.index("fgm")] += h
+    up = cat_state(me.tw, X_me, opp.tw, X_opp, cats).expected_cats
+    me.tw.acc[STATS.index("fgm")] -= 2 * h
+    dn = cat_state(me.tw, X_me, opp.tw, X_opp, cats).expected_cats
+    me.tw.acc[STATS.index("fgm")] += h
+    assert (up - dn) / (2 * h) == pytest.approx(w[j] / A, rel=0.05)
+
+
+def test_turnover_weight_negative_and_more_turnovers_hurt(world):
+    from fantasy.model.lines import STATS
+
+    cats, side, cat_state = _fd_world(world)
+    me, opp = side(world[4]), side(world[5])
+    X_me, X_opp = me.P > 0, opp.P > 0
+    st = cat_state(me.tw, X_me, opp.tw, X_opp, cats)
+    j = [c.key for c in cats].index("tov")
+    assert st.weights()[j] < 0
+    before = st.p_win[j]
+    me.tw.acc[STATS.index("tov")] += 5
+    assert cat_state(me.tw, X_me, opp.tw, X_opp, cats).p_win[j] < before
+
+
+def test_rest_share_param_changes_healthy_availability(world):
+    a = _plan(world, n_sims=0)
+    b = _plan(world, n_sims=0, rest_share=1.0)
+    pa = {p["player_id"]: p["p_play_today"] for p in a["players"] if p["has_game_today"]}
+    pb = {p["player_id"]: p["p_play_today"] for p in b["players"] if p["has_game_today"]}
+    assert all(pb[k] <= pa[k] for k in pa) and any(pb[k] < pa[k] for k in pa)
+    assert b["params"]["rest_share"] == 1.0 and b["params"]["rest_share_label"] == "prior"

@@ -1,4 +1,4 @@
-# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.1.0, task T-005)
+# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.2.0, task T-005)
 
 Code: `src/fantasy/lineup/` (`players.py` statuses / P(plays), `optimize.py` exact assignment, `value.py` weekly
 category model + Monte Carlo, `plan.py` planner + baselines, `cli.py`). Tests: `tests/test_lineup.py`. Validation
@@ -94,7 +94,50 @@ the C crunch costs ~0 games, matching `fantasy inseason lineup`). The value come
 (vs a static lineup: ~1.4 cats in week 1) and from handling statuses. Matchup weighting will matter more once
 streaming adds create a crunch and mid-week accumulated totals make some categories settled.
 
-## 6. Limitations / open
+## 6. Operational safeguards (lineup-0.2.0, after the independent quant review)
+* **Stale slots refused.** `changes_vs_current` is only meaningful against slots read from Yahoo *today*. The CLI
+  finds when the slot data were read and converts that to an ET date. The source is the league file's sync
+  `lineup` map (`captured_at`, then "(captured ...)" in `source`, then `synced_at`), else the capture's
+  `captured_at`, else the timestamp in its `source` text (a time without a zone is taken as UTC). It exits 2 with
+  JSON `code: "stale_capture"` unless that date equals `--date`, or the caller passes `--current-slots <json>`
+  (`{player_id: slot}`) or `--allow-stale`. With `--allow-stale`, a STALE warning is emitted. Example: the
+  2026-10-20 03:25 UTC capture is 2026-10-19 ET, so it is stale for a 10-20 plan. `--capture` is an alias of
+  `--roster`.
+* **`target_slots`**: `{player_id: {slot, name, yahoo_player_id}}` for every roster player, i.e. the full final state.
+  The executor should set it rather than replay a diff.
+* **Locks.** Run the plan before the first tip-off of the day. After that, pass `--locked id,...` for players
+  whose games have started. They are pinned to their current slot (their value counts if it is a starting slot).
+* **Tip-off notes depend on the slot.** A benched Q player gets "if confirmed active, start him in place of X
+  (only before X's tip-off)", where X is the weakest starter with a game in a slot he can fill. This appears only
+  when his P(plays) = 1 value beats X; otherwise he stays benched. A starting Q player gets "swap him out for Y if
+  he is ruled out".
+* **Monotone value transform.** Values of players with a game are shifted, v - min + GAME_FLOOR, instead of being
+  clipped at 0. Clipping made negative-value players tie, so the keep-current-slot tie-break decided. The shift
+  keeps the order. For a transversal matroid the best feasible starter set depends only on that order among
+  maximum sets.
+* **IL tie-break.** IL_BONUS (2e-7) > KEEP_BONUS (1e-7), so an O player on the bench is moved to a free IL slot.
+* **Infeasible roster.** When there are more non-IL-eligible players than starting + bench slots (e.g. a player
+  back from IL), the CLI exits 2 with `code: "infeasible_roster"` and `action: "drop ... or keep ... in IL"`.
+* **Warnings.** A mid-week plan without `--accumulated` warns that banked stats are taken as 0. Positions or NBA
+  team filled from projections for a Yahoo row that lacks them (tagged rows) are also warned.
+* **Availability is explicit.** `expected.availability_assumption` states the P(plays) model. `--rest-share`
+  (default 0.25, a **prior**) sets the healthy P(plays) = 1 - rest_share (1 - gp/82).
+
+### Sensitivity of P(win) to the availability prior (week 1, Monte Carlo 20k sims, SE ~0.003)
+| rest_share | optimized E[cats] | P(win) | naive P(win) | static P(win) |
+|---|---|---|---|---|
+| 0.25 (default prior: a healthy player misses only one-game rests) | 4.913 | 0.588 | 0.566 | 0.226 |
+| 1.0 (season-average gp/82, like `fantasy sim`) | 5.480 | 0.731 | 0.712 | 0.411 |
+
+The reviewer traced the 0.59 (this tool) vs 0.73 (`fantasy sim` week 1) gap entirely to availability:
+rest_share = 1.0 reproduces the simulator's ~0.725. The opponent's roster has low projected gp (A. Davis 40,
+Morant 40, J. Williams 50). Under gp/82 they miss many week-1 games. Under rest_share 0.25 they are assumed
+healthy unless tagged. Which is right depends on whether a player with no Yahoo tag misses games this week at his
+season-average rate. This is uncalibrated; check it against week-1 actual DNPs. The *decisions* barely depend on
+it. Today's lineup and all week-1 days are identical under both values, except the Fri 10-23 bench pick (Fears at
+0.25, Bailey at 1.0, a near tie).
+
+## 7. Limitations / open
 * Weekly variance: the noise model under-states the weekly variance of FGA/PTS/FGM at 24-30 mpg by 14-46%
   (sim_calibration.md section 8). It is not corrected here, so sigma is slightly low and weights slightly too
   peaked.
