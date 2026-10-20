@@ -205,6 +205,21 @@ export function feedFacets(items: FeedItem[]): { authors: [Author, number][]; ki
   };
 }
 
+/** Cap a JSON payload for display (keeps the page light: the run timeline can hold hundreds of events). Payloads
+ *  over `max` chars of JSON become `{_truncated, chars, preview}`; the full row stays in the DB (`fantasy run events`). */
+export function trimPayload(v: unknown, max = 2000): unknown {
+  if (v == null) return v;
+  const s = JSON.stringify(v);
+  if (s.length <= max) return v;
+  return { _truncated: true, chars: s.length, preview: s.slice(0, max) + "…" };
+}
+
+/** "Load more": how many feed cards to render for `?n=` (default 50, step 50, max 300). */
+export function feedLimit(n: string | null | undefined): number {
+  const v = Number(n);
+  return Number.isInteger(v) && v > 0 ? Math.min(300, Math.max(50, Math.ceil(v / 50) * 50)) : 50;
+}
+
 /** Text longer than this is collapsed behind "more" on the card. */
 export const COLLAPSE_AT = 420;
 export function splitLong(text: string, at = COLLAPSE_AT): { head: string; rest: string | null } {

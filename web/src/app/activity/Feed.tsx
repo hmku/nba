@@ -4,7 +4,7 @@ import type { AgentEvent, Decision } from "@/lib/types";
 import { Badge, JsonView, statusTone } from "@/components/ui";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
-import { AUTHOR_LABEL, type Author, decisionIdOf, type FeedItem, type FeedReply, feedFacets } from "@/lib/feed";
+import { AUTHOR_LABEL, type Author, decisionIdOf, type FeedItem, type FeedReply, feedFacets, trimPayload } from "@/lib/feed";
 import { DigestBody, SnapshotCard } from "./LeagueIntel";
 import { DecisionCard } from "./sections";
 import { EvidenceList, SuggestionBadges, SuggestionBody } from "./AdvisorSuggestions";
@@ -63,10 +63,11 @@ const kindLabel = (k: string) => k.replace(/_/g, " ");
 
 /* ------------------------------------------------------------------ filters */
 
-function chipHref(params: { author?: string | null; kind?: string | null }) {
+export function chipHref(params: { author?: string | null; kind?: string | null; n?: number | null }) {
   const q = new URLSearchParams();
   if (params.author) q.set("author", params.author);
   if (params.kind) q.set("kind", params.kind);
+  if (params.n) q.set("n", String(params.n));
   const s = q.toString();
   return s ? `/activity?${s}` : "/activity";
 }
@@ -159,7 +160,7 @@ function EventBody({ e, decision }: { e: AgentEvent; decision?: Decision }) {
         <KindIcon kind={e.kind} />
         <LongText text={e.message ?? ""} className="min-w-0 flex-1" />
       </div>
-      {e.payload != null && <JsonView value={e.payload} label="payload" />}
+      {e.payload != null && <JsonView value={trimPayload(e.payload, 4000)} label="payload" />}
     </>
   );
 }
@@ -279,11 +280,14 @@ export function AgentFeed({
   total,
   limit,
   decisions,
+  moreHref,
 }: {
   items: FeedItem[];
   total: number;
   limit: number;
   decisions: Map<string, Decision>;
+  /** "load more" link (next ?n=), or null when the query window was not full. */
+  moreHref?: string | null;
 }) {
   if (!items.length)
     return (
@@ -298,9 +302,18 @@ export function AgentFeed({
           <FeedCard key={it.key} it={it} decisions={decisions} />
         ))}
       </ul>
-      {items.length > limit && (
+      {(items.length > limit || moreHref) && (
         <p className="px-1 text-xs text-muted">
-          Showing the newest {limit} of {items.length}; use the filters (or <code>fantasy intel list</code>) for older ones.
+          Showing the newest {Math.min(limit, items.length)}
+          {moreHref && (
+            <>
+              {" · "}
+              <Link href={moreHref} scroll={false} className="text-accent hover:underline">
+                load more
+              </Link>
+            </>
+          )}
+          {" "}(or <code>fantasy intel list</code> for everything).
         </p>
       )}
     </>

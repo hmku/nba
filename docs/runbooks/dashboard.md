@@ -136,13 +136,18 @@ note with one simulated roster for me.
      (replies oldest first with stance chips agree ✓ / disagree ✕ / question ? / comment …, "↳ re X" when answering
      a reply, labelled evidence; threads with >4 replies start collapsed showing the stance tally) and the event id.
      Newest activity first (a new reply bumps its thread). Filter chips by author (started or replied in) and by
-     kind, as URL params (`?author=advisor&kind=trade_offer`); 60 cards max. When unlocked, a **Reply** button on
+     kind, as URL params (`?author=advisor&kind=trade_offer`); 50 cards, "load more" adds 50 (`?n=100`, max 300). When unlocked, a **Reply** button on
      every non-private card posts `{reply_to, stance, text}` to `POST /api/threads/reply` (passphrase cookie, author
      always "user", 30/h). Locked: read-only, with a one-line note that private intel needs the unlock;
-  4. **System**: model freshness strip (→ History), the agent run timeline behind a disclosure (one line per run:
-     status dot, agent, task, status, age; "≠ model" and error counts; tap for summary, decisions, every event with
-     payloads, transactions, ids), held locks, and past approvals / decisions / transactions not tied to a listed run.
+  4. **System**: model freshness strip (→ History), the agent run timeline **on request** (link → `?timeline=1#runs`,
+     streamed via Suspense: one line per run: status dot, agent, task, status, age; "≠ model" and error counts; tap
+     for summary, decisions, every event with payloads capped at 600 chars of JSON, transactions, ids), held locks,
+     and past approvals / decisions / transactions not tied to a listed run.
   With no data at all, the feed and the timeline show explanatory empty states.
+  Speed: all independent queries run in one `Promise.all`, explicit column lists (no `select("*")` on the big
+  tables), feed rows bounded by `?n`. Local `next start` against production Supabase (anon, median of 10, 2026-10-20):
+  before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB → after 0.075 s / 158 KB, RSC 0.056 s / 84 KB
+  (`?timeline=1`: 0.12 s / 451 KB).
 - `/moves`: recommendations from `fantasy advise post` (`model_runs` kind `advice`, newest version per
   `summary.advice_id`; schema in `docs/research/dashboard_data.md` section 4). Sections: **Needs your yes**
   (status `awaiting_yes`, or `requires_user_yes` with status `idea`), **Today's lineup** (type `lineup` for today ET),

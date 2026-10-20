@@ -5,6 +5,7 @@ import { Badge, Disclosure, JsonView, statusTone } from "@/components/ui";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { ageSeconds, shortTime } from "@/lib/format";
+import { trimPayload } from "@/lib/feed";
 import { DecideButtons } from "../approvals/DecideButtons";
 
 function short(v: unknown): string {
@@ -250,7 +251,7 @@ function RunItem({ r, evs, decs, tx }: { r: AgentRun; evs: AgentEvent[]; decs: D
                   </div>
                   {e.payload != null && (
                     <div className="pl-6">
-                      <JsonView value={e.payload} label="payload" />
+                      <JsonView value={trimPayload(e.payload, 600)} label="payload" />
                     </div>
                   )}
                 </li>
@@ -262,7 +263,7 @@ function RunItem({ r, evs, decs, tx }: { r: AgentRun; evs: AgentEvent[]; decs: D
               <Badge tone={statusTone(t.status)}>{t.status}</Badge> <span className="font-medium">{t.kind}</span>{" "}
               <span className="text-muted">{shortTime(t.updated_at ?? t.created_at)}</span>
               {t.error && <div className="text-bad">{t.error}</div>}
-              <JsonView value={t.payload} label="payload" />
+              <JsonView value={trimPayload(t.payload, 600)} label="payload" />
             </div>
           ))}
           <div className="flex flex-wrap gap-x-3 text-[11px] text-muted">
