@@ -1,0 +1,113 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Claim Julian Champagnie (waivers) and drop Ace Bailey",
+  "status": "awaiting_yes",
+  "headline": "Waiver claim on Julian Champagnie (SAS SF/PF; waivers clear Thu Oct 22; we hold priority 1, user-reported), dropping Ace Bailey.",
+  "week": 1,
+  "verdict": "Recommended: the only free move that improves P(playoffs), P(title) and category wins by > 2 SE under all three projection sets.\nCosts ~1 pp of this week's P(win) (Champagnie plays 2 games from Oct 23, Bailey loses 2).\nNeeds your explicit yes before I place the claim; the claim must be in before waivers process on Oct 22.",
+  "requires_user_yes": true,
+  "metrics": [
+   {
+    "label": "ΔP(playoffs), blend",
+    "value": 0.68,
+    "se": 0.15,
+    "unit": "pp",
+    "evidence": "simulated",
+    "note": "8 seeds × 2000 paired, position-aware, season-sim-0.6.0"
+   },
+   {
+    "label": "ΔP(title), blend",
+    "value": 1.76,
+    "se": 0.27,
+    "unit": "pp",
+    "evidence": "simulated"
+   },
+   {
+    "label": "Δcategory wins/season, blend",
+    "value": 0.45,
+    "se": 0.03,
+    "evidence": "simulated"
+   },
+   {
+    "label": "ΔP(playoffs), market projections",
+    "value": 1.06,
+    "se": 0.17,
+    "unit": "pp",
+    "evidence": "simulated"
+   },
+   {
+    "label": "ΔP(title), market projections",
+    "value": 1.57,
+    "se": 0.26,
+    "unit": "pp",
+    "evidence": "simulated"
+   },
+   {
+    "label": "ΔP(title), ESPN stats + ESPN games (stress)",
+    "value": 2.36,
+    "se": 0.26,
+    "unit": "pp",
+    "evidence": "simulated"
+   },
+   {
+    "label": "Δ this week's P(win) vs Joshua's",
+    "value": -0.9,
+    "se": 0.45,
+    "unit": "pp",
+    "evidence": "simulated",
+    "note": "lineup model, 4000 paired MC"
+   }
+  ],
+  "scenario_columns": [
+   "name",
+   "blend",
+   "market",
+   "stress"
+  ],
+  "scenarios": [
+   {
+    "name": "Champagnie / Bailey",
+    "blend": "+0.68 / +1.76 / +0.45",
+    "market": "+1.06 / +1.57 / +0.58",
+    "stress": "+1.09 / +2.36 / +0.55"
+   },
+   {
+    "name": "Champagnie / Fears",
+    "blend": "+0.26 / −0.88 / +0.36",
+    "market": "+1.03 / +0.11 / +0.66",
+    "stress": "+1.31 / +0.72 / +0.78"
+   },
+   {
+    "name": "Champagnie / Sheppard",
+    "blend": "−0.41 / +0.78 / −0.53",
+    "market": "−0.62 / +0.34 / −0.48",
+    "stress": "−2.21 / +0.06 / −1.30"
+   },
+   {
+    "name": "Sexton / Bailey",
+    "blend": "−0.76 / +0.67 / −0.40",
+    "market": "−0.46 / +0.81 / −0.02",
+    "stress": "−0.44 / +0.57 / −0.18"
+   }
+  ],
+  "risks": [
+   "Cells are ΔP(playoffs) pp / ΔP(title) pp / Δcat-wins; ± are Monte Carlo SEs only (seed-aware), not model error.",
+   "Another manager may claim Champagnie; waiver priority 1 is user-reported, not verified on Yahoo.",
+   "Bailey is a 20-year-old rookie: projections for rookies are least certain (upside not captured).",
+   "Simulator is optimistic for us (opponents never manage rosters); the gain is small but consistent across projection sets."
+  ],
+  "links": [
+   {
+    "label": "Streaming & trade scan (§0)",
+    "path": "docs/research/streaming_and_trade_scan.md"
+   }
+  ]
+ },
+ "params": {
+  "add": "julian-champagnie",
+  "drop": "ace-bailey",
+  "tool": "inseason-0.3.0"
+ },
+ "inputs": {}
+}

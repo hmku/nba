@@ -62,3 +62,22 @@ nav). The deployed `/manifest.webmanifest` and icons return 200.
 ## Notes for next agent
 - `CLAUDE.local.md` (git-ignored): act as an orchestrator, delegate larger work to subagents, review decision-changing code.
 - Yahoo team id 11 = draft slot 1; league state uses draft slots everywhere.
+
+## Overnight (2026-10-20 ~01:00-02:10 ET): orchestrated subagent work, all merged to main, CI green
+- Cleanup passes (behaviour-preserving, golden outputs byte-identical): web (DraftClient/activity split, knip clean, a11y,
+  category parity test); draft/model/valuesearch (long functions split, mypy 32->7); sim/league/ops/db/data/lineup
+  (cli_common failures, typed Category accessors, mypy scope clean, fixed the mypy error that had CI red); second pass on
+  today's code (one Supabase client factory, one ET-date helper, Moves link-safety fix + service-worker test).
+- New: draft calibration (`docs/research/draft_calibration_2026.md`: room ~0.6-0.7x prior ADP spread, no sharp drafters;
+  defaults unchanged), in-season-ops skill rewrite, README/ARCHITECTURE; read-only advisor channel for the user's ChatGPT
+  dot (`/advisor`, ADVISOR_API_TOKEN default-deny scoping; USER_TODO has setup steps + prompt); `fantasy inseason
+  stream|trade-scan` -> quant review found real bugs (stream priced as season-long swap; trade gain inflated by a free
+  move, top-FA refill, seed luck, schedule) -> fixed in inseason-0.3.0.
+- **Recommendation awaiting the user's yes:** waiver claim Julian Champagnie, drop Ace Bailey (Moves tab,
+  approval apr-4931627b321e4826b67c4e8f63c1305b; must be claimed before waivers process Thu Oct 22). Murray trades
+  downgraded to "speculative schedule bet; not now".
+- First daily run (scheduled, ~00:41 ET) succeeded after the session was switched to auto mode: sync no changes,
+  Thu 10-22 lineup set + verified (Jokic C). Its "no stream" conclusion stands under the fixed tool.
+- For the user / open: set the task's permission mode to Auto in the desktop app (or recreate the task from a desktop
+  message); CI mypy one-liner (USER_TODO; token lacks workflow scope); delete leftover `mock-check` draft row? (DB delete,
+  ask); projections docstring vs code on age curve for TOV (model question); advisor token setup.
