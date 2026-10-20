@@ -115,10 +115,17 @@ def sync_cmd(
     write: Annotated[bool, typer.Option("--write", help="Write the new state (old one kept as <stem>.prev.json)")] = False,
     projections: ProjOpt = None,
     slot_map: SlotMapOpt = None,
+    record_lineup: Annotated[bool, typer.Option(
+        "--record-lineup", help="With --write: also record my team's slots in the capture as today's actual lineup "
+                                "(model_runs kind lineup_actual, source yahoo_capture) for the dashboard")] = False,
+    use_rest: Annotated[bool, typer.Option("--rest", help="--record-lineup writes Supabase over HTTPS (cloud "
+                                           "sessions) instead of FANTASY_DB_URL")] = False,
     as_json: JsonOpt = False,
 ) -> None:
     """Turn a Yahoo roster capture into the simulator's league state and show what changed.
     Dry run (diff only) unless --write."""
+    if record_lineup and not write:
+        fail("--record-lineup needs --write (a dry run records nothing)", as_json, EXIT_USAGE)
     try:
         cap = load_capture(capture)
     except CaptureError as e:
@@ -139,8 +146,34 @@ def sync_cmd(
     out = {"ok": True, "capture": str(capture), "captured_at": cap.captured_at,
            "capture_date": capture_date_et(cap.captured_at), "state": str(state), "written": written,
            "diff": res["diff"], **res["resolve"]}
-    emit(out, as_json, _diff_text(res["diff"], res["resolve"])
-         + (f"\nwrote {state}" if written else "\n(dry run; --write to save)"))
+    text = _diff_text(res["diff"], res["resolve"]) + (f"\nwrote {state}" if written else "\n(dry run; --write to save)")
+    if record_lineup:
+        out["lineup_record"] = _record_lineup(cap, capture, state, projections, use_rest)
+        lr = out["lineup_record"]
+        text += (f"\nlineup recorded: {lr['run_id']} ({'new' if lr.get('inserted') else 'unchanged'})"
+                 if not lr.get("error") else f"\nlineup NOT recorded: {lr['error']}")
+    emit(out, as_json, text)
+
+
+def _record_lineup(cap: Any, capture: Path, state: Path, projections: Path | None, use_rest: bool) -> dict[str, Any]:
+    """My team's slots in the (resolved) capture -> a lineup_actual row. Failures are reported, not raised:
+    the state file is already written."""
+    from fantasy.lineup import record
+    from fantasy.lineup.record_cli import Context, capture_actual
+
+    try:
+        ctx = Context(state, projections, None)
+        row = capture_actual(ctx, normalised_capture(cap), str(capture),
+                             how=f"fantasy league sync --write of {capture.name} (read-only browser capture)",
+                             params={"command": "league sync --record-lineup"})
+        st = record.store(use_rest)
+        try:
+            res = record.save(row, st)
+        finally:
+            st.close()
+        return {**res, "complete": row["summary"].get("complete"), "warnings": row["summary"].get("warnings", [])}
+    except Exception as e:  # noqa: BLE001
+        return {"run_id": None, "inserted": False, "error": f"{type(e).__name__}: {e}"}
 
 
 @app.command("import-capture")

@@ -1,4 +1,4 @@
-# Dashboard data: simulation and advice rows in `model_runs`
+# Dashboard data: simulation, advice and lineup rows in `model_runs`
 
 _Status: 2026-10-18. Written for the web agent (dashboard in `web/`). Producer: `fantasy draft simulate`
 (kind `draft_sim`) and `fantasy sim preseason` (kind `season_sim`, `params.command = "preseason"`)._
@@ -353,3 +353,100 @@ card with Muse's newest snapshot per kind (unlock only). Replies hang under `thr
 "↳ re X" when they answer a reply); a thread whose root is outside the query window is fetched by id. Order: newest
 activity (root or reply) first. Filters: author (started or replied in the thread) and kind, as URL params
 (`/activity?author=advisor&kind=trade_offer`).
+
+---
+
+## 6. `kind = 'lineup_plan'` / `'lineup_actual'` — daily lineups for the Lineup view (`/lineup`, no migration)
+
+_Added 2026-10-20 (lineup-record-0.1.0). Producers: `fantasy lineup plan --save [--rest]` (plan),
+`fantasy lineup record`, `fantasy league sync --write --record-lineup`, `fantasy lineup backfill --write` (actual);
+code `src/fantasy/lineup/record{,_cli}.py`. Reader: `web/src/app/lineup/page.tsx` via `web/src/lib/lineup.ts`._
+
+Both are immutable `model_runs` rows, **idempotent per (date, content hash)**: `run_id = lp-<date>-<sha12>` /
+`la-<date>-<sha12>` (sha256 of the canonical summary; for actuals of `{date, team, source, slots, txn_id}` only, so
+re-reading the same Yahoo state later inserts nothing). Re-saving identical content is a no-op (`inserted: false`).
+**Which row to show:** plans — the newest `lineup_plan` with `summary.date = D`, else the newest earlier plan whose
+`week_plan` covers D; actuals — the newest `lineup_actual` (by `created_at`) with `summary.date = D`. All dates are ET
+calendar dates. Filter with `summary->>date` (PostgREST: `summary->>date=gte.2026-10-20`).
+
+**Why no migration.** Same reasons as advice (section 4): typed JSON, versioning and provenance columns exist, the anon key
+already reads `model_runs`, `fantasy publish` copies it, and a few rows per day need no index. A dedicated `lineups`
+table would only buy a `(date, kind)` index; revisit when rows reach thousands.
+
+### `lineup_plan` — `model_version` = the optimizer's (`lineup-0.2.0`), `params` = `LineupParams.to_dict()`
+(`rest_share` with `rest_share_label: "prior"`, tag priors, n_sims, seed, locked), `inputs` = the plan's input files with
+sha256 + `content_sha256`.
+```jsonc
+{
+  "schema": "lineup_plan/1",
+  "date": "2026-10-21", "week": 1, "week_start": "2026-10-20", "week_end": "2026-10-25",
+  "my_team": 1, "opponent": {"team_id": 12, "name": "Joshua's Excellent Team"},
+  "players": {"nikola-jokic": {"name": "Nikola Jokić", "positions": ["C"], "nba_team": "DEN", "status": null,
+              "current_slot": "C", "games_left": 4, "value_per_game": 0.31}},          // every roster player once
+  "slots": [{"slot": "PG", "player_id": "jeremiah-fears", "has_game": true, "p_play": 0.96, "value": 0.0123,
+             "game": "@ORL"}],                  // target slots for `date`, all players (starters, BN, IL), Yahoo order
+  "bench_with_game": [{"player_id": "brandin-podziemski", "name": "…", "game": "vs LAL"}],
+  "decide_at_tipoff": [{"player_id": "…", "name": "…", "status": "Q", "p_play": 0.5, "slot": "BN",
+                        "swap_with": "reed-sheppard", "swap_with_name": "Reed Sheppard", "note": "benched: if confirmed …",
+                        "game": "vs LAL", "deadline": "before Reed Sheppard's tip-off (@ORL)"}],   // deadline: plain text
+  "il_moves": [{"player_id": "…", "name": "…", "status": "O", "from": "BN", "to": "IL"}],
+  "changes_vs_current": [{"player_id": "…", "name": "…", "from": "BN", "to": "PG"}],
+  "today": {"players_with_game": 11, "started_with_game": 10, "unused_starts": 1, "unused_players": ["…"], "empty_slots": 0},
+  "week_totals": {"players_with_game": 40, "planned_starts": 36, "slot_days": 50, "unused_starts": 4, "opponent_planned_starts": 38},
+  "week_plan": [{"date": "2026-10-21", "slots": [/* as `slots` */], "players_with_game": 11, "started_with_game": 10,
+                 "starting_slots": 10, "unused_starts": 1, "unused_players": ["…"], "empty_slots": 0,
+                 "decide_at_tipoff": ["names"]}],             // date .. week_end, always saved (even without --week)
+  "games": {"nikola-jokic": {"2026-10-22": "vs PHI"}},       // every game of every roster player this week; absent = no game
+  "expected": {
+    "method": "analytic normal approximation …", "availability_assumption": "healthy players play … (PRIOR) …",
+    "evidence": "simulated (model output; availability and tag P(plays) are PRIORS)",
+    "optimized": {"expected_cats": 4.92, "p_win_matchup": 0.62},          // analytic
+    "naive_season_value": {…}, "static_current_lineup": {…},
+    "monte_carlo": {"n_sims": 20000, "seed": 0, "plans": {"optimized": {"expected_cats": 4.9, "expected_cats_se": 0.01,
+                    "p_win_matchup": 0.6, "p_win_matchup_se": 0.004}, …}}   // absent with --sims 0
+  },
+  "fixed_point": {"iterations": 3, "converged": true},
+  "slots_as_of": {"date": "2026-10-21", "source": "league file captured_at", "current_slots_file": null},
+  "warnings": ["MID-WEEK WITHOUT --accumulated: …"],
+  "model_version": "lineup-0.2.0"
+}
+```
+Game markers come from the cached NBA schedule (`data/raw/bbref_schedule/nba_2027_games.csv`, no tip times, hence the
+plain-text deadline).
+
+### `lineup_actual` — `model_version = lineup-record-0.1.0`, `params.command` = the producing command, `inputs` =
+`{content_sha256, txn_id, capture_file}`.
+```jsonc
+{
+  "schema": "lineup_actual/1",
+  "date": "2026-10-22", "team": 1,
+  "source": "yahoo_verified",              // yahoo_verified: server re-read after a lineup change | yahoo_capture: roster capture
+  "observed_at": "2026-10-20T04:48:27Z",   // when Yahoo was read (capture captured_at / txn verified_at / --observed-at)
+  "how": "txn txn-0e73… verified by a server re-read of /nba/44495/11/team?&date=2026-10-22",
+  "txn_id": "txn-0e73…",                   // the lineup txn this verifies (null for captures)
+  "capture_file": null,                    // capture path for yahoo_capture rows
+  "slots": [{"slot": "C", "player_id": "nikola-jokic", "name": "Nikola Jokić", "status": null,
+             "positions": "C", "nba_team": "DEN", "game": "vs PHI"}],   // optional keys when known; Yahoo order
+  "complete": true,                        // every rostered player has a slot (false = partial read; null = roster unknown)
+  "games_known": true,                     // markers were computed (absent marker = no game) — false without the schedule
+  "derived_from": {"base_run_id": "la-2026-10-21-…", "base_date": "2026-10-21", "changes": 2},  // backfill only (below)
+  "warnings": ["player 'X' not on my roster (kept by name, player_id null)"]
+}
+```
+`slots` input to `fantasy lineup record --slots` may be `{player_id | yahoo_player_id | name: slot}`,
+`{slot: player}` (single-slot labels) or `[{slot, player_id|name|yahoo_player_id}]`; slot labels normalise
+(`Util2` → `Util`, `bn` → `BN`). `--source yahoo_verified` requires `--txn` or `--how`.
+
+**Backfill** (`fantasy lineup backfill --from D0 --to D1 [--write] [--rest]`, dry run by default): one row per roster capture
+in range (`data/raw/yahoo/league_rosters_<date>.json`, or `--capture`) and per **verified** lineup txn whose `payload.date`
+is in range. A txn's slots come from its verification evidence (`slots` / `server_slots` / `final_slots` / `after` /
+`lineup`); without one, its `payload.changes` (`[{player|player_id|name, from, to}]`) are replayed on the newest complete
+row for a date ≤ the txn's (Yahoo carries an edited lineup forward to later unedited days), processing txns by date then
+time, and the row records `derived_from`. A change whose `from` disagrees with the base is skipped with the reason
+(never guessed). 2026-10-20..22 seed (main session, local, `FANTASY_DB_URL` = production):
+`fantasy lineup backfill --from 2026-10-20 --to 2026-10-22 --json` (check the dry run), then the same with `--write`.
+
+**Grid semantics** (`buildDay` in `web/src/lib/lineup.ts`): within a slot label (two C, two Util, three BN/IL rows) a
+player in both plan and actual shares a row; the rest pair in order. ✓ verified = Yahoo shows the planned player (or no plan
+exists), ⚠ mismatch = Yahoo shows someone else or nobody, ◌ planned = no Yahoo read that day (or not covered by a partial
+read). Starts possible = players with a game who are not tagged out, capped at the starting slots; unused = possible − started.

@@ -8,6 +8,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/env";
 
 const TABS = [
   { href: "/matchup", label: "Matchup", icon: "⚔" },
+  { href: "/lineup", label: "Lineup", icon: "☰" },
   { href: "/league", label: "League", icon: "▦" },
   { href: "/moves", label: "Moves", icon: "⇄" },
   { href: "/activity", label: "Activity", icon: "≋" },
@@ -123,7 +124,7 @@ function MoreMenu({ up = false }: { up?: boolean }) {
             : `relative rounded-md px-3 py-1.5 text-sm ${active ? `bg-tab-bg font-semibold text-tab-fg ${BAR_BOTTOM}` : "text-muted hover:bg-panel-2 hover:text-fg"}`
         }
       >
-        {up && <span className={`rounded-full px-4 py-0.5 text-lg leading-none ${active ? "bg-tab-bg" : ""}`}>⋯</span>}
+        {up && <span className={`rounded-full px-3 py-0.5 text-lg leading-none ${active ? "bg-tab-bg" : ""}`}>⋯</span>}
         More
       </button>
       {open && (
@@ -199,7 +200,7 @@ export function Nav() {
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 px-[env(safe-area-inset-left)] pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-7">
           {TABS.map((t) => {
             const on = isActive(shown, t.href);
             return (
@@ -210,7 +211,7 @@ export function Nav() {
                 aria-current={isActive(path, t.href) ? "page" : undefined}
                 className={`relative flex flex-col items-center gap-0.5 pt-1.5 pb-2 text-[11px] ${on ? `font-semibold text-tab-fg ${BAR_TOP}` : "text-muted"}`}
               >
-                <span className={`relative rounded-full px-4 py-0.5 text-lg leading-none ${on ? "bg-tab-bg" : ""}`}>
+                <span className={`relative rounded-full px-3 py-0.5 text-lg leading-none ${on ? "bg-tab-bg" : ""}`}>
                   {t.icon}
                   {t.href === "/activity" && pending > 0 && (
                     <span className="absolute -top-1 right-0">
