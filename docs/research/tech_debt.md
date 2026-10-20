@@ -116,3 +116,37 @@ Each step: one small PR-sized commit, golden diff (script above, extended with t
     `model_runs` (dashboard shows it truncated).
 
 Top items 1-6 are seeded as backlog tasks (`fantasy task seed`, area `infra`).
+
+## Status 2026-10-20 (post-draft re-check against the code)
+
+I checked each finding against `main` at `1e7de6b` by reading the code, not the plan table above. Another agent is
+doing a behaviour-preserving cleanup of `src/fantasy/draft/` right now; anything it lands later is not reflected here.
+
+| # | Status | Evidence in the code |
+|---|---|---|
+| F1 | **mostly fixed** | No "WIP snapshot" commit since 2026-10-18 (`git log`), and main has been green at each push since. Still open: `tests/test_draft_cli_hardening.py:80-82` pins a literal `["cat_wins", "matchup"]` instead of reading `OBJECTIVES` (passes today). |
+| F2 | **fixed** | `src/fantasy/cli.py:35-37` prints why a sub-app is unavailable (`warning: \`fantasy <name>\` unavailable (...)`). |
+| F3 | **fixed** | Python writes `drafts.config.order_slots`, and the web reads it with `web/src/lib/draftOrder.ts` as the fallback. Parity fixtures in `tests/fixtures/draft_order_parity.json` + `draft_status_parity.json`. |
+| F4 | **fixed** | One sampler, `fantasy.draft.availability.sample_market_positions`, used by `draft/simulate.py:209` and `sim/league.py:166`; `sim/symmetric.py` goes through `sim.league`. |
+| F5 | **fixed** | `store.status_for` (complete iff picks ≥ teams × rounds; live after an undo from complete) runs via `_sync_status` on every `record_pick` / `undo_pick`, and `draft board` heals it. The real draft row reads `complete` (`docs/handoffs/2026-10-20-draft.md`); the web mirror is `web/src/lib/draftStatus.ts`. |
+| F6 | **fixed (core)** | `fantasy.cli_common` (`emit`, `fail`, `check_choice`, `parse_punt`) with `code`/`message` everywhere. Remaining nit: `data/cli.py:14` still has a private `_emit`. |
+| F7 | **fixed** | `db/sqldump.py` upserts (`merge`), and ledger/state tables are insert-only (`insert`); DDL snapshot `tests/fixtures/schema_ddl.sql`. |
+| F8 | **partly fixed** | One `git_sha` (`ops/common.py:112`). JSON-safe conversion is down to two helpers: `ops.common.json_safe`/`jsonable` (store imports `json_safe`) plus `db.rest.to_json_value`. One `parse_punt` (`cli_common`). **Remaining:** NaN→"" ×3 (`draft/store._nan_none`, `draft/cli_pick._str`, `draft/optimizer._s`), settings-from-draft-row ×2 (`draft/cli._settings_for`, `sim/cli._settings`). |
+| F9 | **fixed** | `tests/fixtures/player_id_parity.json` (TS slugify/aliases mirror Python). |
+| F10 | **fixed** (README/ARCHITECTURE refreshed again 2026-10-20 for league sync, lineup, inseason, PWA). CLAUDE.md now describes the cloud allowlist correctly. **Remaining:** `web/README.md` is still stock create-next-app text; CLAUDE.md line 32 still calls `in-season-ops` a "Phase 2 placeholder" and omits `daily-routine` (user-owned file, see N3). |
+| F11 | **fixed** | Dead code removed 2026-10-18. |
+| F12 | **partly fixed** | `draft/cli.py` split (291 + `cli_pick` 255 + `cli_recommend` 480 lines); `model/projections.py` split (projections sha identical). **Remaining** large files: `league/yahoo_api.py` 658, `draft/optimizer.py` 644 (`recommend`), `ops/cli.py` 608, `sim/cli.py` 530; web `app/draft/DraftClient.tsx` 1,394, `lib/sim.ts` 521. |
+| F13 | **partly fixed** | `draft watch` survives DB errors (`cli_recommend.py:377`, `:396`). Deliberate "recording must never block the answer" excepts in `sim/cli.py:151/173/471` are kept by design. **Remaining:** `league/yahoo_auth.py:129-130` `except Exception: pass` (headless browser open; harmless). |
+| F14 | **partly fixed** | CI runs ruff + mypy on `ops db data league cli cli_common` (`.github/workflows/ci.yml:17`); ruff/mypy pinned, `pytest-cov`, `.env.example` all present. **Remaining:** mypy does not cover `draft/ model/ sim/ valuesearch/` or the new in-season packages `lineup/` and `inseason/`. |
+| F15 | **partly fixed** | DDL snapshot test exists. **Remaining:** no tests for `data/bbref_github.py`, `data/nba_api_ingest.py`, `data/provenance.py`. |
+| F16 | **partly fixed** | Unused web exports removed. **Remaining:** `web/src/lib/categories.ts` still duplicates the Python category list. |
+
+New since the audit:
+
+| # | Finding | Risk | Status |
+|---|---|---|---|
+| N1 | `fantasy status` shows `draft: mock-check pending`. `ops/status.py:74-77` picks the newest `live`/`pending` draft without excluding `is_mock`, so the leftover mock row from the 2026-10-19 setup check is reported as the active draft. | low (misleading only) | open: skip `is_mock` drafts when a real one exists, or delete the row with the user's OK |
+| N2 | `.claude/skills/in-season-ops/SKILL.md` was a stale placeholder after sync/lineup/daily routine shipped. | low | **fixed** 2026-10-20 (capability map + approval policy; league-loop table updated) |
+| N3 | CLAUDE.md skill list: `in-season-ops (Phase 2 placeholder)`, no `daily-routine`. | low | open (user-owned file; proposed wording in the 2026-10-20 docs handoff) |
+| N4 | Draft room priors (ADP spread, 3 sharp drafters) were uncalibrated. | medium for the next draft | first real sample analysed: `docs/research/draft_calibration_2026.md` (room ~0.6-0.7x the prior spread, no sharp drafters). No default changed. |
+| N5 | Muse runs `muse-2026-10-18` / `-19` stay `running` with stale heartbeats (Muse never ends runs). | low | open: `fantasy run reap` (human) or have Muse end runs |

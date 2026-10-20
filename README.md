@@ -30,7 +30,10 @@ Full detail and design trade-offs: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 | Path | Purpose |
 |---|---|
-| `src/fantasy/league/` | `LeagueSettings` (categories, roster slots, draft order), Yahoo API client (read-only) |
+| `src/fantasy/league/` | `LeagueSettings` (categories, roster slots, draft order), Yahoo API client (read-only), roster sync from browser captures (`fantasy league import-capture|sync`) |
+| `src/fantasy/lineup/` | daily lineup optimizer: exact position-aware slot assignment, matchup-weighted (`fantasy lineup plan`, `lineup-0.2.0`) |
+| `src/fantasy/inseason/` | in-season analysis: games lost to slot rules, streaming ranker, paired trade evaluation (`fantasy inseason lineup|stream|trade`) |
+| `scripts/yahoo/` | browser JS that captures all rosters / free agents from Yahoo pages (run by an agent in the logged-in browser) |
 | `src/fantasy/data/` | ingestion into `data/raw/` with provenance; `fantasy data ...` |
 | `src/fantasy/model/` | projections, G-score valuation, category-win model |
 | `src/fantasy/draft/` | draft order (3RR), availability (simulated rooms; analytic ADP), optimizer, Monte Carlo sim, policy evaluation, live draft state |
@@ -39,7 +42,7 @@ Full detail and design trade-offs: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | `src/fantasy/ops/` | runs/events, locks, approvals, txn ledger, tasks, policy, `status` |
 | `src/fantasy/db/` | `schema.py` (single source of truth), engine, DDL for Supabase, REST publish |
 | `supabase/migrations/` | generated from `schema.py` plus RLS policies |
-| `web/` | Next.js dashboard (App Router, TS, Tailwind) |
+| `web/` | Next.js dashboard (App Router, TS, Tailwind): Matchup / League / Activity / Draft tabs; installable as an app (PWA) |
 | `data/manual/` | human-edited overrides: injuries, roles, rookies, ADP, positions |
 | `data/processed/` | `projections_2026_27.csv` (per-game means; contract in ARCHITECTURE.md) |
 | `.claude/skills/`, `.claude/agents/` | agent playbooks and read-only reviewer subagents |
@@ -66,6 +69,17 @@ fantasy draft init --draft-id mock-1 --mock
 export FANTASY_DRAFT_ID=mock-1
 fantasy draft recommend          # default policy: value search + simulated availability (about 3 s)
 fantasy draft pick <player> --overall N   # record a pick; also `draft board`, `draft undo N`, `draft simulate`
+```
+
+**In season** (all offline except the browser capture; skills `daily-routine`, `season-sim`, `in-season-ops`):
+
+```bash
+fantasy league import-capture --raw <raw.json> --kind rosters   # normalise a Yahoo browser capture (scripts/yahoo/)
+fantasy league sync --capture data/raw/yahoo/league_rosters_<date>.json --write   # -> data/manual/league_rosters_2026-27.json
+fantasy lineup plan --date <YYYY-MM-DD> --week          # today's position-aware lineup + IL moves + rest of week
+fantasy sim season --league-file data/manual/league_rosters_2026-27.json   # P(playoffs)/P(title), weekly odds
+fantasy sim compare --add "<FA>" --drop <player_id> --league-file data/manual/league_rosters_2026-27.json
+fantasy inseason stream --start <d1> --end <d2>         # streaming candidates; `inseason trade` for trades
 ```
 
 **Checks:** `pytest` (offline), `ruff check src tests`.
@@ -99,9 +113,18 @@ Every command accepts `--json`; JSON is the agent interface.
    feasibility is in `draft/roster.py`. A punt-strategy scan is included.
 5. **Monte Carlo sim** ([draft/simulate.py](src/fantasy/draft/simulate.py)). Noisy-ADP opponents; the optimizer
    is compared with a best-player-available baseline (`fantasy draft simulate`).
+6. **Season simulator** ([sim/](src/fantasy/sim/), `season-sim-0.6.0`). Plays the real rosters through Yahoo's real
+   schedule (`data/manual/league_schedule.json`) and playoffs with fitted priors (`docs/research/sim_calibration.md`):
+   game-level noise, injury spells, and IL replacement for long absences (default since 0.6.0). It gives
+   P(playoffs)/P(title) for every team, weekly matchup odds, and paired add/drop deltas (`fantasy sim ...`).
+7. **In-season decisions.** The lineup optimizer ([lineup/](src/fantasy/lineup/)) assigns today's slots exactly under
+   Yahoo's position rules, weighting each category by how much it moves this week's expected categories won. Yahoo
+   injury tags set P(plays) priors. The `inseason` tools ([inseason/](src/fantasy/inseason/)) rank streamers and
+   evaluate trades with paired simulations for both teams.
 
 Caveats (details in STATUS.md): the opponent is league-average so win probabilities are optimistic;
-ADP sd and `USAGE` are uncalibrated priors (game-to-game noise is fitted: `model/noise.py`); the draft's weekly
+ADP sd and `USAGE` are priors (game-to-game noise is fitted: `model/noise.py`; the first real draft suggests the room
+was ~0.6-0.7x the prior ADP spread, one sample: `docs/research/draft_calibration_2026.md`); the draft's weekly
 variance ignores schedule and category correlation; recommendation margins under about 0.03 are noise; the sim edge is in-sample. Every model
 run is versioned (`model_runs`: version, git sha, params, input hashes); model changes bump `MODEL_VERSION`
 and need tests (see the `model-eval` skill).
@@ -109,8 +132,9 @@ and need tests (see the `model-eval` skill).
 ## Agents and safety
 
 Skills in [.claude/skills/](.claude/skills/): `draft-prep`, `live-draft`, `yahoo-browser`,
-`projections-update`, `model-eval`, `season-sim`, `agent-run`, `handoff`, `league-loop` (in-season Muse -> Claude ->
-approve -> execute -> verify loop), and `in-season-ops` (Phase 2 placeholder; most of what it describes does not exist yet). Read-only subagents in `.claude/agents/`: `quant-reviewer`,
+`projections-update`, `model-eval`, `season-sim`, `agent-run`, `handoff`, `daily-routine` (the scheduled
+`fantasy-daily` morning run: sync, lineup + IL moves on Yahoo, recommendations), `league-loop` (in-season Muse -> Claude ->
+approve -> execute -> verify loop), and `in-season-ops` (capability map of the in-season tools + approval policy). Read-only subagents in `.claude/agents/`: `quant-reviewer`,
 `data-auditor`, `draft-shadow`.
 
 Operational safety is enforced by the ops ledger (`fantasy run|lock|approval|txn|task`), described in
@@ -120,16 +144,19 @@ Operational safety is enforced by the ops ledger (`fantasy run|lock|approval|txn
 - **Locks** (`yahoo:roster`, `yahoo:browser`, `draft:<id>`) are leases held before any Yahoo write.
 - **Txn ledger** plans each write idempotently, then marks it verified after an independent re-read on
   Yahoo. A txn stuck in `submitted` is reconciled, never retried blindly.
-- **Approvals:** drops, add/drops and trades always need the owner's approval for now. `fantasy approval decide`
-  and `fantasy lock release --force` are human-only actions.
+- **Approvals:** drops, add/drops and trades always need the owner's approval for now. Lineup changes and IL moves are
+  pre-authorised (live run, verified by a re-read). `fantasy approval decide` and `fantasy lock release --force` are
+  human-only actions.
 - No secrets, cookies or tokens in logs, events or commits.
 
-## Draft night and Yahoo access
+## Yahoo access
 
-The draft is Mon 2026-10-19, 10:00 PM ET. Human runbook: [docs/runbooks/live_draft.md](docs/runbooks/live_draft.md)
-(agent protocol: `live-draft` skill; day-of checklist: `draft-prep` skill). It needs a **local** Claude session
-with browser tools (the desktop app's built-in browser or Claude in Chrome); cloud sessions have no browser and cannot drive Yahoo
-(some read-only data endpoints are reachable from the cloud; see `docs/STATUS.md`, Known limitations).
+The draft ran Mon 2026-10-19 (13/13 picks verified on Yahoo; `docs/handoffs/2026-10-20-draft.md`). Draft runbook for
+next time: [docs/runbooks/live_draft.md](docs/runbooks/live_draft.md) (agent protocol: `live-draft` skill; day-of
+checklist: `draft-prep` skill). Anything that reads league pages or changes the roster needs a **local** Claude session
+with browser tools (the desktop app's built-in browser or Claude in Chrome): roster captures, lineups
+([docs/runbooks/roster_sync.md](docs/runbooks/roster_sync.md), `daily-routine` skill). Cloud sessions have no browser
+and cannot drive Yahoo (some read-only data endpoints are reachable from the cloud; see `docs/STATUS.md`, Known limitations).
 
 Yahoo's API is **application-only since 2026** (manual approval, weeks of lead time) and **read-only**; there is
 no write access. The OAuth client exists (`fantasy settings yahoo-auth`) but is untested against live Yahoo.
@@ -139,9 +166,12 @@ League settings are verified from Yahoo (`data/manual/league_settings.json`, all
 ## Status and roadmap
 
 Current state and priorities: [docs/STATUS.md](docs/STATUS.md); backlog: `fantasy task list`.
-- **Phase 1, draft MVP:** built; settings, draft order and ADP/positions verified; the real draft is Mon 2026-10-19 10 PM ET.
-- **Phase 2, in-season:** Yahoo roster sync, daily lineup optimizer, waivers/streaming, calibration (the season/weekly matchup simulator exists: `fantasy sim`).
-- **Phase 3:** trade evaluator, backtesting, scheduled morning agent.
+- **Phase 1, draft:** done (real draft 2026-10-19; first room-model calibration in `docs/research/draft_calibration_2026.md`).
+- **Phase 2, in-season (live):** built: Yahoo roster sync, daily lineup optimizer, scheduled morning routine (`fantasy-daily`),
+  season/matchup simulator with IL replacement, conservative market-projection run, streaming ranker and paired trade
+  evaluation. Next: matchup-weighted streaming (T-006), trade scan (T-008), in-season projection updates, calibration of
+  in-season priors (T-016).
+- **Phase 3:** backtesting (T-010), Muse action queue for executing approved moves.
 
 ## Contributing (humans and agents)
 
