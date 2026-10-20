@@ -32,8 +32,29 @@ class NameResolutionError(ValueError):
         super().__init__(msg)
 
 
-def resolve_player(query: str, values: pd.DataFrame, cutoff: float = 0.82) -> str:
-    """Return player_id for `query` (a player_id or a display name). Raises NameResolutionError."""
+_ABBREV = re.compile(r"^([A-Za-z])\.\s*(\S.*)$")
+
+
+def _strip_sfx(s: str) -> str:
+    return re.sub(r"-(jr|sr|ii|iii|iv)$", "", s)
+
+
+def _abbreviated(query: str, name_slugs: dict[str, str]) -> list[str]:
+    """Candidates for an abbreviated first name as Yahoo prints it ("N. Alexander-Walker"): same
+    last name (suffixes ignored) and a first name starting with that initial."""
+    m = _ABBREV.match(query)
+    if not m:
+        return []
+    initial, rest = m.group(1).lower(), _strip_sfx(slug(m.group(2)))
+    return [pid for pid, s in name_slugs.items()
+            if s.startswith(initial) and _strip_sfx(s).endswith("-" + rest)]
+
+
+def resolve_player(query: str, values: pd.DataFrame, cutoff: float = 0.82, fuzzy: bool = True) -> str:
+    """Return player_id for `query` (a player_id or a display name). Raises NameResolutionError.
+
+    Order: exact id / slug / known alias / exact name slug / name without suffix (Jr., III) /
+    abbreviated first name ("N. Alexander-Walker") / (only if `fuzzy`) difflib close match."""
     q = query.strip()
     if q in values.index:
         return q
@@ -48,11 +69,14 @@ def resolve_player(query: str, values: pd.DataFrame, cutoff: float = 0.82) -> st
     if len(exact) == 1:
         return exact[0]
     # drop suffixes (jr, sr, ii, iii) and retry
-    def strip_sfx(s: str) -> str:
-        return re.sub(r"-(jr|sr|ii|iii|iv)$", "", s)
-    base = [pid for pid, s in name_slugs.items() if strip_sfx(s) == strip_sfx(qs)]
+    base = [pid for pid, s in name_slugs.items() if _strip_sfx(s) == _strip_sfx(qs)]
     if len(base) == 1:
         return base[0]
+    abbr = _abbreviated(q, name_slugs)
+    if len(abbr) == 1:
+        return abbr[0]
+    if not fuzzy:
+        raise NameResolutionError(q, [(p, str(values.loc[p, "name"])) for p in (exact or base or abbr)])
     close = difflib.get_close_matches(qs, list(name_slugs.values()), n=4, cutoff=cutoff)
     inv: dict[str, list[str]] = {}
     for pid, s in name_slugs.items():
@@ -60,4 +84,4 @@ def resolve_player(query: str, values: pd.DataFrame, cutoff: float = 0.82) -> st
     cands = [pid for c in close for pid in inv[c]]
     if len(cands) == 1:
         return cands[0]
-    raise NameResolutionError(q, [(p, str(values.loc[p, "name"])) for p in (exact or base or cands)])
+    raise NameResolutionError(q, [(p, str(values.loc[p, "name"])) for p in (exact or base or abbr or cands)])
