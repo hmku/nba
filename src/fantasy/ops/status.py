@@ -181,6 +181,61 @@ def publish(source_url: str, target_url: str, chunk: int = 500) -> dict[str, Any
     return {"rows": counts, "skipped": skipped, "policy": policies, "inserted": inserted}
 
 
+# ------------------------------------------------------------------ text renderers (pure)
+
+
+def _ping_text(res: dict[str, Any]) -> str:
+    """`db ping --rest` text: target, HTTP status or UNREACHABLE, auth, and the hint message if any."""
+    got = f"HTTP {res['status']}" if res["reachable"] else "UNREACHABLE"
+    text = f"{res['target']}: {got} auth_ok={res['auth_ok']} (auth: {res['auth']})"
+    if res.get("message"):
+        text += "\n" + res["message"]
+    return text
+
+
+_SKIPPED = "SKIPPED (unique-key clash with different target row): "
+
+
+def _new_rows(res: dict[str, Any], table: str) -> str:
+    return f", {res['inserted'][table]} new" if res["inserted"].get(table) is not None else ""
+
+
+def _publish_rest_text(res: dict[str, Any], source: str, dry_run: bool) -> str:
+    """`publish --rest` text: one line per table (upsert vs insert-if-missing, rows, batches, new rows),
+    then skipped rows and errors (with errors the command fails with this text as the message)."""
+    def verb(k: str) -> str:
+        if res["policy"].get(k) == "merge":
+            return "would upsert" if dry_run else "upserted"
+        return "would insert-if-missing" if dry_run else "insert-if-missing sent"
+
+    lines = [f"{'DRY RUN ' if dry_run else ''}{source} -> {res['target']} (auth: {res['auth']})"]
+    lines += [f"{k}: {verb(k)} {v} rows in {res['batches'][k]} batch(es)" + _new_rows(res, k)
+              for k, v in res["rows"].items()]
+    if res["skipped"]:
+        lines.append(f"{_SKIPPED}{res['skipped']}")
+    if res["errors"]:
+        lines.append(f"ERRORS: {res['errors']}")
+    return "\n".join(lines)
+
+
+def _publish_sql_text(res: dict[str, Any]) -> str:
+    """`publish` (SQL) text: one line per table, then skipped rows."""
+    text = "\n".join(
+        f"{k}: {'upserted' if res['policy'][k] == 'merge' else 'insert-if-missing'} {v} rows" + _new_rows(res, k)
+        for k, v in res["rows"].items())
+    if res["skipped"]:
+        text += f"\n{_SKIPPED}{res['skipped']}"
+    return text
+
+
+def _psycopg_url(url: str) -> str:
+    """postgres:// and postgresql:// -> postgresql+psycopg:// (SQLAlchemy driver); others unchanged."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 # ------------------------------------------------------------------ registration
 
 
@@ -226,10 +281,7 @@ def register(app: typer.Typer) -> None:
         """Quick connectivity/auth check. Exit 0 = reachable and authorised."""
         if use_rest:
             res = rest.ping()
-            got = f"HTTP {res['status']}" if res["reachable"] else "UNREACHABLE"
-            text = f"{res['target']}: {got} auth_ok={res['auth_ok']} (auth: {res['auth']})"
-            if res.get("message"):
-                text += "\n" + res["message"]
+            text = _ping_text(res)
             if not res["auth_ok"]:
                 details = {k: v for k, v in res.items() if k != "message"}
                 err = (rest.RestUnreachableError if not res["reachable"]
@@ -274,34 +326,13 @@ def register(app: typer.Typer) -> None:
             src = db_url() if db_url().startswith("sqlite") else f"sqlite:///{DEFAULT_SQLITE}"
         if use_rest:
             res = rest.publish_rest(src, tables=tables, dry_run=dry_run)
-            def verb(k: str) -> str:
-                if res["policy"].get(k) == "merge":
-                    return "would upsert" if dry_run else "upserted"
-                return "would insert-if-missing" if dry_run else "insert-if-missing sent"
-
-            lines = [f"{'DRY RUN ' if dry_run else ''}{_redact(src)} -> {res['target']}"
-                     f" (auth: {res['auth']})"]
-            lines += [f"{k}: {verb(k)} {v} rows in {res['batches'][k]} batch(es)"
-                      + (f", {res['inserted'][k]} new" if res["inserted"].get(k) is not None else "")
-                      for k, v in res["rows"].items()]
-            if res["skipped"]:
-                lines.append(f"SKIPPED (unique-key clash with different target row): "
-                             f"{res['skipped']}")
+            text = _publish_rest_text(res, _redact(src), dry_run)
             if res["errors"]:
-                lines.append(f"ERRORS: {res['errors']}")
-                raise rest.RestError("\n".join(lines), **{**res, "source": _redact(src)})
-            emit({"source": _redact(src), **res}, json_out, "\n".join(lines))
+                raise rest.RestError(text, **{**res, "source": _redact(src)})
+            emit({"source": _redact(src), **res}, json_out, text)
             return
         if not target:
             raise ValueError("set FANTASY_PUBLISH_URL or pass --target (or use --rest)")
-        for prefix in ("postgres://", "postgresql://"):
-            if target.startswith(prefix):
-                target = "postgresql+psycopg://" + target[len(prefix):]
+        target = _psycopg_url(target)
         res = publish(src, target)
-        text = "\n".join(
-            f"{k}: {'upserted' if res['policy'][k] == 'merge' else 'insert-if-missing'} {v} rows"
-            + (f", {res['inserted'][k]} new" if res["inserted"].get(k) is not None else "")
-            for k, v in res["rows"].items())
-        if res["skipped"]:
-            text += f"\nSKIPPED (unique-key clash with different target row): {res['skipped']}"
-        emit({"source": _redact(src), "target": _redact(target), **res}, json_out, text)
+        emit({"source": _redact(src), "target": _redact(target), **res}, json_out, _publish_sql_text(res))
