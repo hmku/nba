@@ -17,12 +17,12 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Annotated, Any
+from typing import Annotated, Any, NoReturn
 
 import typer
 
 from fantasy.ops import approvals, ledger, locks, seed_tasks, tasks, transactions
-from fantasy.ops.common import EXIT_ERROR, EXIT_STILL_PENDING, EXIT_USAGE, OpsError, jsonable
+from fantasy.ops.common import EXIT_STILL_PENDING, EXIT_USAGE, OpsError, jsonable
 
 RunId = Annotated[
     str | None, typer.Option("--run-id", envvar="FANTASY_RUN_ID", help="Agent run id")
@@ -71,7 +71,18 @@ def emit(data: dict[str, Any], as_json: bool, text: str | None = None) -> None:
         typer.echo(text if text is not None else json.dumps(jsonable(data), indent=2))
 
 
-def fail(err: OpsError, as_json: bool) -> None:
+class _UsageError(OpsError):
+    code = "usage"
+    exit_code = EXIT_USAGE
+
+
+class _StillPendingError(OpsError):
+    code = "still_pending"
+    exit_code = EXIT_STILL_PENDING
+
+
+def fail(err: OpsError, as_json: bool) -> NoReturn:
+    """Every ops failure: `err.to_dict()` (sorted keys) on stdout with --json, else `error [<code>]: ...`."""
     if as_json:
         typer.echo(json.dumps(err.to_dict(), sort_keys=True, default=str))
     else:
@@ -92,19 +103,13 @@ def handled(fn: Callable) -> Callable:
         except OpsError as err:
             fail(err, as_json)
         except ValueError as exc:
-            if as_json:
-                typer.echo(json.dumps({"ok": False, "error": "usage", "code": "usage", "message": str(exc)}))
-            else:
-                typer.echo(f"error [usage]: {exc}", err=True)
-            raise typer.Exit(EXIT_USAGE) from exc
+            fail(_UsageError(str(exc)), as_json)
         except (typer.Exit, typer.Abort, KeyboardInterrupt):
             raise
         except Exception as exc:
             if not as_json:
                 raise
-            msg = f"{type(exc).__name__}: {exc}"
-            typer.echo(json.dumps({"ok": False, "error": "error", "code": "error", "message": msg}))
-            raise typer.Exit(EXIT_ERROR) from exc
+            fail(OpsError(f"{type(exc).__name__}: {exc}"), as_json)
 
     return wrapper
 
@@ -381,13 +386,10 @@ def approval_show(
         b.approvals.wait(approval_id, timeout=wait, poll=min(5.0, wait))
     a = b.approvals.get_approval(approval_id)
     if wait > 0 and a["status"] == "pending":
-        if json_out:
-            typer.echo(json.dumps(jsonable({"ok": False, "error": "still_pending", "code": "still_pending",
-                                            "message": f"still pending after {wait:g}s", "approval": a}),
-                                  sort_keys=True))
-        else:
+        if not json_out:
             typer.echo(f"still pending after {wait:g}s: {approval_id}", err=True)
-        raise typer.Exit(EXIT_STILL_PENDING)
+            raise typer.Exit(EXIT_STILL_PENDING)
+        fail(_StillPendingError(f"still pending after {wait:g}s", approval=a), json_out)
     emit({"approval": a}, json_out)
 
 
