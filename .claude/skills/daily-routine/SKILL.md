@@ -126,7 +126,8 @@ a plain-language **justification** and **"why now, not before"** (what we decide
 recommendation/score for that player — and what changed since; unmodelled costs such as waiver priority), and file
 `fantasy approval request add_drop "<summary>" --payload '{"advice_id": "<advice_id>", ...}'` for each (the `advice_id` puts Approve / Reject on the recommendation's Inbox card; a `fantasy intel post` about it takes `--details '{"advice_id": "<advice_id>"}'`). Also post each recommendation (and today's
 lineup plan, type `lineup`) to the dashboard's **Inbox** tab: write an advice JSON (schema: `docs/research/dashboard_data.md`
-§4, including `rationale` and `why_now`; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
+§4, including `rationale` and `why_now`, within the advice-0.3.0 concise limits — title ≤ 70 chars, verdict ≤ 2
+sentences, ≤ 4 short rationale bullets, ≤ 3 changes, ≤ 4 risks, ≤ 6 metrics with ≤ 3 `key: true`; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
 `fantasy advise status <advice_id> done|rejected|expired --note "..."`. **Do not execute** unless the user replies
 "yes" for that exact move in chat, or `fantasy approval show <id>` reports `approved` (the user clicked Approve on the
 dashboard); then follow agent-run §6 with that approval, re-reading Yahoo first, and mark the advice `done`.

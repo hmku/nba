@@ -288,3 +288,64 @@ def test_latest_per_item_groups_rows_without_advice_id_by_run_id():
     assert [r["run_id"] for r in out] == ["r2", "r1", "r3"]  # newest head first; version beats created_at
     head = out[-1]
     assert head["versions"] == 2 and head["first_created_at"] == "2026-10-20T03:00:00"
+
+
+# ------------------------------------------------------------------ concise limits (advice-0.3.0)
+
+
+@pytest.mark.parametrize("over, msg", [
+    ({"title": "t" * 71}, "title 71 chars > 70"),
+    ({"headline": "h" * 121}, "headline 121 chars > 120"),
+    ({"verdict": "v" * 201}, "verdict 201 chars > 200"),
+    ({"verdict": "One. Two. Three."}, "verdict 3 sentences > 2"),
+    ({"verdict": "One.\nTwo\nThree"}, "verdict 3 sentences > 2"),
+    ({"rationale": ["a", "b", "c", "d", "e"]}, "rationale 5 items > 4"),
+    ({"rationale": ["r" * 161]}, r"rationale\[0\] 161 chars > 160"),
+    ({"why_now": {"before": "b" * 201, "changed": ["c"]}}, "why_now.before 201 chars > 200"),
+    ({"why_now": {"before": "b", "changed": ["1", "2", "3", "4"]}}, "why_now.changed 4 items > 3"),
+    ({"why_now": {"before": "b", "changed": [{"text": "c" * 141}]}}, r"why_now.changed\[0\] 141 chars > 140"),
+    ({"risks": ["r"] * 5}, "risks 5 items > 4"),
+    ({"risks": ["r" * 121]}, r"risks\[0\] 121 chars > 120"),
+    ({"metrics": [{"label": f"m{i}", "value": 1, "evidence": "prior"} for i in range(7)]}, "metrics 7 > 6"),
+    ({"metrics": [{"label": f"m{i}", "value": 1, "evidence": "prior", "key": True} for i in range(4)]},
+     "flagged key: true 4 > 3"),
+])
+def test_concise_limits_strict_error_lenient_warning(over, msg):
+    with pytest.raises(advice.AdviceError, match=msg):
+        advice.validate(sample(**over))
+    _, w = advice.validate(sample(**over), strict=False)
+    assert any("too long for the Inbox card" in x for x in w)
+
+
+def test_concise_error_lists_everything_to_shorten():
+    with pytest.raises(advice.AdviceError) as e:
+        advice.validate(sample(title="t" * 80, risks=["r" * 130]))
+    assert "title 80 chars > 70" in str(e.value) and "risks[0] 130 chars > 120" in str(e.value)
+
+
+def test_concise_sample_and_key_flag_kept():
+    m = [{"label": "Title", "value": 1.8, "se": 0.3, "unit": "pp", "evidence": "simulated", "key": True},
+         {"label": "x", "value": 1, "evidence": "prior", "key": False}]
+    s, w = advice.validate(sample(metrics=m, why_now=None, status="done"))
+    assert s["metrics"][0]["key"] is True and s["metrics"][1]["key"] is False and not w
+    with pytest.raises(advice.AdviceError, match="key: expected true/false"):
+        advice.validate(sample(metrics=[{**m[0], "key": "yes"}]))
+    assert advice.sentences("Up 8.6 pp. Do it! Now?") == ["Up 8.6 pp.", "Do it!", "Now?"]
+
+
+def test_post_refuses_long_new_content_but_old_long_rows_still_load(tmp_path):
+    long = sample(verdict="One. Two. Three.")
+    # an item posted before advice-0.3.0 (inserted directly): an unchanged re-post only warns
+    full = {"schema": "advice/1", "advice_id": "long-1", "version": 1, "supersedes": None, **long,
+            "status_history": [{"status": "idea", "at": "2026-10-20T00:00:00", "by": "post"}]}
+    advice.store().insert(advice._row(full, {"command": "post"}, {}))
+    again = advice.post(long, advice.store(), advice_id="long-1")
+    assert again["unchanged"] and any("too long" in w for w in again["warnings"])
+    st = advice.set_status(advice.store(), "long-1", "awaiting_yes", note="asked")
+    assert any("too long" in w for w in st["warnings"])
+    with pytest.raises(advice.AdviceError, match="verdict 3 sentences"):
+        advice.post({**long, "headline": "changed"}, advice.store(), advice_id="long-1")
+    p = write(tmp_path, "long-new.json", sample(title="t" * 90))
+    res = runner.invoke(app, ["advise", "post", "--file", str(p), "--json"])
+    out = json.loads(res.output)
+    assert res.exit_code == 2 and out["code"] == "usage" and "title 90 chars > 70" in json.dumps(out)

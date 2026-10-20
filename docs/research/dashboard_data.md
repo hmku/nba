@@ -205,7 +205,8 @@ scenario is absent or starts with `post-draft` (`web/src/lib/postDraft.ts:isSeas
 ## 4. `kind = 'advice'` — recommendations for the Inbox decision cards (`/inbox`; formerly the Moves view)
 
 _Added 2026-10-20 (advice-0.1.0); 2026-10-20 advice-0.2.0 added `rationale` + `why_now` (additive, schema stays
-`advice/1`). Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.2.0`).
+`advice/1`); 2026-10-20 advice-0.3.0 added the concise-content limits and the metric `key` flag (see "Concise limits"
+below). Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.3.0`).
 Readers: `web/src/app/inbox/page.tsx` via `web/src/lib/moves.ts` (parsing) and `web/src/lib/inbox.ts` (join with
 approvals and threads, sections); the This week decisions timeline (`web/src/lib/lineup.ts`)._
 
@@ -238,34 +239,35 @@ never authorises a Yahoo write.
                      {"status": "awaiting_yes", "at": "<iso>", "by": "status", "from": "idea", "note": "…"}],
 
   "type": "trade",                       // trade | add_drop | stream | lineup | il
-  "title": "Trade Ware + VanVleet for Jamal Murray (Yeet)",
+  "title": "Trade Ware + VanVleet for Jamal Murray (Yeet)",   // ≤ 70 chars (0.3.0)
   "status": "idea",                      // idea | awaiting_yes | approved | done | rejected | expired
-  "headline": "one line",
+  "headline": "one line",                // ≤ 120 chars (0.3.0)
   "for_date": "2026-10-21",              // optional, YYYY-MM-DD (ET); lineup plans: the day they are for
   "week": 1,                             // optional fantasy week
-  "verdict": "1-3 lines",
+  "verdict": "≤ 2 sentences, ≤ 200 chars (0.3.0); the 1st sentence is the card's one-line verdict",
   "requires_user_yes": true,             // policy: add/drops and trades always true
-  "metrics": [                           // ordered; every number carries an evidence label
+  "metrics": [                           // ordered, ≤ 6 (0.3.0); every number carries an evidence label
     {"label": "ΔP(title), blend + Champagnie refill", "value": 8.6, "se": 0.6, "unit": "pp",
      "delta": true,                      // optional: show a + sign on positive values
+     "key": true,                        // optional (0.3.0): one of the ≤ 3 chips on the collapsed card
      "evidence": "simulated",            // fitted | simulated | prior | literature
      "note": "paired, position-aware, seed 0"},
     {"label": "Yeet's ΔP(playoffs)", "value": "+2 to +10", "unit": "pp", "evidence": "simulated"}  // value may be text
   ],
   "scenario_columns": ["name", "refill", "ΔP(title)"],   // optional column order (jsonb does not keep key order)
   "scenarios": [{"name": "Base case", "refill": "Champagnie", "ΔP(title)": "+8.6 ± 0.6 pp"}],  // optional; scalar cells
-  "risks": ["…"],
+  "risks": ["…"],                        // ≤ 4, each ≤ 120 chars (0.3.0)
   "links": [{"label": "Trade scan", "path": "docs/research/week1_and_trades_2026-10-20.md"}],  // repo path, /route or URL
   "approval_id": "apr-…",                // optional: the approvals row carrying the user's decision
 
   // advice-0.2.0: plain-language justification + "why now" (see the rules below the block)
-  "rationale": [                         // 1-6 strings, each ≤ 600 chars (a bare string = one paragraph);
+  "rationale": [                         // 1-4 strings, each ≤ 160 chars (0.3.0; 0.2.0 allowed 6 × 600);
     "Champagnie is a 3-and-D forward: threes, steals, blocks, few turnovers — categories we are thin in.",
     "- Bailey (rookie) is the weakest bench slot by every projection set."   // "- " / "• " prefix = bullet
   ],
   "why_now": {
-    "before": "At the draft (draft-0.x values, ADP ~150) he ranked below our last picks: ...",  // ≤ 800 chars
-    "changed": [                         // 1-8 items, each ≤ 400 chars: a string or {"text", "kind"?}
+    "before": "At the draft (draft-0.x values, ADP ~150) he ranked below our last picks: ...",  // ≤ 200 chars (0.3.0)
+    "changed": [                         // 1-3 items, each ≤ 140 chars (0.3.0): a string or {"text", "kind"?}
       "Bailey's projected minutes fell after the preseason",
       {"text": "inseason-0.3.0 values bench depth with a refill model", "kind": "model"}
       // kind ∈ news | model | roster | schedule | league | other (optional tag shown on the card)
@@ -292,13 +294,26 @@ roster/schedule facts, other teams' moves). Numbers in these texts follow the ev
 with a label and reference them from `why_now.evidence`. Readers treat both as optional: rows without them render as
 before.
 
-**Inbox card layout** (`web/src/app/inbox/Decisions.tsx`). Header (type, advice status, approval badge, age) →
-title → headline → verdict → **Why** (rationale) and **What changed** (`before`, then the `changed` list with kind tags
-and the evidence refs) → **Key numbers** (first 3 metrics; the full metrics table and scenarios behind "All N metrics")
-→ risks → **Your call** (pending approval: summary, policy line, expiry, Approve / Reject) → **Discussion** (linked
-threads + comment box) → links, posted/updated, ids. On narrow screens (< 640 px) a long explanation (`isLongWhy`:
-> 2 rationale items, > 3 changes, or > 420 chars) collapses to a two-line teaser that expands on tap; ideas, queued and
-closed cards collapse Why / numbers / risks and the discussion.
+**Concise limits (advice-0.3.0).** User feedback 2026-10-20: "too much text on the inbox". New or changed content
+must fit the collapsed card: `title` ≤ 70 chars, `headline` ≤ 120, `verdict` ≤ 2 sentences and ≤ 200 chars (a
+sentence ends at `.`/`!`/`?` + whitespace, or a line break), `rationale` ≤ 4 items each ≤ 160, `why_now.before` ≤ 200,
+`why_now.changed` ≤ 3 items each ≤ 140, `risks` ≤ 4 each ≤ 120, `metrics` ≤ 6 (put the rest in `scenarios`) with at
+most 3 flagged `key: true` (the card's chips; none flagged → the first 3). `advice.concise_problems(summary)` lists
+every violation; `fantasy advise post` refuses new/changed content with ONE usage error naming everything to shorten
+("too long for the Inbox card (advice-0.3.0 limits); shorten: title 90 chars > 70; risks[0] 130 chars > 120 …").
+Same rule shape as `rationale`/`why_now`: an unchanged re-post of an older long item, `fantasy advise status` on it
+(non-closed status) and `validate(strict=False)` only warn, and old rows still render (the 0.2.0 structural caps,
+6 × 600 rationale etc., still apply as hard limits). Detail belongs in the linked research note, not the card.
+
+**Inbox card layout** (`web/src/app/inbox/Decisions.tsx`), collapsed by default: type badge + title (1 line) + age →
+the verdict's first sentence (`splitVerdict` in `moves.ts`) → ≤ 3 key-metric chips (`keyMetrics`: label, value without
+SE, evidence as a coloured dot; full value ± SE and note on hover; legend once at the top of the page) → Approve /
+Reject + expiry (pending approval; note behind "add note") or one state line (queued / no approval yet / decided) →
+**Details ▸** (headline + the rest of the verdict, **Why** bullets, **What changed** with kind tags and evidence
+refs, the full metrics table + scenarios, risks, links, approval request text, posted/updated, ids;
+`AdviceDetails.tsx`, a client component that mounts its body on first open so the text is sent once as JSON, not
+twice as HTML + RSC markup) and **💬 n** (linked threads + the comment box). Ideas show the verdict on one line;
+closed cards sit under a one-line summary row.
 
 ### Advice ↔ approval ↔ thread linkage (Inbox, 2026-10-20)
 
