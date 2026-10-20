@@ -15,6 +15,7 @@ from fantasy.draft import store
 from fantasy.draft.names import NameResolutionError, resolve_player
 from fantasy.league.settings import LeagueSettings, load_settings
 from fantasy.model.lines import load_projections
+from fantasy.ops.common import EXIT_USAGE
 from fantasy.sim import SIM_VERSION
 from fantasy.sim.context import SimContext, build_context
 from fantasy.sim.engine import SimParams
@@ -103,7 +104,7 @@ def _setup(
                             week1_end=date.fromisoformat(week1_end) if week1_end else None,
                             merge_allstar=merge_allstar, team_names=league.names)
     except ValueError as e:
-        fail(str(e), as_json, exit_code=2)
+        fail(str(e), as_json, exit_code=EXIT_USAGE)
     full = settings.num_rounds
     short = {t: n for t, n in league.roster_sizes().items() if n < full}
     if draft and complete and short:
@@ -157,8 +158,7 @@ def _resolve(q: str, setup: _Setup, as_json: bool) -> str:
     try:
         return resolve_player(q, setup.ctx.values)
     except NameResolutionError as e:
-        fail(str(e), as_json, exit_code=2, code="unresolved_player", candidates=e.candidates)
-    raise AssertionError
+        fail(str(e), as_json, exit_code=EXIT_USAGE, code="unresolved_player", candidates=e.candidates)
 
 
 # ---------------------------------------------------------------- commands
@@ -194,7 +194,7 @@ def export_league(
     try:
         names = parse_team_names(json.loads(names_file.read_text()), int(draft["num_teams"])) if names_file else None
     except (ValueError, json.JSONDecodeError) as e:
-        fail(f"bad --names-file: {e}", as_json, exit_code=2)
+        fail(f"bad --names-file: {e}", as_json, exit_code=EXIT_USAGE)
     data = league_json_from_draft(draft, picks, names, source)
     known = set(load_projections(None).df.index)
     unknown = [{"team": int(t), "player_id": p} for t, v in data["teams"].items() for p in v["players"] if p not in known]
@@ -222,11 +222,11 @@ def import_schedule(
     try:
         data = from_yahoo_capture(json.loads(yahoo_capture.read_text()))
     except (ValueError, KeyError, json.JSONDecodeError) as e:
-        fail(f"bad capture: {e}", as_json, exit_code=2)
+        fail(f"bad capture: {e}", as_json, exit_code=EXIT_USAGE)
     weeks = {w["week"]: [tuple(p) for p in w["matchups"]] for w in data["weeks"] if w.get("matchups")}
     errs = MatchupSchedule(weeks=weeks, source="check").validate(sorted({int(k) for k in data["team_names"]}))
     if errs:
-        fail("invalid schedule: " + "; ".join(errs), as_json, exit_code=2)
+        fail("invalid schedule: " + "; ".join(errs), as_json, exit_code=EXIT_USAGE)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
     emit({"ok": True, "out": str(out), "weeks": len(data["weeks"]), "weeks_with_matchups": sorted(weeks)}, as_json,
@@ -278,14 +278,14 @@ def season(
 ) -> None:
     """Simulate the season: P(playoffs), P(title), expected category wins, weekly matchups, opponents."""
     if my_plan not in ("market", "optimizer"):
-        fail("--my-plan must be market or optimizer", as_json, exit_code=2)
+        fail("--my-plan must be market or optimizer", as_json, exit_code=EXIT_USAGE)
     st = _setup(as_json, draft_id, league_file, complete_rosters_, my_plan, seed, schedule, nba_schedule,
                 projections, week1_end, merge_allstar, playoff_teams, playoff_weeks)
     params = _params(sims, seed, streaming, il_replacement, il_min_spell_days)
     res = st.ctx.simulator(params).run(st.league)
     t = team or st.league.my_team
     if t not in st.league.team_ids:
-        fail(f"unknown team {t}; teams: {st.league.team_ids}", as_json, exit_code=2)
+        fail(f"unknown team {t}; teams: {st.league.team_ids}", as_json, exit_code=EXIT_USAGE)
     summary = season_summary(res, st.league, t)
     summary["warnings"] = list(dict.fromkeys(st.ctx.warnings + summary["warnings"]))
     summary["matchup_schedule"] = st.ctx.matchup_info()
@@ -327,13 +327,13 @@ def matchup(
     st = _setup(as_json, draft_id, league_file, complete_rosters_, "market", seed, schedule, nba_schedule,
                 projections, week1_end, merge_allstar, None, None)
     if week not in [w.week for w in st.ctx.calendar]:
-        fail(f"week {week} outside the calendar 1..{st.ctx.calendar[-1].week}", as_json, exit_code=2)
+        fail(f"week {week} outside the calendar 1..{st.ctx.calendar[-1].week}", as_json, exit_code=EXIT_USAGE)
     res = st.ctx.simulator(_params(sims, seed, streaming, il_replacement, il_min_spell_days)).run(st.league)
     t = team or st.league.my_team
     try:
         rep = matchup_report(res, st.league, t, week, opponent)
     except ValueError as e:
-        fail(str(e), as_json, exit_code=2)
+        fail(str(e), as_json, exit_code=EXIT_USAGE)
     out = {"ok": True, "sim_version": SIM_VERSION, "n_sims": res.n, "seed": seed, **rep,
            "warnings": st.ctx.warnings + st.league.warnings + res.warnings}
     lines = [f"Week {week} ({rep['start']}..{rep['end']}): {rep['name']} vs {rep['opponent_name']}  "
@@ -361,11 +361,11 @@ def compare(
     adds = [_resolve(x, st, as_json) for x in add.split(",") if x.strip()]
     drops = [_resolve(x, st, as_json) for x in drop.split(",") if x.strip()]
     if not adds and not drops:
-        fail("pass --add and/or --drop", as_json, exit_code=2)
+        fail("pass --add and/or --drop", as_json, exit_code=EXIT_USAGE)
     try:
         alt_league = st.league.with_change(t, adds, drops)
     except ValueError as e:
-        fail(str(e), as_json, exit_code=2)
+        fail(str(e), as_json, exit_code=EXIT_USAGE)
     params = _params(sims, seed, streaming, il_replacement, il_min_spell_days)
     sim = st.ctx.simulator(params)
     base, alt = sim.run(st.league), sim.run(alt_league)
@@ -402,12 +402,12 @@ def draft_check_cmd(
     assert st.draft is not None
     cands = [_resolve(x, st, as_json) for x in candidates.split(",") if x.strip()]
     if not cands:
-        fail("no candidates", as_json, exit_code=2)
+        fail("no candidates", as_json, exit_code=EXIT_USAGE)
     params = _params(sims, seed, streaming)
     try:
         rep = draft_check(st.draft, st.picks, st.ctx, cands, params, completions=completions)
     except ValueError as e:
-        fail(str(e), as_json, exit_code=2)
+        fail(str(e), as_json, exit_code=EXIT_USAGE)
     out = {"ok": True, "sim_version": SIM_VERSION, "draft_id": st.draft["draft_id"], **rep,
            "warnings": st.ctx.warnings + ["Advisory: completed rosters are expected picks; differences within ~2 SE are noise."]}
     out["run_id"] = _save(save, "draft-check", params, st, out)
@@ -437,12 +437,12 @@ def preseason(
     from fantasy.sim.preseason import preseason as run_preseason
 
     if strategy and strategy not in DEFAULT_STRATEGIES:
-        fail(f"unknown --strategy {strategy}", as_json, exit_code=2, valid=list(DEFAULT_STRATEGIES))
+        fail(f"unknown --strategy {strategy}", as_json, exit_code=EXIT_USAGE, valid=list(DEFAULT_STRATEGIES))
     if leagues < 1:
-        fail("--leagues must be >= 1", as_json, exit_code=2)
+        fail("--leagues must be >= 1", as_json, exit_code=EXIT_USAGE)
     if schedule:  # Yahoo schedules are keyed by Yahoo team id; simulated leagues are keyed by draft slot
         fail("--schedule is not supported pre-draft (team ids = draft slots); use sim season after the draft",
-             as_json, exit_code=2)
+             as_json, exit_code=EXIT_USAGE)
     settings = load_settings()
     if slot:
         settings = settings.model_copy(update={"my_slot": slot})
@@ -453,7 +453,7 @@ def preseason(
                              week1_end=date.fromisoformat(week1_end) if week1_end else None,
                              merge_allstar=merge_allstar)
     except ValueError as e:
-        fail(str(e), as_json, exit_code=2)
+        fail(str(e), as_json, exit_code=EXIT_USAGE)
     dctx = DraftContext(proj, settings, values=sctx.values)
     params = _params(sims, seed, streaming)
     summary = run_preseason(sctx, dctx, n_leagues=leagues, params=params, draft_seed=draft_seed, noise=noise,
@@ -507,14 +507,14 @@ def symmetric(
         settings = settings.model_copy(update={"my_slot": slot})
     if summary_only:
         if not out.exists():
-            fail(f"{out} does not exist", as_json, exit_code=2)
+            fail(f"{out} does not exist", as_json, exit_code=EXIT_USAGE)
         results = _merged(out)
         diag = None
     else:
         tr = tuple(t.strip() for t in truths.split(",") if t.strip())
         bad = [t for t in tr if t not in ("ours", "market", "blend")] or ([] if "ours" in tr else ["ours missing"])
         if bad:
-            fail(f"bad --truths: {bad}", as_json, exit_code=2)
+            fail(f"bad --truths: {bad}", as_json, exit_code=EXIT_USAGE)
         exp, diag = build_experiment(load_projections(projections), settings, truths=tr, n_season_sims=sims,
                                      nba_schedule_file=nba_schedule)
         results = run_experiment(exp, list(range(drafts)), out, workers=workers, subset_seeds=set(range(full_subset)))
