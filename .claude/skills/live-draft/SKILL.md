@@ -93,10 +93,11 @@ Then run the loop below, applying the value-model guard (§1) on every recommend
    fails and the clock is short, take `recommendations[0]` and log it). Choose `recommendations[0]` unless:
    - the player has fresh injury news (check the player card in the draft room) → note it, rerun excluding
      nobody — instead pick the next recommendation and record the disagreement;
-   - top options are within ~0.03 score (model noise — treat as ties): prefer the one with *lower* `prob_available_next` (it won't come back).
-     **Back-to-back picks (36/37, 60/61, 84/85, 108/109, 132/133 for slot 1 under 3RR):** nobody picks in
-     between, so every candidate is available at the next pick (`prob_available_next` = 1.0 for all) and this
-     tie-break is irrelevant — take `recommendations[0]`.
+   - **No score tie-break.** Near-equal optimizer scores are NOT a reason to deviate: under the default policy
+     (value search + simulated availability, user-approved 2026-10-19) `recommendations[0]` already weighs who
+     will last, and the evaluated policy is "always take `recommendations[0]`" (docs/research/draft_policy.md).
+     The old "prefer lower `prob_available_next` among ties" rule predates value search; use it only if the user
+     asks, or when value search failed (`value_search_status != "ok"`).
      (`prob_available_next` answers "if I pass on him now, is he there at my next pick?": it is computed with my
      own current pick skipped. The ranking itself uses the optimizer's internal table, unchanged.)
 4. **Prepare (one call — logs decision vs model, plans txn, checks policy+lock, marks submitted):**
