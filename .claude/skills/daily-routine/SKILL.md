@@ -26,11 +26,13 @@ fantasy lock acquire yahoo:browser --ttl 2400 --purpose "daily routine $D" --jso
 If the built-in browser isn't logged in to Yahoo (login page / 2FA), stop and tell the user; never enter credentials.
 
 ## 1. READ (sync)
-1. Rosters: in the browser on `https://basketball.fantasysports.yahoo.com/nba/44495`, run the JS in
-   `scripts/yahoo/capture_rosters.js` with the browser JS tool; save its output to
-   `data/raw/yahoo/league_rosters_$D.json` (via `fantasy league import-capture` if the raw output needs normalising),
-   then `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --json` (dry diff) and, if it validates,
-   `--write`. Record the diff (adds/drops/trades/status changes for all 12 teams) as an `observation` event.
+1. Rosters (MANDATORY before any lineup plan — `fantasy lineup plan` exits 2 `stale_capture` on slot data not read
+   today ET): in the browser on `https://basketball.fantasysports.yahoo.com/nba/44495`, run the JS in
+   `scripts/yahoo/capture_rosters.js` with the browser JS tool; save the raw output to a scratch file, then
+   `fantasy league import-capture --raw <raw.json> --kind rosters --out data/raw/yahoo/league_rosters_$D.json` (fills
+   draft_slot, player_ids, capture_date), then `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --json`
+   (dry diff) and, if it validates, `--write` (writes per-team lineup/status maps the lineup tool reads). Check its
+   `positions_from_projections` warnings. Record the diff (adds/drops/trades/status changes for all 12 teams) as an `observation` event.
 2. Free agents: `scripts/yahoo/capture_free_agents.js` -> `data/raw/yahoo/free_agents_$D.json` (note waiver vs FA status).
 3. League transactions page `/nba/44495/transactions` (read the last 24 h; cross-check the sync diff).
 4. Injuries: `fantasy data fetch-injuries --json` (ESPN API + CBS) and Yahoo tags from the capture; disagreements
@@ -40,9 +42,14 @@ If the built-in browser isn't logged in to Yahoo (login page / 2FA), stop and te
    never answered.
 
 ## 2. THINK
-- Lineup: `fantasy lineup plan --date $D --week --json` (position-aware assignment, matchup-weighted vs this week's
-  opponent; see `docs/research/lineup_optimizer.md`). Read `lineup`, `changes_vs_current`, `il_moves`, `decide_at_tipoff`,
-  expected category wins.
+- Lineup: `fantasy lineup plan --date $D --week --json` (lineup-0.2.0: exact position-aware assignment, matchup-weighted
+  vs this week's opponent; `docs/research/lineup_optimizer.md`). Run it BEFORE the day's first tip-off; after a tip-off
+  pass `--locked <ids of players whose games started>`. Mid-week, pass the week's banked totals with `--accumulated`
+  (read them from the matchup page `/nba/44495/matchup`) or note the MID-WEEK warning. Exit 2 `infeasible_roster` = too
+  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. Read `target_slots` (the full
+  final state to reach), `changes_vs_current`, `il_moves`, `decide_at_tipoff` (with `swap_with`), `warnings`, and
+  `expected` (state P(win) together with its `availability_assumption`; rest_share 0.25 is a prior).
+- Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once
   available, the streaming tool from `src/fantasy/inseason/` (week-1 analysis handoff `docs/handoffs/2026-10-20-week1-trades.md`).
@@ -50,7 +57,8 @@ If the built-in browser isn't logged in to Yahoo (login page / 2FA), stop and te
 - Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
 
 ## 3. EXECUTE (lineup + IL only)
-For each change in `changes_vs_current` (and each `il_moves` entry: only players Yahoo lists O / Out for Season):
+Goal = Yahoo's server state equals `target_slots`. For each change in `changes_vs_current` (and each `il_moves` entry:
+only players Yahoo lists O / Out for Season):
 ```bash
 fantasy lock acquire yahoo:roster --ttl 600 --purpose "lineup $D" --json
 fantasy txn plan lineup --payload '{"date":"'$D'","changes":[...exact moves...]}' --summary "lineup $D" --json
