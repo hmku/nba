@@ -1,11 +1,11 @@
 # Project status
 
-_Last updated: 2026-10-20 UTC (post-draft league simulation). Update this file when state or priorities change._
+_Last updated: 2026-10-20 ET (main local session: in-season operations live). Update this file when state or priorities change._
 
 ## Where we are
-**Phase 1 (draft MVP) — built and verified; the real draft (`nba.l.44495-2026`, Mon 2026-10-19 22:00 ET, slot 1, 3RR) is
-under way tonight** (live-draft skill, local session with a browser). Draft results are not recorded here yet: the
-drafting session writes `docs/handoffs/<date>-draft.md` afterwards. Draft-path code (`src/`, `web/`) is frozen until then.
+**Phase 2 (in-season) — live.** Draft done 2026-10-19 (13/13 verified on Yahoo; `docs/handoffs/2026-10-20-draft.md`). A local
+desktop session is the main agent; the scheduled task **fantasy-daily** (10:00 ET, `daily-routine` skill) syncs Yahoo, sets
+and verifies lineups (pre-authorised), and asks before any add/drop/trade. First live lineup (Wed 10-21) set + verified 2026-10-20.
 
 | Area | State |
 |---|---|
@@ -15,6 +15,10 @@ drafting session writes `docs/handoffs/<date>-draft.md` afterwards. Draft-path c
 | Draft ops | `draft init/board/pick/undo/recommend/watch/simulate/queue/set-order/prepare-pick/confirm-pick`; txn ledger + locks + policy enforced for picks. `pick --allow-unknown` / explicit `--overwrite` (`--force` alone no longer overwrites); `board` reports `gaps` and `behind`; `prepare-pick` refuses while earlier picks are unrecorded (`behind`, own submitted picks in `behind_mine`) and warns when the latest recommendation is for an older board; `set-order` refuses to re-own recorded picks without `--force` (`reassigned_picks`); `undo` of an empty pick exits 6; `watch` reloads the order. Handoffs: `2026-10-19-draft-review-fixes.md`, `2026-10-19-review2-fixes.md`. |
 | Season simulator | `fantasy sim ...` (`season-sim-0.5.0`, skill `season-sim`): fitted priors (`docs/research/sim_calibration.md`), same noise model as the draft. **Post-draft run on the real league** (`sim-20261020033348-d0613f`, 12k sims, real rosters = Yahoo capture, Yahoo's real schedule `data/manual/league_schedule.json`): me 91.9% playoffs / 33.7% title / exp. rank 2.6 (simulated, in-sample optimistic); next Haagen Daz Center 76% / 12%. Results + per-team table: `docs/research/season_simulator.md` "Post-draft league". Dashboard League/Matchup show it. |
 | In-season tools | `fantasy inseason lineup`, `stream`, `trade` (`inseason-0.1.0`, `src/fantasy/inseason/`): position-aware daily lineups (crunch ≈ 0 games wks 1-4), streaming ranker on Yahoo FA list, paired trade evaluation. Week-1/trade analysis: `docs/research/week1_and_trades_2026-10-20.md` (top idea Ware + VanVleet -> Jamal Murray, needs approval). |
+| Roster sync | `fantasy league sync|import-capture` (T-004 done): Yahoo browser captures (`scripts/yahoo/capture_rosters.js`, `capture_free_agents.js`) -> `data/manual/league_rosters_2026-27.json` (+ per-team lineup/status/yahoo ids) with a diff of adds/drops/trades/status. Runbook `docs/runbooks/roster_sync.md`. |
+| Lineups | `fantasy lineup plan` (`lineup-0.2.0`, T-005 done): exact position-aware daily assignment, matchup-weighted (gradient of expected cats won), Yahoo tag P(plays) priors, `target_slots`/`changes_vs_current`, refuses stale captures, `--locked`, `--rest-share`. Quant-reviewed. `docs/research/lineup_optimizer.md`. Yahoo write procedure (instant-save swaps, click by ref, server re-read) in the `daily-routine` skill. |
+| Conservative odds | `fantasy data alt-projections --blend market` + sim: 88.0% / 27.9% (market) vs 91.9% / 33.7% (blend); spread 85-93% / 25-35% across projection sets (simulated; `docs/research/conservative_sim.md`). Rule: act only if a move helps under both. |
+| IL replacement | opt-in `fantasy sim ... --il-replacement` (default unchanged): us −0.7 pp playoffs / −1.5 pp title, week 1 −1.1 pp (simulated; `docs/research/il_replacement.md`). Recommendation: make default in season-sim-0.6.0 (pending user OK). |
 | Agent ops | Runs/events/decisions, lease locks, approvals, idempotent txn ledger, tasks, `status`, `publish`. Cloud sessions use `--rest` on `run/lock/approval/txn/task` (single-row PostgREST writes, CAS on state; no `approval decide` over REST). `publish` (SQL and `--rest`) and `sqldump` never overwrite ledger/state rows (insert-if-missing). `docs/handoffs/2026-10-18-rest-ledger.md`. |
 | Muse / league intel | `POST /api/agent/snapshot` -> `league_snapshots`, reports incl. `chat_digest`; read with `fantasy intel latest|list|show [--rest]`; in-season protocol = `league-loop` skill (THINK side built; snapshot->rosters converter, action queue, lineup/stream/trade tools PLANNED). **Privacy migration `20261019120000_private_league_intel.sql` pending (user action, `docs/USER_TODO.md`).** |
 | Yahoo | Read-only OAuth API client (untested against live Yahoo). Picks only via the browser. League settings **all verified**: settings page 2026-10-18 (9 cats, 12 teams, 3 BN + 3 IL, 6 adds/week, daily lineups, playoffs 6 teams weeks 18-20 = Mar 1-21, 2027, re-seeded) and draft order (3RR) + my slot 1 from the draftresults page 2026-10-19 (commit 436c3ba). |
@@ -22,20 +26,13 @@ drafting session writes `docs/handoffs/<date>-draft.md` afterwards. Draft-path c
 | DB | Supabase `fantasy-nba` (ref `bdzpkdkhlzjzddkptjex`), schema from `src/fantasy/db/schema.py`. Local agents need `FANTASY_DB_URL` (user supplies). |
 
 ## Next priorities (see `fantasy task list` for the full backlog)
-1. **Tonight:** finish the draft (live-draft skill). Afterwards: `fantasy draft board --json` vs the Yahoo roster,
-   `fantasy run end`, handoff `docs/handoffs/<date>-draft.md` (roster, deviations from `recommendations[0]`, issues), commit.
-2. **Done 2026-10-20:** post-draft league sim on the real rosters + Yahoo schedule (handoff `2026-10-20-post-draft-league-sim.md`).
-   Next: re-run after any roster change (rosters file from a Muse `rosters` snapshot once a converter exists; the draft
-   no longer equals the rosters after the first waiver move); ask Muse for a read-only league check; user applies the private-intel migration.
-3. Calibration with the real draft (T-016): pick-vs-ADP residuals for the ADP sd prior and the room model (first real sample).
-4. P1 in-season: Yahoo roster sync (T-004), daily lineup optimizer (T-005), waivers/streaming (T-006), snapshot ->
-   `rosters.json` converter for `league-loop`; then trade evaluator (T-008), backtesting (T-010), scheduled job (T-011).
-5. Backlog hygiene: T-007 closed 2026-10-20; T-009 (Monte Carlo draft sim) is built but still `todo` in the DB;
-   close T-002/T-014 or record why not.
-6. Tech debt: deferred parts of `docs/research/tech_debt.md` (WIP snapshots on main, mypy beyond the CI subset, helper duplicates).
-7. Research options, all opt-in and **not adopted** (no draft action needed): `--filler board|available` / `--refine k`
-   (`docs/research/optimizer_placeholders.md`: no variant beyond ±0.65 pp), `OptimizerParams(room_self=skip|plan)`
-   (`docs/research/draft_policy.md`), `--policy bpa|hybrid|bpa_need|...` (evaluated alternatives; value search then only advises).
+1. Daily: scheduled task `fantasy-daily` (10:00 ET; first unattended run 2026-10-20). Watch its logs (`docs/daily/`) and fix friction.
+2. Murray trade (Ware + VanVleet -> Jamal Murray, Yeet): pursue only with a Champagnie refill; awaiting the user's decision
+   (`docs/handoffs/2026-10-20-main-session.md`). Nothing proposed on Yahoo.
+3. Dashboard "Moves" tab (recommendations with evidence; `fantasy advise`) — in progress 2026-10-20.
+4. Decide: IL replacement as sim default (season-sim-0.6.0) + republish; in-season projection updates (proposed session, backtest first).
+5. Streaming with matchup weights (T-006), trade scan CLI (T-008), calibration of tag priors / rest_share (T-016).
+6. Tech debt: `docs/research/tech_debt.md`; session-start hook now loads `.venv` + `.env`.
 
 ## Known limitations
 - Pre-draft season projection (96% playoffs / 55% title from slot 1) is the optimistic end: symmetric room 61%/13%, sharp market-informed opponents + market truth 67%/12%, central ≈ 83–89% / 28–35% (`docs/research/optimism_decomposition.md`; computed before the ESPN blend, the calibrated simulator, the unified noise model and the 2026-10-19 draft policy, not recomputed).
