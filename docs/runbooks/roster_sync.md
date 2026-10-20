@@ -14,6 +14,9 @@ Follow the `yahoo-browser` skill (hold the `yahoo:browser` lock, log events). On
 | `scripts/yahoo/capture_rosters.js` | `/nba/44495/<1..12>` (GET) | `{source, captured_at, problems, teams: {<yahoo team id>: {name, draft_slot: null, players: [{slot, name, team, positions, status, yahoo_player_id}]}}}` |
 | `scripts/yahoo/capture_free_agents.js` | `/nba/44495/players?status=A&pos=P&sort=OR&sdir=1&count=<offset>`, 25/page, top 150 (edit `N`) | `{..., players: [{name, team, positions, status, yahoo_player_id, ownership, waiver_until, list_rank, yahoo_rank, pct_rostered}]}` |
 
+`captured_at` is ISO 8601 UTC (`...Z`). Team and Yahoo positions are parsed from the player cell
+even for status-tagged rows (the tag text is stripped; team codes are matched against Yahoo's 30 codes,
+so a tag glued to the code, "QGSW - PG,SG", still parses).
 `ownership` is the cell text: `FA` = free agent, `W (Oct 22)` = on waivers until that date.
 Check `problems` is empty (non-empty usually means logged out or a Yahoo layout change). Save the
 returned string to a file (e.g. in the scratchpad), then normalise it:
@@ -25,7 +28,9 @@ fantasy league import-capture --raw <saved>.json --kind free_agents   # -> data/
 
 `import-capture` resolves our `player_id`s, fills team/positions where Yahoo shows a status tag
 instead, maps team codes (CHA->CHO, PHX->PHO, BKN->BRK), fills `draft_slot`, and lists unresolved
-players. It accepts the raw JSON or the JSON string the JS tool hands back.
+players. It accepts the raw JSON or the JSON string the JS tool hands back. It records
+`capture_date` = the US/Eastern date of `captured_at` (the lineup tool refuses stale captures by it;
+null if the capture has no `captured_at`) and names the output file by that date.
 
 ## 2. Sync
 
@@ -42,6 +47,9 @@ fantasy league sync --capture data/raw/yahoo/league_rosters_<date>.json --write 
   -> fuzzy match only if the NBA team agrees (`fuzzy_matches`). Otherwise `unknown:<slug>`
   (`unknown_players` = not in projections, simulated at replacement level; `unresolved` = ambiguous
   between projection players — fix by adding an alias in `fantasy.data.ids.ALIASES`). Nobody is dropped.
+- `positions_from_projections` (warning): players whose Yahoo positions were missing in the capture
+  and were filled from OUR projections (can differ from Yahoo's eligibility; re-capture with the
+  current script). Captures from before 2026-10-20's script fix list every status-tagged player here.
 - Diff (`diff`): `roster_changed`, `status_changed`, `moves` (player changed fantasy team = trade),
   per team `adds`/`drops` (free agency only), `moved_in`/`moved_out`, `status_changes`, `renamed`;
   `my_team` adds `status_now`, `lineup_changes`, `out_in_starting_slot` (tagged O/INJ/SUSP/NA in a

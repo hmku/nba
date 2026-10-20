@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -188,19 +189,23 @@ class PlayerResolver:
             return Resolution(pid, "fuzzy")
         return Resolution(unknown_player_id(name), "unknown", [(pid, str(self.proj.loc[pid, "name"]))])
 
-    def fill(self, p: CapturePlayer, pid: str) -> None:
-        """Fill team/positions from projections when Yahoo replaced them with a status tag."""
+    def fill(self, p: CapturePlayer, pid: str) -> list[str]:
+        """Fill team/positions from projections when the capture lacks them (older captures, or a
+        status tag the capture script could not see past). Returns the fields filled."""
         if pid not in self.proj.index:
-            return
-        row = self.proj.loc[pid]
+            return []
+        row, filled = self.proj.loc[pid], []
         if not p.team:
             p.team = norm_team(str(row.get("team") or "")) or None
+            filled.append("team")
         if not p.positions:
             pos = row.get("positions")
             if isinstance(pos, list):
                 p.positions = ",".join(pos) or None
             elif isinstance(pos, str) and pos:
                 p.positions = pos.replace("|", ",")
+            filled.append("positions")
+        return filled
 
 
 def yahoo_id_map(state: dict[str, Any] | None) -> dict[int, str]:
@@ -219,10 +224,13 @@ class ResolveReport:
     unresolved: list[dict[str, Any]] = field(default_factory=list)
     fuzzy_matches: list[dict[str, Any]] = field(default_factory=list)
     replaced_ids: list[dict[str, Any]] = field(default_factory=list)  # capture player_id we overrode
+    # warning: Yahoo positions missing in the capture, filled from OUR projections (may differ from Yahoo's)
+    positions_from_projections: list[dict[str, Any]] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {"unknown_players": self.unknown_players, "unresolved": self.unresolved,
-                "fuzzy_matches": self.fuzzy_matches, "replaced_ids": self.replaced_ids}
+                "fuzzy_matches": self.fuzzy_matches, "replaced_ids": self.replaced_ids,
+                "positions_from_projections": self.positions_from_projections}
 
 
 def resolve_capture(capture: Capture, resolver: PlayerResolver) -> ResolveReport:
@@ -242,7 +250,10 @@ def resolve_capture(capture: Capture, resolver: PlayerResolver) -> ResolveReport
             elif r.method == "fuzzy":
                 rep.fuzzy_matches.append(info)
             p.player_id = r.player_id
-            resolver.fill(p, r.player_id)
+            filled = resolver.fill(p, r.player_id)
+            if "positions" in filled:
+                rep.positions_from_projections.append(
+                    {**info, "status": p.status, "positions": p.positions, "filled": filled})
     return rep
 
 
@@ -398,9 +409,25 @@ def _duplicates(capture: Capture) -> list[str]:
     return sorted(p for p, c in seen.items() if c > 1)
 
 
+def capture_date_et(captured_at: str | None) -> str | None:
+    """US/Eastern calendar date (NBA game days) of an ISO timestamp; a naive timestamp is taken as UTC.
+    None if missing or unparseable."""
+    if not captured_at:
+        return None
+    try:
+        ts = datetime.fromisoformat(str(captured_at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=UTC)
+    return ts.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+
+
 def normalised_capture(capture: Capture) -> dict[str, Any]:
-    """The capture with resolved player ids and filled team/positions (for data/raw/yahoo/)."""
+    """The capture with resolved player ids and filled team/positions (for data/raw/yahoo/), plus
+    `capture_date` = the ET date of `captured_at` (consumers refuse stale captures by it)."""
     out = {k: v for k, v in capture.raw.items() if k != "teams"}
+    out["capture_date"] = capture_date_et(capture.captured_at)
     out["teams"] = {str(tid): {"name": t.name, "draft_slot": t.draft_slot,
                                "players": [p.to_json() for p in t.players]}
                     for tid, t in sorted(capture.teams.items())}
@@ -432,4 +459,5 @@ def normalise_free_agents(raw: dict[str, Any], resolver: PlayerResolver) -> dict
                             "candidates": [c[0] for c in r.candidates]})
         row = {**p, **{k: v for k, v in cp.to_json().items() if k != "slot"}, "player_id": pid}
         players.append(row)
-    return {**{k: v for k, v in raw.items() if k != "players"}, "players": players, "unknown_players": unknown}
+    return {**{k: v for k, v in raw.items() if k != "players"}, "capture_date": capture_date_et(raw.get("captured_at")),
+            "players": players, "unknown_players": unknown}

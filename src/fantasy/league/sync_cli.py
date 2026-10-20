@@ -19,6 +19,7 @@ from fantasy.league.sync import (
     CaptureError,
     PlayerResolver,
     assign_draft_slots,
+    capture_date_et,
     load_capture,
     normalise_free_agents,
     normalised_capture,
@@ -100,7 +101,7 @@ def _diff_text(diff: dict, resolve: dict) -> str:
     lines.append(f"my team {me['team']} ({me['name']}): {me['players']} players; status {me['status_now'] or '{}'}")
     for p in me["out_in_starting_slot"]:
         lines.append(f"  WARNING {p['name']} is {p['status']} but in starting slot {p['slot']}")
-    for k in ("unknown_players", "unresolved", "fuzzy_matches"):
+    for k in ("unknown_players", "unresolved", "fuzzy_matches", "positions_from_projections"):
         for p in resolve[k]:
             lines.append(f"{k}: team {p['team']} {p['name']} -> {p['player_id']}")
     return "\n".join(lines)
@@ -134,7 +135,8 @@ def sync_cmd(
             shutil.copyfile(state, prev_path(state))
         state.write_text(json.dumps(res["state"], indent=1, ensure_ascii=False) + "\n")
         written = {"state": str(state), "previous": str(prev_path(state)) if old is not None else None}
-    out = {"ok": True, "capture": str(capture), "state": str(state), "written": written,
+    out = {"ok": True, "capture": str(capture), "captured_at": cap.captured_at,
+           "capture_date": capture_date_et(cap.captured_at), "state": str(state), "written": written,
            "diff": res["diff"], **res["resolve"]}
     emit(out, as_json, _diff_text(res["diff"], res["resolve"])
          + (f"\nwrote {state}" if written else "\n(dry run; --write to save)"))
@@ -170,13 +172,14 @@ def import_capture(
             rep = resolve_capture(cap, resolver).to_json()
             result = normalised_capture(cap)
             result["resolve"] = rep
-            summary = {k: len(v) for k, v in rep.items()}
+            summary = {"capture_date": result["capture_date"], **{k: len(v) for k, v in rep.items()}}
         else:
             result = normalise_free_agents(data, resolver)
-            summary = {"players": len(result["players"]), "unknown_players": len(result["unknown_players"])}
+            summary = {"capture_date": result["capture_date"], "players": len(result["players"]),
+                       "unknown_players": len(result["unknown_players"])}
     except CaptureError as e:
         fail(str(e), as_json, EXIT_USAGE, code="invalid_capture")
-    stamp = str(data.get("captured_at") or date.today().isoformat())[:10]
+    stamp = capture_date_et(data.get("captured_at")) or date.today().isoformat()
     dest = out or YAHOO_RAW / f"{'league_rosters' if kind == 'rosters' else 'free_agents'}_{stamp}.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(result, indent=1, ensure_ascii=False) + "\n")

@@ -152,6 +152,27 @@ def test_status_tag_rows_filled_from_projections(proj):
     t1 = res["state"]["teams"]["1"]
     assert t1["status"] == {"nikola-jokic": "O"} and t1["lineup"]["nikola-jokic"] == "PG"
     assert t1["yahoo_team_id"] == 12 and t1["yahoo_ids"]["nikola-jokic"] == 1000
+    warn = res["resolve"]["positions_from_projections"]
+    assert [(w["player_id"], w["positions"], w["status"], w["filled"]) for w in warn] == \
+        [("nikola-jokic", "C", "O", ["team", "positions"])]
+
+
+def test_no_positions_warning_when_capture_has_them(proj):
+    cap = make_capture(proj)
+    cap["teams"]["12"]["players"][0].update(status="Q")  # tagged, but the script still read team/positions
+    assert sync(parse_capture(cap), None, proj)["resolve"]["positions_from_projections"] == []
+
+
+@pytest.mark.parametrize("ts,expected", [
+    ("2026-10-21T03:30:00Z", "2026-10-20"),          # 23:30 EDT the previous evening
+    ("2026-10-21T13:05:00.000Z", "2026-10-21"),
+    ("2026-10-21T01:00:00-04:00", "2026-10-21"),
+    ("2026-12-01T04:30:00", "2026-11-30"),           # naive = UTC; EST (UTC-5)
+    (None, None), ("garbage", None),
+])
+def test_capture_date_et(ts, expected):
+    from fantasy.league.sync import capture_date_et
+    assert capture_date_et(ts) == expected
 
 
 # ------------------------------------------------------------------ state + diff
@@ -294,6 +315,7 @@ def test_cli_import_capture(proj, proj_csv, tmp_path):
                                  "--projections", str(proj_csv), "--json"])
     assert r.exit_code == 0, r.output
     norm = load_capture(out)
+    assert json.loads(out.read_text())["capture_date"] == "2026-10-21"
     assert norm.teams[12].draft_slot == 1 and norm.teams[12].players[0].player_id == "nikola-jokic"
 
     fa = {"source": "t", "captured_at": "2026-10-21T13:00:00Z",
@@ -302,6 +324,7 @@ def test_cli_import_capture(proj, proj_csv, tmp_path):
                       {"name": "Nobody Known", "team": "LAL", "positions": "C", "status": None,
                        "yahoo_player_id": 2, "ownership": "FA", "waiver_until": None}]}
     norm_fa = normalise_free_agents(fa, PlayerResolver(proj))
+    assert norm_fa["capture_date"] == "2026-10-21"
     assert norm_fa["players"][0]["player_id"] == "lamelo-ball" and norm_fa["players"][0]["team"] == "CHO"
     assert norm_fa["players"][0]["positions"] == "PG" and norm_fa["players"][0]["ownership"] == "W (Oct 22)"
     assert norm_fa["players"][1]["player_id"] is None and norm_fa["unknown_players"][0]["name"] == "Nobody Known"

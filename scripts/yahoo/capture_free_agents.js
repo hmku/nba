@@ -8,9 +8,29 @@
 await (async () => {
   const LEAGUE = 44495, N = 150, PAGE = 25;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const TEAM_POS = /\b([A-Z]{2,4})\s+-\s+((?:PG|SG|G|SF|PF|F|C|Util)(?:\s*,\s*(?:PG|SG|G|SF|PF|F|C|Util))*)\b/;
+  // Yahoo's 30 NBA team codes; no word boundary before the code, so a status tag glued to it
+  // ("QGSW - PG,SG" in textContent) still parses.
+  const TEAMS = "ATL|BOS|BKN|CHA|CHI|CLE|DAL|DEN|DET|GSW|HOU|IND|LAC|LAL|MEM|MIA|MIL|MIN|NOP|NYK|OKC|ORL|PHI|PHX|POR|SAC|SAS|TOR|UTA|WAS";
+  const POS = "(?:PG|SG|G|SF|PF|F|C|Util)";
+  const TEAM_POS = new RegExp(`(${TEAMS})\\s*-\\s*(${POS}(?:\\s*,\\s*${POS})*)(?![A-Za-z])`);
   // text nodes joined by spaces (textContent would glue "Curry" and "GSW" together)
   const cellText = (el) => { const w = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT); const out = []; while (w.nextNode()) out.push(w.currentNode.nodeValue.trim()); return out.filter(Boolean).join(" "); };
+  // team + Yahoo positions from the player cell even when a status tag (Q/O/NA/...) is shown: try the
+  // team/pos span, then the cell's text nodes with the tag and name removed, then the whole row.
+  function teamPos(tr, a, tag) {
+    const strip = (s) => {
+      s = s.split(a.textContent.trim()).join(" ");
+      return tag ? s.replace(new RegExp(`(^|\\s)${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`, "g"), " ") : s;
+    };
+    const sub = ((a.parentElement.querySelector("span.Fz-xxs, .ysf-player-team-pos") || {}).textContent || "").trim();
+    const td = a.closest("td") || a.parentElement;
+    for (const s of [sub, strip(cellText(a.parentElement)), strip(cellText(td)), strip(cellText(td).replace(/\s+/g, "")),
+                     strip(cellText(tr))]) {
+      const m = s.match(TEAM_POS);
+      if (m) return { team: m[1].toUpperCase(), positions: m[2].replace(/\s+/g, "") };
+    }
+    return { team: null, positions: null };
+  }
   const OWN = /^(FA|W\s*\([^)]*\))$/;
   async function get(url) {
     let last;
@@ -48,17 +68,16 @@ await (async () => {
       const a = tr.querySelector("a.name, a[class*='name']");
       if (!a) continue;
       const tds = [...tr.querySelectorAll("td")];
-      const sub = ((a.parentElement.querySelector("span.Fz-xxs, .ysf-player-team-pos") || {}).textContent || "").trim();
-      const m = sub.match(TEAM_POS) || cellText(a.parentElement).match(TEAM_POS);
       const tag = (tr.querySelector(".ysf-player-status, abbr[title], span.F-injury")?.textContent || "").trim() || null;
+      const tp = teamPos(tr, a, tag);
       const own = tds.map((td) => td.textContent.replace(/\s+/g, " ").trim()).find((t) => OWN.test(t)) || null;
       const wv = own && own.match(/^W\s*\(([^)]*)\)$/);
       const pid = (a.getAttribute("href") || "").match(/players\/(\d+)/);
       const num = (i) => (i >= 0 && tds[i] ? parseFloat(tds[i].textContent.replace(/[^0-9.]/g, "")) : NaN);
       players.push({
         name: a.textContent.trim(),
-        team: m ? m[1].toUpperCase() : null,
-        positions: m ? m[2].replace(/\s+/g, "") : null,
+        team: tp.team,
+        positions: tp.positions,
         status: tag,
         yahoo_player_id: pid ? Number(pid[1]) : null,
         ownership: own,
