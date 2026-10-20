@@ -421,10 +421,14 @@ export function validatePick(body: unknown): { ok: true; value: PickInput } | { 
   return { ok: true, value: { overall, player, note, allow_unknown: b.allow_unknown === true } };
 }
 
+/** YYYY-MM-DD of `now` in US/Eastern (NBA game days; the agents' daily runs). */
+export function etDay(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+}
+
 /** Muse's run id for a calendar day in US/Eastern (one agent_runs row per day). */
 export function museRunId(now: Date = new Date()): string {
-  const day = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-  return `muse-${day}`;
+  return `muse-${etDay(now)}`;
 }
 
 /* ------------------------------------------------------------------ advisor suggestions (ADVISOR_API_TOKEN) */
@@ -581,8 +585,7 @@ export function advisorEventPayload(s: AdvisorSuggestion): { message: string; pa
 
 /** The advisor's run id for a calendar day in US/Eastern (one agent_runs row per day, agent='advisor'). */
 export function advisorRunId(now: Date = new Date()): string {
-  const day = now.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-  return `advisor-${day}`;
+  return `advisor-${etDay(now)}`;
 }
 
 /* ------------------------------------------------------------------ league snapshots (read-only Yahoo observations) */
