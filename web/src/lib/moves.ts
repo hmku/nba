@@ -1,9 +1,10 @@
 /**
- * Moves view readers (pure, no runtime imports: unit-tested by `npm test`).
+ * Recommendation (advice/1) readers for the Inbox decision cards and the This week timeline (pure, no runtime
+ * imports: unit-tested by `npm test`). Grouping into Inbox sections, with approvals, lives in inbox.ts.
  *
  * Producer: `fantasy advise post|status` (src/fantasy/ops/advice.py). Each recommendation is an item
  * (`summary.advice_id`) with append-only versions, one `model_runs` row each (`kind = 'advice'`,
- * schema `advice/1`, docs/research/dashboard_data.md section 4). The page shows the newest version per item.
+ * schema `advice/1`, docs/research/dashboard_data.md section 4). Readers show the newest version per item.
  */
 
 type Obj = Record<string, unknown>;
@@ -19,7 +20,6 @@ export const EVIDENCE = ["fitted", "simulated", "prior", "literature"] as const;
 export type AdviceType = (typeof ADVICE_TYPES)[number];
 export type AdviceStatus = (typeof ADVICE_STATUSES)[number];
 export type Evidence = (typeof EVIDENCE)[number];
-const CLOSED: ReadonlySet<string> = new Set(["done", "rejected", "expired"]);
 
 export interface AdviceMetric {
   label: string;
@@ -220,34 +220,6 @@ export function latestAdvice(rows: AdviceRow[]): Advice[] {
   return [...by.values()]
     .map(({ head, first, count }) => ({ ...head, firstCreatedAt: first, versions: count }))
     .sort((x, y) => (y.createdAt ?? "").localeCompare(x.createdAt ?? ""));
-}
-
-export interface MoveGroups {
-  needsYes: Advice[];
-  lineup: Advice[];
-  ideas: Advice[];
-  closed: Advice[];
-}
-
-/**
- * Sections of the Moves page:
- *  - needsYes: status awaiting_yes, or requires_user_yes with status idea
- *  - lineup:   type lineup for `today` (ET date; no for_date counts as today) unless rejected/expired
- *  - closed:   done / rejected / expired, plus lineup plans for other days
- *  - ideas:    everything else (ideas that need no yes, approved-but-not-done)
- */
-export function groupMoves(items: Advice[], today: string): MoveGroups {
-  const g: MoveGroups = { needsYes: [], lineup: [], ideas: [], closed: [] };
-  for (const x of items) {
-    if (x.type === "lineup") {
-      const isToday = !x.forDate || x.forDate === today;
-      if (isToday && x.status !== "rejected" && x.status !== "expired") g.lineup.push(x);
-      else g.closed.push(x);
-    } else if (CLOSED.has(x.status)) g.closed.push(x);
-    else if (x.status === "awaiting_yes" || (x.requiresUserYes && x.status === "idea")) g.needsYes.push(x);
-    else g.ideas.push(x);
-  }
-  return g;
 }
 
 /** "+8.6 ± 0.6 pp" / "2.31 per-game G units" / "about half". Minus sign is U+2212. */

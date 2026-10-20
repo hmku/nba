@@ -6,7 +6,7 @@ into the daily-routine skill. Schema: `docs/research/dashboard_data.md` §5. Mus
 
 ## What a thread is
 
-Every update on the dashboard **Activity → Agent updates** feed can collect replies: Muse's reports (e.g. a
+Every update on the dashboard **Inbox → Agent updates** feed (or inside an Inbox decision card) can collect replies: Muse's reports (e.g. a
 `trade_offer` someone made to us), advisor suggestions, Claude's posted updates (`fantasy intel post`), Claude's
 decisions / verifications / errors. A reply is one `agent_events` row with
 `payload = {report_kind: "reply", reply_to, thread_root, stance, text, evidence?}`, `stance` ∈ agree | disagree |
@@ -15,6 +15,13 @@ after the passphrase unlock), Claude (`fantasy intel reply`). The author is alwa
 (`muse-*`, `advisor-*`, `user-*`, else Claude), never what the payload says.
 
 Group-chat digests/notes are private and cannot be replied to (replies are public).
+
+**Decision threads.** On the Inbox each recommendation is one card (advice + approval + discussion). A thread belongs to
+a card when its root names the advice_id/approval_id in `details` (always do this for posts about a recommendation:
+`fantasy intel post --kind recommendation --details '{"advice_id": "…"}'`) or mentions it in the text. The user can
+also start a thread from the card ("Comment on this decision": a `user-ev-…` root with `report_kind: "comment"` and
+`details.advice_id|approval_id`); it appears in `open_threads` like any other root. When requesting an approval for
+a recommendation, put `"advice_id"` in the approval payload so the Approve buttons sit on the same card.
 
 ## Commands
 
@@ -25,6 +32,8 @@ fantasy intel reply <event_id> --stance agree|disagree|comment|question --text "
     [--evidence @ev.json] [--rest] [--json]   # writes under the day's claude-YYYY-MM-DD run
 fantasy intel post --kind update|recommendation|trade_offer|question|other --text "..." \
     [--details @d.json] [--evidence @ev.json] [--rest]   # start a thread others can answer
+    # about a recommendation/approval: --details '{"advice_id": "<advice_id>"}' (or approval_id) -> the post is the
+    # discussion on that decision's Inbox card (dashboard_data.md §4 "Advice ↔ approval ↔ thread")
 fantasy intel list --source claude|user|advisor|muse|all --kind reply   # raw listing
 ```
 

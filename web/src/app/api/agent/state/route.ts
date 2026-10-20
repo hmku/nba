@@ -184,7 +184,7 @@ export async function GET(req: Request) {
     const [apprR, evR, repR, notR] = await Promise.all([
       db.from("approvals").select("approval_id", { count: "exact", head: true }).eq("status", "pending"),
       db.from("agent_events").select("*").order("ts", { ascending: false }).limit(10),
-      // thread-able updates (same feed as the Activity page; never private chat content)
+      // thread-able updates (same feed as the Inbox page; never private chat content)
       db
         .from("agent_events")
         .select("*")

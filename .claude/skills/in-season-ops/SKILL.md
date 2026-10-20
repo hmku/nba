@@ -34,7 +34,7 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
 | Injuries | `fantasy data fetch-injuries --json` (ESPN API + CBS) plus Yahoo tags from the roster capture | | BUILT |
 | Muse league intel (read-only) | `fantasy intel latest\|list\|show [--rest] --json` | `docs/integrations/muse.md` | BUILT |
 | Dashboard (Matchup / League tabs, installable PWA) | Next.js on Vercel, `docs/runbooks/dashboard.md` | | BUILT |
-| "Moves" tab with recommendations + evidence | `fantasy advise post\|status\|list` (`model_runs` kind `advice`; schema `docs/research/dashboard_data.md` §4) | dashboard `/moves` | BUILT |
+| "Inbox" tab: recommendations + evidence + approvals + discussion, one card each | `fantasy advise post\|status\|list` (`model_runs` kind `advice`; schema `docs/research/dashboard_data.md` §4) | dashboard `/inbox` | BUILT |
 | Muse snapshot → rosters converter (`fantasy intel export-league`), executor action queue (`/api/agent/actions`), `--approval-expires-in` on `txn plan` | | `docs/research/league_loop.md` | PLANNED |
 | In-season projection updates, calibration of lineup tag priors / `rest_share` (T-016) | | | PLANNED (awaiting user decision / data) |
 
@@ -47,7 +47,7 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
   you are quoting.
 
 ## Approval policy (non-negotiable; CLAUDE.md wins on any conflict)
-Every recommendation you put to the user (and every Moves card) must include a **justification** and **"why now,
+Every recommendation you put to the user (and every Inbox card) must include a **justification** and **"why now,
 not before"**: the earlier belief/decision (draft-time score, previous sim, earlier recommendation) and what changed
 (new info, model version, precision, roster/schedule facts), plus costs the model ignores (waiver priority, adds budget,
 upside). If the earlier decision was a statistical tie, say so with the numbers.

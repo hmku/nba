@@ -319,7 +319,7 @@ test("yahooMatchupUrl uses both Yahoo team ids when known", () => {
 test("legacy routes /matchup and /lineup redirect to /week keeping the query", () => {
   assert.equal(WEEK_PATH, "/week");
   assert.deepEqual(
-    LEGACY_REDIRECTS.map((r) => [r.source, r.destination, r.permanent]),
+    LEGACY_REDIRECTS.filter((r) => r.destination === WEEK_PATH).map((r) => [r.source, r.destination, r.permanent]),
     [
       ["/matchup", "/week", false],
       ["/lineup", "/week", false],

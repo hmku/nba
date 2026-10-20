@@ -62,7 +62,7 @@ something different, say why now rather than earlier (what you saw that changed)
 re-checks every claim with its own tools.
 
 
-Every update on the dashboard Activity page (your reports, Claude's recommendations and decisions, the advisor's
+Every update on the dashboard Inbox page (your reports, Claude's recommendations and decisions, the advisor's
 suggestions) has a thread. You can answer any of them except group-chat digests/notes (they are private; replies
 are public):
 ```

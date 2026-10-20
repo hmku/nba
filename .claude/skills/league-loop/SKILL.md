@@ -156,7 +156,7 @@ Every recommendation is a planned txn whose payload is exact enough for a dumb e
 ## 5. Failure handling
 | Situation | Do |
 |---|---|
-| **Stale intel** (gate in step 1 fails) | Recommend nothing that depends on it. Post a request for a fresh snapshot (PLANNED: `POST /api/agent/requests` queue; until then a `chat_note`-style note on the dashboard Activity feed via `fantasy run event note "REQUEST TO MUSE: fresh my_team+free_agents snapshot"` and say it to the user). Tell the user what is stale and since when. |
+| **Stale intel** (gate in step 1 fails) | Recommend nothing that depends on it. Post a request for a fresh snapshot (PLANNED: `POST /api/agent/requests` queue; until then a `chat_note`-style note on the dashboard Inbox feed via `fantasy run event note "REQUEST TO MUSE: fresh my_team+free_agents snapshot"` and say it to the user). Tell the user what is stale and since when. |
 | **Conflicting intel** (two snapshots disagree, chat says a trade happened but `rosters` does not show it, injury report vs `injuries` snapshot) | Prefer the newer **Yahoo page** snapshot over chat; never act on chat alone. Record both ids in an observation, recommend conditionally ("if X is really out...") or not at all, and ask the user / request a fresh snapshot. |
 | **Muse unavailable** (no snapshot for > 24 h, API 5xx) | Tell the user; fall back to a local browser read (`yahoo-browser`, dry_run) when the user is at the laptop. Approved actions stay queued until they expire; nothing is executed by the cloud job. |
 | **Approval pending at expiry** | It expires (`approvals.expire_overdue`); the txn is then cancelled by the next run (`txn mark <id> cancelled --error "approval expired"`). Re-plan only if still justified (`--attempt 2`). |

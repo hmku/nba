@@ -4,11 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   advisorRunId,
   authorizeAgentRequest,
+  commentEventPayload,
   museRunId,
   replyEventPayload,
   replyTarget,
   userRunId,
   type AgentIdentity,
+  type CommentInput,
   type ReplyInput,
 } from "./agentPure";
 import { serviceClient } from "./supabase-admin";
@@ -227,7 +229,38 @@ export async function postReply(db: SupabaseClient, author: AgentIdentity | "use
     event_id: event.event_id,
     run_id: run.runId,
     thread_root: target.threadRoot,
-    note: "Reply added to the thread (dashboard Activity page; `fantasy intel thread` for the agents). Nothing was executed.",
+    note: "Reply added to the thread (dashboard Inbox page; `fantasy intel thread` for the agents). Nothing was executed.",
+  });
+}
+
+/** Insert the user's comment on a decision card (a new thread root under the user's daily run). The referenced advice
+ *  item or approval must exist. */
+export async function postComment(db: SupabaseClient, c: CommentInput): Promise<NextResponse> {
+  const check =
+    "advice_id" in c.ref
+      ? db.from("model_runs").select("run_id").eq("kind", "advice").eq("summary->>advice_id", c.ref.advice_id).limit(1)
+      : db.from("approvals").select("approval_id").eq("approval_id", c.ref.approval_id).limit(1);
+  const { data: hit, error: hErr } = await check;
+  if (hErr) return fail(hErr.message, 500);
+  if (!hit?.length) return fail("advice_id" in c.ref ? "advice_id: no such recommendation" : "approval_id: no such approval", 404);
+  const run = await ensureUserRun(db);
+  if (run.error) return fail(`Could not open the user run: ${run.error}`, 500);
+  const { message, payload } = commentEventPayload(c);
+  const event = {
+    event_id: `user-ev-${crypto.randomUUID().replace(/-/g, "")}`,
+    run_id: run.runId,
+    ts: new Date().toISOString(),
+    kind: "note",
+    message,
+    payload,
+  };
+  const { error } = await db.from("agent_events").insert(event);
+  if (error) return fail(error.message, 500);
+  return reply({
+    status: "logged",
+    event_id: event.event_id,
+    run_id: run.runId,
+    note: "Comment added to the decision's thread (Inbox; `fantasy intel thread` for the agents). Nothing was executed.",
   });
 }
 

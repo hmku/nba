@@ -34,12 +34,12 @@ buttons are disabled; reads keep working. After adding them in Vercel, **redeplo
 only apply to new deployments).
 
 ## Pages
-Navigation: 5 primary tabs — **This week**, **League**, **Moves**, **Activity** (pending-approval count badge, polled
-every 30s), **Draft** — plus **More** (Players, History, theme toggle), as a 6-column bottom tab bar on phones and a top
+Navigation: 4 primary tabs — **This week**, **League**, **Inbox** (pending-approval count badge, polled every 30s),
+**Draft** — plus **More** (Players, History, theme toggle), as a 5-column bottom tab bar on phones and a top
 bar on desktop. Write unlock ("unlock" / "read-only" / "● unlocked") sits top right. `/` redirects to `/draft`, or to
 `/week` once the real (non-mock) default draft is complete (status `complete` or all picks recorded).
-`/agents` and `/approvals` redirect to `/activity`; the old `/matchup` and `/lineup` redirect (307, query kept) to `/week`
-(`src/lib/routes.ts`, wired in `next.config.ts` `redirects()`).
+Old URLs redirect (307, query kept; the browser keeps the `#anchor`): `/matchup`, `/lineup` → `/week`; `/moves`,
+`/activity`, `/approvals`, `/agents` → `/inbox` (`src/lib/routes.ts`, wired in `next.config.ts` `redirects()`).
 
 **Snappiness** (keep these when adding pages): every tab has a `loading.tsx` skeleton (`src/components/Skeleton.tsx`),
 so `<Link>`'s default prefetch loads it and a tap switches instantly while the server renders. The tapped tab
@@ -132,7 +132,7 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
   games (today included) of rostered players not in an IL slot and not tagged O/INJ/NA/SUSP (mine from the plans' `games`
   map, else the schedule by NBA team; theirs from the schedule), plus Yahoo's `games_remaining` when the score row has it.
   **Day notes** under the lineups: decide-at-tip-off items and IL moves of the picked day's plan.
-- **Decisions**: the 3 newest timeline items (lineup/IL txns with verification evidence, approvals, Moves items, logged
+- **Decisions**: the 3 newest timeline items (lineup/IL txns with verification evidence, approvals, Inbox recommendations, logged
   `decisions`) + "Show all N".
 - **Other matchups** (collapsed): the old "vs every opponent" table from `my_team.weekly_h2h_matrix` (week P(win), season
   average from `vs_opponents_all_play`, 9 category-odds cells); tapping a team opens `?week=N&opp=T`, a what-if view (score
@@ -167,11 +167,30 @@ draft, or the sim's draft post-draft; names from `drafts.config.team_names`), el
 note with one simulated roster for me.
 
 - `/agent` (public, not in the nav): instructions for Meta Muse — see "External-agent API" below.
-- `/activity` (top to bottom; auto-refresh 15s):
+- `/inbox` — **Inbox** (2026-10-20: merges the former Moves and Activity tabs so a recommendation appears ONCE, with
+  its explanation next to the Approve / Reject buttons). Top to bottom, auto-refresh 15s:
   1. amber warnings only when needed: stuck "running" runs (heartbeat >10m; the passive `muse`/`advisor`/`user`/
      `claude` daily runs excluded) and expired locks;
-  2. **Waiting for you**: pending approvals pinned (approve/reject with note → POST `/api/approvals`);
-  3. **Agent updates**: ONE feed (`src/lib/feed.ts`, schema in `docs/research/dashboard_data.md` §5) of Muse reports
+  2. **Needs your yes** — one card per decision (`src/lib/inbox.ts` joins advice items and approvals both ways:
+     `summary.approval_id` / `payload.advice_id`; schema `docs/research/dashboard_data.md` §4 "Advice ↔ approval ↔
+     thread"): type / status / approval badges, title, headline, verdict, **Why** and **What changed** (long text
+     collapses on phones), **Key numbers** (first 3 metrics with evidence chips; "All N metrics · scenarios" expands
+     the full table), risks, then **Your call**: the approval summary, the line *"Approving counts as your yes; the next
+     daily run (7:10 ET) or the main session executes it after re-checking Yahoo."* (user decision 2026-10-20), the
+     expiry ("Expires in 20h (Oct 21, 2:04 PM ET)", amber once past) and the passphrase-gated Approve / Reject with an
+     optional note (POST `/api/approvals`). Advice awaiting a yes with no approval row yet says so (no buttons).
+     Below: **Discussion** — every thread linked to the decision (Claude's/Muse's/advisor's/your posts that name its
+     advice_id or approval_id, with their replies and per-thread Reply), plus **Comment on this decision** (when
+     unlocked: POST `/api/threads/comment` `{advice_id|approval_id, stance, text}` → a new user thread linked by
+     `details`, shown to Claude in `fantasy intel latest` → `open_threads`). Approval-only cards (no advice item) show
+     the approval summary and payload. Sorted by soonest expiry, then newest. "Nothing needs your yes right now"
+     when empty;
+  3. **Approved · queued** (only when non-empty): you said yes (approval approved, or advice `approved`) and the move
+     is not `done` yet;
+  4. **Ideas**: advice with status `idea` (and today's lineup plan) as compact cards: "Why, numbers and risks ▸" and the
+     discussion collapsed. Evidence legend below;
+  5. **Agent updates**: the threaded feed, unchanged except that threads shown inside a decision card are left out
+     (and out of the filter counts). ONE feed (`src/lib/feed.ts`, schema in `docs/research/dashboard_data.md` §5) of Muse reports
      (incl. `trade_offer` cards: who gives what), advisor suggestions (dashed card: category/urgency/confidence,
      labelled evidence, proposed change), Claude's decisions / verifications / errors and finished run summaries,
      Claude's posts, and, after the passphrase unlock only, group-chat digests (badge "private") and one card with
@@ -184,33 +203,36 @@ note with one simulated roster for me.
      `?at=` = the page starting at one update), so pages stay put while new updates arrive; "Jump to newest" on
      older pages; filters ride along. A reply never moves its thread: a root on page k shows all its replies
      however new, and page 1 lists "New replies on earlier updates" (newest 5, each linking to `?at=<root>#<id>`).
-     Pending approvals and the snapshot card show on the newest page only. Filter chips by author (started or
+     The decision sections and the snapshot card show on the newest page only (older pages show a "N decisions need
+     your yes → newest page" link instead). Filter chips by author (started or
      replied in) and by kind, as URL params (`?author=advisor&kind=trade_offer`; a chip resets to the newest page),
      with thread counts over the newest 1000 feed rows (shown "n+" beyond that). When unlocked, a **Reply** button on
      every non-private card posts `{reply_to, stance, text}` to `POST /api/threads/reply` (passphrase cookie, author
-     always "user", 30/h). Locked: read-only, with a one-line note that private intel needs the unlock;
-  4. **System**: model freshness strip (→ History), the agent run timeline **on request** (link → `?timeline=1#runs`,
+     always "user", 30/h shared with comments). Locked: read-only, with a one-line note that private intel needs the unlock;
+  6. **Done / rejected** (collapsed): advice done/rejected/expired, decided approvals without open advice and other
+     days' lineup plans, newest first, one line each (status, title, time) expanding to the compact card; links to
+     **This week → Decisions** (`/week#decisions`, the week-by-week timeline with Yahoo verification);
+  7. **System**: model freshness strip (→ History), the agent run timeline **on request** (link → `?timeline=1#runs`,
      streamed via Suspense: one line per run: status dot, agent, task, status, age; "≠ model" and error counts; tap
      for summary, decisions, every event with payloads capped at 600 chars of JSON, transactions, ids), held locks,
      and past approvals / decisions / transactions not tied to a listed run.
-  With no data at all, the feed and the timeline show explanatory empty states.
+  Anchors: each decision card's id is its advice_id (approval-only cards: the approval_id), and every approval id on
+  a card is an anchor too, so `/inbox#<advice_id>` and `/inbox#apr-…` work (the This week timeline links there).
   Speed: all independent queries run in one `Promise.all`, explicit column lists (no `select("*")` on the big
-  tables). Feed round 1 reads, besides the system tables: a light index of the newest 1000 feed rows (ids, kinds,
+  tables). Round 1 reads, besides the system tables and approvals: the newest 300 advice rows, the candidate thread
+  roots for the cards (≤ 200 report rows with an explicit `details.advice_id|approval_id` or id-shaped text in
+  message/details/evidence: PostgREST `or` + POSIX `match`, then matched exactly in JS), a light index of the newest 1000 feed rows (ids, kinds,
   thread links; facets + "who replied where"), the cursor window of roots (~2 pages, full columns; light columns
   when an author filter needs a 1000-row window), finished run summaries by `ended_at`, the newest 100 replies in
-  full and a run-summary count. Round 2 runs only for what is still missing (light-read roots, older replies,
-  decision cards older than the newest 100), so the usual page is one round. Local `next start` against production
-  Supabase (anon, median of 10, 2026-10-20): before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB →
+  full and a run-summary count. Round 2 runs only for what is still missing (light-read roots, older replies incl.
+  the cards' threads, decision cards older than the newest 100), so the usual page is one round. Local `next start` against production
+  Supabase (anon, 2026-10-20, one Inbox load): 0.16 s / 318 KB HTML (was Activity 0.11 s / 153 KB + Moves as a
+  separate page). Older Activity numbers (median of 10, 2026-10-20): before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB →
   after 0.075 s / 158 KB, RSC 0.056 s / 84 KB (`?timeline=1`: 0.12 s / 451 KB). Cursor paging (median of 7, same
   day, more data): `?n=` version 0.105 s / 184 KB → 0.11 s / 153 KB (RSC 77 KB); `?author=claude` 0.09 s → 0.17 s
   (two rounds); `?timeline=1` 0.19 s / 468 KB.
-- `/moves`: recommendations from `fantasy advise post` (`model_runs` kind `advice`, newest version per
-  `summary.advice_id`; schema in `docs/research/dashboard_data.md` section 4). Sections: **Needs your yes**
-  (status `awaiting_yes`, or `requires_user_yes` with status `idea`), **Today's lineup** (type `lineup` for today ET),
-  **Ideas**, and a collapsed **Done / rejected** (plus lineup plans for other days). Each card: type + status badges,
-  headline, verdict, metrics table (value ± SE, evidence chip: fitted / simulated / prior / literature), scenario
-  table, risks, links (repo paths open on GitHub), posted/updated time. Read-only: no buttons; approvals stay on
-  `/activity` and in chat. Pure readers in `src/lib/moves.ts` (tested in `tests/moves.test.mjs`).
+  Pure readers: `src/lib/inbox.ts` (join, grouping, thread linkage, feed de-dup; `tests/inbox.test.mjs`),
+  `src/lib/moves.ts` (advice parsing; `tests/moves.test.mjs`), `src/lib/feed.ts` / `feedPage.ts`.
 - `/players` (More): latest valuation + projections joined; toggle category values / per-game
   projections; sortable; row click opens detail drawer.
 - `/history` (More): latest model run per kind + data snapshots per source (freshness, moved from the
@@ -263,7 +285,7 @@ anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src
   (Muse) needs `details {from_team, to_team, from_gives, to_gives, status?}`.
 - `GET /api/agent/state` also returns `recent_updates` (newest 15 replyable updates with their replies) and
   `event_id` on `recent_events`.
-- Activity shows Muse's reports in the "Agent updates" feed (author + kind + source badges) and badges on those
+- The Inbox shows Muse's reports in the "Agent updates" feed (author + kind + source badges) and badges on those
   events in the timeline; the muse run is excluded from the "stuck running" warning (it only heartbeats on reports).
 - `POST /api/threads/reply {reply_to, stance, text}` — the user's reply (passphrase cookie like `/api/approvals`;
   author "user", run `user-YYYY-MM-DD`).

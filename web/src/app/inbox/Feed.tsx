@@ -1,4 +1,4 @@
-/* "Agent updates": one feed of Muse / advisor / Claude / user updates with their reply threads (server component). */
+/* Inbox "Agent updates": one feed of Muse / advisor / Claude / user updates with their reply threads (server component). */
 import Link from "next/link";
 import type { AgentEvent, Decision } from "@/lib/types";
 import { Badge, JsonView, statusTone } from "@/components/ui";
@@ -243,12 +243,14 @@ function Thread({ it }: { it: FeedItem }) {
 
 /* ------------------------------------------------------------------ card + feed */
 
-function FeedCard({ it, decisions }: { it: FeedItem; decisions: Map<string, Decision> }) {
+/** One update with its thread. `nested`: rendered inside an Inbox decision card (lighter frame, tighter padding). */
+export function FeedCard({ it, decisions, nested = false }: { it: FeedItem; decisions: Map<string, Decision>; nested?: boolean }) {
   const ev = it.event;
   const src = ev && isObj(ev.payload) ? str(ev.payload.source) : null;
   const dashed = it.type === "suggestion";
+  const frame = nested ? "rounded-lg bg-panel-2/40 px-3 py-2" : "rounded-xl bg-panel px-4 py-3";
   return (
-    <li id={it.key} className={`scroll-mt-16 rounded-xl border bg-panel px-4 py-3 ${dashed ? "border-dashed border-accent/50" : "border-line"}`}>
+    <li id={it.key} className={`scroll-mt-16 border ${frame} ${dashed ? "border-dashed border-accent/50" : "border-line"}`}>
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <AuthorBadge a={it.author} />
         <Badge tone={KIND_TONE[it.kind] ?? "neutral"}>{kindLabel(it.kind)}</Badge>

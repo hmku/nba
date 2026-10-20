@@ -90,7 +90,7 @@ export async function GET() {
           "kind 'chat_digest' = a summary of a period of the league group chat (message) with verbatim excerpts (details.excerpts). " +
           "kind 'trade_offer' = a concrete trade offer (details: trade_offer_details). " +
           "report_kind 'reply' (reply_body; Muse and advisor tokens) = agree/disagree/comment/question on an existing update: the reply is " +
-          "threaded under it on the Activity page; the author is set from the token; reply_to must exist (404) and must not be private chat content (403).",
+          "threaded under it on the Inbox page; the author is set from the token; reply_to must exist (404) and must not be private chat content (403).",
       },
       {
         method: "POST",

@@ -202,11 +202,12 @@ scenario is absent or starts with `post-draft` (`web/src/lib/postDraft.ts:isSeas
 ```
 `inputs.rosters` holds every team's player ids; `inputs.matchup_assumed_weeks` repeats the assumption.
 
-## 4. `kind = 'advice'` — recommendations for the Moves view (`/moves`)
+## 4. `kind = 'advice'` — recommendations for the Inbox decision cards (`/inbox`; formerly the Moves view)
 
 _Added 2026-10-20 (advice-0.1.0); 2026-10-20 advice-0.2.0 added `rationale` + `why_now` (additive, schema stays
 `advice/1`). Producer: `fantasy advise post|status` (`src/fantasy/ops/advice.py`, `model_version = advice-0.2.0`).
-Reader: `web/src/app/moves/page.tsx` via `web/src/lib/moves.ts`._
+Readers: `web/src/app/inbox/page.tsx` via `web/src/lib/moves.ts` (parsing) and `web/src/lib/inbox.ts` (join with
+approvals and threads, sections); the This week decisions timeline (`web/src/lib/lineup.ts`)._
 
 One recommendation (trade idea, add/drop, stream, IL move, daily lineup plan) is an **item** with a stable
 `summary.advice_id`. Every change is a new **version**: its own immutable `model_runs` row (`run_id = adv-YYYYmmddHHMMSS-xxxxxx`).
@@ -291,22 +292,47 @@ roster/schedule facts, other teams' moves). Numbers in these texts follow the ev
 with a label and reference them from `why_now.evidence`. Readers treat both as optional: rows without them render as
 before.
 
-**Moves card layout.** Header → title → headline → verdict → **Why** (rationale) and **What changed** (`before`, then the
-`changed` list with kind tags and the evidence refs) → metrics → scenarios → risks → links. On narrow screens (< 640 px)
-a long explanation (`isLongWhy`: > 2 rationale items, > 3 changes, or > 420 chars) collapses to a two-line teaser that
-expands on tap; on wider screens it is always open.
+**Inbox card layout** (`web/src/app/inbox/Decisions.tsx`). Header (type, advice status, approval badge, age) →
+title → headline → verdict → **Why** (rationale) and **What changed** (`before`, then the `changed` list with kind tags
+and the evidence refs) → **Key numbers** (first 3 metrics; the full metrics table and scenarios behind "All N metrics")
+→ risks → **Your call** (pending approval: summary, policy line, expiry, Approve / Reject) → **Discussion** (linked
+threads + comment box) → links, posted/updated, ids. On narrow screens (< 640 px) a long explanation (`isLongWhy`:
+> 2 rationale items, > 3 changes, or > 420 chars) collapses to a two-line teaser that expands on tap; ideas, queued and
+closed cards collapse Why / numbers / risks and the discussion.
 
-**Moves page sections** (`groupMoves`): *Needs your yes* = status `awaiting_yes`, or `requires_user_yes` with status
-`idea`; *Today's lineup* = type `lineup` with `for_date` = today ET (or none) and not rejected/expired; *Done / rejected*
-= done/rejected/expired plus lineup plans for other days; *Ideas* = the rest (incl. approved, not yet done).
+### Advice ↔ approval ↔ thread linkage (Inbox, 2026-10-20)
+
+One decision = one card. The Inbox joins (`joinDecisions` / `linkThreads` in `web/src/lib/inbox.ts`):
+
+| link | field | written by |
+|---|---|---|
+| advice → approval | `summary.approval_id` | `fantasy advise status <id> <status> --approval-id apr-…` (or in the advice JSON) |
+| approval → advice | `approvals.payload.advice_id` | `fantasy approval request … --payload '{"advice_id": "<advice_id>", …}'` (**preferred**: set it whenever an approval is requested for a recommendation) |
+| thread → decision (explicit) | root event `payload.details.advice_id` (or `details.approval_id`; top-level `payload.advice_id|approval_id` also accepted) | `fantasy intel post --kind recommendation --text "…" --details '{"advice_id": "<advice_id>"}'`; the dashboard's "Comment on this decision" (`POST /api/threads/comment`, report_kind `comment`, `details.advice_id|approval_id`) |
+| thread → decision (fallback) | the advice_id or an approval_id appears as a whole token in the root's message, `details` or `evidence` text | anything (e.g. a post saying "see 2026-10-21-champagnie-claim") |
+
+Either join direction suffices; both are applied. An approval that names an advice item not in the newest 300 advice
+rows, or an advice item with no approval, still gets its own card. Several approvals on one item: the card's deciding
+approval is a pending one, else the one `summary.approval_id` names, else the newest; all are listed. A root post that
+names several decisions shows in each card. Replies follow their root (`thread_root`); replies and private chat rows
+never link by themselves. Linked roots are removed from the Agent updates feed (de-dup), so a recommendation appears
+once.
+
+**Sections** (`groupInbox`): *Needs your yes* = a pending approval, or advice `awaiting_yes` without a decided
+approval (soonest expiry first); *Approved · queued* = approval `approved` or advice `approved`, advice not closed;
+*Ideas* = advice `idea` (no pending/decided approval) and today's (ET) lineup plan; *Done / rejected* = advice
+done/rejected/expired, a rejected/expired approval on open advice, decided approvals without advice, other days' lineup
+plans (newest first). Approving on the dashboard is the user's yes for add/drops and trades (user decision
+2026-10-20): the next daily run (7:10 ET) or the main session executes it after re-checking Yahoo, then
+`fantasy advise status <id> done`.
 
 ---
 
 ## 5. Threads on agent updates (`agent_events`, no migration)
 
 _Added 2026-10-20. Writers: `POST /api/agent/report` (Muse / advisor tokens), `POST /api/threads/reply` (the user,
-passphrase-gated like approvals), `fantasy intel reply|post` (Claude). Readers: Activity page
-(`web/src/lib/feed.ts`), `GET /api/agent/state` → `recent_updates`, `fantasy intel latest|thread`. How Claude uses
+passphrase-gated like approvals), `fantasy intel reply|post` (Claude), `POST /api/threads/comment` (the user's new thread on an Inbox decision
+card). Readers: Inbox page (`web/src/lib/feed.ts`; threads linked to a decision render inside its card, §4), `GET /api/agent/state` → `recent_updates`, `fantasy intel latest|thread`. How Claude uses
 them: `docs/integrations/threads.md`._
 
 **Update (thread root)** = any visible `agent_events` row that is a report (`payload.report_kind` set: Muse reports
@@ -352,7 +378,7 @@ unlock), Claude's notable events, finished non-passive runs with a `summary` (e.
 card with Muse's newest snapshot per kind (unlock only). Replies hang under `thread_root` (flat, oldest first, with
 "↳ re X" when they answer a reply); a thread whose root is outside the query window is fetched by id. Order: newest
 activity (root or reply) first. Filters: author (started or replied in the thread) and kind, as URL params
-(`/activity?author=advisor&kind=trade_offer`).
+(`/inbox?author=advisor&kind=trade_offer`).
 
 ---
 

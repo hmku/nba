@@ -186,7 +186,9 @@ def reply_cmd(
 def post_cmd(
     text: Annotated[str, typer.Option(help="The update (public on the dashboard; <=2000 chars)")],
     kind: Annotated[str, typer.Option(help="|".join(intel.CLAUDE_POST_KINDS))] = "update",
-    details: Annotated[str | None, typer.Option(help="JSON object: inline, @file.json or -")] = None,
+    details: Annotated[str | None, typer.Option(
+        help="JSON object: inline, @file.json or -. Include {\"advice_id\": \"...\"} (or \"approval_id\") to show "
+             "the post as the discussion on that decision's Inbox card")] = None,
     evidence: Evidence = None,
     use_rest: Rest = False,
     json_out: JsonOut = False,

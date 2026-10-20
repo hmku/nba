@@ -5,7 +5,7 @@ import { USER_REPLIES_PER_HOUR, validateReply } from "@/lib/agentPure";
 
 export const dynamic = "force-dynamic";
 
-/** The user's reply to an agent update (Activity page). Same passphrase-gated write path as /api/approvals; the author
+/** The user's reply to an agent update (Inbox page). Same passphrase-gated write path as /api/approvals; the author
  *  is always "user" (never taken from the body). Body: {reply_to, stance, text}. */
 export async function POST(req: Request) {
   const w = await requireWriter();

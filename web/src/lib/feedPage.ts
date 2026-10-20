@@ -1,5 +1,5 @@
 /**
- * Cursor pagination for the Activity "Agent updates" feed (pure, no runtime imports: unit-tested by `npm test`).
+ * Cursor pagination for the Inbox "Agent updates" feed (pure, no runtime imports: unit-tested by `npm test`).
  *
  * Order: newest POSTED first (an update's own timestamp, then key, descending). Unlike "newest activity", that order
  * is stable under inserts, so a cursor `(ts, key)` in the URL always lands on the same page boundary; a thread's
@@ -241,7 +241,7 @@ export interface FeedParams {
   after?: string | null;
 }
 
-/** /activity URL keeping the filters (cursor params only when given). */
+/** /inbox URL keeping the filters (cursor params only when given). */
 export function feedHref(p: FeedParams, hash?: string): string {
   const q = new URLSearchParams();
   if (p.author) q.set("author", p.author);
@@ -250,7 +250,7 @@ export function feedHref(p: FeedParams, hash?: string): string {
   else if (p.at) q.set("at", p.at);
   else if (p.after) q.set("after", p.after);
   const s = q.toString();
-  return `${s ? `/activity?${s}` : "/activity"}${hash ? `#${hash}` : ""}`;
+  return `${s ? `/inbox?${s}` : "/inbox"}${hash ? `#${hash}` : ""}`;
 }
 
 export type Facets = { authors: [Author, number][]; kinds: [string, number][] };

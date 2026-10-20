@@ -1,4 +1,4 @@
-/* Presentational sections of the Activity page (server components; data loading stays in page.tsx). */
+/* Presentational "System" sections of the Inbox page (server components; data loading stays in page.tsx). */
 import Link from "next/link";
 import type { AgentEvent, AgentRun, Approval, Decision, Lock, Transaction } from "@/lib/types";
 import { Badge, Disclosure, JsonView, statusTone } from "@/components/ui";
@@ -6,7 +6,6 @@ import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
 import { ageSeconds, shortTime } from "@/lib/format";
 import { trimPayload } from "@/lib/feed";
-import { DecideButtons } from "../approvals/DecideButtons";
 
 function short(v: unknown): string {
   if (v == null) return "—";
@@ -130,50 +129,6 @@ export function SystemWarnings({ stuck, expiredLocks }: { stuck: AgentRun[]; exp
         </div>
       )}
     </div>
-  );
-}
-
-/* ------------------------------------------------------------------ approvals */
-
-/** Pending approvals, pinned at the top with Approve / Reject buttons. */
-export function PendingApprovals({ pending }: { pending: Approval[] }) {
-  if (pending.length === 0) return null;
-  return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-medium text-accent">Waiting for you · {pending.length}</h2>
-      {pending.map((a) => {
-        const expired = a.expires_at && Date.parse(a.expires_at) < Date.now();
-        return (
-          <div key={a.approval_id} className="rounded-xl border border-accent/50 bg-accent/5 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="accent">{a.action_type}</Badge>
-              {expired && <Badge tone="warn">expired</Badge>}
-              <span className="ml-auto text-xs text-muted">
-                <Ago ts={a.requested_at} />
-              </span>
-            </div>
-            <div className="mt-1.5 text-[15px] font-medium leading-snug">{a.summary}</div>
-            <details className="mt-1 text-xs text-muted">
-              <summary className="cursor-pointer select-none">details</summary>
-              <div className="mt-1 space-y-1">
-                <div>
-                  id <code>{a.approval_id}</code>
-                  {a.run_id && (
-                    <>
-                      {" "}
-                      · run <code>{a.run_id}</code>
-                    </>
-                  )}
-                  {a.expires_at && <> · expires {shortTime(a.expires_at)}</>}
-                </div>
-                <JsonView value={a.payload} label="payload" />
-              </div>
-            </details>
-            <DecideButtons id={a.approval_id} />
-          </div>
-        );
-      })}
-    </section>
   );
 }
 

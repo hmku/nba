@@ -1,4 +1,4 @@
-// Activity feed cursor pagination (src/lib/feedPage.ts) + page assembly with threads. Run: `npm test`.
+// Inbox feed cursor pagination (src/lib/feedPage.ts) + page assembly with threads. Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -51,9 +51,9 @@ test("parsePageMode: before > at > after; bad cursors fall back to the newest pa
 });
 
 test("feedHref keeps filters and one cursor param", () => {
-  assert.equal(feedHref({}), "/activity");
-  assert.equal(feedHref({ author: "muse", kind: "trade_offer", before: "abc" }), "/activity?author=muse&kind=trade_offer&before=abc");
-  assert.equal(feedHref({ kind: "decision", after: "x" }, "e1"), "/activity?kind=decision&after=x#e1");
+  assert.equal(feedHref({}), "/inbox");
+  assert.equal(feedHref({ author: "muse", kind: "trade_offer", before: "abc" }), "/inbox?author=muse&kind=trade_offer&before=abc");
+  assert.equal(feedHref({ kind: "decision", after: "x" }, "e1"), "/inbox?kind=decision&after=x#e1");
 });
 
 test("feedRowsOr: private chat kinds excluded only when locked; replies only for the facet index", () => {

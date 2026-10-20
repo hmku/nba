@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     event_id: event.event_id,
     run_id: runId,
     truncated: r.truncated,
-    note: "Logged for the agents and shown on the dashboard Activity page. No action was taken.",
+    note: "Logged for the agents and shown on the dashboard Inbox page. No action was taken.",
   });
 }
 
@@ -115,6 +115,6 @@ async function advisorReport(body: unknown): Promise<NextResponse> {
     status: "logged",
     event_id: event.event_id,
     run_id: runId,
-    note: "Suggestion logged for the main Claude agent (fantasy intel latest → advisor_suggestions) and shown on the dashboard Activity page. Nothing was executed.",
+    note: "Suggestion logged for the main Claude agent (fantasy intel latest → advisor_suggestions) and shown on the dashboard Inbox page. Nothing was executed.",
   });
 }

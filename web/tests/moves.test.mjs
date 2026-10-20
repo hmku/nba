@@ -1,7 +1,7 @@
 // Moves view readers (shape: `fantasy advise post|status`, schema advice/1). Run: `npm test`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatMetric, groupMoves, isLongWhy, latestAdvice, linkHref, parseAdvice, parseRationale, parseWhyNow } from "../src/lib/moves.ts";
+import { formatMetric, isLongWhy, latestAdvice, linkHref, parseAdvice, parseRationale, parseWhyNow } from "../src/lib/moves.ts";
 
 const base = (over = {}) => ({
   advice_id: "2026-10-20-murray-trade",
@@ -55,25 +55,6 @@ test("latestAdvice takes the highest version per item and counts versions", () =
   assert.equal(t.versions, 2);
   assert.equal(t.firstCreatedAt, "2026-10-20T04:00:00Z");
   assert.equal(items[0].runId, "adv-3"); // newest first
-});
-
-test("groupMoves sections", () => {
-  const mk = (id, over) => parseAdvice(row(id, "2026-10-21T10:00:00Z", base({ advice_id: id, ...over })));
-  const items = [
-    mk("needs-yes", {}),
-    mk("awaiting", { requires_user_yes: false, status: "awaiting_yes" }),
-    mk("idea-free", { requires_user_yes: false }),
-    mk("approved", { status: "approved" }),
-    mk("lineup-today", { type: "lineup", for_date: "2026-10-21", status: "done", requires_user_yes: false }),
-    mk("lineup-old", { type: "lineup", for_date: "2026-10-20", status: "idea", requires_user_yes: false }),
-    mk("rejected", { status: "rejected" }),
-  ];
-  const g = groupMoves(items, "2026-10-21");
-  const ids = (xs) => xs.map((x) => x.adviceId);
-  assert.deepEqual(ids(g.needsYes), ["needs-yes", "awaiting"]);
-  assert.deepEqual(ids(g.lineup), ["lineup-today"]);
-  assert.deepEqual(ids(g.ideas), ["idea-free", "approved"]);
-  assert.deepEqual(ids(g.closed), ["lineup-old", "rejected"]);
 });
 
 test("formatMetric and linkHref", () => {

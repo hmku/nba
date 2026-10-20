@@ -260,3 +260,20 @@ def test_rest_reply_thread_and_open_threads():
     assert intel.open_threads(src, at=T0 + timedelta(minutes=1)) == []
     with pytest.raises(NotAllowedError):
         intel.reply(src, "muse-ev-d", "agree", "x")
+
+
+def test_user_comment_on_a_decision_card_is_an_open_thread_root():
+    """The dashboard Inbox comment (no reply_to: the decision may have no thread yet) starts a thread Claude sees."""
+    _event("user-ev-c1", "user-2026-10-20", "user", T0 - timedelta(minutes=5),
+           {"report_kind": "comment", "text": "why drop Bailey?", "stance": "question",
+            "details": {"advice_id": "2026-10-21-champagnie-claim"}, "author": "user"}, kind="note",
+           message="why drop Bailey?")
+    src = intel.source()
+    ot = {t["thread_root"]: t for t in intel.open_threads(src, at=T0)}
+    assert ot["user-ev-c1"]["status"] == "unreplied"
+    assert ot["user-ev-c1"]["root"]["author"] == "user"
+    assert ot["user-ev-c1"]["root"]["details"] == {"advice_id": "2026-10-21-champagnie-claim"}
+    listed = intel.list_intel(src, report_source="user", what="reports")["reports"]
+    assert [r["report_kind"] for r in listed] == ["comment"]
+    intel.reply(src, "user-ev-c1", "comment", "Bailey is the weakest bench slot.", at=T0)
+    assert "user-ev-c1" not in {t["thread_root"] for t in intel.open_threads(src, at=T0 + timedelta(minutes=1))}
