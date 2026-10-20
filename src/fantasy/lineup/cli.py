@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, NoReturn
 
+import pandas as pd
 import typer
 
 from fantasy.cli_common import failure
@@ -82,9 +83,8 @@ def parse_timestamp_et(text: object) -> tuple[date | None, str | None]:
 def slots_as_of(league: dict | None, my_team_entry: dict | None, capture: Path | None) -> tuple[date | None, str]:
     """When were the current-slot data read from Yahoo (ET date) and from which file."""
     if my_team_entry and my_team_entry.get("lineup") is not None and league:
-        for key in ("captured_at",):
-            if league.get(key):
-                return parse_timestamp_et(league[key])[0], f"league file {key}"
+        if league.get("captured_at"):
+            return parse_timestamp_et(league["captured_at"])[0], "league file captured_at"
         m = re.search(r"\(captured ([^)]+)\)", str(league.get("source") or ""))
         if m:
             return parse_timestamp_et(m.group(1))[0], "league file source (captured ...)"
@@ -146,15 +146,7 @@ def plan(
         _fail(f"current-slot data are from {as_of} (ET) via {as_of_src}, not {d0}: changes_vs_current would diff "
               "against stale slots. Re-capture Yahoo (fantasy league sync), pass --current-slots, or --allow-stale",
               as_json, code="stale_capture", exit_code=EXIT_USAGE, slots_as_of=as_of, slots_source=as_of_src)
-    try:
-        me, w1 = load_team(my_team, proj.df, _team_ids(league, my_team), cap, _team_entry(league, my_team))
-        # a plain (single-team) --roster describes my team only; the opponent comes from the newest capture
-        opp_cap = cap
-        if roster is not None and "teams" not in json.loads(roster.read_text()):
-            opp_cap = newest_capture()
-        opp, w2 = load_team(opp_id, proj.df, _team_ids(league, opp_id), opp_cap, _team_entry(league, opp_id))
-    except ValueError as e:
-        _fail(str(e), as_json)
+    me, opp, team_warnings = _load_rosters(league, my_team, opp_id, proj.df, roster, cap, as_json)
     me, pre_warnings = _overlay_slots_and_warn(me, current_slots, d0, as_of, as_of_src, fw,
                                                has_accumulated=accumulated is not None)
     acc = json.loads(accumulated.read_text()) if accumulated else {}
@@ -171,13 +163,11 @@ def plan(
                   action="drop a player or keep an injured player in IL (more players than starting + bench slots)",
                   roster=[{"player_id": p.player_id, "slot": p.slot, "status": p.status} for p in me])
         _fail(str(e), as_json)
-    names = {}
-    if league:
-        names = {int(k): (v.get("name") if isinstance(v, dict) else None) for k, v in league["teams"].items()}
+    names = _team_names(league)
     out = {"model_version": LINEUP_MODEL_VERSION, "week": fw.week, "week_start": fw.start.isoformat(),
            "week_end": fw.end.isoformat(), "my_team": my_team,
            "opponent": {"team_id": opp_id, "name": names.get(opp_id)}, **out}
-    out["warnings"] = pre_warnings + w1 + w2 + out["warnings"]
+    out["warnings"] = pre_warnings + team_warnings + out["warnings"]
     out["slots_as_of"] = {"date": as_of.isoformat() if as_of else None, "source": as_of_src,
                           "current_slots_file": str(current_slots) if current_slots else None}
     out["note"] = ("Run before the first tip-off of the day; after that pass --locked with the players whose games "
@@ -192,6 +182,29 @@ def plan(
         typer.echo(json.dumps(out, indent=1, default=str))
         return
     _print(out)
+
+
+def _load_rosters(league: dict[str, Any] | None, my_team: int, opp_id: int, proj: pd.DataFrame,
+                  roster: Path | None, cap: Path | None,
+                  as_json: bool) -> tuple[list[RosterPlayer], list[RosterPlayer], list[str]]:
+    """(my roster, the opponent's, their load warnings); exits on an unusable roster. A plain (single-team)
+    `--roster` describes my team only, so the opponent then comes from the newest capture."""
+    try:
+        me, w1 = load_team(my_team, proj, _team_ids(league, my_team), cap, _team_entry(league, my_team))
+        opp_cap = cap
+        if roster is not None and "teams" not in json.loads(roster.read_text()):
+            opp_cap = newest_capture()
+        opp, w2 = load_team(opp_id, proj, _team_ids(league, opp_id), opp_cap, _team_entry(league, opp_id))
+    except ValueError as e:
+        _fail(str(e), as_json)
+    return me, opp, w1 + w2
+
+
+def _team_names(league: dict[str, Any] | None) -> dict[int, str | None]:
+    """Team id (draft slot) -> name from the league file ({} without one; None for the legacy list form)."""
+    if not league:
+        return {}
+    return {int(k): (v.get("name") if isinstance(v, dict) else None) for k, v in league["teams"].items()}
 
 
 def _week_and_opponent(d0: date, sched_path: Path, my_team: int, opponent_slot: int | None,
