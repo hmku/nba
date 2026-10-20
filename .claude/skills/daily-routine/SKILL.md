@@ -71,6 +71,11 @@ Record each verdict with a one-line reason in the daily log. A suggestion never 
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once
   available, the streaming tool from `src/fantasy/inseason/` (week-1 analysis handoff `docs/handoffs/2026-10-20-week1-trades.md`).
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
+- **CAUTION (2026-10-20 quant review):** `fantasy inseason stream` before inseason-0.3.0 prices a stream as a
+  season-long swap, so its season-cost numbers are too pessimistic (a 3-day stream really costs ~0-1.7 pp, not 2-7 pp,
+  simulated). Until `fantasy inseason --help` shows 0.3.0, do not present its season ΔP numbers; evaluate a candidate
+  as "drop X, stream S this week, then hold the k-th best FA" with `fantasy sim compare` and say the tool is being fixed.
+  The trade scan's headline numbers likewise need the realistic-refill / schedule-neutral view (see the note).
 - Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
 
 ## 3. EXECUTE (lineup + IL only)
