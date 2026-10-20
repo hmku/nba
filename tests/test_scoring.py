@@ -18,14 +18,14 @@ def test_settings_defaults():
 
 
 def test_committed_league_settings_file():
-    """data/manual/league_settings.json: verified from the Yahoo settings page except draft order / my slot."""
+    """data/manual/league_settings.json: every field verified on Yahoo (draft order / my slot in the browser, 2026-10-19)."""
     from fantasy.league.settings import SETTINGS_FILE, load_settings
 
     s = load_settings(SETTINGS_FILE)
-    assert s.source == "yahoo_settings_screenshot"
+    assert s.source == "browser"
     assert s.num_rounds == 13 and s.roster_slots["IL"] == 3
     assert s.max_season_adds is None and s.max_weekly_adds == 6
-    assert s.unverified_fields() == ["draft_order_type", "my_slot"]
+    assert s.unverified_fields() == []
 
 
 def test_values_sorted_and_replacement_near_zero(proj_path):
