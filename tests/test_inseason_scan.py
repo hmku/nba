@@ -177,10 +177,18 @@ def test_trade_scan_pipeline(ctx):
     same = screen.score({1: lg.rosters[1], 2: lg.rosters[2]})
     assert 0 < same[1] < 9 and 0 < same[2] < 9
     pool = [p for p in ctx.values.index if p not in set(pids)]
-    params = ScanParams(top_per_team=2, kinds=("1-1", "2-1"), partner_tol=5.0, naive_tol=99.0)
+    params = ScanParams(top_per_team=2, kinds=("1-1", "2-1"), partner_tol=5.0, naive_tol=99.0, top_po_per_team=0)
     rows, n = screen_trades(screen, lg, 1, ctx.values, 13, pool, params)
     assert n == 13 * 13 + 78 * 13 and 1 <= len(rows) <= 2
     assert all(r["proxy_me"] > 0 for r in rows)
+    po_weeks = list(st.playoff_weeks)
+    po = Screen(base, lg, ctx.proj.df, ctx.values, st, games_per_week(ctx.nba, ctx.calendar, po_weeks), shares,
+                weeks=po_weeks)
+    rows_po, _ = screen_trades(screen, lg, 1, ctx.values, 13, pool,
+                               ScanParams(top_per_team=2, kinds=("1-1",), partner_tol=5.0, naive_tol=99.0,
+                                          top_po_per_team=1), po)
+    assert 1 <= len(rows_po) <= 3 and len({id(r) for r in rows_po}) == len(rows_po)
+    assert all(r["proxy_me"] > 0 or r["proxy_po_me"] > 0 for r in rows_po)
     simulate_shortlist(rows, lg, 1, {"blend": sim, "market": sim})
     table = trade_rows(rows, ctx.values, ctx.proj.df, ctx.nba, ctx.calendar, st.playoff_weeks, gpw, lg,
                        ["blend", "market"])

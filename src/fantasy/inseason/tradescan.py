@@ -13,7 +13,9 @@ paired position-aware season sims for the shortlist under two projection sets.
    average other team, sum_c Phi(sign_c (mu_me - mu_u) / sqrt(sd_me^2 + sd_u^2)) averaged over u. Keep trades that
    raise my score and that the partner might accept: by rankings (sum of valuation value given minus received,
    how a human reading rankings judges it) the partner loses at most `naive_tol`, AND his proxy score falls by
-   at most `partner_tol` (both PRIORS); then the top K per partner by my proxy gain.
+   at most `partner_tol` (both PRIORS); then the top K per partner by my proxy gain, plus the top K_po by the same
+   proxy anchored on the playoff weeks with playoff-week games (the regular-season screen is blind to schedule-driven
+   title gains: it ranked the reviewed Murray trade 516th of 2197 Yeet trades; validation in the research note).
 3. **Simulate** the shortlist: paired position-aware season sims (common random numbers), under the default blend
    projections and under the conservative `market` projections (`fantasy data alt-projections --blend market`).
    Both teams' ΔP(playoffs), ΔP(title), Δ category wins ± paired SE.
@@ -54,7 +56,7 @@ SI = {s: i for i, s in enumerate(STATS)}
 @dataclass
 class ScanParams:
     top_per_team: int = 3
-    max_trades: int = 33
+    max_trades: int = 44
     partner_tol: float = 0.05  # PRIOR: partner's proxy may drop this much (cats/week) and still be "acceptable"
     naive_tol: float = 0.5  # PRIOR: partner may lose this much summed valuation value ("by rankings")
     kinds: tuple[str, ...] = ("1-1", "2-1", "1-2")
@@ -63,6 +65,7 @@ class ScanParams:
     sig: float = 2.0
     start_share_sims: int = 40
     partners: tuple[int, ...] | None = None  # None = every other team
+    top_po_per_team: int = 1  # extra trades per partner by the playoff-weeks screen (schedule-driven title gains)
 
     def to_dict(self) -> dict:
         return {**asdict(self), "kinds": list(self.kinds),
@@ -106,13 +109,15 @@ def start_shares(league: LeagueState, proj: pd.DataFrame, values: pd.DataFrame, 
 
 
 class Screen:
-    """All-play category proxy anchored on a base season sim (see module docstring, step 2)."""
+    """All-play category proxy anchored on a base season sim (see module docstring, step 2). `weeks` = the weeks
+    whose simulated means/sds anchor it (default: regular season); `gpw` must be games per week in those weeks."""
 
     def __init__(self, base: SimResult, league: LeagueState, proj: pd.DataFrame, values: pd.DataFrame,
-                 settings: LeagueSettings, gpw: dict[str, float], shares: np.ndarray) -> None:
+                 settings: LeagueSettings, gpw: dict[str, float], shares: np.ndarray,
+                 weeks: Sequence[int] | None = None) -> None:
         self.cats = settings.cats
         self.sign = np.array([1.0 if c.higher_is_better else -1.0 for c in self.cats])
-        wi = [base.week_index(w) for w in base.regular_weeks]
+        wi = [base.week_index(w) for w in (weeks or base.regular_weeks)]
         tot = base.totals[:, wi].astype(float)  # (N, w, T, C)
         self.team_ids = list(base.team_ids)
         self.mu = tot.mean(axis=(0, 1))  # (T, C)
@@ -177,9 +182,14 @@ def enumerate_trades(league: LeagueState, my_team: int, kinds: Sequence[str],
 
 
 def screen_trades(screen: Screen, league: LeagueState, my_team: int, values: pd.DataFrame, roster_size: int,
-                  fa_pool: Sequence[str], params: ScanParams) -> tuple[list[dict], int]:
-    """Proxy deltas for every enumerated trade; returns (shortlist rows, number enumerated)."""
-    base = screen.score({my_team: league.rosters[my_team], **{t: league.rosters[t] for t in league.team_ids}})
+                  fa_pool: Sequence[str], params: ScanParams,
+                  po_screen: Screen | None = None) -> tuple[list[dict], int]:
+    """Proxy deltas for every enumerated trade; returns (shortlist rows, number enumerated). Per partner: the top
+    `top_per_team` by my regular-season proxy plus the top `top_po_per_team` by my playoff-weeks proxy (`po_screen`,
+    same method anchored on the playoff weeks with playoff-week games), among acceptable trades."""
+    teams = {t: league.rosters[t] for t in league.team_ids}
+    base = screen.score(teams)
+    base_po = po_screen.score({my_team: teams[my_team]}) if po_screen else {}
     trades = enumerate_trades(league, my_team, params.kinds, params.partners)
     val = values["value"]
     by_team: dict[int, list[dict]] = {}
@@ -188,15 +198,21 @@ def screen_trades(screen: Screen, league: LeagueState, my_team: int, values: pd.
         s = screen.score({my_team: new.rosters[my_team], tr.partner: new.rosters[tr.partner]})
         d_me, d_p = s[my_team] - base[my_team], s[tr.partner] - base[tr.partner]
         naive_p = float(val.reindex(tr.give).fillna(0).sum() - val.reindex(tr.get).fillna(0).sum())
-        if d_me <= 0 or d_p < -params.partner_tol or naive_p < -params.naive_tol:
+        if d_p < -params.partner_tol or naive_p < -params.naive_tol:
             continue
-        by_team.setdefault(tr.partner, []).append({"trade": tr, "league": new, "moves": moves,
-                                                   "proxy_me": d_me, "proxy_partner": d_p, "naive_partner": naive_p})
+        d_po = (po_screen.score({my_team: new.rosters[my_team]})[my_team] - base_po[my_team]) if po_screen else 0.0
+        if d_me <= 0 and d_po <= 0:
+            continue
+        by_team.setdefault(tr.partner, []).append({"trade": tr, "league": new, "moves": moves, "proxy_me": d_me,
+                                                   "proxy_po_me": d_po, "proxy_partner": d_p, "naive_partner": naive_p})
     rows = []
     for _t, lst in sorted(by_team.items()):
-        lst.sort(key=lambda r: -r["proxy_me"])
-        rows += lst[: params.top_per_team]
-    rows.sort(key=lambda r: -r["proxy_me"])
+        reg = sorted((r for r in lst if r["proxy_me"] > 0), key=lambda r: -r["proxy_me"])[: params.top_per_team]
+        taken = {id(x) for x in reg}
+        po = sorted((r for r in lst if r["proxy_po_me"] > 0 and id(r) not in taken),
+                    key=lambda r: -r["proxy_po_me"])[: params.top_po_per_team if po_screen else 0]
+        rows += reg + po
+    rows.sort(key=lambda r: -max(r["proxy_me"], r["proxy_po_me"]))
     return rows[: params.max_trades], len(trades)
 
 
@@ -221,10 +237,13 @@ def schedule_hooks(tr: Trade, proj: pd.DataFrame, nba: NBASchedule, calendar: li
     give, get = [info(p) for p in tr.give], [info(p) for p in tr.get]
     n = len(playoff_weeks)
     tot = lambda xs: [sum(x["playoff_week_games"][k] for x in xs) for k in range(n)]  # noqa: E731
+    mean = lambda xs: [t / max(len(xs), 1) for t in tot(xs)]  # noqa: E731
     return {"playoff_weeks": list(playoff_weeks), "give": give, "get": get,
             "d_playoff_games_by_week": [b - a for a, b in zip(tot(give), tot(get), strict=True)],
-            "note": "raw schedule counts (before availability); the trade's net playoff-week games (get - give) is "
-                    "the schedule part of a title gain that the regular season does not show"}
+            "d_playoff_games_per_player_by_week": [round(b - a, 2) for a, b in zip(mean(give), mean(get), strict=True)],
+            "note": "raw schedule counts (before availability). d_playoff_games_by_week = total games in minus out "
+                    "(negative for any 2-for-1); per_player = mean games of an incoming minus an outgoing player, the "
+                    "schedule part of a title gain that the regular season does not show"}
 
 
 # ---------------------------------------------------------------- simulate
@@ -255,9 +274,12 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
             "refill_moves": {str(t): {k: [str(names.get(p, p)) for p in v] for k, v in m.items()}
                              for t, m in r["moves"].items()},
             "screen": {"proxy_d_cats_per_week_me": round(r["proxy_me"], 4),
+                       "proxy_po_d_cats_per_week_me": round(r.get("proxy_po_me", 0.0), 4),
                        "proxy_d_cats_per_week_partner": round(r["proxy_partner"], 4),
                        "naive_value_partner_gain": round(r["naive_partner"], 3)},
             "naive": {"give": naive_value(values, tr.give), "get": naive_value(values, tr.get)},
+            "drops_incoming": [str(names.get(p, p)) for p in r["moves"].get(league.my_team, {}).get("drop", [])
+                               if p in tr.get],
             "sim": sim,
             "helps_both": both,
             "decomposition": {"schedule": schedule_hooks(tr, proj, nba, calendar, playoff_weeks, gpw)},

@@ -346,13 +346,17 @@ def trade_scan_cmd(
     no_market: Annotated[bool, typer.Option("--no-market", help="Blend projections only")] = False,
     partner: Annotated[str, typer.Option("--partner", help="Only these team ids, comma-separated")] = "",
     kinds: Annotated[str, typer.Option("--kinds", help="1-1,2-1 (I give 2),1-2 (I get 2)")] = "1-1,2-1,1-2",
-    top_per_team: Annotated[int, typer.Option("--top-per-team")] = 3,
-    max_trades: Annotated[int, typer.Option("--max-trades", help="Shortlist size cap (simulated trades)")] = 33,
+    top_per_team: Annotated[int, typer.Option("--top-per-team", help="Per partner, by the regular-season screen")] = 3,
+    top_po_per_team: Annotated[int, typer.Option("--top-po-per-team", help="Per partner, extra by the playoff-weeks "
+                                                 "screen (0 = off)")] = 1,
+    max_trades: Annotated[int, typer.Option("--max-trades", help="Shortlist size cap (simulated trades)")] = 44,
     partner_tol: Annotated[float, typer.Option("--partner-tol", help="PRIOR: partner proxy may fall this much "
                                                "(cats/week) and still pass the screen")] = 0.05,
     naive_tol: Annotated[float, typer.Option("--naive-tol", help="PRIOR: partner may lose this much summed valuation "
                                              "value (by rankings) and still pass the screen")] = 0.5,
     sims: Annotated[int, typer.Option("--sims", help="Paired season sims per trade and projection set")] = 2000,
+    refill_skip: Annotated[int, typer.Option("--refill-skip", help="Refill with the (k+1)-th best realistic free "
+                                             "agent (0 = best; 11 = everyone else claims first)")] = 0,
     seed: Annotated[int, typer.Option("--seed")] = 0,
     top: Annotated[int, typer.Option("--top", help="Rows printed (text mode)")] = 10,
     projections: ProjOpt = None, as_json: JsonOpt = False,
@@ -397,6 +401,7 @@ def trade_scan_cmd(
     else:
         pool = [p for p in ctx.values.index if p not in taken]
         warnings.append("no free-agent capture: refills use the best unrostered projected player (optimistic)")
+    pool = pool[refill_skip:]
     sets = ["blend"]
     sims_by_set = {"blend": PositionAwareSimulator(ctx.proj.df, ctx.values, ctx.replacement, ctx.settings, ctx.nba,
                                                    ctx.calendar, ctx.matchups, SimParams(n_sims=sims, seed=seed))}
@@ -417,14 +422,18 @@ def trade_scan_cmd(
                             "no trade can be flagged helps_both")
     params = ScanParams(top_per_team=top_per_team, max_trades=max_trades, partner_tol=partner_tol, naive_tol=naive_tol,
                         kinds=tuple(k.strip() for k in kinds.split(",") if k.strip()), sims=sims, seed=seed,
-                        partners=tuple(int(x) for x in partner.split(",") if x.strip()) or None)
+                        partners=tuple(int(x) for x in partner.split(",") if x.strip()) or None,
+                        top_po_per_team=top_po_per_team)
     regular = [w.week for w in ctx.calendar if w.week < min(st.playoff_weeks)]
     reg_days = [d for w in ctx.calendar if w.week in regular for d in w.days()]
     base = sims_by_set["blend"].run(lg)
     gpw = games_per_week(ctx.nba, ctx.calendar, regular)
     shares = start_shares(lg, ctx.proj.df, ctx.values, st, ctx.nba, reg_days, params.start_share_sims, seed)
     screen = Screen(base, lg, ctx.proj.df, ctx.values, st, gpw, shares)
-    rows, n_enum = screen_trades(screen, lg, me_id, ctx.values, st.num_rounds, pool, params)
+    po_weeks = list(st.playoff_weeks)
+    po_screen = Screen(base, lg, ctx.proj.df, ctx.values, st, games_per_week(ctx.nba, ctx.calendar, po_weeks), shares,
+                       weeks=po_weeks) if top_po_per_team > 0 else None
+    rows, n_enum = screen_trades(screen, lg, me_id, ctx.values, st.num_rounds, pool, params, po_screen)
     simulate_shortlist(rows, lg, me_id, sims_by_set, params.sig)
     table = trade_rows(rows, ctx.values, ctx.proj.df, ctx.nba, ctx.calendar, st.playoff_weeks, gpw, lg, sets)
     names = ctx.values["name"]
@@ -442,7 +451,7 @@ def trade_scan_cmd(
                              "measured by the lineup Monte Carlo with gp/82 iid availability (prior)",
                    "partner_tol": "prior", "refill": "ASSUMPTION: the short roster wins the claim for the best "
                                                      "realistic free agent of the capture"},
-        "params": params.to_dict(),
+        "params": {**params.to_dict(), "refill_skip": refill_skip},
         "inputs": {"league_file": str(lf), "schedule": str(sched), "projections": proj.path,
                    "projections_sha256": proj.sha256, "market_projections": mkt_info,
                    "free_agents": str(fa_path) if fa_path else None,
