@@ -503,7 +503,7 @@ for "now", the newest overall. PostgREST: `kind=eq.matchup_score&order=created_a
     "totals": {"fgm": 120, "fga": 250, "ftm": 40, "fta": 50, "fg3m": 30, "pts": 310, "reb": 130, "ast": 70,
                "stl": 20, "blk": 10, "tov": 35},                         // raw, ints (floats only if Yahoo shows them)
     "fg_pct": 0.48, "ft_pct": 0.8,            // makes / attempts (4 decimals); null when no attempts yet
-    "games_played": null, "games_remaining": null    // number | null: null = not on the page (see runbook)
+    "games_played": 16, "games_remaining": 14        // from the strip above the score table; null = not found
   },
   "opp": { /* same shape; slot null if the Yahoo id is unknown (a warning says so) */ },
   "categories": [                             // the 9 scoring categories in Yahoo order

@@ -11,7 +11,12 @@
 // Parsing (mirrored and unit-tested in Python: fantasy.league.matchup.parse_matchup_html): the score table is the
 // first <table> whose header row names >= 6 of the category columns and whose body has >= 2 rows linking to a
 // team page /nba/44495/<team id>. Columns are mapped by header label (Yahoo marks display-only stats with "*",
-// e.g. "FGM/A*"), never by position. A field that cannot be found stays null and is listed in `problems`.
+// e.g. "FGM/A*"), never by position; a trailing blank-header column is the categories won. Before any game a cell
+// shows "-" ("-/-" for makes/attempts): that is 0 (a "-" % is null = no attempts). The team name is the first
+// non-empty team-link text (the logo link comes first). Games played / remaining come from the strip above the
+// table ("30 Remaining | 0/30 Games Played 0/26 | Remaining 26", left = first table row). A field that cannot be
+// found stays null and is listed in `problems`. Layout verified on the real page 2026-10-20 (fixtures
+// tests/fixtures/yahoo/matchup_real_{pregame,midweek}.html).
 await (async () => {
   const LEAGUE = 44495, MY_TEAM = 11;
   const WEEK = null;  // e.g. 3 for week 3
@@ -39,9 +44,32 @@ await (async () => {
   ];
   const CATS = new Set(["fgm_a", "fg_pct", "ftm_a", "ft_pct", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]);
   const field = (label) => { const n = norm(label); const hit = COLS.find(([re]) => re.test(n)); return hit ? hit[1] : null; };
-  const num = (s) => { const t = (s || "").replace(/,/g, "").trim(); return /^-?\d*\.?\d+$/.test(t) ? Number(t) : null; };
-  const pct = (s) => { const v = num(s); return v === null ? null : (v > 1 ? v / 100 : v); };
-  const pair = (s) => { const m = (s || "").replace(/,/g, "").match(/(\d+)\s*\/\s*(\d+)/); return m ? [Number(m[1]), Number(m[2])] : [null, null]; };
+  // Yahoo shows "-" ("-/-" for makes/attempts) before a team has any stats this week: 0, not missing; a "-" % is null
+  const DASH = /^[-\u2013\u2014]$/;
+  const num = (s) => { const t = (s || "").replace(/,/g, "").trim(); if (DASH.test(t)) return 0; return /^-?\d*\.?\d+$/.test(t) ? Number(t) : null; };
+  const pct = (s) => { if (DASH.test((s || "").trim())) return null; const v = num(s); return v === null ? null : (v > 1 ? v / 100 : v); };
+  const pair = (s) => {
+    const t = (s || "").replace(/,/g, "");
+    if (/^\s*[-\u2013\u2014]\s*\/\s*[-\u2013\u2014]\s*$/.test(t)) return [0, 0];
+    const m = t.match(/(\d+)\s*\/\s*(\d+)/); return m ? [Number(m[1]), Number(m[2])] : [null, null];
+  };
+  // games strip above the table: "30 Remaining | 0/30 Games Played 0/26 | Remaining 26" = left team (first table row)
+  // remaining, played/total per team, right team (second row) remaining; matched on text nodes joined by single spaces
+  // (keep in sync with GAMES_STRIP_RE / GAMES_MID_RE / games_strip in src/fantasy/league/matchup.py)
+  const STRIP_RE = /(\d+)\s+Remaining\s+(\d+)\s*\/\s*(\d+)\s+Games Played\s+(\d+)\s*\/\s*(\d+)\s+Remaining\s+(\d+)/i;
+  const MID_RE = /(\d+)\s*\/\s*(\d+)\s+Games Played\s+(\d+)\s*\/\s*(\d+)/i;
+  const gamesStrip = (text) => {
+    let m = text.match(STRIP_RE);
+    if (m) {
+      const [remL, p1, tot1, p2, tot2, remR] = m.slice(1).map(Number);
+      const probs = [["left", remL, p1, tot1], ["right", remR, p2, tot2]].filter(([, rem, pl, tot]) => rem !== tot - pl)
+        .map(([side, rem, pl, tot]) => `games strip: ${side} remaining ${rem} != total ${tot} - played ${pl}`);
+      return [[[p1, remL], [p2, remR]], probs, m[0]];
+    }
+    m = text.match(MID_RE);
+    if (m) { const [p1, tot1, p2, tot2] = m.slice(1).map(Number); return [[[p1, tot1 - p1], [p2, tot2 - p2]], [], m[0]]; }
+    return [null, ["games played/remaining strip not found on the page"], null];
+  };
   const teamRe = new RegExp(`/nba/${LEAGUE}/(\\d+)(?:[/?#]|$)`);
   const cellText = (el) => (el.getAttribute("title") && !el.textContent.trim() ? el.getAttribute("title") : el.textContent).replace(/\s+/g, " ").trim();
 
@@ -64,13 +92,20 @@ await (async () => {
     problems.push("no score table found (header with >= 6 category columns and >= 2 team rows): logged out or layout change?");
   } else {
     const fields = best.labels.map(field);
+    // trailing blank-header column = categories won (2026-10-20 layout)
+    if (fields.length && !fields.includes("cats_won") && !best.labels[best.labels.length - 1].trim()) fields[fields.length - 1] = "cats_won";
     for (const f of [...CATS, "cats_won"]) if (!fields.includes(f)) problems.push(`column for ${f} not found in header ${JSON.stringify(best.labels)}`);
     for (const tr of best.teamRows.slice(0, 2)) {
       const cells = [...tr.children];
       const off = fields.length - cells.length;  // a row shorter than the header is aligned from the right
       if (off) problems.push(`row has ${cells.length} cells, header ${fields.length}: aligned from the right`);
-      const a = [...tr.querySelectorAll("a[href]")].find((x) => teamRe.test(x.getAttribute("href")));
-      const t = { yahoo_team_id: Number(a.getAttribute("href").match(teamRe)[1]), name: a.textContent.trim(),
+      const links = [...tr.querySelectorAll("a[href]")].filter((x) => teamRe.test(x.getAttribute("href")));
+      const a = links[0];
+      // the logo link comes first with no text; the name is the first non-empty team-link text (else the cell text)
+      const named = links.find((x) => x.textContent.trim());
+      const nameCell = cells.find((c) => c.contains(a));
+      const name = (named ? named.textContent : (nameCell ? nameCell.textContent : "")).replace(/\s+/g, " ").trim();
+      const t = { yahoo_team_id: Number(a.getAttribute("href").match(teamRe)[1]), name,
                   totals: { fgm: null, fga: null, fg_pct: null, ftm: null, fta: null, ft_pct: null, fg3m: null,
                             pts: null, reb: null, ast: null, stl: null, blk: null, tov: null },
                   cats_won: null, games_played: null, games_remaining: null };
@@ -100,7 +135,16 @@ await (async () => {
   // games played / remaining are not in the score table on every layout: keep short text hints for the next fix
   const hints = [...d.querySelectorAll("body *")].filter((e) => !e.childElementCount && /(remaining|games left|games played)/i.test(e.textContent))
     .slice(0, 12).map((e) => (e.parentElement ? e.parentElement.textContent : e.textContent).replace(/\s+/g, " ").trim().slice(0, 160));
-  if (teams.length && teams.every((t) => t.games_remaining === null)) problems.push("games_remaining not in the score table (see diagnostics.remaining_hints)");
+  let stripText = null;
+  if (teams.length && teams.every((t) => t.games_remaining === null && t.games_played === null)) {
+    const tw = d.createTreeWalker(d.body || d.documentElement, NodeFilter.SHOW_TEXT);
+    const chunks = [];
+    for (let n = tw.nextNode(); n && chunks.length < 50000; n = tw.nextNode()) { const x = n.nodeValue.trim(); if (x) chunks.push(x); }
+    const [games, gpProblems, matched] = gamesStrip(chunks.join(" "));
+    problems.push(...gpProblems);
+    stripText = matched;
+    if (games) teams.forEach((t, i) => { if (games[i]) [t.games_played, t.games_remaining] = games[i]; });
+  }
   return JSON.stringify({
     source: `Yahoo league ${LEAGUE} matchup page read in the user's logged-in browser (scripts/yahoo/capture_matchup.js, read-only)`,
     captured_at: new Date().toISOString(),
@@ -108,6 +152,6 @@ await (async () => {
     week,
     teams,
     problems,
-    diagnostics: { score_table_headers: seenHeaders.slice(0, 4), remaining_hints: hints },
+    diagnostics: { score_table_headers: seenHeaders.slice(0, 4), games_strip: stripText, remaining_hints: hints },
   });
 })()
