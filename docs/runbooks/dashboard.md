@@ -144,8 +144,14 @@ note with one simulated roster for me.
      kind badge, age, body (long text collapsed behind "more", raw payloads behind "details"), its **thread**
      (replies oldest first with stance chips agree ✓ / disagree ✕ / question ? / comment …, "↳ re X" when answering
      a reply, labelled evidence; threads with >4 replies start collapsed showing the stance tally) and the event id.
-     Newest activity first (a new reply bumps its thread). Filter chips by author (started or replied in) and by
-     kind, as URL params (`?author=advisor&kind=trade_offer`); 50 cards, "load more" adds 50 (`?n=100`, max 300). When unlocked, a **Reply** button on
+     **Paging** (`src/lib/feedPage.ts`, tested in `tests/feedPage.test.mjs`): newest *posted* first, 25 cards per
+     page, "← Newer" / "Older →" links carrying a `(timestamp, key)` cursor (`?before=` / `?after=`, base64url;
+     `?at=` = the page starting at one update), so pages stay put while new updates arrive; "Jump to newest" on
+     older pages; filters ride along. A reply never moves its thread: a root on page k shows all its replies
+     however new, and page 1 lists "New replies on earlier updates" (newest 5, each linking to `?at=<root>#<id>`).
+     Pending approvals and the snapshot card show on the newest page only. Filter chips by author (started or
+     replied in) and by kind, as URL params (`?author=advisor&kind=trade_offer`; a chip resets to the newest page),
+     with thread counts over the newest 1000 feed rows (shown "n+" beyond that). When unlocked, a **Reply** button on
      every non-private card posts `{reply_to, stance, text}` to `POST /api/threads/reply` (passphrase cookie, author
      always "user", 30/h). Locked: read-only, with a one-line note that private intel needs the unlock;
   4. **System**: model freshness strip (→ History), the agent run timeline **on request** (link → `?timeline=1#runs`,
@@ -154,9 +160,15 @@ note with one simulated roster for me.
      and past approvals / decisions / transactions not tied to a listed run.
   With no data at all, the feed and the timeline show explanatory empty states.
   Speed: all independent queries run in one `Promise.all`, explicit column lists (no `select("*")` on the big
-  tables), feed rows bounded by `?n`. Local `next start` against production Supabase (anon, median of 10, 2026-10-20):
-  before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB → after 0.075 s / 158 KB, RSC 0.056 s / 84 KB
-  (`?timeline=1`: 0.12 s / 451 KB).
+  tables). Feed round 1 reads, besides the system tables: a light index of the newest 1000 feed rows (ids, kinds,
+  thread links; facets + "who replied where"), the cursor window of roots (~2 pages, full columns; light columns
+  when an author filter needs a 1000-row window), finished run summaries by `ended_at`, the newest 100 replies in
+  full and a run-summary count. Round 2 runs only for what is still missing (light-read roots, older replies,
+  decision cards older than the newest 100), so the usual page is one round. Local `next start` against production
+  Supabase (anon, median of 10, 2026-10-20): before 0.22 s / 358 KB HTML, RSC (client tab switch) 0.23 s / 180 KB →
+  after 0.075 s / 158 KB, RSC 0.056 s / 84 KB (`?timeline=1`: 0.12 s / 451 KB). Cursor paging (median of 7, same
+  day, more data): `?n=` version 0.105 s / 184 KB → 0.11 s / 153 KB (RSC 77 KB); `?author=claude` 0.09 s → 0.17 s
+  (two rounds); `?timeline=1` 0.19 s / 468 KB.
 - `/moves`: recommendations from `fantasy advise post` (`model_runs` kind `advice`, newest version per
   `summary.advice_id`; schema in `docs/research/dashboard_data.md` section 4). Sections: **Needs your yes**
   (status `awaiting_yes`, or `requires_user_yes` with status `idea`), **Today's lineup** (type `lineup` for today ET),
@@ -167,7 +179,13 @@ note with one simulated roster for me.
 - `/players` (More): latest valuation + projections joined; toggle category values / per-game
   projections; sortable; row click opens detail drawer.
 - `/history` (More): latest model run per kind + data snapshots per source (freshness, moved from the
-  overview), model runs with params/inputs/summary JSON, recommendations over time, phase-3 placeholders.
+  overview), model runs, recommendations over time (top 3 read via JSON paths, not the full payload), phase-3
+  placeholders. Model runs: 25 per page (`?page=N`, "← Newer / Older →", kind chips incl. every kind seen), the list
+  reads summary columns only (id, kind, version, git sha, time + a one-line blurb from `summary->>title|headline|
+  scenario|status|n_sims|n_players`, `params->>command`); each run's params / inputs / summary expanders load on
+  open from `GET /api/history/run?id=` (anon key, same public `model_runs` rows; cached 1 h — a run row is immutable
+  for its id), with a skeleton while loading. Before: ~100 full rows in hidden expanders = 2.86 MB HTML; after
+  165 KB (local `next start` vs production Supabase, median of 7, 2026-10-20: 0.16 s → 0.10 s).
 
 ## API routes (server-only, service key)
 - `GET /api/auth` → `{writesEnabled, authed, reason}`; `POST {passphrase}` sets cookie; `DELETE` logs out.

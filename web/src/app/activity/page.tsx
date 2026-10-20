@@ -10,8 +10,26 @@ import { Disclosure, ErrorNote } from "@/components/ui";
 import { AutoRefresh } from "@/components/client";
 import { ageSeconds } from "@/lib/format";
 import { isPrivateEvent, latestPerKind } from "@/lib/agentPure";
-import { AUTHORS, buildFeed, feedLimit, filterFeed, missingRoots, NOTABLE_EVENT_KINDS } from "@/lib/feed";
-import { AgentFeed, chipHref, FeedFilters } from "./Feed";
+import { buildFeed, decisionIdOf, feedFacets, type FeedItem, filterFeed, isReply, NOTABLE_EVENT_KINDS } from "@/lib/feed";
+import {
+  addFacets,
+  assemblePage,
+  canonTs,
+  cmpFeed,
+  type Cursor,
+  encodeCursor,
+  FEED_INDEX_COLS,
+  FEED_PAGE_SIZE,
+  type FeedIndexRow,
+  feedHref,
+  feedRowsOr,
+  indexToEvent,
+  isAuthor,
+  parsePageMode,
+  quoteIn,
+  type Source,
+} from "@/lib/feedPage";
+import { AgentFeed, FeedFilters, FeedPager, RecentReplies } from "./Feed";
 import { HealthStrip, LocksLine, PastRecords, PendingApprovals, RunTimeline, SystemWarnings } from "./sections";
 
 // approvals and the passphrase cookie make this page per-request
@@ -27,61 +45,202 @@ const DECISION_COLS = "decision_id,run_id,kind,model_recommendation,choice,agree
 const TXN_COLS = "txn_id,run_id,kind,status,payload,error,created_at,updated_at";
 const APPROVAL_COLS = "approval_id,run_id,action_type,summary,payload,status,note,requested_at,decided_at,expires_at";
 const SNAPSHOT_COLS = "snapshot_id,ts,kind,week,observed_at,source_url,summary,last_seen_at,payload";
+/** Newest feed rows (roots + replies, light columns) read for the filter counts and "who replied where". */
+const FACET_ROWS = 1000;
+const NEW_REPLIES_SHOWN = 5;
+/** Newest replies read in full in round 1 (older ones are fetched by id when a page needs them). */
+const RECENT_REPLIES = 100;
+
+type Rows = { data: unknown; error: { message: string } | null; count?: number | null };
+const none: Promise<Rows> = Promise.resolve({ data: [], error: null, count: 0 });
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" && v ? v : null);
-  const author = (AUTHORS as readonly string[]).includes(one(sp.author) ?? "") ? one(sp.author) : null;
+  const author = isAuthor(one(sp.author)) ? one(sp.author) : null;
   const kind = one(sp.kind)?.slice(0, 40) ?? null;
-  const limit = feedLimit(one(sp.n));
+  const cursorParams = { before: one(sp.before), at: one(sp.at), after: one(sp.after) };
+  const mode = parsePageMode(cursorParams);
+  const c: Cursor | null = mode.dir === "first" ? null : mode.c;
   const showTimeline = one(sp.timeline) === "1";
-  const reportRows = limit * 3; // replies share the window with their roots
 
   // League intel (Yahoo snapshots, group-chat digests/notes) is private: RLS hides it from the anon key, and it is
   // read server-side with the service key only after the passphrase unlock (same cookie as the write panels).
   const intelDb = (await isAuthed()) ? serviceClient() : null;
   const db = intelDb ?? anonClient();
-  // every independent query in ONE round trip
-  const [runsR, decR, txnR, locksR, apprR, repR, notR, snapR, mrR] = await Promise.all([
+  const canSeePrivate = !!intelDb;
+
+  // Feed sources for this filter (run summaries are Claude's; the snapshot card is Muse's, newest page only).
+  const wantEvents = kind !== "run summary" && kind !== "yahoo snapshots";
+  const wantRuns = (!author || author === "claude") && (!kind || kind === "run summary");
+  const wantSnaps = canSeePrivate && (!author || author === "muse") && (!kind || kind === "yahoo snapshots");
+  // author filters match in JS (started OR replied in), so they read a wider light window; otherwise ~2 pages
+  const evLimit = author ? 1000 : FEED_PAGE_SIZE * 2 + 10;
+  const runLimit = FEED_PAGE_SIZE + 5;
+  // without an author filter the ~2-page window is read with full columns, so the usual page needs no 2nd round
+  const fullWindow = !author;
+  const rootsOr = feedRowsOr({ canSeePrivate });
+  const eventIndex = (dir: "older" | "newer"): PromiseLike<Rows> => {
+    if (!wantEvents || (dir === "newer" && mode.dir !== "after")) return none;
+    let q = db.from("agent_events").select(fullWindow ? EVENT_COLS : FEED_INDEX_COLS).or(rootsOr);
+    if (kind)
+      q = NOTABLE_EVENT_KINDS.includes(kind) ? q.eq("kind", kind).is("payload->>report_kind", null) : q.eq("payload->>report_kind", kind);
+    if (c) q = dir === "older" ? q.lte("ts", c.ts) : q.gte("ts", c.ts);
+    const asc = dir === "newer";
+    return q.order("ts", { ascending: asc }).order("event_id", { ascending: asc }).limit(evLimit);
+  };
+  // finished, summarised runs of working agents (feed time = ended_at)
+  const feedRuns = (cols: string, opts?: { count: "exact"; head: true }) =>
+    db
+      .from("agent_runs")
+      .select(cols, opts)
+      .not("summary", "is", null)
+      .neq("status", "running")
+      .not("agent", "in", `(${[...PASSIVE_AGENTS].join(",")})`)
+      .not("ended_at", "is", null);
+  const runIndex = (dir: "older" | "newer"): PromiseLike<Rows> => {
+    if (!wantRuns || (dir === "newer" && mode.dir !== "after")) return none;
+    let q = feedRuns(RUN_COLS);
+    if (c) q = dir === "older" ? q.lte("ended_at", c.ts) : q.gte("ended_at", c.ts);
+    const asc = dir === "newer";
+    return q.order("ended_at", { ascending: asc }).order("run_id", { ascending: asc }).limit(runLimit);
+  };
+
+  // round 1: every independent query (system records, approvals, the feed's light index + facets) in ONE round trip
+  const [runsR, decR, txnR, locksR, apprR, snapR, mrR, facetR, runCountR, evOldR, evNewR, runOldR, runNewR, recentRepliesR] = await Promise.all([
     db.from("agent_runs").select(RUN_COLS).order("started_at", { ascending: false }).limit(40),
     db.from("decisions").select(DECISION_COLS).order("created_at", { ascending: false }).limit(100),
     db.from("transactions").select(TXN_COLS).order("created_at", { ascending: false }).limit(100),
     db.from("locks").select("*").order("acquired_at", { ascending: false }),
     db.from("approvals").select(APPROVAL_COLS).order("requested_at", { ascending: false }).limit(100),
-    // feed: every report-like row (Muse reports + digests, advisor suggestions, Claude posts, thread replies)
+    // newest Yahoo snapshots (private; the table may not exist until its migration is applied)
+    wantSnaps && (mode.dir === "first" || mode.dir === "after")
+      ? intelDb!.from("league_snapshots").select(SNAPSHOT_COLS).order("last_seen_at", { ascending: false, nullsFirst: false }).limit(40)
+      : none,
+    db.from("model_runs").select("kind,created_at").order("created_at", { ascending: false }).limit(60),
+    // facets + "who replied where": the newest feed rows incl. replies, ids/kinds only
     db
       .from("agent_events")
-      .select(EVENT_COLS)
-      .not("payload->>report_kind", "is", null)
-      .neq("payload->>report_kind", "observed_pick")
+      .select(FEED_INDEX_COLS)
+      .or(feedRowsOr({ canSeePrivate, withReplies: true }))
       .order("ts", { ascending: false })
-      .limit(reportRows),
-    // feed: Claude's notable events
-    db.from("agent_events").select(EVENT_COLS).in("kind", [...NOTABLE_EVENT_KINDS]).order("ts", { ascending: false }).limit(limit),
-    // newest Yahoo snapshots (private; the table may not exist until its migration is applied)
-    intelDb
-      ? intelDb.from("league_snapshots").select(SNAPSHOT_COLS).order("last_seen_at", { ascending: false, nullsFirst: false }).limit(40)
-      : Promise.resolve({ data: [] as LeagueSnapshot[], error: null }),
-    db.from("model_runs").select("kind,created_at").order("created_at", { ascending: false }).limit(60),
+      .limit(FACET_ROWS),
+    feedRuns("run_id", { count: "exact", head: true }),
+    eventIndex("older"),
+    eventIndex("newer"),
+    runIndex("older"),
+    runIndex("newer"),
+    // the newest replies in full (threads on the usual page; anything older is fetched by id in round 2)
+    db.from("agent_events").select(EVENT_COLS).eq("payload->>report_kind", "reply").order("ts", { ascending: false }).limit(RECENT_REPLIES),
   ]);
   // defence in depth (and before the RLS migration is applied): no chat content without the unlock
-  const visible = (rows: unknown) => ((rows as AgentEvent[]) ?? []).filter((e) => intelDb || !isPrivateEvent(e));
+  const visible = (rows: unknown) => ((rows as AgentEvent[]) ?? []).filter((e) => canSeePrivate || !isPrivateEvent(e));
+  const indexEvents = (rows: unknown) => visible(((rows as FeedIndexRow[]) ?? []).map(indexToEvent));
 
-  // threads whose root is older than the window: one extra (rare) round trip
-  let feedEvents = [...visible(repR.data), ...visible(notR.data)];
-  const missing = missingRoots(feedEvents).slice(0, 100);
-  if (missing.length) {
-    const { data } = await db.from("agent_events").select(EVENT_COLS).in("event_id", missing);
-    feedEvents = [...feedEvents, ...visible(data)];
-  }
+  const facetFeed = buildFeed({ events: indexEvents(facetR.data), canSeePrivate, order: "posted" });
+  const repliedIn = new Set(author ? facetFeed.filter((it) => it.replies.some((r) => r.author === author)).map((it) => it.key) : []);
+  const matches = (it: FeedItem) => (!kind || it.kind === kind) && (!author || it.author === author || repliedIn.has(it.key));
+  const asEvents = (rows: unknown) => (fullWindow ? visible(rows) : indexEvents(rows));
+  const evSource = (rows: unknown): Source<FeedItem> => {
+    const raw = (rows as { event_id: string; ts: string | null }[]) ?? [];
+    const last = raw.length >= evLimit ? raw.at(-1) : null;
+    return {
+      items: buildFeed({ events: asEvents(raw), canSeePrivate, order: "posted" }).filter(matches),
+      truncatedAt: last ? { ts: last.ts ?? "", key: last.event_id } : null,
+    };
+  };
+  const runSource = (rows: unknown): Source<FeedItem> => {
+    const raw = (rows as AgentRun[]) ?? [];
+    const last = raw.length >= runLimit ? raw.at(-1) : null;
+    return {
+      items: buildFeed({ events: [], runs: raw }).filter(matches),
+      truncatedAt: last ? { ts: last.ended_at ?? "", key: `run:${last.run_id}` } : null,
+    };
+  };
+  const page = assemblePage({
+    mode,
+    older: [evSource(evOldR.data), runSource(runOldR.data)],
+    newer: mode.dir === "after" ? [evSource(evNewR.data), runSource(runNewR.data)] : [],
+  });
+
+  // newest page: replies newer than its oldest update on threads further down (a reply never moves its thread)
+  const onPage = new Set(page.items.map((it) => it.key));
+  const oldest = canonTs(page.items.at(-1)?.ts) ?? "";
+  const newReplies =
+    page.isFirst && page.older
+      ? filterFeed(facetFeed, { author, kind })
+          .filter((it) => !onPage.has(it.key))
+          .flatMap((root) => root.replies.map((r) => ({ root, id: r.event.event_id, ts: canonTs(r.event.ts) ?? "" })))
+          .filter((r) => r.ts > oldest)
+          .sort((a, b) => b.ts.localeCompare(a.ts))
+      : [];
+
+  // Full rows already read: the window (no author filter) and the newest replies. Round 2 runs only for what is
+  // missing: roots read as light rows, older replies of the page's threads, older decision cards.
+  const fullById = new Map<string, AgentEvent>();
+  const putFull = (rows: unknown) => {
+    for (const e of visible(rows)) fullById.set(e.event_id, e);
+  };
+  if (fullWindow) [evOldR.data, evNewR.data].forEach(putFull);
+  putFull(recentRepliesR.data);
+  const rootIds = page.items.filter((it) => it.event).map((it) => it.key);
+  const facetByKey = new Map(facetFeed.map((it) => [it.key, it]));
+  const facetRows = (facetR.data as FeedIndexRow[]) ?? [];
+  // the facet index lists every reply newer than its oldest row; a deeper page's threads are read by root instead
+  const facetCovers =
+    facetRows.length < FACET_ROWS || (canonTs(page.items.at(-1)?.ts) ?? "") >= (canonTs(facetRows.at(-1)?.ts) ?? "");
+  const replyIds = rootIds.flatMap((k) => (facetByKey.get(k)?.replies ?? []).map((r) => r.event.event_id));
+  const missingIds = [...rootIds, ...replyIds, ...newReplies.slice(0, NEW_REPLIES_SHOWN).map((r) => r.id)].filter((id) => !fullById.has(id));
+  const decisions = new Map(((decR.data as Decision[]) ?? []).map((d) => [d.decision_id, d]));
+  const needDecisions = page.items
+    .map((it) => (it.event ? decisionIdOf(it.event) : null))
+    .filter((d): d is string => !!d && !decisions.has(d));
+  const [fullR, repliesR, moreDecR] = await Promise.all([
+    missingIds.length ? db.from("agent_events").select(EVENT_COLS).in("event_id", [...new Set(missingIds)]) : none,
+    rootIds.length && !facetCovers
+      ? db
+          .from("agent_events")
+          .select(EVENT_COLS)
+          .eq("payload->>report_kind", "reply")
+          .or(`payload->>thread_root.in.(${quoteIn(rootIds)}),payload->>reply_to.in.(${quoteIn(rootIds)})`)
+          .order("ts", { ascending: true })
+          .limit(1000)
+      : none,
+    needDecisions.length ? db.from("decisions").select(DECISION_COLS).in("decision_id", needDecisions) : none,
+  ]);
+  for (const d of (moreDecR.data as Decision[]) ?? []) decisions.set(d.decision_id, d);
+  putFull(fullR.data);
+  putFull(repliesR.data);
+  const full = [...fullById.values()];
+  const snapshots = page.isFirst ? latestPerKind((snapR.data as LeagueSnapshot[]) ?? []) : [];
+  const shown = buildFeed({
+    events: full.filter((e) => onPage.has(e.event_id) || isReply(e)),
+    runs: page.items.filter((it) => it.run).map((it) => it.run!),
+    snapshots,
+    canSeePrivate,
+    order: "posted",
+  })
+    .filter((it) => onPage.has(it.key) || it.type === "snapshots")
+    .sort(cmpFeed);
+  const replyStrip = newReplies.slice(0, NEW_REPLIES_SHOWN).flatMap((r) => {
+    const event = fullById.get(r.id);
+    const href = feedHref({ author, kind, at: encodeCursor({ ts: r.root.ts, key: r.root.key }) }, r.root.key);
+    return event ? [{ event, root: r.root, href }] : [];
+  });
+
+  const runCount = runCountR.count ?? 0;
+  const facets = addFacets(feedFacets(facetFeed), [
+    { author: "claude", kind: "run summary", n: runCount },
+    { author: "muse", kind: "yahoo snapshots", n: snapshots.length ? 1 : 0 },
+  ]);
+  const href = (p: { before?: string | null; after?: string | null }) => feedHref({ author, kind, ...p });
+  const pager = {
+    newerHref: page.newer ? href({ after: page.newer }) : null,
+    olderHref: page.older ? href({ before: page.older }) : null,
+    newestHref: page.isFirst ? null : href({}),
+  };
+
   const runs = (runsR.data as AgentRun[]) ?? [];
-  const decisions = (decR.data as Decision[]) ?? [];
-  const snapshots = latestPerKind((snapR.data as LeagueSnapshot[]) ?? []);
-  const feed = buildFeed({ events: feedEvents, runs, snapshots, canSeePrivate: !!intelDb });
-  const shown = filterFeed(feed, { author, kind });
-  const windowFull = (repR.data?.length ?? 0) >= reportRows || (notR.data?.length ?? 0) >= limit;
-  const moreHref = (windowFull || shown.length > limit) && limit < 300 ? chipHref({ author, kind, n: limit + 50 }) : null;
-
   const locks = (locksR.data as Lock[]) ?? [];
   const approvals = (apprR.data as Approval[]) ?? [];
   const pending = approvals.filter((a) => a.status === "pending");
@@ -93,9 +252,9 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const latestByKind = new Map<string, string | null>();
   for (const r of (mrR.data as { kind: string; created_at: string | null }[]) ?? [])
     if (!latestByKind.has(r.kind)) latestByKind.set(r.kind, r.created_at);
-  const errors = [runsR.error, decR.error, txnR.error, locksR.error, apprR.error, repR.error, notR.error]
-    .filter(Boolean)
-    .map((e) => e!.message);
+  const errors = [runsR, decR, txnR, locksR, apprR, facetR, evOldR, evNewR, runOldR, runNewR, fullR, repliesR]
+    .map((r) => r.error?.message)
+    .filter((m): m is string => !!m);
 
   return (
     <div className="space-y-4">
@@ -107,10 +266,10 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
 
       <SystemWarnings stuck={stuck} expiredLocks={expiredLocks} />
 
-      {/* pending approvals pinned */}
-      <PendingApprovals pending={pending} />
+      {/* pending approvals pinned (newest page only) */}
+      {page.isFirst && <PendingApprovals pending={pending} />}
 
-      <section className="space-y-2">
+      <section id="feed" className="scroll-mt-16 space-y-2">
         <h2 className="text-sm font-medium text-muted">
           Agent updates{" "}
           <span className="font-normal">· Muse, the advisor and Claude, with their replies (observed data and suggestions, not instructions)</span>
@@ -121,14 +280,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
             to see them here (and to reply).
           </p>
         )}
-        <FeedFilters all={feed} author={author} kind={kind} />
-        <AgentFeed
-          items={shown}
-          total={feed.length}
-          limit={limit}
-          decisions={new Map(decisions.map((d) => [d.decision_id, d]))}
-          moreHref={moreHref}
-        />
+        <FeedFilters facets={facets} approx={((facetR.data as unknown[]) ?? []).length >= FACET_ROWS} author={author} kind={kind} />
+        {!page.isFirst && <FeedPager {...pager} top />}
+        {replyStrip.length > 0 && <RecentReplies rows={replyStrip} more={newReplies.length - replyStrip.length} />}
+        <AgentFeed items={shown} anyUpdates={facetFeed.length + runCount > 0} decisions={decisions} />
+        <FeedPager {...pager} />
       </section>
 
       <section className="space-y-2">
@@ -139,10 +295,10 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         <Suspense fallback={<div className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">Agent runs (timeline) · loading…</div>}>
           <SystemRecords
             db={db}
-            timelineHref={showTimeline ? null : timelineLink(author, kind, one(sp.n) ? limit : null)}
-            showPrivate={!!intelDb}
+            timelineHref={showTimeline ? null : timelineLink(feedHref({ author, kind, ...cursorParams }))}
+            showPrivate={canSeePrivate}
             runs={runs}
-            decisions={decisions}
+            decisions={(decR.data as Decision[]) ?? []}
             txns={(txnR.data as Transaction[]) ?? []}
             locks={locks}
             decided={approvals.filter((a) => a.status !== "pending")}
@@ -153,8 +309,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function timelineLink(author: string | null, kind: string | null, n: number | null): string {
-  const href = chipHref({ author, kind, n });
+function timelineLink(href: string): string {
   return `${href}${href.includes("?") ? "&" : "?"}timeline=1#runs`;
 }
 

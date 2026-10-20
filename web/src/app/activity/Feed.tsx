@@ -4,7 +4,8 @@ import type { AgentEvent, Decision } from "@/lib/types";
 import { Badge, JsonView, statusTone } from "@/components/ui";
 import { Ago } from "@/components/client";
 import { KindIcon } from "@/components/KindIcon";
-import { AUTHOR_LABEL, type Author, decisionIdOf, type FeedItem, type FeedReply, feedFacets, trimPayload } from "@/lib/feed";
+import { AUTHOR_LABEL, type Author, authorOf, decisionIdOf, type FeedItem, type FeedReply, trimPayload } from "@/lib/feed";
+import { type Facets, feedHref } from "@/lib/feedPage";
 import { DigestBody, SnapshotCard } from "./LeagueIntel";
 import { DecisionCard } from "./sections";
 import { EvidenceList, SuggestionBadges, SuggestionBody } from "./AdvisorSuggestions";
@@ -63,14 +64,8 @@ const kindLabel = (k: string) => k.replace(/_/g, " ");
 
 /* ------------------------------------------------------------------ filters */
 
-export function chipHref(params: { author?: string | null; kind?: string | null; n?: number | null }) {
-  const q = new URLSearchParams();
-  if (params.author) q.set("author", params.author);
-  if (params.kind) q.set("kind", params.kind);
-  if (params.n) q.set("n", String(params.n));
-  const s = q.toString();
-  return s ? `/activity?${s}` : "/activity";
-}
+/** Filter chips link to the newest page of the filtered feed (changing a filter drops the cursor). */
+const chipHref = (author: string | null, kind: string | null) => feedHref({ author, kind });
 
 function Chip({ href, on, children }: { href: string; on: boolean; children: React.ReactNode }) {
   return (
@@ -85,27 +80,33 @@ function Chip({ href, on, children }: { href: string; on: boolean; children: Rea
   );
 }
 
-export function FeedFilters({ all, author, kind }: { all: FeedItem[]; author: string | null; kind: string | null }) {
-  const f = feedFacets(all);
+/** Chips with thread counts over the whole feed (over its newest 1000 rows when `approx`: shown as "n+"). */
+export function FeedFilters({ facets: f, approx, author, kind }: { facets: Facets; approx: boolean; author: string | null; kind: string | null }) {
+  const count = (n: number) => (
+    <span className="opacity-60" title={approx ? "counted over the newest 1000 feed rows" : undefined}>
+      {n}
+      {approx ? "+" : ""}
+    </span>
+  );
   return (
     <div className="space-y-1.5">
       <div className="scroll-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" aria-label="Filter by author">
-        <Chip href={chipHref({ kind })} on={!author}>
+        <Chip href={chipHref(null, kind)} on={!author}>
           everyone
         </Chip>
         {f.authors.map(([a, n]) => (
-          <Chip key={a} href={chipHref({ author: a, kind })} on={author === a}>
-            {AUTHOR_LABEL[a]} <span className="opacity-60">{n}</span>
+          <Chip key={a} href={chipHref(a, kind)} on={author === a}>
+            {AUTHOR_LABEL[a]} {count(n)}
           </Chip>
         ))}
       </div>
       <div className="scroll-thin -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" aria-label="Filter by kind">
-        <Chip href={chipHref({ author })} on={!kind}>
+        <Chip href={chipHref(author, null)} on={!kind}>
           all kinds
         </Chip>
         {f.kinds.map(([k, n]) => (
-          <Chip key={k} href={chipHref({ author, kind: k })} on={kind === k}>
-            {kindLabel(k)} <span className="opacity-60">{n}</span>
+          <Chip key={k} href={chipHref(author, k)} on={kind === k}>
+            {kindLabel(k)} {count(n)}
           </Chip>
         ))}
       </div>
@@ -247,7 +248,7 @@ function FeedCard({ it, decisions }: { it: FeedItem; decisions: Map<string, Deci
   const src = ev && isObj(ev.payload) ? str(ev.payload.source) : null;
   const dashed = it.type === "suggestion";
   return (
-    <li className={`rounded-xl border bg-panel px-4 py-3 ${dashed ? "border-dashed border-accent/50" : "border-line"}`}>
+    <li id={it.key} className={`scroll-mt-16 rounded-xl border bg-panel px-4 py-3 ${dashed ? "border-dashed border-accent/50" : "border-line"}`}>
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <AuthorBadge a={it.author} />
         <Badge tone={KIND_TONE[it.kind] ?? "neutral"}>{kindLabel(it.kind)}</Badge>
@@ -277,45 +278,107 @@ function FeedCard({ it, decisions }: { it: FeedItem; decisions: Map<string, Deci
 
 export function AgentFeed({
   items,
-  total,
-  limit,
+  anyUpdates,
   decisions,
-  moreHref,
 }: {
   items: FeedItem[];
-  total: number;
-  limit: number;
+  /** The feed has updates at all (for the empty-state wording). */
+  anyUpdates: boolean;
   decisions: Map<string, Decision>;
-  /** "load more" link (next ?n=), or null when the query window was not full. */
-  moreHref?: string | null;
 }) {
   if (!items.length)
     return (
       <div className="rounded-xl border border-line bg-panel px-4 py-6 text-center text-sm text-muted">
-        {total ? "Nothing matches these filters." : "No agent updates yet. Muse reports, advisor suggestions and Claude's decisions will appear here."}
+        {anyUpdates ? "Nothing here for these filters." : "No agent updates yet. Muse reports, advisor suggestions and Claude's decisions will appear here."}
       </div>
     );
   return (
-    <>
-      <ul className="space-y-2">
-        {items.slice(0, limit).map((it) => (
-          <FeedCard key={it.key} it={it} decisions={decisions} />
-        ))}
-      </ul>
-      {(items.length > limit || moreHref) && (
-        <p className="px-1 text-xs text-muted">
-          Showing the newest {Math.min(limit, items.length)}
-          {moreHref && (
-            <>
-              {" · "}
-              <Link href={moreHref} scroll={false} className="text-accent hover:underline">
-                load more
-              </Link>
-            </>
-          )}
-          {" "}(or <code>fantasy intel list</code> for everything).
-        </p>
-      )}
-    </>
+    <ul className="space-y-2">
+      {items.map((it) => (
+        <FeedCard key={it.key} it={it} decisions={decisions} />
+      ))}
+    </ul>
   );
 }
+
+/* ------------------------------------------------------------------ paging */
+
+const PAGER_LINK = "inline-flex min-h-9 items-center rounded-lg border border-line bg-panel px-3 text-xs hover:border-accent/50 hover:text-accent";
+
+/** "← Newer · Jump to newest · Older →" (cursor links keep the filters; `top` = the compact copy above the feed). */
+export function FeedPager({
+  newerHref,
+  olderHref,
+  newestHref,
+  top = false,
+}: {
+  newerHref: string | null;
+  olderHref: string | null;
+  newestHref: string | null;
+  top?: boolean;
+}) {
+  if (!newerHref && !olderHref && !newestHref) return null;
+  return (
+    <nav aria-label={top ? "Feed pages (top)" : "Feed pages"} className="flex items-center gap-2 px-0.5">
+      {newerHref ? (
+        <Link href={`${newerHref}#feed`} className={PAGER_LINK} rel="prev">
+          ← Newer
+        </Link>
+      ) : (
+        <span className="text-xs text-muted">Newest updates</span>
+      )}
+      {newestHref && (
+        <Link href={`${newestHref}#feed`} className="text-xs text-accent hover:underline">
+          Jump to newest
+        </Link>
+      )}
+      <span className="ml-auto" />
+      {olderHref ? (
+        <Link href={`${olderHref}#feed`} className={PAGER_LINK} rel="next">
+          Older →
+        </Link>
+      ) : (
+        !top && (
+          <span className="text-xs text-muted">
+            End of feed (<code>fantasy intel list</code> for raw rows)
+          </span>
+        )
+      )}
+    </nav>
+  );
+}
+
+/** Newest page only: replies posted since its oldest update, on threads further down (a reply never moves its
+ *  thread, so the cursor pages stay stable). Each links to the page that starts at the thread's update. */
+export function RecentReplies({ rows, more }: { rows: { event: AgentEvent; root: FeedItem; href: string }[]; more: number }) {
+  return (
+    <div className="rounded-xl border border-line bg-panel px-4 py-2.5">
+      <div className="text-xs font-medium text-muted">New replies on earlier updates</div>
+      <ul className="mt-1 divide-y divide-line/60">
+        {rows.map(({ event, root, href }) => {
+          const p = isObj(event.payload) ? event.payload : {};
+          const text = str(p.text) ?? event.message ?? "";
+          return (
+            <li key={event.event_id} className="py-1.5">
+              <Link href={href} className="block min-w-0 hover:text-accent">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <AuthorBadge a={authorOf(event.run_id)} />
+                  {str(p.stance) && <StanceChip s={String(p.stance)} />}
+                  <span className="min-w-0 truncate text-muted">
+                    on {AUTHOR_LABEL[root.author]}&apos;s {kindLabel(root.kind)}
+                  </span>
+                  <span className="ml-auto text-muted">
+                    <Ago ts={event.ts} />
+                  </span>
+                </div>
+                <p className="mt-0.5 line-clamp-2 text-[13.5px] leading-snug">{text}</p>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {more > 0 && <p className="text-xs text-muted">+{more} more</p>}
+    </div>
+  );
+}
+

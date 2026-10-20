@@ -14,7 +14,7 @@ import {
   validateReply,
   validateReport,
 } from "../src/lib/agentPure.ts";
-import { authorOf, buildFeed, decisionIdOf, feedFacets, filterFeed, isAutoVerification, missingRoots, splitLong, trimPayload, feedLimit } from "../src/lib/feed.ts";
+import { authorOf, buildFeed, decisionIdOf, feedFacets, filterFeed, isAutoVerification, missingRoots, splitLong, trimPayload } from "../src/lib/feed.ts";
 
 const TOKENS = { agent: "muse-secret-token", advisor: "advisor-secret-token" };
 
@@ -259,19 +259,13 @@ test("feed skips the ledger's automatic 'verified txn-…' events; decisions exp
   assert.equal(decisionIdOf(human), null);
 });
 
-test("trimPayload caps big payloads; feedLimit parses ?n=", () => {
+test("trimPayload caps big payloads", () => {
   assert.deepEqual(trimPayload({ a: 1 }), { a: 1 });
   assert.equal(trimPayload(null), null);
   const big = trimPayload({ x: "y".repeat(5000) }, 100);
   assert.equal(big._truncated, true);
   assert.equal(big.preview.length, 101);
   assert.ok(big.chars > 5000);
-  assert.equal(feedLimit(null), 50);
-  assert.equal(feedLimit("100"), 100);
-  assert.equal(feedLimit("101"), 150);
-  assert.equal(feedLimit("9999"), 300);
-  assert.equal(feedLimit("-3"), 50);
-  assert.equal(feedLimit("abc"), 50);
 });
 
 test("splitLong collapses long text at a word boundary", () => {
