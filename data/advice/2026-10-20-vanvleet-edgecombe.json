@@ -1,0 +1,115 @@
+{
+ "summary": {
+  "type": "trade",
+  "title": "Trade idea: Fred VanVleet for VJ Edgecombe + Jusuf Nurkić (jesse's Phenomenal Team)",
+  "status": "idea",
+  "headline": "1-for-2 with jesse's Phenomenal Team (slot 5): we give VanVleet, get Edgecombe + Nurkić (Out), then drop Nurkić and keep the open spot for a free agent.",
+  "week": 1,
+  "verdict": "Worth proposing if you're open to moving VanVleet: helps playoff odds, title odds and category wins under all three projection sets.\nThe partner's own playoff odds dip slightly (−0.3 to −2.5 pp), so expect a counter; Dyson Daniels + Nurkić is a similar alternative.\nNeeds your explicit yes before anything is offered on Yahoo.",
+  "requires_user_yes": true,
+  "rationale": [
+   "Fred VanVleet is a 32-year-old point guard (Houston) projected for ~58 games; VJ Edgecombe is a young guard (Philadelphia, PG/SG) projected to play more and contribute steals, threes and rebounds.",
+   "Taking Nurkić (currently Out) and dropping him gives us an extra open roster spot that we refill from free agency, which is where part of the gain comes from.",
+   "Simulated effect (5 fresh seeds, base already includes the Champagnie claim): title odds +3.9 / +3.7 / +2.5 pp, playoff odds +0.9 / +1.3 / +1.1 pp, +0.5 to +0.8 category wins per season (blend / market / ESPN stress).",
+   "- Not mainly a schedule bet: Edgecombe's Philadelphia plays 4/3/4 games in playoff weeks 18-20 vs VanVleet's Houston 4/3/3 (one extra game).",
+   "- Costs the model doesn't see: one add to refill, and Edgecombe is a second-year player whose role could change."
+  ],
+  "why_now": {
+   "before": "Trades weren't possible before the draft, and last night's scan focused on Jamal Murray; it didn't evaluate this partner specifically.",
+   "changed": [
+    {
+     "text": "There is now a willing partner who has asked about VanVleet (observed by Muse; details private).",
+     "kind": "league"
+    },
+    {
+     "text": "A targeted inseason-0.3.0 scan of this partner's roster (base incl. Champagnie/Bailey, realistic refill, 5 fresh seeds, 3 projection sets) found this counter helps under all three.",
+     "kind": "model"
+    }
+   ],
+   "evidence": [
+    "ΔP(title), blend / market / stress"
+   ]
+  },
+  "metrics": [
+   {
+    "label": "ΔP(title), blend / market / stress",
+    "value": "+3.9 / +3.7 / +2.5",
+    "unit": "pp",
+    "evidence": "simulated",
+    "note": "SE 0.5-0.8; 5 seeds × 2000"
+   },
+   {
+    "label": "ΔP(playoffs), blend / market / stress",
+    "value": "+0.9 / +1.3 / +1.1",
+    "unit": "pp",
+    "evidence": "simulated",
+    "note": "SE 0.2-0.4"
+   },
+   {
+    "label": "Δcategory wins/season",
+    "value": "+0.78 / +0.75 / +0.50",
+    "evidence": "simulated",
+    "note": "SE 0.06"
+   },
+   {
+    "label": "Partner ΔP(playoffs)",
+    "value": "−0.8 / −0.3 / −2.5",
+    "unit": "pp",
+    "evidence": "simulated"
+   }
+  ],
+  "scenario_columns": [
+   "name",
+   "me ΔP(title)",
+   "me ΔP(playoffs)",
+   "me Δcat-wins",
+   "partner ΔP(playoffs)"
+  ],
+  "scenarios": [
+   {
+    "name": "VanVleet → Edgecombe + Nurkić",
+    "me ΔP(title)": "+3.9 / +3.7 / +2.5",
+    "me ΔP(playoffs)": "+0.9 / +1.3 / +1.1",
+    "me Δcat-wins": "+0.78 / +0.75 / +0.50",
+    "partner ΔP(playoffs)": "−0.8 / −0.3 / −2.5"
+   },
+   {
+    "name": "VanVleet → Dyson Daniels + Nurkić",
+    "me ΔP(title)": "+4.2 / +3.9 / +3.1",
+    "me ΔP(playoffs)": "+0.7 / +0.9 / +0.8",
+    "me Δcat-wins": "+0.27 / +0.25 / +0.02",
+    "partner ΔP(playoffs)": "+0.3 / +0.6 / −2.0"
+   },
+   {
+    "name": "VanVleet → Lillard + Nurkić",
+    "me ΔP(title)": "+2.6 / +4.3 / +3.8",
+    "me ΔP(playoffs)": "−0.4 / +1.2 / +2.4",
+    "me Δcat-wins": "+0.17 / +0.72 / +1.24",
+    "partner ΔP(playoffs)": "+1.2 / −0.7 / −4.6"
+   }
+  ],
+  "risks": [
+   "± are Monte Carlo SEs only; the simulator is optimistic for us (opponents never manage rosters).",
+   "Partner may counter; any counter gets re-evaluated before you decide.",
+   "Trades go through a 2-day commissioner review."
+  ],
+  "links": [
+   {
+    "label": "Streaming & trade scan method",
+    "path": "docs/research/streaming_and_trade_scan.md"
+   }
+  ]
+ },
+ "params": {
+  "partner_slot": 5,
+  "give": [
+   "fred-vanvleet"
+  ],
+  "get": [
+   "vj-edgecombe",
+   "jusuf-nurkic"
+  ],
+  "tool": "inseason-0.3.0 trade-scan"
+ },
+ "inputs": {}
+}
