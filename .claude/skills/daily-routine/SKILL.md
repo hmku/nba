@@ -56,7 +56,7 @@ is interested in X; details private"). A thread message
    `scripts/yahoo/capture_rosters.js` with the browser JS tool; save the raw output to a scratch file, then
    `fantasy league import-capture --raw <raw.json> --kind rosters --out data/raw/yahoo/league_rosters_$D.json` (fills
    draft_slot, player_ids, capture_date), then `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --json`
-   (dry diff) and, if it validates, `--write` (writes per-team lineup/status maps the lineup tool reads). Check its
+   (dry diff) and, if it validates, `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --write --record-lineup --json` (writes per-team lineup/status maps the lineup tool reads, and records today's actual Yahoo slots for the dashboard's Lineup tab; check `lineup_record.error` is null). Check its
    `positions_from_projections` warnings. Record the diff (adds/drops/trades/status changes for all 12 teams) as an `observation` event.
 2. Free agents: `scripts/yahoo/capture_free_agents.js` -> `data/raw/yahoo/free_agents_$D.json` (note waiver vs FA status).
 3. League transactions page `/nba/44495/transactions` (read the last 24 h; cross-check the sync diff).
@@ -67,7 +67,7 @@ is interested in X; details private"). A thread message
    never answered.
 
 ## 2. THINK
-- Lineup: `fantasy lineup plan --date $D --week --json` (lineup-0.2.0: exact position-aware assignment, matchup-weighted
+- Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.2.0: exact position-aware assignment, matchup-weighted
   vs this week's opponent; `docs/research/lineup_optimizer.md`). Run it BEFORE the day's first tip-off; after a tip-off
   pass `--locked <ids of players whose games started>`. Mid-week, pass the week's banked totals with `--accumulated`
   (read them from the matchup page `/nba/44495/matchup`) or note the MID-WEEK warning. Exit 2 `infeasible_roster` = too
@@ -109,7 +109,7 @@ move, never log its `crumb` field. **Verified procedure (2026-10-20, first live 
 "Start Active Players" is Yahoo's own heuristic: don't use it (not position-aware
 against our values). Only the planned moves; never a player whose game has started (locked). Then **re-read the page**
 and compare every slot with the plan; `fantasy txn mark <txn_id> verified --evidence '{"page":"/nba/44495/11","slots":{...}}'`
-or `failed --error`. A submitted txn is never re-clicked blindly (agent-run §7).
+or `failed --error`. Put the FULL parsed server slot map (`{player_id: slot}` for all roster players, player_ids not short names) in that evidence, then record it for the Lineup tab: `fantasy lineup record --date $D --slots '<same map>' --txn <txn_id> --how "server re-read /nba/44495/11/team?&date=$D (no-store) after the last click" --json` (once per date you edited). A submitted txn is never re-clicked blindly (agent-run §7).
 
 ## 4. ASK (add/drop, trades)
 Post the recommendations to the user (expected effect ± SE, evidence labels: fitted / simulated / prior), each with
@@ -124,6 +124,7 @@ lineup plan, type `lineup`) to the dashboard's **Moves** tab: write an advice JS
 ## 5. PUBLISH + LOG
 - If rosters changed: `fantasy sim season --league-file data/manual/league_rosters_2026-27.json --sims 12000
   --scenario "post-draft: actual rosters $D" --json` (writes `model_runs` to the DB = dashboard; season-sim skill).
+- Check the dashboard's Lineup tab: no ⚠ (plan vs Yahoo mismatch) cells for today; a mismatch means re-read Yahoo, never re-click blindly.
 - Log `docs/daily/$D.md` (≤ 25 lines): sync diff, injuries, lineup set (verified?), IL moves, recommendations awaiting
   approval with numbers, problems. `fantasy run end --status succeeded --summary "..."`.
 - `python -m pytest -q` only if code changed. Commit only your paths (`data/raw/yahoo/*_$D.json`,

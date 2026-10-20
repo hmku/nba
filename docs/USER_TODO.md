@@ -4,7 +4,7 @@ _Maintained by the lead agent. Agents: add items here when something needs the u
 Draft: **Mon 2026-10-19, 10:00 PM ET — under way.** Pre-draft sections below are history; post-draft items are at the end.
 
 ## Can do from your phone now
-- [ ] **Make Muse's league intel private (1 min, phone OK):** Supabase → fantasy-nba → SQL Editor → New query, paste the contents of
+- [x] **Make Muse's league intel private** — applied by Claude via the Supabase connector 2026-10-20 (user-approved); verified: anon key can no longer read chat_note/chat_digest rows or league_snapshots. Was: Supabase → fantasy-nba → SQL Editor → New query, paste the contents of
       `supabase/migrations/20261019120000_private_league_intel.sql` (https://github.com/hmku/nba/blob/main/supabase/migrations/20261019120000_private_league_intel.sql) → Run.
       (Supabase's plugin asks for a confirmation on DROP statements that can't be shown in Claude Code sessions, so agents can't apply it.)
       Until then don't ask Muse for chat digests. Tell Claude when done; it verifies the policies.
@@ -99,7 +99,7 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       (`data/raw/yahoo/league_schedule_2026-10-20.json`) and loaded as `data/manual/league_schedule.json`; the dashboard now
       uses the real opponents. If Yahoo changes the schedule, or for the week-1 live scores, ask Muse to "post a scoreboard
       snapshot (kind scoreboard, week 1) and the league schedule if visible" (instructions on `/agent`).
-- [ ] Apply the private-intel migration (top of this file) before asking Muse for chat digests.
+- [x] Apply the private-intel migration (done 2026-10-20).
 - [ ] Ask Muse for one read-only league check (rosters, my team, matchup) so the in-season loop has data.
 - [ ] Decide the third-party projections question (public repo) above.
 - [ ] **Optional: set up the read-only advisor (ChatGPT agent, ≈5 min)** — an independent reviewer that reads the
