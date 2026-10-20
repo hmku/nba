@@ -31,15 +31,16 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
    (`docs/handoffs/2026-10-20-main-session.md`). Nothing proposed on Yahoo.
 3. Dashboard "Moves" tab (recommendations with evidence; `fantasy advise`) — in progress 2026-10-20.
 4. Decide: in-season projection updates (proposed session, backtest first).
-5. Streaming with matchup weights (T-006), trade scan CLI (T-008), calibration of tag priors / rest_share (T-016).
-6. Tech debt: `docs/research/tech_debt.md`; session-start hook now loads `.venv` + `.env`.
+5. Streaming with matchup weights (T-006), trade scan CLI (T-008) — overnight branch in progress; T-016: draft-room part done (first sample), in-season tag priors / rest_share open.
+6. Advisor channel (`/advisor`, ADVISOR_API_TOKEN, read-only GPT dot): built; user sets the token (USER_TODO) and pastes the setup prompt.
+7. Tech debt: `docs/research/tech_debt.md`; session-start hook now loads `.venv` + `.env`.
 
 ## Known limitations
 - Pre-draft season projection (96% playoffs / 55% title from slot 1) is the optimistic end: symmetric room 61%/13%, sharp market-informed opponents + market truth 67%/12%, central ≈ 83–89% / 28–35% (`docs/research/optimism_decomposition.md`; computed before the ESPN blend, the calibrated simulator, the unified noise model and the 2026-10-19 draft policy, not recomputed).
 - Cloud sessions can now reach bbref / Yahoo public API / ESPN / CBS (stats.nba.com times out, cdn.nba.com 403s at origin).
   Stats still come from the GitHub mirror of Basketball-Reference (verified identical to bbref.com 2026-10-18).
 - Opponent model = league-average team; absolute win probabilities are optimistic.
-- Variance priors: the season simulator is fitted (`docs/research/sim_calibration.md`). Since 2026-10-19 there is ONE game-noise model, the fitted var(stat, m) = a·m + b·m² in `src/fantasy/model/noise.py`, used by valuation G-scores, the optimizer's category model and the season simulator (since `valuation-0.3.0`, `optimizer-0.3.0` (current 0.4.0), `season-sim-0.5.0`); the constant-CV models and `FANTASY_GAME_CV` are deleted. Draft effect: section 8 of sim_calibration.md. ADP sd and `USAGE` are uncalibrated heuristics.
+- Variance priors: the season simulator is fitted (`docs/research/sim_calibration.md`). Since 2026-10-19 there is ONE game-noise model, the fitted var(stat, m) = a·m + b·m² in `src/fantasy/model/noise.py`, used by valuation G-scores, the optimizer's category model and the season simulator (since `valuation-0.3.0`, `optimizer-0.3.0` (current 0.4.0), `season-sim-0.5.0`); the constant-CV models and `FANTASY_GAME_CV` are deleted. Draft effect: section 8 of sim_calibration.md. ADP sd: first real-draft sample says the room was ~0.6–0.7× the prior spread and had no sharp drafters (`docs/research/draft_calibration_2026.md`; one league, in-sample; defaults unchanged); `USAGE` uncalibrated.
 - Quant review (2026-10-18) open concerns: weekly variance ignores schedule (games/week) variance and
   category correlation → overconfident win probs; GP weighted ~linearly (`stream_recovery=0.5` may
   over-penalize long injuries given 3 IL slots + IL direct adds); punt scan rarely beats balanced under the cat-wins objective
