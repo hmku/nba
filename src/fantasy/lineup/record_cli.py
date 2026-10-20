@@ -204,19 +204,6 @@ def backfill_cmd(
     rows: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
     params = {"command": "lineup backfill", "from": start, "to": end}
-    if not no_txns:
-        from fantasy.ops.cli import _backend
-
-        try:
-            txns = _backend(use_rest).transactions.list_txns(kind="lineup", limit=1000)
-        except OpsError as e:
-            fail(e.message, as_json, e.exit_code, code=e.code)
-        for t in sorted(txns, key=lambda t: str(t.get("created_at"))):
-            rows_or_skip = _txn_row(ctx, t, d0, d1, params)
-            if isinstance(rows_or_skip, dict) and "run_id" in rows_or_skip:
-                rows.append(rows_or_skip)
-            elif rows_or_skip is not None:
-                skipped.append(rows_or_skip)
     files = captures if captures else [p for p in sorted(YAHOO_DIR.glob("league_rosters_*.json"))
                                       if d0.isoformat() <= p.stem.removeprefix("league_rosters_")[:10] <= d1.isoformat()]
     for f in files:
@@ -230,6 +217,20 @@ def backfill_cmd(
             rows.append(row)
         else:
             skipped.append({"capture": str(f), "reason": f"date {row['summary']['date']} outside range"})
+    if not no_txns:
+        from fantasy.ops.cli import _backend
+
+        try:
+            txns = _backend(use_rest).transactions.list_txns(kind="lineup", limit=1000)
+        except OpsError as e:
+            fail(e.message, as_json, e.exit_code, code=e.code)
+        # by lineup date, then time: a txn without a slot map is replayed on the latest state known for its date
+        for t in sorted(txns, key=lambda t: (record.txn_date(t) or "", str(t.get("created_at")))):
+            got = _txn_row(ctx, t, d0, d1, params, rows)
+            if isinstance(got, dict) and "run_id" in got:
+                rows.append(got)
+            elif got is not None:
+                skipped.append(got)
     results = []
     for row in rows:
         res = _save(row, use_rest) if write else {"inserted": None, "store": "dry-run"}
@@ -243,25 +244,48 @@ def backfill_cmd(
     emit(out, as_json, text)
 
 
-def _txn_row(ctx: Context, t: dict[str, Any], d0: date, d1: date, params: dict[str, Any]) -> dict[str, Any] | None:
-    """A lineup_actual row for a verified txn in range, a skip record, or None (out of range)."""
+def _base_state(rows: list[dict[str, Any]], day: str) -> dict[str, Any] | None:
+    """The newest known lineup for a date <= `day` (Yahoo carries an edited lineup forward to later, unedited days)."""
+    prior = [r for r in rows if r["summary"]["date"] <= day and r["summary"].get("complete") is not False]
+    return prior[-1] if prior else None
+
+
+def _txn_row(ctx: Context, t: dict[str, Any], d0: date, d1: date, params: dict[str, Any],
+             known: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """A lineup_actual row for a verified txn in range, a skip record, or None (out of range).
+
+    The txn's verification evidence slot map is used when present; otherwise the verified `changes` are replayed on
+    the latest known full lineup for a date <= the txn's (`known`, built in date order), and the row says so in `how`
+    / `derived_from`."""
     day = record.txn_date(t)
+    tid = t.get("txn_id")
     if day is None:
-        return {"txn_id": t.get("txn_id"), "reason": "payload has no date"}
+        return {"txn_id": tid, "reason": "payload has no date"}
     if not d0.isoformat() <= day <= d1.isoformat():
         return None
     if t.get("status") != "verified":
-        return {"txn_id": t.get("txn_id"), "date": day, "reason": f"status {t.get('status')} (only verified)"}
-    raw = record.txn_slots(t)
-    if raw is None:
-        return {"txn_id": t.get("txn_id"), "date": day,
-                "reason": "verification evidence has no slot map (slots/server_slots/final_slots/after)"}
+        return {"txn_id": tid, "date": day, "reason": f"status {t.get('status')} (only verified)"}
     v: dict[str, Any] = t.get("verification") or {}
     ev: dict[str, Any] = v["evidence"] if isinstance(v.get("evidence"), dict) else {}
+    how = f"txn {tid} verified by a server re-read" + (f" of {ev['page']}" if ev.get("page") else "")
+    raw: Any = record.txn_slots(t)
+    derived = None
     try:
-        return build_actual(ctx, day, raw, source="yahoo_verified", observed_at=v.get("verified_at"),
-                            how=f"txn {t.get('txn_id')} verified by a server re-read"
-                                + (f" of {ev['page']}" if ev.get("page") else ""),
-                            txn_id=t.get("txn_id"), params=params)
+        if raw is None:
+            base = _base_state(known, day)
+            changes = record.txn_changes(t)
+            if base is None or not changes:
+                return {"txn_id": tid, "date": day, "reason": "verification evidence has no slot map and there is "
+                        + ("no earlier full lineup to replay its changes on" if base is None else "no changes list")}
+            state = {s["player_id"]: s["slot"] for s in base["summary"]["slots"] if s.get("player_id")}
+            raw = record.apply_changes(state, changes, ctx.roster())
+            derived = {"base_run_id": base["run_id"], "base_date": base["summary"]["date"], "changes": len(changes)}
+            how += (f"; slots derived: {base['summary']['date']} lineup ({base['run_id']}) + this txn's "
+                    f"{len(changes)} verified change(s)")
+        row = build_actual(ctx, day, raw, source="yahoo_verified", observed_at=v.get("verified_at"), how=how,
+                           txn_id=tid, params=params)
     except record.RecordError as e:
-        return {"txn_id": t.get("txn_id"), "date": day, "reason": str(e)}
+        return {"txn_id": tid, "date": day, "reason": str(e)}
+    if derived:
+        row = record.actual_row({**row["summary"], "derived_from": derived}, params)
+    return row

@@ -253,3 +253,36 @@ def test_rest_store_insert_missing(tmp_path):
     assert record.save(record.actual_row(summary), st)["inserted"] is False
     [got] = st.rows("lineup_actual")
     assert got["run_id"] == row["run_id"] and got["summary"]["slots"][0]["slot"] == "C"
+
+
+def test_backfill_replays_verified_changes_without_slot_map(tmp_path, proj_path):
+    """The real 10-21/10-22 txns carry only `changes` + the page re-read: replay them on the 10-20 capture
+    (Yahoo carries an edited lineup forward), chained day by day; an inconsistent `from` is skipped."""
+    base, mine = _cli_world(tmp_path, proj_path, captured_at="2026-10-20T04:43:21Z")
+    lf, capf = tmp_path / "league.json", tmp_path / "cap.json"
+    cap = json.loads(capf.read_text())
+    slots20 = {p["player_id"]: p["slot"] for p in cap["teams"]["1"]["players"]}
+    pg, bn = mine[0], mine[10]
+    assert slots20[pg] == "PG" and slots20[bn] == "BN"
+    t = datetime(2026, 10, 20, 4, 4, tzinfo=UTC)
+    ev = {"evidence": {"page": "/nba/44495/11/team?&date=2026-10-21"}, "verified_at": "2026-10-20T04:04:22+00:00"}
+    _txn("txn-21", "verified", {"date": "2026-10-21", "changes": [{"player": pg, "from": "PG", "to": "BN"},
+                                                                  {"player": bn, "from": "BN", "to": "PG"}]}, ev, t)
+    _txn("txn-22", "verified", {"date": "2026-10-22", "changes": [{"player": pg, "from": "BN", "to": "PG"},
+                                                                  {"player": bn, "from": "PG", "to": "BN"}]}, ev,
+         datetime(2026, 10, 20, 4, 48, tzinfo=UTC))
+    _txn("txn-bad", "verified", {"date": "2026-10-22", "changes": [{"player": pg, "from": "C", "to": "BN"}]}, ev,
+         datetime(2026, 10, 20, 5, 0, tzinfo=UTC))
+    code, out = invoke(["lineup", "backfill", "--from", "2026-10-20", "--to", "2026-10-22", "--capture", str(capf),
+                        "--league-file", str(lf), "--projections", str(proj_path), "--json", "--write"])
+    assert code == 0, out
+    by_txn = {r["txn_id"]: r for r in out["rows"]}
+    assert by_txn["txn-21"]["slots"][pg] == "BN" and by_txn["txn-21"]["slots"][bn] == "PG"
+    assert by_txn["txn-22"]["slots"][pg] == "PG" and by_txn["txn-22"]["slots"][bn] == "BN"
+    assert by_txn["txn-21"]["complete"] is True
+    [bad] = [s for s in out["skipped"] if s.get("txn_id") == "txn-bad"]
+    assert "base lineup, not C" in bad["reason"]
+    s21 = next(r for r in runs("lineup_actual") if r["summary"]["txn_id"] == "txn-21")["summary"]
+    assert s21["derived_from"]["base_date"] == "2026-10-20" and "derived" in s21["how"]
+    s22 = next(r for r in runs("lineup_actual") if r["summary"]["txn_id"] == "txn-22")["summary"]
+    assert s22["derived_from"]["base_date"] == "2026-10-21"

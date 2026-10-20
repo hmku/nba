@@ -439,3 +439,28 @@ def txn_slots(txn: dict[str, Any]) -> Any:
                 if src.get(k):
                     return src[k]
     return None
+
+
+def txn_changes(txn: dict[str, Any]) -> list[dict[str, Any]]:
+    p = txn.get("payload") or {}
+    ch = p.get("changes") if isinstance(p, dict) else None
+    return [c for c in ch if isinstance(c, dict)] if isinstance(ch, list) else []
+
+
+def apply_changes(base: dict[str, str], changes: list[dict[str, Any]], roster: Roster) -> dict[str, str]:
+    """Replay a lineup txn's `changes` ([{player|player_id|name, from, to}]) on a {player_id: slot} state.
+    Raises RecordError when a player is unknown or a change's `from` disagrees with the base state (then the
+    base is not the state the txn was applied to, and the derived lineup would be wrong)."""
+    out = dict(base)
+    for i, c in enumerate(changes):
+        key = next((c[k] for k in ("player_id", "player", "name", "yahoo_player_id") if c.get(k) not in (None, "")), None)
+        pid = roster.resolve(key) if key is not None else None
+        if pid is None or pid not in out:
+            raise RecordError(f"changes[{i}]: player {key!r} not in the base lineup")
+        frm, to = norm_slot(c.get("from")), norm_slot(c.get("to"))
+        if to is None:
+            raise RecordError(f"changes[{i}]: unknown target slot {c.get('to')!r}")
+        if frm is not None and out[pid] != frm:
+            raise RecordError(f"changes[{i}]: {pid} is in {out[pid]} in the base lineup, not {frm}")
+        out[pid] = to
+    return out
