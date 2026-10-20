@@ -340,3 +340,8 @@ table.sc {
 .d.literature {
   background: var(--muted);
 }
+
+/* Phones: the page must never be wider than the screen (a wide table would shift the fixed bottom nav), and the main
+   area is at least one screen tall (see layout.tsx) so short loading skeletons don't make iOS Safari show/hide its
+   toolbar, which made the bottom bar snap up and down on League/Draft. */
+html, body { overflow-x: clip; }

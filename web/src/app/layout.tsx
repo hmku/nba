@@ -40,7 +40,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeAuto />
         <ServiceWorkerRegister />
         <Nav />
-        <main className="mx-auto w-full max-w-5xl min-w-0 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">{children}</main>
+        <main className="mx-auto min-h-screen min-h-[100dvh] w-full max-w-5xl min-w-0 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">{children}</main>
       </body>
     </html>
   );
