@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated, Any
 
+import pandas as pd
 import typer
 
 from fantasy.cli_common import emit, fail
@@ -76,14 +77,14 @@ def _load_state(path: Path, as_json: bool) -> dict[str, Any] | None:
     return data
 
 
-def _projections(path: Path | None, as_json: bool):  # -> pd.DataFrame
+def _projections(path: Path | None, as_json: bool) -> pd.DataFrame:
     try:
         return load_projections(path).df
     except (OSError, ValueError) as e:
         fail(f"cannot load projections: {e}", as_json, EXIT_USAGE)
 
 
-def _diff_text(diff: dict, resolve: dict) -> str:
+def _diff_text(diff: dict[str, Any], resolve: dict[str, Any]) -> str:
     lines = []
     if not diff["roster_changed"]:
         lines.append("rosters unchanged")

@@ -130,6 +130,17 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if unknown:
         warnings.append(f"unknown keys kept as-is: {sorted(unknown)}")
     s: dict[str, Any] = {k: v for k, v in raw.items() if k not in MANAGED}
+    _validate_header(raw, s)
+    _validate_lists(raw, s, warnings)
+    if not s["metrics"] and raw["type"] != "lineup":
+        warnings.append("no metrics: every quantitative claim should carry an evidence label")
+    if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
+        raise AdviceError(f"advice_id: lowercase slug [a-z0-9._-], 3-100 chars, got {raw['advice_id']!r}")
+    return s, warnings
+
+
+def _validate_header(raw: dict[str, Any], s: dict[str, Any]) -> None:
+    """type, status, the three texts, requires_user_yes, for_date, week (normalised texts go into `s`)."""
     if raw.get("type") not in TYPES:
         raise AdviceError(f"type: must be one of {list(TYPES)}, got {raw.get('type')!r}")
     if raw.get("status") not in STATUSES:
@@ -150,6 +161,10 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     if raw.get("week") is not None and (not isinstance(raw["week"], int) or isinstance(raw["week"], bool)
                                         or raw["week"] < 1):
         raise AdviceError(f"week: expected a positive integer, got {raw['week']!r}")
+
+
+def _validate_lists(raw: dict[str, Any], s: dict[str, Any], warnings: list[str]) -> None:
+    """metrics, scenarios (+ scenario_columns), risks, links, approval_id."""
     metrics = raw.get("metrics", [])
     if not isinstance(metrics, list):
         raise AdviceError("metrics: expected a list")
@@ -173,19 +188,15 @@ def validate(raw: Any) -> tuple[dict[str, Any], list[str]]:
     links = raw.get("links", [])
     if not isinstance(links, list):
         raise AdviceError("links: expected a list")
-    s["links"] = [{"label": _str(lk, "label", f"links[{i}]."), "path": _str(lk, "path", f"links[{i}].")}
-                  if isinstance(lk, dict) else _bad_link(i) for i, lk in enumerate(links)]
+    s["links"] = [_link(lk, i) for i, lk in enumerate(links)]
     if raw.get("approval_id") is not None:
         s["approval_id"] = _str(raw, "approval_id", "")
-    if not s["metrics"] and raw["type"] != "lineup":
-        warnings.append("no metrics: every quantitative claim should carry an evidence label")
-    if raw.get("advice_id") is not None and not ID_RE.match(str(raw["advice_id"])):
-        raise AdviceError(f"advice_id: lowercase slug [a-z0-9._-], 3-100 chars, got {raw['advice_id']!r}")
-    return s, warnings
 
 
-def _bad_link(i: int) -> dict[str, str]:
-    raise AdviceError(f"links[{i}]: expected an object {{label, path}}")
+def _link(lk: Any, i: int) -> dict[str, str | None]:
+    if not isinstance(lk, dict):
+        raise AdviceError(f"links[{i}]: expected an object {{label, path}}")
+    return {"label": _str(lk, "label", f"links[{i}]."), "path": _str(lk, "path", f"links[{i}].")}
 
 
 def content_hash(summary: dict[str, Any]) -> str:

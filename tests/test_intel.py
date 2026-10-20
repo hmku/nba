@@ -254,3 +254,23 @@ def test_rest_auth_error_is_reported():
                          sleep=lambda s: None)
     with pytest.raises(rest.RestAuthError):
         intel.list_intel(intel.source(True, cl))
+
+
+def test_parse_since_edges():
+    assert intel.parse_since(" 90m ", at=T0) == T0 - timedelta(minutes=90)
+    assert intel.parse_since("1.5H", at=T0) == T0 - timedelta(hours=1.5)
+    assert intel.parse_since("   ") is None
+    assert intel.parse_since("2026-11-01T05:00:00Z") == datetime(2026, 11, 1, 5, tzinfo=UTC)
+    with pytest.raises(ValueError, match="--since"):
+        intel.parse_since("5y")
+
+
+def test_list_intel_argument_checks():
+    src = intel.source()
+    for kw, msg in (({"what": "both"}, "--what"), ({"limit": 0}, "--limit"), ({"limit": 1001}, "--limit"),
+                    ({"report_source": "x"}, "--source"),
+                    ({"kind": "advisor_suggestion"}, "invalid kind")):  # advisor kind on the muse stream
+        with pytest.raises(ValueError, match=msg):
+            intel.list_intel(src, **kw)
+    out = intel.list_intel(src, kind="advisor_suggestion", report_source="advisor")
+    assert out["snapshots"] == [] and out["reports"] == [] and "advisor_note" in out
