@@ -88,8 +88,8 @@ is interested in X; details private"). A thread message
   banked stats, so its P(win) is NOT the week's odds (2026-10-21: Sunday's plan showed 8% while today's said 60%).
 - Ratio bench (lineup-0.4.0): the plan output has `ratio_bench` — the protect-ratios plan (bench a player with a game
   whose start would hurt a close FG%/FT% while the counting cats are decided) vs the default, compared by paired Monte
-  Carlo (`delta_expected_cats` ± `delta_expected_cats_se`, `delta_p_win`; `suggest` = ΔE[cats] > 2·SE; `benches` lists
-  player-days with `cats_helped`/`cats_hurt`). **`ratio_bench` is a suggestion only — never apply it on Yahoo**; the
+  Carlo (`delta_expected_cats` ± `delta_expected_cats_se`, `delta_p_win`; `suggest` = a bench AND ΔE[cats] > 2·SE AND ≥ 0.05 (priors);
+  `benches` lists player-days with `cats_helped`/`cats_hurt`, `starts` the bench players who start instead). **`ratio_bench` is a suggestion only — never apply it on Yahoo**; the
   executor sets `target_slots` (the default plan) as always. Mention it in the daily log and, if `suggest` is true,
   tell the user (one line, with the ± SE); it needs the user's explicit OK like any non-default lineup choice — then
   re-plan with `--protect-ratios` and execute that plan's `target_slots` in the live run.

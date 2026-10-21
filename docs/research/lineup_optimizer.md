@@ -203,10 +203,15 @@ puts them (`diagnostics.remaining_hints`).
 The executed plan keeps the default (every player with a game starts). `build_plan` also solves the
 `protect_ratios=True` plan with the same inputs and fixed point (`plan.ratio_bench`); when it differs, both plans are
 scored by the Monte Carlo of section 4 with common random numbers, and the paired difference (protect − default) of
-categories won and of the matchup win indicator gives ΔE[cats] ± SE and ΔP(win) ± SE. `suggest` = ΔE[cats] > 2 SE
-(rule chosen as a ~97.5% one-sided screen; a **prior**, not calibrated). `benches` lists the player-days the default
-starts and the protect plan benches, with per-game category contributions (`cats_helped` = what his start would
-lower, `cats_hurt` = what benching gives up). Identical plans skip the MC. Evidence: **simulated**.
+categories won and of the matchup win indicator gives ΔE[cats] ± SE and ΔP(win) ± SE. `suggest` = `benches` non-empty
+AND ΔE[cats] > 2 SE (a ~97.5% one-sided screen) AND ΔE[cats] ≥ `RATIO_BENCH_MIN_EFFECT` = 0.05 expected categories
+(minimum effect). Both thresholds are **priors**, not calibrated; the minimum effect is needed because common random
+numbers make the paired SE tiny, so an immaterial +0.0003 would clear 2 SE alone. `benches` lists the player-days the
+default starts and the protect plan benches, with per-game category contributions (`cats_helped` = what his start
+would lower, `cats_hurt` = what benching gives up); `starts` lists bench players the protect plan starts instead — the
+MC evaluated the whole swap ("sit A, C starts instead"), so CLI and dashboard show both. Identical plans skip the MC.
+The dashboard shows the flag only from a plan dated today (an earlier day's suggestion predates that day's banked
+stats). Evidence: **simulated**.
 
 Caveats: (1) the bench candidates come from the first-order gradient, which ignores the variance a start adds (and
 benching removes) — a close FT% is protected both by a better mean and by less variance; the MC comparison does

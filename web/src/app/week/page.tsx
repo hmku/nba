@@ -13,6 +13,7 @@ import {
   pickWeek,
   ratioBenchFlag,
   ratioBenchIds,
+  ratioBenchMoves,
   shortName,
   weekSummary,
   type AdviceLite,
@@ -441,14 +442,15 @@ function ScoreHeader({
   );
 }
 
-/** "6 / 38 played" from Yahoo's games strip (played + remaining = the week's total), else null. */
 /** Ratio-bench suggestion (lineup-0.4.0): benching these player-days would protect a % category. Never applied. */
 function RatioBenchFlag({ rb }: { rb: RatioBench }) {
   const label = (k: string) => CAT_LABEL[k as keyof typeof CAT_LABEL] ?? k.toUpperCase();
   const uniq = (xs: string[]) => [...new Set(xs)];
   const helped = uniq(rb.benches.flatMap((x) => x.helped.slice(0, 1))).map(label);
   const hurt = uniq(rb.benches.flatMap((x) => x.hurt.slice(0, 2))).map(label);
-  const who = rb.benches.map((x) => `${shortName(x.name)} ${dayLabel(x.date).split(" ")[0]}`).join(", ");
+  const who = ratioBenchMoves(rb)
+    .map((m) => `${m.sit.map(shortName).join(" & ")} ${dayLabel(m.date).split(" ")[0]}${m.start.length ? ` (${m.start.map(shortName).join(" & ")} starts instead)` : ""}`)
+    .join(", ");
   const sign = (v: number | null, d: number) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(d)}`);
   return (
     <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-[12.5px] leading-snug" title={rb.rule ?? undefined}>
@@ -469,7 +471,8 @@ function RatioBenchFlag({ rb }: { rb: RatioBench }) {
   );
 }
 
-function gamesText(t:{ gamesPlayed: number | null; gamesRemaining: number | null }): string | null {
+/** "6 / 38 played" from Yahoo's games strip (played + remaining = the week's total), else null. */
+function gamesText(t: { gamesPlayed: number | null; gamesRemaining: number | null }): string | null {
   if (t.gamesPlayed == null || t.gamesRemaining == null) return null;
   return `${t.gamesPlayed} / ${t.gamesPlayed + t.gamesRemaining} played`;
 }

@@ -15,6 +15,7 @@ import {
   planForDay,
   ratioBenchFlag,
   ratioBenchIds,
+  ratioBenchMoves,
   shortName,
   weekSummary,
 } from "../src/lib/lineup.ts";
@@ -283,6 +284,7 @@ const ratioBench = (over = {}) => ({
     { date: "2026-10-25", player_id: "d", name: "Player D", game: "vs NYK", instead_of_slot: "SF", cats_helped: [{ cat: "fg_pct", per_game: -0.01 }], cats_hurt: [] },
     { player_id: "junk" },
   ],
+  starts: [{ date: "2026-10-21", player_id: "k", name: "Player K", slot: "G" }],
   ...over,
 });
 
@@ -296,10 +298,15 @@ test("ratio_bench: parsed from the plan row; flag only when suggest is true, fro
   assert.deepEqual(rb.benches[0], { date: "2026-10-21", playerId: "c", name: "Player C", game: "@DET", slot: "G", helped: ["ft_pct"], hurt: ["pts"] });
 
   assert.equal(ratioBenchFlag(p, "2026-10-21").benches.length, 2);
-  // days already played are dropped; nothing left -> no flag
-  assert.deepEqual(ratioBenchFlag(p, "2026-10-22").benches.map((x) => x.playerId), ["d"]);
-  assert.equal(ratioBenchFlag(p, "2026-10-26"), null);
+  // only today's plan: yesterday's suggestion predates the banked stats of its own day -> stale, hidden
+  assert.equal(ratioBenchFlag(p, "2026-10-22"), null);
   assert.deepEqual(ratioBenchIds(ratioBenchFlag(p, "2026-10-21"), "2026-10-25"), ["d"]);
+  // starts: the bench player swapped in is shown with the sit
+  assert.deepEqual(rb.starts, [{ date: "2026-10-21", playerId: "k", name: "Player K", slot: "G" }]);
+  assert.deepEqual(ratioBenchMoves(rb), [
+    { date: "2026-10-21", sit: ["Player C"], start: ["Player K"] },
+    { date: "2026-10-25", sit: ["Player D"], start: [] },
+  ]);
   assert.deepEqual(ratioBenchIds(null, "2026-10-25"), []);
 
   // no suggestion: not significant, identical plans, unchecked, older rows without the block, no plan

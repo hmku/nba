@@ -14,7 +14,8 @@ Policy for the remaining days of the matchup week:
    protect_ratios=True (a player with a game whose matchup-aware value is negative -- e.g. a poor FT shooter while
    FT% is close and the counting categories are decided -- may lose to an empty bench seat). If that plan differs,
    both are compared by Monte Carlo with common random numbers over the rest of the week (paired differences); the
-   result is `ratio_bench` (suggest iff dE[cats] > 2 paired SE). It never changes `target_slots` or the plan; acting
+   result is `ratio_bench` (suggest iff it benches someone, dE[cats] > 2 paired SE and dE >= RATIO_BENCH_MIN_EFFECT
+   = 0.05 expected cats, a PRIOR minimum effect: with common random numbers the paired SE alone is tiny). It never changes `target_slots` or the plan; acting
    on it needs the user's explicit OK. The gradient that picks the benches is first order (it ignores the variance a
    start adds, which benching removes); the Monte Carlo comparison uses the full simulation.
 """
@@ -49,8 +50,12 @@ from fantasy.sim.schedule import NBASchedule
 # 0.4.0: ratio_bench -- the protect-ratios plan is solved alongside the default one and compared by paired Monte
 #        Carlo (suggestion only; the executed plan / target_slots are unchanged)
 LINEUP_MODEL_VERSION = "lineup-0.4.0"
-RATIO_BENCH_RULE = ("suggest iff dE[categories won] (protect-ratios plan minus default plan) > 2 x its paired SE "
-                    "(Monte Carlo, common random numbers, rest of the week); suggestion only, never applied")
+# PRIOR (not calibrated): smallest gain in expected categories won worth bothering the user with. Needed because with
+# common random numbers the paired SE is tiny, so a meaningless +0.0003 can clear 2 SE.
+RATIO_BENCH_MIN_EFFECT = 0.05
+RATIO_BENCH_RULE = (f"suggest iff the protect-ratios plan benches someone and dE[categories won] (protect minus "
+                    f"default) > 2 x its paired SE (Monte Carlo, common random numbers, rest of the week) and "
+                    f">= {RATIO_BENCH_MIN_EFFECT} (minimum effect, PRIOR); suggestion only, never applied")
 GAME_FLOOR = 1e-5  # a player with a game is worth at least this (so he never sits for a player without one)
 
 
@@ -318,7 +323,12 @@ def ratio_bench(
     return {**out, "method": f"monte_carlo: {mc['n_sims']} paired sims (common random numbers), seed {mc['seed']}",
             "delta_expected_cats": dc, "delta_expected_cats_se": dc_se,
             "delta_p_win": -diff["p_win_matchup"], "delta_p_win_se": diff["p_win_matchup_se"],
-            "suggest": bool(dc > 2 * dc_se)}
+            "suggest": suggest_rule(dc, dc_se, len(benches))}
+
+
+def suggest_rule(delta: float, se: float | None, n_benches: int) -> bool:
+    """RATIO_BENCH_RULE: a bench to suggest, significant (> 2 paired SE) and material (>= RATIO_BENCH_MIN_EFFECT)."""
+    return bool(n_benches > 0 and se is not None and delta > 2 * se and delta >= RATIO_BENCH_MIN_EFFECT)
 
 
 def summarize_state(st: CatState) -> dict:

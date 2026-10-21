@@ -465,7 +465,7 @@ sha256 + `content_sha256`.
                                "weight": 0.023}},   // all 9 cats; weight ~0 = category settled (far ahead/behind)
   // lineup-0.4.0: protect-ratios plan vs the executed default plan -- a SUGGESTION, never applied. null in older rows;
   // {"checked": false, "reason": …} when the plan itself used --protect-ratios. Identical plans: differs false, no MC.
-  "ratio_bench": {"checked": true, "differs": true, "suggest": true, "rule": "suggest iff dE[categories won] … > 2 x its paired SE …",
+  "ratio_bench": {"checked": true, "differs": true, "suggest": true, "rule": "suggest iff … benches someone and dE[categories won] … > 2 x its paired SE … and >= 0.05 …",
                   "method": "monte_carlo: 20000 paired sims (common random numbers), seed 0",
                   "delta_expected_cats": 0.12, "delta_expected_cats_se": 0.04,   // protect minus default
                   "delta_p_win": 0.03, "delta_p_win_se": 0.01,
@@ -473,7 +473,8 @@ sha256 + `content_sha256`.
                                "instead_of_slot": "C", "value_per_game": -0.02,
                                "cats_helped": [{"cat": "ft_pct", "per_game": -0.03}],   // his start lowers these
                                "cats_hurt": [{"cat": "reb", "per_game": 0.01}]}],      // benching gives these up
-                  "starts": [], "fixed_point": {"iterations": 2, "converged": true},
+                  "starts": [{"date": "2026-10-25", "player_id": "…", "name": "…", "p_play": 0.96, "slot": "C", "game": "vs NYK"}],   // swapped in
+                  "fixed_point": {"iterations": 2, "converged": true},
                   "expected_analytic": {"default": {…}, "protect_ratios": {…}}},
   "warnings": ["MID-WEEK WITHOUT BANKED TOTALS: …"],   // only when accumulated_source.kind = none
   "model_version": "lineup-0.4.0"

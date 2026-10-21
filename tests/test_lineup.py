@@ -552,7 +552,30 @@ def test_ratio_bench_suggests_benching_poor_ft_shooter_late_week(world):
 
     assert record.plan_summary(out, {})["ratio_bench"]["suggest"] is True
     line = ratio_bench_line(rb)
-    assert line.startswith("RATIO BENCH (suggestion only, not applied): bench ") and "FT%" in line and day[0].strftime("%a") in line
+    assert line.startswith("RATIO BENCH (suggestion only, not applied): sit ") and "FT%" in line and day[0].strftime("%a") in line
+    assert rb["delta_expected_cats"] >= 0.05 and "minimum effect" in rb["rule"]
+
+
+def test_ratio_bench_rule_needs_material_effect_and_a_bench():
+    from fantasy.lineup.plan import RATIO_BENCH_MIN_EFFECT, suggest_rule
+
+    assert suggest_rule(0.12, 0.04, 1)
+    assert not suggest_rule(0.0003, 0.0001, 1)  # > 2 SE (common random numbers) but immaterial
+    assert not suggest_rule(RATIO_BENCH_MIN_EFFECT, RATIO_BENCH_MIN_EFFECT, 1)  # material but not significant
+    assert not suggest_rule(0.5, 0.01, 0)  # nothing to bench
+    assert not suggest_rule(0.5, None, 1)  # no SE (analytic only)
+
+
+def test_ratio_bench_line_shows_swaps_and_never_an_empty_bench():
+    from fantasy.lineup.cli import ratio_bench_line
+
+    base = {"suggest": True, "delta_expected_cats": 0.12, "delta_expected_cats_se": 0.04, "delta_p_win": 0.03}
+    b = {"date": "2026-10-24", "name": "Player A", "cats_helped": [{"cat": "ft_pct"}]}
+    s = {"date": "2026-10-24", "name": "Player C", "slot": "G"}
+    line = ratio_bench_line({**base, "benches": [b], "starts": [s]})
+    assert "sit Player A Sat to protect FT%; Player C starts instead Sat: +0.12 ± 0.04" in line
+    assert ratio_bench_line({**base, "benches": [], "starts": [s]}) is None
+    assert ratio_bench_line({**base, "suggest": False, "benches": [b]}) is None
 
 
 def test_ratio_bench_no_suggestion_early_week(world):

@@ -123,6 +123,8 @@ export interface RatioBench {
   deltaPWin: number | null;
   deltaPWinSe: number | null;
   benches: RatioBenchItem[];
+  /** player-days the protect plan starts instead (bench player swapped in); part of what was evaluated */
+  starts: { date: string; playerId: string; name: string; slot: string | null }[];
 }
 
 function catKeys(v: unknown): string[] {
@@ -155,17 +157,30 @@ export function parseRatioBench(v: unknown): RatioBench | null {
         helped: catKeys(e.cats_helped),
         hurt: catKeys(e.cats_hurt),
       })),
+    starts: a(x.starts)
+      .map((e) => o(e))
+      .filter((e): e is Obj => !!e && !!s(e.player_id) && !!s(e.date))
+      .map((e) => ({ date: e.date as string, playerId: e.player_id as string, name: s(e.name) ?? (e.player_id as string), slot: s(e.slot) })),
   };
 }
 
-/** The ratio-bench suggestion to show for `plan` (the page's plan for today, `latestPlanInWeek`): only when `suggest`
- * is true and it names at least one player-day from `today` on (days already played are dropped). A suggestion only:
- * the executed plan / Yahoo lineup stays the default. */
+/** Per day: who sits and who starts instead ("Sit A (C starts instead)"), in date order. */
+export function ratioBenchMoves(rb: RatioBench): { date: string; sit: string[]; start: string[] }[] {
+  const days = [...new Set(rb.benches.map((x) => x.date))].sort();
+  return days.map((d) => ({
+    date: d,
+    sit: rb.benches.filter((x) => x.date === d).map((x) => x.name),
+    start: rb.starts.filter((x) => x.date === d).map((x) => x.name),
+  }));
+}
+
+/** The ratio-bench suggestion to show for `plan` (the page's plan, `latestPlanInWeek`): only when the plan was made
+ * for `today` (an earlier day's suggestion was computed before that day's games were banked: stale), `suggest` is true
+ * and it names at least one bench. A suggestion only: the executed plan / Yahoo lineup stays the default. */
 export function ratioBenchFlag(plan: LineupPlan | null, today: string): RatioBench | null {
   const rb = plan?.ratioBench ?? null;
-  if (!rb || !rb.suggest) return null;
-  const benches = rb.benches.filter((x) => x.date >= today);
-  return benches.length ? { ...rb, benches } : null;
+  if (!plan || plan.date !== today || !rb || !rb.suggest || !rb.benches.length) return null;
+  return rb;
 }
 
 /** Player ids the flagged suggestion would bench on `day` (for a badge in the lineup grid). */

@@ -401,15 +401,19 @@ _CAT_LABEL = {"fg_pct": "FG%", "ft_pct": "FT%"}
 
 def ratio_bench_line(rb: dict | None) -> str | None:
     """One text line when the ratio-bench check suggests benching (None otherwise)."""
-    if not rb or not rb.get("suggest"):
+    if not rb or not rb.get("suggest") or not rb.get("benches"):
         return None
     parts = []
-    for b in rb.get("benches", []):
+    starts = rb.get("starts") or []
+    for b in rb["benches"]:
         day = date.fromisoformat(b["date"]).strftime("%a")
         helped = [_CAT_LABEL.get(c["cat"], c["cat"].upper()) for c in b.get("cats_helped", [])[:2]]
         parts.append(f"{b['name']} {day}" + (f" to protect {'/'.join(helped)}" if helped else ""))
+    for day_iso in sorted({s["date"] for s in starts}):
+        names = " & ".join(s["name"] for s in starts if s["date"] == day_iso)
+        parts.append(f"{names} starts instead {date.fromisoformat(day_iso).strftime('%a')}")
     se = rb.get("delta_expected_cats_se")
-    return (f"RATIO BENCH (suggestion only, not applied): bench {'; '.join(parts)}: "
+    return (f"RATIO BENCH (suggestion only, not applied): sit {'; '.join(parts)}: "
             f"{rb['delta_expected_cats']:+.2f} ± {se:.2f} exp. cats, P(win) {rb['delta_p_win'] + 0.0:+.3f}")
 
 
