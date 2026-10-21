@@ -181,13 +181,20 @@ export interface WeekOdds {
   asOf: string | null;
 }
 
-/** The newest lineup plan made for a date inside [start, end] (latest date, then latest created). */
-export function latestPlanInWeek(plans: LineupPlan[], start: string, end: string): LineupPlan | null {
-  return (
-    plans
-      .filter((p) => p.date >= start && p.date <= end)
-      .sort((x, y) => y.date.localeCompare(x.date) || (y.createdAt ?? "").localeCompare(x.createdAt ?? ""))[0] ?? null
-  );
+/**
+ * The lineup plan whose odds describe the week as of `today`: the plan for the latest date inside [start, end] that is
+ * not after today (then latest created); for a week that hasn't started, its earliest-dated plan. Never a plan for a
+ * later day of the week: a `--week` run saves one plan per remaining day, and a later day's plan scores only that
+ * day's games on top of the banked totals, so its P(win) is not the week's odds (Sunday's plan read 8% on Wed).
+ */
+export function latestPlanInWeek(plans: LineupPlan[], start: string, end: string, today: string): LineupPlan | null {
+  // skip plans flagged as not covering the week (banked totals read before the plan date); unflagged = older rows
+  const inWeek = plans.filter((p) => p.date >= start && p.date <= end && p.expected?.coversWeek !== false);
+  const byNewest = (x: LineupPlan, y: LineupPlan) => y.date.localeCompare(x.date) || (y.createdAt ?? "").localeCompare(x.createdAt ?? "");
+  const upToToday = inWeek.filter((p) => p.date <= today).sort(byNewest);
+  if (upToToday.length) return upToToday[0];
+  const first = inWeek.reduce<string | null>((m, p) => (m == null || p.date < m ? p.date : m), null);
+  return inWeek.filter((p) => p.date === first).sort(byNewest)[0] ?? null;
 }
 
 /** Season-sim odds of `week` against `opponent`: the H2H matrix cell, else the weekly row when it is that pairing. */

@@ -197,7 +197,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
   // --- score + odds
   const score = whatIf == null ? latestScore((scoreR.data as RunRow[]) ?? [], w.week) : null;
   const simOdds = sim ? simWeekOdds(sim.weeks, sim.h2h, w.week, oppTeam) : null;
-  const plan = whatIf == null ? latestPlanInWeek(plans, w.start, w.end) : null;
+  const plan = whatIf == null ? latestPlanInWeek(plans, w.start, w.end, today) : null;
   const odds = weekOdds(plan, simOdds, sim?.run.run_id ?? null);
   const mx = sim?.h2h.find((x) => x.week === w.week) ?? null;
 
@@ -410,6 +410,13 @@ function ScoreHeader({
         </div>
         <div className="min-w-0 line-clamp-2 text-right text-[15px] leading-tight font-semibold break-words">{oppName}</div>
       </div>
+      {score && (gamesText(score.me) || gamesText(score.opp)) && (
+        <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-baseline gap-2 text-[12px] text-muted" title="Player-games played so far / total this week (played + remaining), from Yahoo's matchup page at the time of the score capture">
+          <span className="num">{gamesText(score.me) ?? "—"}</span>
+          <span className="text-[11px]">games</span>
+          <span className="num text-right">{gamesText(score.opp) ?? "—"}</span>
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12px]">
         <span className="text-muted">
           {score
@@ -425,6 +432,12 @@ function ScoreHeader({
       </div>
     </Panel>
   );
+}
+
+/** "6 / 38 played" from Yahoo's games strip (played + remaining = the week's total), else null. */
+function gamesText(t: { gamesPlayed: number | null; gamesRemaining: number | null }): string | null {
+  if (t.gamesPlayed == null || t.gamesRemaining == null) return null;
+  return `${t.gamesPlayed} / ${t.gamesPlayed + t.gamesRemaining} played`;
 }
 
 function CategoryStrip({ score, odds }: { score: MatchupScore | null; odds: WeekOdds }) {
@@ -689,7 +702,7 @@ function HowMade({
           <dd className="text-muted">
             {odds.source === "lineup_plan" ? (
               <>
-                From the newest lineup plan <code className="num">{odds.runId}</code> ({shortTime(odds.asOf)}): category odds are the chance to win each
+                From the lineup plan for today (or the latest day before it) <code className="num">{odds.runId}</code> ({shortTime(odds.asOf)}): category odds are the chance to win each
                 category by Sunday given the stats already banked; P(win week) is {odds.method ?? "the plan's estimate"}
                 {ex?.mc?.nSims ? ` over ${ex.mc.nSims} simulated weeks` : ""}. Simulated, not fitted
                 {ex?.availability ? `; availability: ${ex.availability}` : ""}.

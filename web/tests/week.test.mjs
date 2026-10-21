@@ -184,7 +184,17 @@ test("simWeekOdds prefers the H2H matrix cell for the real opponent; latestPlanI
   const p1 = plan("2026-10-21", null, "2026-10-21T13:00:00Z");
   const p2 = plan("2026-10-22", null, "2026-10-22T09:00:00Z");
   const p3 = plan("2026-10-27", null, "2026-10-27T09:00:00Z");
-  assert.equal(latestPlanInWeek([p1, p3, p2], "2026-10-20", "2026-10-25").runId, p2.runId);
+  assert.equal(latestPlanInWeek([p1, p3, p2], "2026-10-20", "2026-10-25", "2026-10-22").runId, p2.runId);
+  // a later day's plan (saved by a --week run) is never the week's odds: on Wed use Wed's plan, not Sunday's
+  const p4 = plan("2026-10-25", null, "2026-10-21T02:44:00Z");
+  assert.equal(latestPlanInWeek([p1, p2, p4], "2026-10-20", "2026-10-25", "2026-10-21").runId, p1.runId);
+  // week not started yet: its first day's plan
+  assert.equal(latestPlanInWeek([p2, p4], "2026-10-20", "2026-10-25", "2026-10-19").runId, p2.runId);
+  assert.equal(latestPlanInWeek([p3], "2026-10-20", "2026-10-25", "2026-10-21"), null);
+  // a plan whose banked totals predate its date (covers_week false) is skipped for an older complete one
+  const stale = plan("2026-10-22", { covers_week: false }, "2026-10-22T11:00:00Z");
+  assert.equal(stale.expected.coversWeek, false);
+  assert.equal(latestPlanInWeek([p1, stale], "2026-10-20", "2026-10-25", "2026-10-22").runId, p1.runId);
 });
 
 // ------------------------------------------------------------------ games left

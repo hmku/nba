@@ -185,6 +185,9 @@ def plan(
     out["slots_as_of"] = {"date": as_of.isoformat() if as_of else None, "source": as_of_src,
                           "current_slots_file": str(current_slots) if current_slots else None}
     out["accumulated_source"] = acc_source
+    # Week odds (P(win), cat_win_prob) are complete only when the banked totals reach the plan date: a plan for a later
+    # day built on an earlier read scores that day onwards on top of stale banked stats (Sunday's plan read 8% on Wed).
+    out["expected"]["covers_week"] = _odds_cover_week(d0, fw, acc_source)
     out["accumulated"] = {side: acc.get(side) for side in ("me", "opp")} if acc else None
     out["note"] = ("Run before the first tip-off of the day; after that pass --locked with the players whose games "
                    "have started (Yahoo locks each player at his own tip-off). Executor: set target_slots.")
@@ -330,6 +333,15 @@ def _resolve_accumulated(accumulated: Path | None, score: Path | None, no_score:
         return {}, {**none, "note": f"newest matchup_score {row['run_id']} not used: {problem}"}, []
     return matchup.accumulated(s), _score_source(s, "matchup_score", run_id=row["run_id"],
                                                  store=getattr(st, "name", None)), matchup.banked_checks(s, d0)
+
+
+def _odds_cover_week(d0: date, fw: FantasyWeek, acc_source: dict[str, Any]) -> bool:
+    """True when banked + simulated days cover the whole week: the plan starts the week, or its banked totals were read
+    on the plan date (ET) or come from an explicit --accumulated file."""
+    if d0 <= fw.start or acc_source.get("kind") == "accumulated_file":
+        return True
+    read = acc_source.get("date_et")
+    return acc_source.get("kind") != "none" and read is not None and str(read) >= d0.isoformat()
 
 
 def _score_mismatch(s: dict[str, Any], d0: date, fw: FantasyWeek, my_team: int, opp_id: int) -> str | None:

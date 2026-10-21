@@ -83,6 +83,9 @@ is interested in X; details private"). A thread message
   many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. Read `target_slots` (the full
   final state to reach), `changes_vs_current`, `il_moves`, `decide_at_tipoff` (with `swap_with`), `warnings`, and
   `expected` (state P(win) together with its `availability_assumption`; rest_share 0.25 is a prior).
+  Quote P(win week) only from TODAY's plan built on this morning's matchup read (`expected.covers_week: true`). A plan
+  saved for a later day on today's read has `covers_week: false`: it scores only that day onwards on top of today's
+  banked stats, so its P(win) is NOT the week's odds (2026-10-21: Sunday's plan showed 8% while today's said 60%).
 - Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once

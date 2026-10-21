@@ -483,3 +483,17 @@ def test_rest_share_param_changes_healthy_availability(world):
     pb = {p["player_id"]: p["p_play_today"] for p in b["players"] if p["has_game_today"]}
     assert all(pb[k] <= pa[k] for k in pa) and any(pb[k] < pa[k] for k in pa)
     assert b["params"]["rest_share"] == 1.0 and b["params"]["rest_share_label"] == "prior"
+
+
+def test_odds_cover_week_only_when_banked_reaches_plan_date():
+    """A plan for a later day built on an earlier matchup read misses the days in between (Sunday's plan read 8%)."""
+    from fantasy.lineup.cli import _odds_cover_week
+    from fantasy.sim.schedule import FantasyWeek
+
+    fw = FantasyWeek(1, date(2026, 10, 20), date(2026, 10, 25))
+    read_wed = {"kind": "matchup_score", "date_et": "2026-10-21"}
+    assert _odds_cover_week(date(2026, 10, 20), fw, {"kind": "none"})  # week start: nothing banked yet
+    assert _odds_cover_week(date(2026, 10, 21), fw, read_wed)
+    assert not _odds_cover_week(date(2026, 10, 25), fw, read_wed)
+    assert not _odds_cover_week(date(2026, 10, 22), fw, {"kind": "none"})
+    assert _odds_cover_week(date(2026, 10, 23), fw, {"kind": "accumulated_file"})

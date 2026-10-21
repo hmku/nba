@@ -90,6 +90,12 @@ data-auditor, draft-shadow (all read-only).
   wrong. Include costs the model doesn't capture (e.g. losing waiver priority). On the Moves tab these are the advice
   fields `rationale` and `why_now`.
 
+## Learn from mistakes (user requirement)
+- When you find a bug, a wrong assumption or a process mistake (in code, data, a model, a dashboard view or how an agent
+  worked), fix it AND update the agentic context that would have prevented it: the relevant skill
+  (`.claude/skills/*/SKILL.md`), runbook, research note, docstring, test, or this file. Say in the handoff/daily log
+  which context you updated, so the same mistake isn't repeated by the next session.
+
 ## Engineering conventions
 - Python ≥3.11, typed, small modules; ingestion (`data/`) separate from modeling (`model/`).
 - Percent categories are always computed from makes/attempts.

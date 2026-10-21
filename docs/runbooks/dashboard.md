@@ -116,8 +116,10 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
 - **Score header**: me vs opponent (Yahoo names from the league snapshot), categories won now **W–L(–T)** from the newest
   `model_runs` row of kind `matchup_score` for the week (schema `matchup_score/1`, data side; FG%/FT% recomputed from
   makes/attempts, leaders recomputed from the totals, TO lower wins), "as of <observed_at> ET", **Yahoo live ↗** (Yahoo's
-  matchup page with `mid1`/`mid2` = the two Yahoo team ids), and **P(win week)** with its label: the newest `lineup_plan`
-  of the week (Monte Carlo ± SE, else analytic; "simulated, lineup model") when that plan carries `expected.cat_win_prob`,
+  matchup page with `mid1`/`mid2` = the two Yahoo team ids), games played / total per team (Yahoo's games strip at
+  capture time: played + remaining), and **P(win week)** with its label: the `lineup_plan` for today
+  (else the latest earlier day of the week; never a later day's plan, and never one with `expected.covers_week: false`,
+  whose banked totals predate its date) (Monte Carlo ± SE, else analytic; "simulated, lineup model") when that plan carries `expected.cat_win_prob`,
   else the season sim ("simulated, season sim (pre-week)").
 - **Category strip**: per category me | opp totals (leader shaded; FG%/FT% with makes/attempts underneath) and the chance
   to win it by Sunday (plan's `expected.cat_win_prob`, given banked stats; else the season sim's weekly odds, column

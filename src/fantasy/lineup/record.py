@@ -145,7 +145,7 @@ def plan_summary(out: dict[str, Any], games: dict[str, dict[str, str]]) -> dict[
         "method": ex.get("method"), "availability_assumption": ex.get("availability_assumption"),
         "evidence": "simulated (model output; availability and tag P(plays) are PRIORS)",
         **{k: ex[k] for k in ("optimized", "naive_season_value", "static_current_lineup", "cat_win_prob",
-                              "cat_win_prob_method", "cat_win_prob_analytic") if k in ex},
+                              "cat_win_prob_method", "cat_win_prob_analytic", "covers_week") if k in ex},
     }
     if mc.get("plans"):
         expected["monte_carlo"] = {

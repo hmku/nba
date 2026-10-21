@@ -77,6 +77,8 @@ export interface Expected {
   mc: { cats: number | null; catsSe: number | null; pWin: number | null; pWinSe: number | null; nSims: number | null } | null;
   /** chance to win each category by Sunday given the banked stats (newer plans; absent in older rows) */
   catWinProb: Record<string, number> | null;
+  /** false = banked totals were read before this plan's date, so its week odds miss days (null in older rows) */
+  coversWeek: boolean | null;
 }
 
 export interface LineupPlan {
@@ -199,6 +201,7 @@ export function parsePlan(row: RunRow): LineupPlan | null {
             }
           : null,
         catWinProb: probMap(ex.cat_win_prob),
+        coversWeek: typeof ex.covers_week === "boolean" ? ex.covers_week : null,
       }
     : null;
   const opp = o(sm.opponent);
