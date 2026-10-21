@@ -78,6 +78,14 @@ target season; manual overrides can't be replayed, so backtest the baseline only
   recommendations carry `optimizer_version` / `recommend_policy`.
 - **Tests**: add or update tests with synthetic data (`tests/synthetic.py`, `tests/test_scoring.py`,
   `tests/test_optimizer.py`, `tests/test_projections.py`); no network; deterministic seeds.
+- **Commit the fit script** next to the constants it produces (e.g. `scripts/gp_model/`, with its JSON report) — gp-ols-0.1's
+  scripts lived in a scratchpad and had to be rebuilt to refit it.
+- **Fit population = deployment population**: list who the deployed model is applied to (e.g. < 500-minute or lost-season
+  players) and check residuals for every such group; gp-ols-0.1 silently extrapolated to them (−9.5 games).
+- **Censored targets**: outcomes that need future data to be observed (a 0-game season counts only once the player returns)
+  are missing from the newest seasons; don't calibrate on them and caveat their bias numbers.
+- **Selection honesty**: if the specification was chosen on residuals that include the test years, only the coefficients are
+  out of sample; say so and quote a deflated gain.
 - Percent categories stay makes/attempts based; never average percentages.
 - Keep `recommend` under ~3-5 s (60 s draft clock): check `compute_seconds`.
 - Report before/after: top-30 rank changes, simulation edge with SE, latency. Ask the `quant-reviewer`

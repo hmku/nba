@@ -35,7 +35,8 @@ from fantasy.data.provenance import PROCESSED_DIR, REPO_ROOT
 #        data/manual/projection_blend.json to projections_2026_27.csv.
 BLEND_VERSION = "blend-0.2.0"
 # Version of the default projections file (data/processed/projections_2026_27.csv) as a whole.
-PROJECTIONS_VERSION = "projections-2026-27-0.3.0"
+# 0.3.1: games from gp-ols-0.2 (baseline-0.2.2; docs/research/availability_model.md §0)
+PROJECTIONS_VERSION = "projections-2026-27-0.3.1"
 BLEND_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov", "mpg"]
 BLEND_OUTPUT = PROCESSED_DIR / "projections_2026_27.blend.csv"
 BASE_OUTPUT = PROCESSED_DIR / "projections_2026_27.base.csv"

@@ -2,12 +2,86 @@
 
 Code: `src/fantasy/model/availability.py` (fitted constants), `projections.py` (`Params.gp_model`,
 `manual_gp_scale`, `playoff_mult` column), `lines.py` (`availability()`), `valuation.py`
-(`ValuationParams.gp_risk_lambda`, `playoff_weight`). Versions: projections `baseline-0.2.1`
-(meta `gp_model.version = gp-ols-0.1`, `playoff_mult.version = playoff-mult-0.2`), valuation `valuation-0.2.1`.
-Experiment scripts (not committed; session scratchpad `gp/`): `build_panel.py`, `fit.py`,
-`final_fit.py`, `late_season.py`, `compare.py`, `sim.py`.
+(`ValuationParams.gp_risk_lambda`, `playoff_weight`). Versions: projections `baseline-0.2.2`
+(meta `gp_model.version = gp-ols-0.2`, `playoff_mult.version = playoff-mult-0.2`).
+Fit script (committed since gp-ols-0.2): `scripts/gp_model/` (`panel.py`, `fit_gp.py`, README, and
+`report_gp-ols-0.2.json` = the exact run behind the constants). The gp-ols-0.1 scripts were never committed;
+`fit_gp.py` reproduces the 0.1 coefficients to ±0.04 and its sample sizes exactly.
 
-## 1. Expected games played
+## 0. gp-ols-0.2 (2026-10-21) — what changed and why
+Fixes the two issues of the 2026-10-21 subgroup check (§4). **Fitted** (bbref history, targets 2014-2026; strict
+out of sample = every part fit on targets ≤ 2024, tested on 2025 and 2026). Residuals are actual − predicted, ± SE.
+
+**Model** (`predict_gp`; 82-game scale, cap 80):
+1. *Main* (≥ 500 min last season): the 0.1 spec plus a **role hinge** `-0.572·max(0, 30 − mpg1)` (± 0.057) and the
+   young bonus `+0.674·max(0, 24 − age)` only when g1 < 70. Coefficients (HC1 SE): const 35.95 (2.94), g1 0.273 (0.035),
+   g2 0.083 (0.023), m2 4.83, g3 0.039 (0.022), m3 3.86, age>28 −0.92 (0.25), age>32 +0.85 (0.53), g1>70 +0.10 (0.11),
+   mean>70 +0.39 (0.13).
+2. *Recent-era calibration*: `gp = raw − 1.44 − 0.16·max(0, raw − 65)`, fitted on **rolling-origin one-year-ahead forecast
+   errors** 2019-2024 (season T forecast by a main fit on targets < T only): a = −1.44 ± 0.48, h = −0.16 ± 0.17.
+   Forecasts ran high in most seasons since 2018 (per-year error −0.7 to −2.7, except 2024 +0.35; games per rotation
+   player fell from ~64 in 2014-17 to ~58 in 2025-26). 2025 and 2026 are left out on purpose: a 0-game season only shows
+   up once the player plays again, so those targets have almost no zeros (main 0.6% / 0.0% vs ~2% before; low-minute
+   6.7% / 0.0% vs ~11%). Including them gives h = −0.30, and per-year h has been strongly negative since 2022
+   (−0.64, −0.89, −0.15, −1.02, −1.45), so the top-end shrink may be too weak. **Recalibrate after 2026-27.**
+3. *Low-minute / lost season* (< 500 min last season, or no season at all → g1 = mp1 = 0, lost = 1; replaces the extrapolation):
+   `gp = 11.40 + 4.53·min(max(mp2, mp3), 3000)/1000 + 0.478·g1 + 0.634·mpg1 + 18.3·lost − 1.40·max(0, age − 28)
+   + 7.21·max(0, 22 − age)` (SEs 1.62, 1.25, 0.048, 0.125, 4.8, 0.27, 1.71; n = 1,315 incl. 46 lost seasons; residual
+   sd 23.2 = its gp_sd, slightly conservative vs OOS RMSE 20.9-21.2). mpg1 separates injured starters (few games, big
+   minutes) from end-of-bench players, and `lost` covers starters returning from a whole lost season (the first version
+   without these two terms under-predicted injured starters by +11 ± 3.7 and lost seasons by +5.6 ± 3.9; quant review).
+   The age < 22 hinge is for prospects growing into a role (without it, players ≤ 21 were under-predicted by +9.0 ± 2.2,
+   n = 133). Between 400 and 600 minutes the two models are blended linearly (no jump at 500).
+4. `gp_sd` knots refit on the calibrated rolling-origin residuals: 22.3 / 22.3 / 18.8 / 17.7 / 17.5 / 17.3 at predicted
+   45.9 / 51.4 / 55.4 / 58.9 / 62.3 / 67.0. A manual gp now takes the sd of its own level (before: max with the model sd).
+5. Guard: `baseline()` refuses an incomplete latest season (median minutes < 300), which would send everyone to the
+   low-minute model.
+
+**Out of sample vs gp-ols-0.1** (`report_gp-ols-0.2.json`):
+
+| | 2025 v0.1 | 2025 v0.2 | 2026 v0.1 | 2026 v0.2 |
+|---|---|---|---|---|
+| RMSE (≥ 500 min) | 19.06 | 18.58 | 20.05 | 19.93 |
+| RMSE gain (paired bootstrap) | | **0.48 ± 0.21** | | 0.13 ± 0.19 |
+| bias, all | −1.8 ± 1.0 | −0.6 ± 1.0 | −1.4 ± 1.1 | −0.3 ± 1.1 |
+| top: 0.1 pred ≥ 65, ≥ 1000 min (n 41/38) | −3.4 ± 2.7 | −1.4 ± 2.9 | −6.5 ± 3.0 | −4.6 ± 2.9 |
+| young durable: age < 24, g1 ≥ 70, ≥ 1500 min (n 21/18) | −9.0 ± 3.4 | −8.5 ± 3.5 | +0.4 ± 3.1 | +1.4 ± 3.1 |
+| < 1000 min (n 79/90) | −6.5 ± 2.5 | −2.2 ± 2.4 | −0.8 ± 2.3 | +2.8 ± 2.3 |
+| injured starter: mpg ≥ 28, g1 < 50 (n 11/21) | +7.4 ± 5.9 | +4.7 ± 5.9 | +6.5 ± 3.7 | +3.7 ± 3.6 |
+| low-minute population RMSE (n 120/118) | 23.5 | 20.9 | 24.3 | 21.2 |
+| low-minute RMSE gain | | 2.5 ± 1.2 | | 3.0 ± 1.2 |
+| low-minute bias | −9.4 ± 2.0 | +3.0 ± 1.9 | −9.5 ± 2.1 | +3.2 ± 1.9 |
+| low-minute, ≥ 1000 min in T-2/T-3 (n 22/26) | −1.8 ± 5.3 | +4.9 ± 5.0 | −6.7 ± 4.1 | +2.3 ± 3.8 |
+
+Pooled over both test seasons the top bucket goes from −4.9 ± 2.0 to −2.9 ± 2.0. Over the 2019-2026 rolling forecasts
+(more data, but these years also guided the specification search, so read them as in-sample-ish): injured starters
++5.2 ± 2.1 → +1.0, healthy bench players (mpg < 20, g1 ≥ 70) −4.2 ± 1.3 → −0.2, young durable −3.4 ± 1.3 → −2.4 after
+calibration. About ten main-model variants were compared on those rolling residuals; RMSE differences among the
+reasonable ones were ≤ 0.05, the role term was the only large effect (a total-minutes hinge did as well but drove the
+g1 coefficient to 0.04, i.e. ignored injury-shortened seasons of starters, so the mpg form was chosen). Tested and
+rejected: era dummies / linear trend in the main fit (fix the level, not the top), recency-weighted least squares,
+a training window from 2017 or 2019, a top shrink fitted on in-sample residuals (≈ 0 by construction).
+
+**How much to believe (quant review 2026-10-21).** The coefficients are out of sample, the specification is not: the
+hypotheses, knots (30 mpg, 70 games, 65, 500 min) and ~10 variants were chosen on 2019-26 rolling residuals, which
+include the test years. The rolling gain of 0.2 over 0.1 is positive in 8 of 8 seasons (0.08-0.52), 2025 is its best
+year and 2026 is not significant. **Honest claim: a small gain of about 0.1-0.3 games RMSE** for ≥ 500-minute players,
+and a large one (~2.5) for low-minute players. The biases in the table are flattered by censoring: at historical zero
+rates the main model's 2025-26 bias is about −1.5, not −0.4, and the low model's about 0, not +3. The 0.1 baseline in the
+low-minute rows applies 0.1 with g1 = 0 to the 4 lost-season test rows (0.1 shifted the lags instead). 2026-27 actuals
+are the first clean prospective test (spec frozen).
+**Still open:** the top bucket keeps a −3 game miss in pooled OOS (≈ 1.5 SE; see h above); young durable players are
+noisy (2025: −8.5, 2026: +1.4). No ESPN blending (ESPN games are ~12 games optimistic).
+
+**Effect (2026-10-21).** Top-150 ADP players: mean Δgp +1.1 (sd 1.6); largest: Dejounte Murray 38.5→45.5, Embiid
+39.6→44.3, Morant 39.7→43.9; Day'Ron Sharpe 55.4→51.5, Edey 42.6→39.4, Ware 64.1→61.1. Unrostered Georges Niang (no
+2025-26 season, override without gp) 65.9→31.0 by the lost-season rule. Season sim (simulated, 12k sims, seed 0, same
+rosters file, before → after): my team P(playoffs) 91.2% → 89.0%, P(title) 32.3% → 30.6%, exp. rank 2.7 → 2.9;
+player-games/week 46.7 → 46.5 while most rivals gain ~0.5 (the young-roster games edge narrows). Category ranks: ast
+2→4, ft% 5→4, tov 7→6, others unchanged (`sim-20261021233550-a97895`).
+
+
+## 1. Expected games played (gp-ols-0.1, superseded by §0; kept for the data definitions and history)
 
 ### Data
 - Basketball-Reference player totals and team summaries, full history, from the sumitrodatta GitHub
@@ -70,7 +144,7 @@ gp = 27.50 + 0.289*g1 + 0.117*g2 + 0.068*g3          (g2 missing: +5.93, g3 miss
   entirely is shifted so that his last played season is lag 1 (only such players with a manual
   override are projected at all).
 
-### gp_sd (calibrated)
+### gp_sd (calibrated; gp-ols-0.1 knots — see §0 for the 0.2 knots)
 The residual sd depends on the predicted level and on nothing else that matters:
 
 | predicted gp (bucket mean) | 42.7 | 49.3 | 55.2 | 60.3 | 65.2 | 70.1 |
@@ -179,8 +253,8 @@ days, 0.137 — the difference is immaterial at these multipliers.)
   g1 ≥ 70 and ≥ 1500 min: −4.5 ± 2.4 (n=39). ESPN's games are ~12 games optimistic for everyone and 5-10 more for
   injury-history players, so ESPN's smaller gap between healthy and injury-prone rosters is its bias, not information:
   **don't blend ESPN gp in.**
-  TODO (gp-ols-0.2): shrink predictions above ~65 (or add a recent-era intercept) and use the "returning from a lost
-  season" rule for g1 minutes < 500; validate out of sample on 2025-26 with the full-history panel.
+  **Done in gp-ols-0.2 (§0)**: recent-era calibration incl. a top-end shrink, role hinge, and a dedicated low-minute /
+  lost-season model, validated out of sample on 2024-25 and 2025-26.
 - **Reading team category ranks (League page):** they rank simulated weekly *volume* (started games × per-game stats), so
   projected games matter as much as per-game quality. Example 2026-10-21: Thomas's team is 11th of 12 in summed pts/g but
   12th in projected games (690 vs 822 for us) → 12th in points; our team is ~7th per game but 1st in games.

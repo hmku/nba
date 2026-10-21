@@ -9,8 +9,9 @@ Pipeline (all inputs are cached files; no network):
 3. Age curve multiplier on production rates (makes and attempts scaled together so efficiency
    is unchanged; turnovers scale with usage too).
 4. Minutes per game: recency-weighted MPG plus young-player growth, then manual role overrides.
-5. Games: fitted model (fantasy.model.availability.predict_gp: last three seasons' games, age,
-   ironman hinges; fitted out of sample on bbref history) and gp_sd from its residuals; the
+5. Games: fitted model (fantasy.model.availability.predict_gp, gp-ols-0.2: last three seasons' games
+   and minutes, age, ironman and role hinges, recent-era calibration, separate low-minute / lost-season
+   model; fitted out of sample on bbref history) and gp_sd from its residuals; the
    playoff-week availability multiplier (`playoff_mult`) from team strength and injury history.
    `Params.gp_model="shrink"` restores the baseline-0.1 rule (recency mean shrunk toward 68).
 6. Manual overlays (data/manual/): team changes, injuries/status, role adjustments, rookies
@@ -38,13 +39,15 @@ from fantasy.model.availability import (
     PLAYOFF_FIT,
     PLAYOFF_MODEL_VERSION,
     gp_sd_from_model,
+    is_low_minutes,
     playoff_mult,
     predict_gp,
 )
 
 # 0.2.0: fitted games-played model + calibrated gp_sd + playoff_mult column
 # 0.2.1: playoff_mult refit on the league's real playoff window (Mar 1-21; playoff-mult-0.2)
-MODEL_VERSION = "baseline-0.2.1"
+# 0.2.2: gp-ols-0.2 (role hinge, recent-era calibration, low-minute / lost-season model)
+MODEL_VERSION = "baseline-0.2.2"
 SEASON = "2026-27"
 OUTPUT_PATH = PROCESSED_DIR / "projections_2026_27.csv"
 
@@ -210,6 +213,12 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
         .set_index("player_id")
     )
     grp_rates = _group_prior_rates(tot, max(w))
+    # the GP model needs the latest weighted season to be complete: an in-progress season would put nearly
+    # everyone under 500 minutes and silently switch them to the low-minute model
+    latest_mp = tot.loc[tot["season"] == max(w), "mp"]
+    if latest_mp.median() < 300:
+        raise ValueError(f"season {max(w)} looks incomplete (median minutes {latest_mp.median():.0f}); "
+                         "the games-played model needs completed seasons in season_weights")
 
     rows = []
     for pid, g in tot.groupby("player_id"):
@@ -336,17 +345,19 @@ def _project_gp(
 
 
 def _fitted_gp(g: pd.DataFrame, latest: int, age: float, cap: float) -> tuple[float, float]:
-    """Fitted expected games and sd from a player's season rows (`season`, `g`).
+    """Fitted expected games and sd from a player's season rows (`season`, `g`, `mp`).
 
-    Calendar lags (latest, latest-1, latest-2), as in the fit; a player who missed the latest
-    season entirely (re-activated by a manual override) is shifted so his last played season
-    counts as the most recent one.
+    Calendar lags (latest, latest-1, latest-2), as in the fit. A player who missed the latest season
+    entirely (re-activated by a manual override) has 0 games / 0 minutes in it, which selects the
+    low-minute ("returning from a lost season") model, as do < 500 minutes.
     """
-    by = dict(zip(g["season"].astype(int), g["g"].astype(float).clip(upper=82), strict=True))
-    top = latest if latest in by else max(by)
-    lags = [by.get(top - k) for k in range(3)]
-    gp = predict_gp(lags, age, cap=cap)
-    return gp, gp_sd_from_model(gp)
+    seasons = g["season"].astype(int)
+    games = dict(zip(seasons, g["g"].astype(float).clip(upper=82), strict=True))
+    mins = dict(zip(seasons, g["mp"].astype(float), strict=True))
+    lags = [games.get(latest - k, 0.0 if k == 0 else None) for k in range(3)]
+    minutes = [mins.get(latest - k, 0.0 if k == 0 else None) for k in range(3)]
+    gp = predict_gp(lags, age, minutes, cap=cap)
+    return gp, gp_sd_from_model(gp, low_minutes=is_low_minutes(minutes))
 
 
 ROOKIE_STAT_COLS = ["age", "gp", "mpg", "fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov"]
@@ -416,10 +427,9 @@ def _apply_override(df: pd.DataFrame, pid: str, r: pd.Series, notes: dict[str, l
         df.at[pid, "injury_note"] = r["injury_note"]
     if r.get("gp"):
         df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]))
-        if manual_gp.fitted:
-            df.at[pid, "gp_sd"] = max(
-                float(df.at[pid, "gp_sd"]), gp_sd_from_model(float(df.at[pid, "gp"]))
-            )
+        if manual_gp.fitted:  # the manual value replaces the model's level: sd at that level (not the
+            # low-minute model's sd, which belongs to its own, discarded prediction)
+            df.at[pid, "gp_sd"] = gp_sd_from_model(float(df.at[pid, "gp"]))
     if r.get("games_missed"):
         df.at[pid, "gp"] = max(
             0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82

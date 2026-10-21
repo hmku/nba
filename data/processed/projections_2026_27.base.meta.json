@@ -1,11 +1,11 @@
 {
-  "model_version": "baseline-0.2.1",
+  "model_version": "baseline-0.2.2",
   "gp_model": {
-    "version": "gp-ols-0.1",
-    "data": "sumitrodatta bbref mirror (Player Totals, Team Summaries), full history",
-    "train_targets": "2014-2026 (bbref season labels), players with >= 500 min in T-1",
-    "n": 4366,
-    "oos": "fit T<=2024: RMSE 2025 21.00->19.06 (gain 1.94 +- 0.31), 2026 21.87->20.05 (1.82 +- 0.32)"
+    "version": "gp-ols-0.2",
+    "data": "sumitrodatta bbref mirror (Player Totals, Team Summaries), full history; scripts/gp_model/fit_gp.py",
+    "train_targets": "2014-2026 (bbref season labels); main: >= 500 min in T-1 (n=4366); low: < 500 min or lost season (n=1315)",
+    "calibration": "rolling-origin forecast errors 2019-2024: a -1.44 +- 0.48, h -0.16 +- 0.17 above 65 (2025-26 excluded: censored zeros; incl. them h = -0.30)",
+    "oos": "fit T<=2024 vs gp-ols-0.1: RMSE 2025 19.06->18.58 (gain 0.48 +- 0.21), 2026 20.05->19.93 (0.13 +- 0.19); low-minute players 23.5->20.9 / 24.3->21.2; spec chosen on 2019-26 rolling residuals, honest gain ~0.1-0.3"
   },
   "playoff_mult": {
     "version": "playoff-mult-0.2",
@@ -18,8 +18,8 @@
   },
   "season": "2026-27",
   "output": "data/processed/projections_2026_27.base.csv",
-  "rows": 456,
-  "sha256": "25ef6ca42a101c0bb348b3ada237ac5e33278c7fb57cf362598e7b81aa1dbb8b",
+  "rows": 454,
+  "sha256": "6ca9df8c643b67dad78f2beb2b8be93aea06abc12187a47495f52830ef44f59a",
   "sources": [
     "bbref_baseline",
     "bbref_baseline+manual",
@@ -27,7 +27,7 @@
     "manual_rookie_prior+manual"
   ],
   "source_counts": {
-    "bbref_baseline": 301,
+    "bbref_baseline": 299,
     "bbref_baseline+manual": 144,
     "manual_rookie_prior": 9,
     "manual_rookie_prior+manual": 2
@@ -182,9 +182,6 @@
     "dennis-schroder": [
       "added by CHO"
     ],
-    "donte-divincenzo": [
-      "kept despite max_rows=450 volume cut (manual override)"
-    ],
     "dorian-finney-smith": [
       "added by CHO"
     ],
@@ -326,8 +323,7 @@
       "added by HOU"
     ],
     "mark-williams": [
-      "re-signed PHO",
-      "kept despite max_rows=450 volume cut (manual override)"
+      "re-signed PHO"
     ],
     "marvin-bagley-iii": [
       "added by DEN"
