@@ -339,6 +339,18 @@ Supabase and all other requests are never intercepted or cached, so data is alwa
 bump `VERSION` in `sw.js`. Safe areas (notch / home indicator) are handled via `viewportFit: "cover"` +
 `env(safe-area-inset-*)` padding in `Nav.tsx` and the main container.
 
+**Bug 2026-10-21 (tabs opened in an in-app Safari sheet on iPhone):** Next ≥ 15.2 streams page metadata into `<body>`
+for normal browsers (only icon links get moved back to `<head>`), so the served HTML had `<link rel="manifest">` and the
+web-app-capable metas after `</head>`, and Next never emits `apple-mobile-web-app-capable` (only
+`mobile-web-app-capable`). Safari reads these from `<head>` when you Add to Home Screen, so the reinstalled app had no
+manifest scope and iOS treated tab navigations as leaving the app. Rules (enforced by `web/tests/pwa.test.mjs`):
+- keep `htmlLimitedBots: /.*/` in `next.config.ts` (metadata blocking, in `<head>`, for every UA) and the explicit
+  `apple-mobile-web-app-capable` in `layout.tsx`; check with `curl -s -A "<iPhone UA>" <url>/week` that
+  `rel="manifest"` appears before `</head>`;
+- manifest `id`/`scope` stay `/`, `start_url` is a 200 page (not `/` or a legacy redirect); nav links are relative,
+  same-origin, no `target`/`rel=external`, and point at final paths (never a redirect source).
+After changing any of this, the phone needs the home-screen app removed and re-added (iOS snapshots it at install).
+
 ## Troubleshooting
 - Red "sync error" dot on /draft: Supabase unreachable or RLS error; message shown as one red line at the top.
   The page keeps the last good state. Use the CLI as a fallback.
