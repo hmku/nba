@@ -1,0 +1,39 @@
+{
+ "summary": {
+  "type": "trade",
+  "title": "Accept-shape: VanVleet for Mobley + Edgecombe + Nurkić (Jesse)",
+  "status": "awaiting_yes",
+  "headline": "Give Fred VanVleet; get Evan Mobley, VJ Edgecombe, Jusuf Nurkić (Out); then drop Nurkić and Jeremiah Fears.",
+  "week": 1,
+  "verdict": "Strong yes: helps under all three projection sets, also schedule-neutral. Partner loses a lot, so confirm before he rethinks.",
+  "requires_user_yes": true,
+  "rationale": [
+   "- Mobley (big: rebounds, blocks, FG%) + Edgecombe (young guard) for one 32-year-old guard.",
+   "- Title +5.9 / +8.9 / +7.0 pp, playoffs +2.5 / +4.7 / +5.7 pp (simulated, 5 seeds).",
+   "- Schedule-neutral still +1.8 ± 0.5 pp title, +2.4 pp playoffs: part of the gain is playoff-week games.",
+   "- Roster fits: Nurkić (Out) is dropped, Fears is the weakest remaining player."
+  ],
+  "why_now": {
+   "before": "Yesterday we offered VanVleet for Edgecombe + Nurkić (+2.5 to +3.9 pp title); the partner said Edgecombe wasn't available alone.",
+   "changed": [
+    {"text": "The partner proposed this bigger shape himself (details private).", "kind": "league"},
+    {"text": "Evaluated today with inseason-0.3.0: helps in all 3 projection sets.", "kind": "model"}
+   ],
+   "evidence": []
+  },
+  "metrics": [
+   {"label": "ΔP(title), blend / market / stress", "value": "+5.9 / +8.9 / +7.0", "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs), blend / market / stress", "value": "+2.5 / +4.7 / +5.7", "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "Schedule-neutral ΔP(title), blend", "value": "+1.8 ± 0.5", "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "Partner ΔP(playoffs)", "value": "−9.6 / −10.3 / −14.8", "unit": "pp", "evidence": "simulated"}
+  ],
+  "risks": [
+   "A 'pick' was mentioned; Yahoo can't trade draft picks in-season, so offer players only.",
+   "Drops Fears and Nurkić; both go to waivers.",
+   "Partner's odds fall ~10 pp, so he may withdraw; 2-day commissioner review."
+  ],
+  "links": [{"label": "Streaming & trade scan method", "path": "docs/research/streaming_and_trade_scan.md"}]
+ },
+ "params": {"partner_slot": 5, "give": ["fred-vanvleet"], "get": ["evan-mobley", "vj-edgecombe", "jusuf-nurkic"], "then_drop": ["jusuf-nurkic", "jeremiah-fears"], "tool": "inseason-0.3.0 trade", "base_move": "julian-champagnie for ace-bailey"},
+ "inputs": {"evaluation": "fantasy inseason trade --partner 5 --give 'Fred VanVleet' --get 'Evan Mobley,VJ Edgecombe,Jusuf Nurkic' --free-agents data/raw/yahoo/free_agents_2026-10-21.json --date 2026-10-21"}
+}
