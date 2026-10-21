@@ -125,6 +125,11 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
   to win it by Sunday (plan's `expected.cat_win_prob`, given banked stats; else the season sim's weekly odds, column
   labelled "odds"), plus one "Swing: …" line (30–70% categories). **Before the first capture** (no `matchup_score` row):
   a compact 3×3 (phone) / 1×9 grid of projected odds only.
+- **Ratio-bench flag** (lineup-0.4.0; only when the plan the page uses — `latestPlanInWeek` — is dated today and has
+  `ratio_bench.suggest` true with at least one bench; `ratioBenchFlag` in `src/lib/lineup.ts`): two short lines,
+  "Sit <player> <day> (<bench player> starts instead)? Protects FT% · costs PTS, …" / "+ΔE[cats] ± paired SE exp. cats ·
+  P(win) ±pts · simulated", tagged **suggestion · not applied** (hover = the rule: ΔE > 2 SE and ≥ 0.05, priors). The same player-days get a subtle "sit?" badge in the lineup grid. It never
+  changes the plan or Yahoo; acting on it needs the user's OK (then the plan is re-run with `--protect-ratios`).
 - **Lineups**: **Day** (default) with day chips, or **Week** (my plan-vs-Yahoo grid below). Day view = my lineup next to the
   opponent's (two columns on ≥md; **Me | Them** tabs on phones). Mine = the grid day (✓ Yahoo / ◌ plan / ⚠ mismatch, see
   Grid below); on a day with neither plan nor Yahoo read (e.g. a future week) my roster from the league snapshot. Theirs =

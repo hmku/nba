@@ -95,8 +95,97 @@ export interface LineupPlan {
   ilMoves: IlMove[];
   benchWithGame: { playerId: string; name: string; game: string | null }[];
   expected: Expected | null;
+  /** lineup-0.4.0: protect-ratios plan vs the default (a SUGGESTION, never applied); null in older rows */
+  ratioBench: RatioBench | null;
   warnings: string[];
   modelVersion: string | null;
+}
+
+export interface RatioBenchItem {
+  date: string;
+  playerId: string;
+  name: string;
+  game: string | null;
+  /** his slot in the executed (default) plan that day */
+  slot: string | null;
+  /** categories benching protects (e.g. ft_pct) / gives up (counting stats), largest first */
+  helped: string[];
+  hurt: string[];
+}
+
+export interface RatioBench {
+  checked: boolean;
+  differs: boolean;
+  suggest: boolean;
+  rule: string | null;
+  deltaCats: number | null;
+  deltaCatsSe: number | null;
+  deltaPWin: number | null;
+  deltaPWinSe: number | null;
+  benches: RatioBenchItem[];
+  /** player-days the protect plan starts instead (bench player swapped in); part of what was evaluated */
+  starts: { date: string; playerId: string; name: string; slot: string | null }[];
+}
+
+function catKeys(v: unknown): string[] {
+  return a(v)
+    .map((x) => s(o(x)?.cat))
+    .filter((k): k is string => k != null);
+}
+
+export function parseRatioBench(v: unknown): RatioBench | null {
+  const x = o(v);
+  if (!x || b(x.checked) !== true) return null;
+  return {
+    checked: true,
+    differs: b(x.differs) ?? false,
+    suggest: b(x.suggest) ?? false,
+    rule: s(x.rule),
+    deltaCats: n(x.delta_expected_cats),
+    deltaCatsSe: n(x.delta_expected_cats_se),
+    deltaPWin: n(x.delta_p_win),
+    deltaPWinSe: n(x.delta_p_win_se),
+    benches: a(x.benches)
+      .map((e) => o(e))
+      .filter((e): e is Obj => !!e && !!s(e.player_id) && !!s(e.date))
+      .map((e) => ({
+        date: e.date as string,
+        playerId: e.player_id as string,
+        name: s(e.name) ?? (e.player_id as string),
+        game: s(e.game),
+        slot: s(e.instead_of_slot),
+        helped: catKeys(e.cats_helped),
+        hurt: catKeys(e.cats_hurt),
+      })),
+    starts: a(x.starts)
+      .map((e) => o(e))
+      .filter((e): e is Obj => !!e && !!s(e.player_id) && !!s(e.date))
+      .map((e) => ({ date: e.date as string, playerId: e.player_id as string, name: s(e.name) ?? (e.player_id as string), slot: s(e.slot) })),
+  };
+}
+
+/** Per day: who sits and who starts instead ("Sit A (C starts instead)"), in date order. */
+export function ratioBenchMoves(rb: RatioBench): { date: string; sit: string[]; start: string[] }[] {
+  const days = [...new Set(rb.benches.map((x) => x.date))].sort();
+  return days.map((d) => ({
+    date: d,
+    sit: rb.benches.filter((x) => x.date === d).map((x) => x.name),
+    start: rb.starts.filter((x) => x.date === d).map((x) => x.name),
+  }));
+}
+
+/** The ratio-bench suggestion to show for `plan` (the page's plan, `latestPlanInWeek`): only when the plan was made
+ * for `today` (an earlier day's suggestion was computed before that day's games were banked: stale), `suggest` is true
+ * and it names at least one bench. A suggestion only: the executed plan / Yahoo lineup stays the default. */
+export function ratioBenchFlag(plan: LineupPlan | null, today: string): RatioBench | null {
+  const rb = plan?.ratioBench ?? null;
+  if (!plan || plan.date !== today || !rb || !rb.suggest || !rb.benches.length) return null;
+  return rb;
+}
+
+/** Player ids the flagged suggestion would bench on `day` (for a badge in the lineup grid). */
+export function ratioBenchIds(rb: RatioBench | null, day: string): string[] {
+  return rb ? rb.benches.filter((x) => x.date === day).map((x) => x.playerId) : [];
 }
 
 export interface LineupActual {
@@ -238,6 +327,7 @@ export function parsePlan(row: RunRow): LineupPlan | null {
       .filter((x): x is Obj => !!x && !!s(x.player_id))
       .map((x) => ({ playerId: x.player_id as string, name: s(x.name) ?? (x.player_id as string), game: s(x.game) })),
     expected,
+    ratioBench: parseRatioBench(sm.ratio_bench),
     warnings: a(sm.warnings).filter((w): w is string => typeof w === "string"),
     modelVersion: s(sm.model_version),
   };

@@ -31,7 +31,7 @@ Full detail and design trade-offs: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Path | Purpose |
 |---|---|
 | `src/fantasy/league/` | `LeagueSettings` (categories, roster slots, draft order), Yahoo API client (read-only), roster sync from browser captures (`fantasy league import-capture|sync`) |
-| `src/fantasy/lineup/` | daily lineup optimizer: exact position-aware slot assignment, matchup-weighted (`fantasy lineup plan`, `lineup-0.3.0`; banked matchup totals from `fantasy league score`) |
+| `src/fantasy/lineup/` | daily lineup optimizer: exact position-aware slot assignment, matchup-weighted (`fantasy lineup plan`, `lineup-0.4.0`; banked matchup totals from `fantasy league score`; `ratio_bench` suggestion) |
 | `src/fantasy/inseason/` | in-season analysis: games lost to slot rules, streaming ranker, paired trade evaluation (`fantasy inseason lineup|stream|trade`) |
 | `scripts/yahoo/` | browser JS that captures all rosters / free agents from Yahoo pages (run by an agent in the logged-in browser) |
 | `src/fantasy/data/` | ingestion into `data/raw/` with provenance; `fantasy data ...` |

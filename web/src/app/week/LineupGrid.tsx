@@ -11,6 +11,8 @@ export interface DayView {
   rows: GridRow[];
   summary: DaySummary;
   mismatches: number;
+  /** player ids today's ratio-bench SUGGESTION would bench this day (not applied; badge only) */
+  benchHints?: string[];
   plan: {
     runId: string;
     date: string;
@@ -65,10 +67,11 @@ function Game({ c }: { c: GridCell }) {
 }
 
 /** Desktop table cell / phone list row content. */
-export function CellBody({ r, compact = false }: { r: GridRow; compact?: boolean }) {
+export function CellBody({ r, compact = false, hints }: { r: GridRow; compact?: boolean; hints?: string[] }) {
   const c = r.shown;
   if (!c) return <span className="text-[11px] text-muted/60">{r.state === "mismatch" ? <span className="text-warn">⚠ empty (plan: {r.planned?.short})</span> : "—"}</span>;
   const dim = c.hasGame === false || (BENCHY.has(r.slot) && !c.hasGame);
+  const hinted = !!c.playerId && !BENCHY.has(r.slot) && !!hints?.includes(c.playerId);
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-1">
@@ -77,6 +80,11 @@ export function CellBody({ r, compact = false }: { r: GridRow; compact?: boolean
         </span>
         <span className={`truncate ${compact ? "text-[12px]" : "text-[13.5px]"} ${dim ? "text-muted" : ""}`}>{c.short}</span>
         <StatusTag status={c.status} />
+        {hinted && (
+          <span className="ml-1 shrink-0 rounded border border-accent/40 px-1 text-[10px] leading-4 text-accent" title="Suggestion (not applied): bench to protect a % category">
+            sit?
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1 pl-3.5">
         <Game c={c} />
@@ -156,7 +164,7 @@ export function LineupGrid({ days, sel, onSel }: { days: DayView[]; sel: number;
                       const r = x.rows[ri];
                       return (
                         <td key={x.date} className={`px-1.5 py-1 align-top ${i === sel ? "bg-accent/5" : ""} ${r?.state === "mismatch" ? "bg-warn/10" : ""}`} title={r ? cellTitle(r) : undefined}>
-                          {r ? <CellBody r={r} compact /> : null}
+                          {r ? <CellBody r={r} compact hints={x.benchHints} /> : null}
                         </td>
                       );
                     })}
@@ -207,7 +215,7 @@ export function LineupGrid({ days, sel, onSel }: { days: DayView[]; sel: number;
           {d.rows.map((r, i) => (
             <li key={i} className={`flex items-center gap-2 px-3 py-1.5 ${r.state === "mismatch" ? "bg-warn/10" : ""} ${r.slot === "BN" && d.rows[i - 1]?.slot !== "BN" ? "border-t-2 border-t-line" : ""}`} title={cellTitle(r)}>
               <span className={`w-9 shrink-0 text-[11px] font-medium ${BENCHY.has(r.slot) ? "text-muted" : ""}`}>{r.slot}</span>
-              <CellBody r={r} />
+              <CellBody r={r} hints={d.benchHints} />
             </li>
           ))}
         </ul>

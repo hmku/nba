@@ -179,6 +179,8 @@ def plan_summary(out: dict[str, Any], games: dict[str, dict[str, str]]) -> dict[
         "accumulated": out.get("accumulated"),
         "category_weights": {k: {f: round(float(v), 5) for f, v in d.items()}
                              for k, d in (out.get("category_weights") or {}).items()},
+        # lineup-0.4.0 (additive): protect-ratios plan vs the default one -- a SUGGESTION, never applied
+        "ratio_bench": out.get("ratio_bench"),
         "warnings": out.get("warnings", []),
         "model_version": out.get("model_version"),
     })
