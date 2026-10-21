@@ -102,7 +102,7 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
 - [x] Apply the private-intel migration (done 2026-10-20).
 - [ ] Ask Muse for one read-only league check (rosters, my team, matchup) so the in-season loop has data.
 - [ ] Decide the third-party projections question (public repo) above.
-- [ ] **Optional: set up the read-only advisor (ChatGPT agent, ≈5 min)** — an independent reviewer that reads the
+- [ ] **Optional: set up the read-only advisor (ChatGPT agent, ≈5 min)** — steps 1-3 done 2026-10-20 (live: `advisor.configured: true`); only step 4 (paste the prompt) left — an independent reviewer that reads the
       public repo/dashboard and sends evidence-labelled suggestions to Claude (it can't change the team, code or data):
       1. Make a token: `openssl rand -hex 32` (must differ from Muse's token). Don't paste it into chat with Claude.
       2. Vercel → fantasy-nba → Settings → Environment Variables: add `ADVISOR_API_TOKEN` = that token, environment
