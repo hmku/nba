@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Fantasy Desk",
     short_name: "Fantasy",
     description: "Fantasy basketball agent dashboard: this week, league, inbox (decisions, approvals and agent updates), draft room.",
-    start_url: "/", // server-side redirect → /week once the real draft is complete (else /draft)
+    start_url: "/week", // a 200 page, not "/" (a server redirect → /week): launch without a redirect hop
     scope: "/",
     display: "standalone",
     orientation: "any",

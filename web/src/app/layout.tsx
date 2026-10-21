@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Fantasy Desk", statusBarStyle: "black-translucent" },
   icons: { apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }] },
   formatDetection: { telephone: false },
+  // Next emits only the standard `mobile-web-app-capable` for appleWebApp.capable; older iOS needs the Apple name.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
