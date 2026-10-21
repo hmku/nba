@@ -8,7 +8,7 @@
  *
  * Bump VERSION to drop old caches.
  */
-const VERSION = "v1";
+const VERSION = "v2"; // v2: new basketball icon
 const STATIC_CACHE = `fdesk-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png"];

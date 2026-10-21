@@ -11,14 +11,12 @@ const out = join(root, "public", "icons");
 mkdirSync(out, { recursive: true });
 
 const svg = readFileSync(join(root, "src", "app", "icon.svg"), "utf8");
-// Inner glyph of icon.svg (everything after the background <rect .../>), drawn on a 32x32 grid.
-const glyph = svg.replace(/^.*?<rect[^>]*\/>/s, "").replace(/<\/svg>\s*$/, "");
-const BG = "#8b97ff";
-
+// icon.svg is drawn on a 512x512 grid; its background is <rect id="bgrect" rx=...> (rounded for favicons/Android "any").
 // Full-bleed square (no transparent corners): iOS/Android apply their own mask; transparency renders black on iOS.
-const square = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${BG}"/>${glyph}</svg>`;
-// Maskable: full-bleed background; the glyph's outer ring spans ~63% of the width (r≈10.1 of 32), i.e. inside the
-// 80%-diameter safe-zone circle, so the unscaled glyph is safe under any launcher mask.
+const square = svg.replace(/(<rect id="bgrect"[^>]*?) rx="\d+"/, "$1");
+if (square === svg) throw new Error("icon.svg: background <rect id=\"bgrect\" rx=...> not found");
+// Maskable: full-bleed background; the ball (r=164 of 512, 64% of the width) sits inside the 80%-diameter
+// safe-zone circle, so it is safe under any launcher mask.
 const maskable = square;
 
 const jobs = [
@@ -28,7 +26,7 @@ const jobs = [
   ["apple-touch-icon.png", square, 180],
 ];
 for (const [name, src, size] of jobs) {
-  await sharp(Buffer.from(src), { density: (72 * size) / 32 })
+  await sharp(Buffer.from(src), { density: (72 * size) / 512 })
     .resize(size, size)
     .png({ compressionLevel: 9 })
     .toFile(join(out, name));
