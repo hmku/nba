@@ -170,3 +170,17 @@ days, 0.137 — the difference is immaterial at these multipliers.)
 - Playoff weeks are verified (18-20, ending Sun 2027-03-21 → Mar 1-21); the dates of the other weeks
   are derived (see `docs/research/season_simulator.md`).
 - Rookies have no history; with `playoff-mult-0.2` the injury term is 0 for everyone anyway. Rookie gp is a manual prior × 0.90.
+- **Subgroup residual check (2026-10-21, quant-reviewer; near in-sample: targets 2025-26 are inside the production fit;
+  actual − predicted games, ± SE).** All players with ≥500 min the season before: −1.4 ± 0.7 (n=687). "One bad injury
+  year" (g1 < 40, g2 ≥ 65): −3.7 ± 5.6 (n=18), so these players are NOT under-predicted. Players with < 500 min last
+  season and ≥ 1000 the year before (Murray/Jerome-like; outside the fit population, so the prediction extrapolates):
+  −7.6 ± 3.9 (n=29); comparable players actually played ~37-44 games. Age shows no bias (28-31: −1.2 ± 1.5; 32+: −0.8 ± 2.1;
+  < 24: −1.1 ± 1.6). **Mild optimism at the top:** predictions ≥ 65 with ≥ 1000 min: −3.5 ± 1.9 (n=75); age < 24 with
+  g1 ≥ 70 and ≥ 1500 min: −4.5 ± 2.4 (n=39). ESPN's games are ~12 games optimistic for everyone and 5-10 more for
+  injury-history players, so ESPN's smaller gap between healthy and injury-prone rosters is its bias, not information:
+  **don't blend ESPN gp in.**
+  TODO (gp-ols-0.2): shrink predictions above ~65 (or add a recent-era intercept) and use the "returning from a lost
+  season" rule for g1 minutes < 500; validate out of sample on 2025-26 with the full-history panel.
+- **Reading team category ranks (League page):** they rank simulated weekly *volume* (started games × per-game stats), so
+  projected games matter as much as per-game quality. Example 2026-10-21: Thomas's team is 11th of 12 in summed pts/g but
+  12th in projected games (690 vs 822 for us) → 12th in points; our team is ~7th per game but 1st in games.
