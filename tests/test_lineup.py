@@ -238,7 +238,7 @@ def test_cli_plan_json_smoke(tmp_path, proj_path):
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["week"] == 1 and out["opponent"]["team_id"] == 2 and len(out["week_plan"]) == 5
-    assert out["model_version"] == "lineup-0.3.0"
+    assert out["model_version"] == "lineup-0.4.0"
     assert {"lineup", "bench", "il_moves", "changes_vs_current", "decide_at_tipoff", "category_weights",
             "expected", "inputs", "params"} <= set(out)
     assert out["inputs"]["accumulated"]["sha256"]
@@ -497,3 +497,80 @@ def test_odds_cover_week_only_when_banked_reaches_plan_date():
     assert not _odds_cover_week(date(2026, 10, 25), fw, read_wed)
     assert not _odds_cover_week(date(2026, 10, 22), fw, {"kind": "none"})
     assert _odds_cover_week(date(2026, 10, 23), fw, {"kind": "accumulated_file"})
+
+
+# ---------------------------------------------------------------- ratio bench (lineup-0.4.0, suggestion only)
+def _late_week_ft_case(world):
+    """Last day of the week: only my poor FT shooter (team AAA) plays; every counting category and FG% is decided by
+    the banked totals; FT% is close (I lead, and his expected FTs would drop me just below the opponent)."""
+    proj, settings, days, nba, me, opp, generic = world
+    df = proj.df
+    cand = df[df["fta"] >= 3.0]
+    pid = str((cand["ftm"] / cand["fta"]).idxmin())
+    ftm, fta = float(df.loc[pid, "ftm"]), float(df.loc[pid, "fta"])
+    day = [D0 + timedelta(days=6)]
+    sched = _schedule(day, {"AAA": [0], "ZZZ": []})
+    row = df.loc[pid]
+    shooter = RosterPlayer(pid, str(row["name"]), parse_positions(list(row["positions"])), "AAA", None, "Util", 82.0)
+    mine = [shooter] + [RosterPlayer(p.player_id, p.name, p.positions, "ZZZ", None, None, p.gp)
+                        for p in me if p.player_id != pid][:12]
+    theirs = [RosterPlayer(p.player_id, p.name, p.positions, "ZZZ", None, None, p.gp) for p in opp if p.player_id != pid]
+    me_ft = (120.0, 150.0)
+    with_him = (me_ft[0] + ftm) / (me_ft[1] + fta)
+    opp_pct = (me_ft[0] / me_ft[1] + with_him) / 2  # between my FT% without him and with him
+    acc_me = {"fgm": 500, "fga": 1000, "ftm": me_ft[0], "fta": me_ft[1], "fg3m": 100, "pts": 1300, "reb": 450,
+              "ast": 300, "stl": 70, "blk": 50, "tov": 40}
+    acc_opp = {"fgm": 400, "fga": 1000, "ftm": opp_pct * 150.0, "fta": 150.0, "fg3m": 40, "pts": 700, "reb": 200,
+               "ast": 100, "stl": 20, "blk": 10, "tov": 120}
+    return proj, settings, day, sched, mine, theirs, generic, acc_me, acc_opp, pid
+
+
+def test_ratio_bench_suggests_benching_poor_ft_shooter_late_week(world):
+    proj, settings, day, sched, mine, theirs, generic, acc_me, acc_opp, pid = _late_week_ft_case(world)
+    out = build_plan(mine, theirs, proj.df, sched, day, settings, generic, acc_me, acc_opp,
+                     params=LineupParams(n_sims=2000, seed=3))
+    rb = out["ratio_bench"]
+    assert rb["checked"] and rb["differs"] and rb["suggest"], rb
+    assert rb["delta_expected_cats"] > 2 * rb["delta_expected_cats_se"] > 0
+    assert rb["delta_p_win"] >= 0 and "2 x" in rb["rule"]
+    (b,) = rb["benches"]
+    assert b["player_id"] == pid and b["date"] == day[0].isoformat() and b["instead_of_slot"] in SLOTS.starting
+    assert b["cats_helped"][0]["cat"] == "ft_pct" and b["cats_helped"][0]["per_game"] < 0
+    # the executed (default) plan is unchanged: he still starts
+    assert out["target_slots"][pid]["slot"] in SLOTS.starting
+    assert pid in {e["player_id"] for e in out["lineup"]}
+    assert out["week_totals"]["unused_starts"] == 0
+    # benching him locks FT% (sd -> 0, weight -> 0), so the plain fixed point cycles; the check keeps the best plan
+    assert rb["fixed_point"]["converged"] is False and "picked" in rb["fixed_point"]
+    # with the opt-in flag the plan itself is the protect plan and the check is not repeated
+    prot = build_plan(mine, theirs, proj.df, sched, day, settings, generic, acc_me, acc_opp,
+                      params=LineupParams(n_sims=0, protect_ratios=True))
+    assert prot["ratio_bench"]["checked"] is False
+    # persisted in the saved plan row; one CLI text line
+    from fantasy.lineup import record
+    from fantasy.lineup.cli import ratio_bench_line
+
+    assert record.plan_summary(out, {})["ratio_bench"]["suggest"] is True
+    line = ratio_bench_line(rb)
+    assert line.startswith("RATIO BENCH (suggestion only, not applied): bench ") and "FT%" in line and day[0].strftime("%a") in line
+
+
+def test_ratio_bench_no_suggestion_early_week(world):
+    out = _plan(world, n_sims=2000)
+    rb = out["ratio_bench"]
+    assert rb["checked"] and rb["suggest"] is False
+    assert set(rb) >= {"differs", "rule", "delta_expected_cats", "delta_p_win", "benches"}
+
+
+def test_ratio_bench_identical_plans_skip_monte_carlo(world, monkeypatch):
+    import fantasy.lineup.plan as plan_mod
+
+    proj, settings, days, nba, me, opp, generic = world
+    calls = []
+    real = plan_mod.monte_carlo
+    monkeypatch.setattr(plan_mod, "monte_carlo", lambda *a, **k: calls.append(set(a[1])) or real(*a, **k))
+    out = build_plan(me, opp, proj.df, nba, days, settings, generic, params=LineupParams(n_sims=300, seed=1))
+    rb = out["ratio_bench"]
+    assert rb["differs"] is False and rb["suggest"] is False and "skipped" in rb["method"]
+    assert rb["delta_expected_cats_se"] is None and rb["benches"] == []
+    assert calls == [{"optimized", "naive_season_value", "static_current_lineup"}]

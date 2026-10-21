@@ -86,6 +86,13 @@ is interested in X; details private"). A thread message
   Quote P(win week) only from TODAY's plan built on this morning's matchup read (`expected.covers_week: true`). A plan
   saved for a later day on today's read has `covers_week: false`: it scores only that day onwards on top of today's
   banked stats, so its P(win) is NOT the week's odds (2026-10-21: Sunday's plan showed 8% while today's said 60%).
+- Ratio bench (lineup-0.4.0): the plan output has `ratio_bench` — the protect-ratios plan (bench a player with a game
+  whose start would hurt a close FG%/FT% while the counting cats are decided) vs the default, compared by paired Monte
+  Carlo (`delta_expected_cats` ± `delta_expected_cats_se`, `delta_p_win`; `suggest` = ΔE[cats] > 2·SE; `benches` lists
+  player-days with `cats_helped`/`cats_hurt`). **`ratio_bench` is a suggestion only — never apply it on Yahoo**; the
+  executor sets `target_slots` (the default plan) as always. Mention it in the daily log and, if `suggest` is true,
+  tell the user (one line, with the ± SE); it needs the user's explicit OK like any non-default lineup choice — then
+  re-plan with `--protect-ratios` and execute that plan's `target_slots` in the live run.
 - Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once

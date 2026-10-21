@@ -396,6 +396,23 @@ def _apply_current_slots(me: list[RosterPlayer], current_slots: Path) -> tuple[l
     return [replace(p, slot=cs[p.player_id]) if p.player_id in cs else p for p in me], warnings
 
 
+_CAT_LABEL = {"fg_pct": "FG%", "ft_pct": "FT%"}
+
+
+def ratio_bench_line(rb: dict | None) -> str | None:
+    """One text line when the ratio-bench check suggests benching (None otherwise)."""
+    if not rb or not rb.get("suggest"):
+        return None
+    parts = []
+    for b in rb.get("benches", []):
+        day = date.fromisoformat(b["date"]).strftime("%a")
+        helped = [_CAT_LABEL.get(c["cat"], c["cat"].upper()) for c in b.get("cats_helped", [])[:2]]
+        parts.append(f"{b['name']} {day}" + (f" to protect {'/'.join(helped)}" if helped else ""))
+    se = rb.get("delta_expected_cats_se")
+    return (f"RATIO BENCH (suggestion only, not applied): bench {'; '.join(parts)}: "
+            f"{rb['delta_expected_cats']:+.2f} ± {se:.2f} exp. cats, P(win) {rb['delta_p_win'] + 0.0:+.3f}")
+
+
 def _print(out: dict) -> None:
     typer.echo(f"Lineup {out['date']} (week {out['week']}, vs {out['opponent']['name'] or out['opponent']['team_id']})")
     for e in out["lineup"]:
@@ -425,6 +442,9 @@ def _print(out: dict) -> None:
     for name, r in (mc.get("plans") or {}).items():
         typer.echo(f"  MC {name}: E[cats] {r['expected_cats']:.3f} ± {r['expected_cats_se']:.3f}, "
                    f"P(win) {r['p_win_matchup']:.3f} ± {r['p_win_matchup_se']:.3f}")
+    rb_line = ratio_bench_line(out.get("ratio_bench"))
+    if rb_line:
+        typer.echo(rb_line)
     for d in out.get("week_plan", []):
         typer.echo(f"  {d['date']}: {d['players_with_game']} with game / {d['starting_slots']} slots, "
                    f"unused {d['unused_starts']} {d['unused_players']}")

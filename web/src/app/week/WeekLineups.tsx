@@ -77,7 +77,7 @@ function MyColumn({ d, meta, past, snapshot, snapshotAt }: { d: DayView; meta: S
             title={cellTitle(r)}
           >
             <span className={`w-9 shrink-0 text-[11px] font-medium ${BENCHY.has(r.slot) ? "text-muted" : ""}`}>{r.slot}</span>
-            <CellBody r={r} />
+            <CellBody r={r} hints={d.benchHints} />
           </li>
         ))}
       </ul>

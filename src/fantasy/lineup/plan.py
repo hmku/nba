@@ -9,12 +9,20 @@ Policy for the remaining days of the matchup week:
    manager starting his best players with games; he does not react to my lineup).
 3. Evaluate my plan and two baselines (generic season-value lineups; the current Yahoo lineup held all week) by
    the analytic normal model and by Monte Carlo with common random numbers (paired SEs).
+4. Ratio-bench check (lineup-0.4.0, SUGGESTION ONLY): the executed plan keeps the default "everyone with a game
+   starts" rule. Unless `protect_ratios` is already on, the same fixed-point procedure is re-run with
+   protect_ratios=True (a player with a game whose matchup-aware value is negative -- e.g. a poor FT shooter while
+   FT% is close and the counting categories are decided -- may lose to an empty bench seat). If that plan differs,
+   both are compared by Monte Carlo with common random numbers over the rest of the week (paired differences); the
+   result is `ratio_bench` (suggest iff dE[cats] > 2 paired SE). It never changes `target_slots` or the plan; acting
+   on it needs the user's explicit OK. The gradient that picks the benches is first order (it ignores the variance a
+   start adds, which benching removes); the Monte Carlo comparison uses the full simulation.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 import numpy as np
@@ -37,7 +45,12 @@ from fantasy.model.lines import SEASON_GAMES, STATS, ProjectionSet
 from fantasy.model.valuation import compute_values
 from fantasy.sim.schedule import NBASchedule
 
-LINEUP_MODEL_VERSION = "lineup-0.3.0"  # 0.3.0: banked matchup totals (matchup_score) + per-category P(win)
+# 0.3.0: banked matchup totals (matchup_score) + per-category P(win)
+# 0.4.0: ratio_bench -- the protect-ratios plan is solved alongside the default one and compared by paired Monte
+#        Carlo (suggestion only; the executed plan / target_slots are unchanged)
+LINEUP_MODEL_VERSION = "lineup-0.4.0"
+RATIO_BENCH_RULE = ("suggest iff dE[categories won] (protect-ratios plan minus default plan) > 2 x its paired SE "
+                    "(Monte Carlo, common random numbers, rest of the week); suggestion only, never applied")
 GAME_FLOOR = 1e-5  # a player with a game is worth at least this (so he never sits for a player without one)
 
 
@@ -178,24 +191,34 @@ class WeekResult:
 
 def optimize_week(
     me: TeamSide, opp_X: np.ndarray, opp: TeamSide, cats: list[Category], slots: DaySlots,
-    generic: dict[str, float], params: LineupParams,
+    generic: dict[str, float], params: LineupParams, best_on_cycle: bool = False,
 ) -> tuple[WeekResult, np.ndarray, list[list[str]]]:
-    """Fixed-point matchup-aware plan. Returns (result, baseline X, baseline labels)."""
+    """Fixed-point matchup-aware plan. Returns (result, baseline X, baseline labels).
+
+    `best_on_cycle` (used by the ratio-bench check only, so the executed plan is unchanged): if the iteration does
+    not converge, return the visited plan with the highest analytic expected categories instead of the last one.
+    Typical cycle: benching a player locks a ratio category (sd ~ 0 -> weight ~ 0), so at the next step his value
+    is ~0 and he starts again."""
     gv = generic_values(me.players, generic)
     X0, lab0 = daily_plan(me.players, gv[:, None] * me.P, me.P, slots, locked=params.locked)
     X, labels = X0, lab0
     converged = False
     it = 0
+    visited = []
     for it in range(1, params.iterations + 1):  # noqa: B007
         state = cat_state(me.tw, X, opp.tw, opp_X, cats)
         pg, contrib = per_game_value(me.tw.S, state, cats)
         values = me.P * pg[:, None]
         X_new, labels = daily_plan(me.players, values, me.P, slots, params.protect_ratios, params.locked)
+        visited.append((X_new, labels, values, pg, contrib, state))
         if np.array_equal(X_new, X):
             converged = True
             X = X_new
             break
         X = X_new
+    if best_on_cycle and not converged and visited:
+        score = [cat_state(me.tw, v[0], opp.tw, opp_X, cats).expected_cats for v in visited]
+        X, labels, values, pg, contrib, state = visited[int(np.argmax(score))]
     final = cat_state(me.tw, X, opp.tw, opp_X, cats)
     return WeekResult(X, labels, values, pg, contrib, state, final, it, converged), X0, lab0
 
@@ -234,6 +257,68 @@ def monte_carlo(
                 "p_win_matchup": float(dw.mean()), "p_win_matchup_se": float(dw.std(ddof=1) / np.sqrt(n_sims))}
         out["plans"][name] = row
     return out
+
+
+def _cat_list(contrib: np.ndarray, keys: list[str], sign: int) -> list[dict]:
+    """Categories where a start's per-game contribution has `sign` (+1 helps, -1 hurts), largest first; small ones
+    (< 5% of the largest absolute contribution) dropped."""
+    top = float(np.abs(contrib).max()) if contrib.size else 0.0
+    rows = [(k, float(v)) for k, v in zip(keys, contrib, strict=True) if sign * v > 0 and abs(v) >= 0.05 * top > 0]
+    return [{"cat": k, "per_game": round(v, 5)} for k, v in sorted(rows, key=lambda r: -abs(r[1]))]
+
+
+def ratio_bench(
+    me: TeamSide, opp: TeamSide, opp_X: np.ndarray, cats: list[Category], slots: DaySlots, generic: dict[str, float],
+    params: LineupParams, res: WeekResult, days: list[date], games: dict[str, dict[str, str]] | None = None,
+) -> dict:
+    """Would benching players with a game to protect a ratio category (FG%/FT%) help this week? Suggestion only.
+
+    Solves the protect_ratios=True plan with the same inputs and fixed point; if it differs from the default plan
+    (`res`), compares both by Monte Carlo with common random numbers (paired differences, protect minus default).
+    `benches` = player-days started in the default plan but benched in the protect plan, with per-game category
+    contributions under the protect plan's weights: `cats_helped` = categories benching helps (his start would
+    lower them, e.g. FT%), `cats_hurt` = what benching gives up (counting stats). `starts` = the reverse (rare)."""
+    if params.protect_ratios:
+        return {"checked": False, "reason": "the plan itself already uses protect_ratios"}
+    alt, _, _ = optimize_week(me, opp_X, opp, cats, slots, generic, replace(params, protect_ratios=True),
+                              best_on_cycle=True)
+    base = {"checked": True, "rule": RATIO_BENCH_RULE, "delta_expected_cats": 0.0, "delta_expected_cats_se": None,
+            "delta_p_win": 0.0, "delta_p_win_se": None, "benches": [], "starts": [],
+            "fixed_point": {"iterations": alt.iterations, "converged": alt.converged,
+                            **({} if alt.converged else {"picked": "best visited plan by analytic E[cats]"})}}
+    if np.array_equal(alt.X, res.X):
+        return {**base, "differs": False, "suggest": False, "method": "plans identical: Monte Carlo skipped"}
+    keys = [c.key for c in cats]
+    games = games or {}
+    benches, starts = [], []
+    for d, day in enumerate(days):
+        for i, p in enumerate(me.players):
+            if res.X[i, d] == alt.X[i, d]:
+                continue
+            row = {"date": day.isoformat(), "player_id": p.player_id, "name": p.name,
+                   "game": games.get(p.player_id, {}).get(day.isoformat()), "p_play": round(float(me.P[i, d]), 3)}
+            if res.X[i, d]:
+                benches.append({**row, "instead_of_slot": res.labels[d][i],
+                                "value_per_game": round(float(alt.per_game[i]), 5),
+                                "cats_helped": _cat_list(alt.contrib[i], keys, -1),
+                                "cats_hurt": _cat_list(alt.contrib[i], keys, +1)})
+            else:
+                starts.append({**row, "slot": alt.labels[d][i]})
+    out = {**base, "differs": True, "benches": benches, "starts": starts,
+           "expected_analytic": {"default": summarize_state(res.final_state),
+                                 "protect_ratios": summarize_state(alt.final_state)}}
+    if params.n_sims <= 0:
+        a, b = alt.final_state, res.final_state
+        return {**out, "suggest": False, "method": "analytic only (no Monte Carlo: --sims 0): no SE, no suggestion",
+                "delta_expected_cats": a.expected_cats - b.expected_cats,
+                "delta_p_win": a.matchup_win_prob - b.matchup_win_prob}
+    mc = monte_carlo(me, {"default": res.X, "protect_ratios": alt.X}, opp, opp_X, cats, params.n_sims, params.seed)
+    diff = mc["plans"]["protect_ratios"]["optimized_minus_this"]  # default minus protect
+    dc, dc_se = -diff["expected_cats"], diff["expected_cats_se"]
+    return {**out, "method": f"monte_carlo: {mc['n_sims']} paired sims (common random numbers), seed {mc['seed']}",
+            "delta_expected_cats": dc, "delta_expected_cats_se": dc_se,
+            "delta_p_win": -diff["p_win_matchup"], "delta_p_win_se": diff["p_win_matchup_se"],
+            "suggest": bool(dc > 2 * dc_se)}
 
 
 def summarize_state(st: CatState) -> dict:
@@ -378,6 +463,11 @@ def build_plan(
     mc = monte_carlo(me, {"optimized": res.X, "naive_season_value": X_naive, "static_current_lineup": X_static},
                      opp, opp_X, cats, params.n_sims, params.seed)
 
+    from fantasy.lineup.record import game_markers
+
+    games = game_markers(nba, {p.player_id: p.team for p in me.players}, [d.isoformat() for d in days])
+    rb = ratio_bench(me, opp, opp_X, cats, slots, generic, params, res, days, games)
+
     today = day_summary(me.players, res.labels[0], me.P[:, 0], res.values[:, 0], slots, days[0])
     start = set(slots.starting)
     tipoff = tipoff_notes(me, res, slots)
@@ -415,6 +505,7 @@ def build_plan(
         "opponent_plan": [{"player_id": p.player_id, "name": p.name, "planned_starts": int(opp_X[i].sum()),
                            "games_left": int(opp.G[i].sum()), "status": p.status}
                           for i, p in enumerate(opp.players)],
+        "ratio_bench": rb,
         "warnings": warnings,
         "model_version": LINEUP_MODEL_VERSION,
         "params": params.to_dict(),

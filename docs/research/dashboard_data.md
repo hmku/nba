@@ -414,7 +414,7 @@ calendar dates. Filter with `summary->>date` (PostgREST: `summary->>date=gte.202
 already reads `model_runs`, `fantasy publish` copies it, and a few rows per day need no index. A dedicated `lineups`
 table would only buy a `(date, kind)` index; revisit when rows reach thousands.
 
-### `lineup_plan` — `model_version` = the optimizer's (`lineup-0.3.0`; 0.2.0 rows lack the 0.3.0 keys below), `params` = `LineupParams.to_dict()`
+### `lineup_plan` — `model_version` = the optimizer's (`lineup-0.4.0`; 0.2.0 rows lack the 0.3.0 keys below, pre-0.4.0 rows lack `ratio_bench`), `params` = `LineupParams.to_dict()`
 (`rest_share` with `rest_share_label: "prior"`, tag priors, n_sims, seed, locked), `inputs` = the plan's input files with
 sha256 + `content_sha256`.
 ```jsonc
@@ -463,8 +463,20 @@ sha256 + `content_sha256`.
   "accumulated": {"me": {"fgm": 40, "fga": 85, …, "tov": 12}, "opp": {…}},   // raw totals used; null when none
   "category_weights": {"reb": {"my_mean": 160.2, "opp_mean": 151.0, "margin": 9.2, "sd": 14.1, "p_win": 0.74,
                                "weight": 0.023}},   // all 9 cats; weight ~0 = category settled (far ahead/behind)
+  // lineup-0.4.0: protect-ratios plan vs the executed default plan -- a SUGGESTION, never applied. null in older rows;
+  // {"checked": false, "reason": …} when the plan itself used --protect-ratios. Identical plans: differs false, no MC.
+  "ratio_bench": {"checked": true, "differs": true, "suggest": true, "rule": "suggest iff dE[categories won] … > 2 x its paired SE …",
+                  "method": "monte_carlo: 20000 paired sims (common random numbers), seed 0",
+                  "delta_expected_cats": 0.12, "delta_expected_cats_se": 0.04,   // protect minus default
+                  "delta_p_win": 0.03, "delta_p_win_se": 0.01,
+                  "benches": [{"date": "2026-10-25", "player_id": "…", "name": "…", "game": "@DET", "p_play": 0.96,
+                               "instead_of_slot": "C", "value_per_game": -0.02,
+                               "cats_helped": [{"cat": "ft_pct", "per_game": -0.03}],   // his start lowers these
+                               "cats_hurt": [{"cat": "reb", "per_game": 0.01}]}],      // benching gives these up
+                  "starts": [], "fixed_point": {"iterations": 2, "converged": true},
+                  "expected_analytic": {"default": {…}, "protect_ratios": {…}}},
   "warnings": ["MID-WEEK WITHOUT BANKED TOTALS: …"],   // only when accumulated_source.kind = none
-  "model_version": "lineup-0.3.0"
+  "model_version": "lineup-0.4.0"
 }
 ```
 Game markers come from the cached NBA schedule (`data/raw/bbref_schedule/nba_2027_games.csv`, no tip times, hence the

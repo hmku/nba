@@ -11,8 +11,12 @@ import {
   parseActual,
   parsePlan,
   pickWeek,
+  ratioBenchFlag,
+  ratioBenchIds,
+  shortName,
   weekSummary,
   type AdviceLite,
+  type RatioBench,
   type ApprovalRow,
   type DecisionRow,
   type LeagueWeek,
@@ -199,6 +203,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
   const simOdds = sim ? simWeekOdds(sim.weeks, sim.h2h, w.week, oppTeam) : null;
   const plan = whatIf == null ? latestPlanInWeek(plans, w.start, w.end, today) : null;
   const odds = weekOdds(plan, simOdds, sim?.run.run_id ?? null);
+  const ratioBench = ratioBenchFlag(plan, today);
   const mx = sim?.h2h.find((x) => x.week === w.week) ?? null;
 
   // --- decisions
@@ -233,6 +238,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
     rows: g.rows,
     summary: g.summary,
     mismatches: g.mismatches,
+    benchHints: ratioBenchIds(ratioBench, g.date),
     plan: g.plan
       ? {
           runId: g.plan.runId,
@@ -280,6 +286,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
         yahooUrl={yahooMatchupUrl(w.week, meYahoo, oppYahoo)}
       />
       <CategoryStrip score={score} odds={odds} />
+      {ratioBench && <RatioBenchFlag rb={ratioBench} />}
 
       <WeekLineups
         days={views}
@@ -435,7 +442,34 @@ function ScoreHeader({
 }
 
 /** "6 / 38 played" from Yahoo's games strip (played + remaining = the week's total), else null. */
-function gamesText(t: { gamesPlayed: number | null; gamesRemaining: number | null }): string | null {
+/** Ratio-bench suggestion (lineup-0.4.0): benching these player-days would protect a % category. Never applied. */
+function RatioBenchFlag({ rb }: { rb: RatioBench }) {
+  const label = (k: string) => CAT_LABEL[k as keyof typeof CAT_LABEL] ?? k.toUpperCase();
+  const uniq = (xs: string[]) => [...new Set(xs)];
+  const helped = uniq(rb.benches.flatMap((x) => x.helped.slice(0, 1))).map(label);
+  const hurt = uniq(rb.benches.flatMap((x) => x.hurt.slice(0, 2))).map(label);
+  const who = rb.benches.map((x) => `${shortName(x.name)} ${dayLabel(x.date).split(" ")[0]}`).join(", ");
+  const sign = (v: number | null, d: number) => (v == null ? "—" : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(d)}`);
+  return (
+    <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-[12.5px] leading-snug" title={rb.rule ?? undefined}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+        <span>
+          <span className="font-semibold">Sit {who}?</span> Protects {helped.join("/") || "a % category"}
+          {hurt.length > 0 && <span className="text-muted"> · costs {hurt.join(", ")}</span>}
+        </span>
+        <span className="text-[11px] text-muted">suggestion · not applied</span>
+      </div>
+      <div className="text-[11.5px] text-muted">
+        <span className="num text-fg">
+          {sign(rb.deltaCats, 2)} ± {rb.deltaCatsSe?.toFixed(2) ?? "—"}
+        </span>{" "}
+        exp. cats · P(win) <span className="num">{sign(rb.deltaPWin == null ? null : rb.deltaPWin * 100, 1)} pts</span> · simulated
+      </div>
+    </div>
+  );
+}
+
+function gamesText(t:{ gamesPlayed: number | null; gamesRemaining: number | null }): string | null {
   if (t.gamesPlayed == null || t.gamesRemaining == null) return null;
   return `${t.gamesPlayed} / ${t.gamesPlayed + t.gamesRemaining} played`;
 }

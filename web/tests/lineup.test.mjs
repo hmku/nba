@@ -13,6 +13,8 @@ import {
   parsePlan,
   pickWeek,
   planForDay,
+  ratioBenchFlag,
+  ratioBenchIds,
   shortName,
   weekSummary,
 } from "../src/lib/lineup.ts";
@@ -265,4 +267,49 @@ test("slot swap between two starters is not a mismatch", () => {
   assert.equal(buildDay("2026-10-21", plan, swapped).mismatches, 0);
   const benchedStarter = { slots: [e("PG", "c"), e("Util", "a"), e("BN", "b")], complete: true, gamesKnown: true };
   assert.ok(buildDay("2026-10-21", plan, benchedStarter).mismatches > 0);
+});
+
+const ratioBench = (over = {}) => ({
+  checked: true,
+  differs: true,
+  suggest: true,
+  rule: "suggest iff dE[cats] > 2 x paired SE",
+  delta_expected_cats: 0.12,
+  delta_expected_cats_se: 0.04,
+  delta_p_win: 0.03,
+  delta_p_win_se: 0.01,
+  benches: [
+    { date: "2026-10-21", player_id: "c", name: "Player C", game: "@DET", instead_of_slot: "G", cats_helped: [{ cat: "ft_pct", per_game: -0.02 }], cats_hurt: [{ cat: "pts", per_game: 0.004 }] },
+    { date: "2026-10-25", player_id: "d", name: "Player D", game: "vs NYK", instead_of_slot: "SF", cats_helped: [{ cat: "fg_pct", per_game: -0.01 }], cats_hurt: [] },
+    { player_id: "junk" },
+  ],
+  ...over,
+});
+
+test("ratio_bench: parsed from the plan row; flag only when suggest is true, from today on", () => {
+  const p = parsePlan(planRow("2026-10-21", { ratio_bench: ratioBench() }));
+  const rb = p.ratioBench;
+  assert.equal(rb.suggest, true);
+  assert.equal(rb.deltaCats, 0.12);
+  assert.equal(rb.deltaCatsSe, 0.04);
+  assert.equal(rb.benches.length, 2); // junk entry dropped
+  assert.deepEqual(rb.benches[0], { date: "2026-10-21", playerId: "c", name: "Player C", game: "@DET", slot: "G", helped: ["ft_pct"], hurt: ["pts"] });
+
+  assert.equal(ratioBenchFlag(p, "2026-10-21").benches.length, 2);
+  // days already played are dropped; nothing left -> no flag
+  assert.deepEqual(ratioBenchFlag(p, "2026-10-22").benches.map((x) => x.playerId), ["d"]);
+  assert.equal(ratioBenchFlag(p, "2026-10-26"), null);
+  assert.deepEqual(ratioBenchIds(ratioBenchFlag(p, "2026-10-21"), "2026-10-25"), ["d"]);
+  assert.deepEqual(ratioBenchIds(null, "2026-10-25"), []);
+
+  // no suggestion: not significant, identical plans, unchecked, older rows without the block, no plan
+  assert.equal(ratioBenchFlag(parsePlan(planRow("2026-10-21", { ratio_bench: ratioBench({ suggest: false }) })), "2026-10-21"), null);
+  const same = parsePlan(planRow("2026-10-21", { ratio_bench: { checked: true, differs: false, suggest: false, benches: [], delta_expected_cats_se: null } }));
+  assert.equal(same.ratioBench.differs, false);
+  assert.equal(same.ratioBench.deltaCatsSe, null);
+  assert.equal(ratioBenchFlag(same, "2026-10-21"), null);
+  assert.equal(parsePlan(planRow("2026-10-21", { ratio_bench: { checked: false, reason: "protect_ratios" } })).ratioBench, null);
+  assert.equal(parsePlan(planRow("2026-10-21")).ratioBench, null);
+  assert.equal(ratioBenchFlag(null, "2026-10-21"), null);
+  assert.equal(ratioBenchFlag(parsePlan(planRow("2026-10-21", { ratio_bench: ratioBench({ benches: [] }) })), "2026-10-21"), null);
 });

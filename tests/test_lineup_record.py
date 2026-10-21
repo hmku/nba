@@ -51,7 +51,7 @@ def test_plan_save_writes_compact_row_idempotently(tmp_path, proj_path):
     assert "week_plan" not in out  # display output unchanged without --week ...
     [row] = runs("lineup_plan")
     s = row["summary"]
-    assert row["model_version"] == "lineup-0.3.0" and row["params"]["rest_share_label"] == "prior"
+    assert row["model_version"] == "lineup-0.4.0" and row["params"]["rest_share_label"] == "prior"
     assert s["schema"] == "lineup_plan/1" and s["date"] == "2026-10-21" and s["week"] == 1
     assert s["opponent"]["team_id"] == 2
     # ... but the saved row always has the rest of the week
