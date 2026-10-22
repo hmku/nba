@@ -4,11 +4,13 @@ Pipeline (all inputs are cached files; no network):
 
 1. Basketball-Reference totals for 2023-24, 2024-25, 2025-26 (bbref seasons 2024/2025/2026).
 2. Per-minute rates = sum_s(w_s * stat_s) / sum_s(w_s * min_s) with season weights 5/3/2,
-   regressed toward position-group league means with a prior of PRIOR_MIN minutes.
+   regressed toward position-group league means with a prior of `Params.prior_min` *effective
+   minutes* (see `effective_minutes`: minutes weighted by w_s / mean(w)).
    Makes and attempts are projected separately (FG%, FT% are derived, never averaged).
 3. Age curve multiplier on production rates (makes and attempts scaled together so efficiency
-   is unchanged; turnovers scale with usage too).
-4. Minutes per game: recency-weighted MPG plus young-player growth, then manual role overrides.
+   is unchanged; turnovers scale with usage too, so TOV per possession used is unchanged).
+4. Minutes per game: recency-weighted MPG plus young-player growth (tapered to 0 at 30 mpg),
+   then manual role overrides.
 5. Games: fitted model (fantasy.model.availability.predict_gp, gp-ols-0.2: last three seasons' games
    and minutes, age, ironman and role hinges, recent-era calibration, separate low-minute / lost-season
    model; fitted out of sample on bbref history) and gp_sd from its residuals; the
@@ -47,7 +49,12 @@ from fantasy.model.availability import (
 # 0.2.0: fitted games-played model + calibrated gp_sd + playoff_mult column
 # 0.2.1: playoff_mult refit on the league's real playoff window (Mar 1-21; playoff-mult-0.2)
 # 0.2.2: gp-ols-0.2 (role hinge, recent-era calibration, low-minute / lost-season model)
-MODEL_VERSION = "baseline-0.2.2"
+# 0.3.0: review fixes (docs/research/projection_quality.md §6): TOV now follows the age curve like
+#        the other usage stats (was exempt, contradicting this docstring); MPG_GROWTH tapers
+#        linearly to 0 between 27 and 30 mpg (was a step at 30); prior_min / min_total_minutes
+#        restated in effective minutes with the same effective strength (outputs unchanged);
+#        per-row `gp_scale` column in player_overrides (default baseline01 = unchanged).
+MODEL_VERSION = "baseline-0.3.0"
 SEASON = "2026-27"
 OUTPUT_PATH = PROCESSED_DIR / "projections_2026_27.csv"
 
@@ -66,12 +73,17 @@ class Params:
     season_weights: dict[int, float] = field(
         default_factory=lambda: {2026: 5.0, 2025: 3.0, 2024: 2.0}
     )
-    prior_min: float = 400.0  # minutes of league-average (by position group) production added
+    # Rate shrinkage: effective minutes (`effective_minutes`) of position-group prior production
+    # added to every player's rates. PRIOR, unfitted: 120 reproduces the pre-0.3.0 value of 400
+    # *weighted* minutes (weights 5/3/2 summing to 10), i.e. ~80 real minutes for a player with only
+    # the latest season, ~40 per season for three equal seasons. Refit per stat: projection_quality.md §6.
+    prior_min: float = 120.0
     gp_model: str = "fitted"  # fitted (availability.predict_gp) | shrink (baseline-0.1 rule)
     # Explicit manual gp values (overrides, rookie priors) were set on the baseline-0.1 scale, which
     # over-predicted realised games by ~10% (realised / predicted = 0.87-0.92 out of sample for
     # rotation players); with the fitted model they are multiplied by this to stay comparable.
-    # 1.0 = take manual gp literally. Only applies when gp_model == "fitted".
+    # 1.0 = take manual gp literally. Only applies when gp_model == "fitted" and only to rows whose
+    # `gp_scale` column is blank or "baseline01"; rows marked "fitted" are taken literally.
     manual_gp_scale: float = 0.90
     gp_prior: float = 68.0  # shrink only: league prior for games played by a rotation player
     gp_prior_weight: float = 1.0  # shrink only: weight of prior in units of "seasons"
@@ -81,7 +93,9 @@ class Params:
     mpg_max: float = 37.5
     mpg_prior: float = 16.0  # bench-player minutes prior for small samples
     mpg_prior_games: float = 25.0
-    min_total_minutes: float = 150.0  # weighted minutes needed to be projected at all
+    # effective minutes (`effective_minutes`) needed to be projected at all; 225 = the pre-0.3.0 rule
+    # (weighted minutes / sum(w) * 2 >= 150), i.e. 150 real minutes with only the latest season
+    min_total_minutes: float = 225.0
     max_rows: int = 450
 
 
@@ -89,13 +103,33 @@ class Params:
 AGE_CURVE = {19: 1.08, 20: 1.07, 21: 1.06, 22: 1.045, 23: 1.035, 24: 1.025, 25: 1.015, 26: 1.005,
              27: 1.0, 28: 1.0, 29: 0.995, 30: 0.99, 31: 0.98, 32: 0.97, 33: 0.96, 34: 0.95,
              35: 0.94, 36: 0.93, 37: 0.92, 38: 0.91, 39: 0.90, 40: 0.89, 41: 0.88}  # fmt: skip
-# Additional minutes for young players on the rise (applied only below 30 mpg).
+# Additional minutes for young players on the rise (PRIOR, unfitted). Full growth below
+# MPG_GROWTH_FULL_BELOW, tapering linearly to 0 at MPG_GROWTH_CAP. The 3-mpg band equals the largest
+# growth, so projected mpg stays non-decreasing in historical mpg (no cliff at the cap).
 MPG_GROWTH = {19: 3.0, 20: 3.0, 21: 2.5, 22: 2.0, 23: 1.0, 24: 0.5}
+MPG_GROWTH_CAP = 30.0
+MPG_GROWTH_FULL_BELOW = 27.0
 
 
 def age_mult(age: float) -> float:
     a = int(np.clip(round(age), 19, 41))
     return AGE_CURVE[a]
+
+
+def mpg_growth(mpg: float, age: float) -> float:
+    """Young-player minutes growth: MPG_GROWTH[age], tapered linearly to 0 between 27 and 30 mpg."""
+    full = MPG_GROWTH.get(int(round(age)), 0.0)
+    band = MPG_GROWTH_CAP - MPG_GROWTH_FULL_BELOW
+    return full * float(np.clip((MPG_GROWTH_CAP - mpg) / band, 0.0, 1.0))
+
+
+def effective_minutes(seasons_w: pd.Series, minutes: pd.Series, weights: dict[int, float]) -> float:
+    """Season-weighted minutes on a real-minute scale: sum_s (w_s / mean(w)) * min_s.
+
+    Three equal seasons of M minutes count as 3M; a player with only the latest season (w=5 of 5/3/2)
+    counts 1.5x his minutes. `Params.prior_min` and `min_total_minutes` are in these units."""
+    mean_w = sum(weights.values()) / len(weights)
+    return float((seasons_w * minutes).sum() / mean_w)
 
 
 # ---------------------------------------------------------------- loading
@@ -223,13 +257,13 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
     rows = []
     for pid, g in tot.groupby("player_id"):
         g = g.sort_values("season")
-        wmin = (g["w"] * g["mp"]).sum()
-        if wmin / sum(w.values()) * 2 < params.min_total_minutes:  # tiny samples
+        emin = effective_minutes(g["w"], g["mp"], w)
+        if emin < params.min_total_minutes:  # tiny samples
             continue
         last = g.iloc[-1]
         # age in 2026-27 = last observed age + years since
         age_now = float(last["age"]) + (2027 - int(last["season"]))
-        rate = _per_minute_rates(g, wmin, grp_rates.loc[_pos_group(last["pos"])], age_now, params)
+        rate = _per_minute_rates(g, emin, grp_rates.loc[_pos_group(last["pos"])], age_now, params)
         mpg = _project_mpg(g, max(w), age_now, params)
         gp, gp_sd, g1_latest = _project_gp(g, w, age_now, params)
 
@@ -249,7 +283,7 @@ def baseline(params: Params | None = None) -> pd.DataFrame:
                 **pg,
                 "last_season": int(last["season"]),
                 "seasons_used": ",".join(str(int(s)) for s in g["season"]),
-                "weighted_minutes": float(wmin),
+                "effective_minutes": emin,
                 "birth_date": cinfo["birth_date"] if cinfo is not None else "",
             }
         )
@@ -273,20 +307,24 @@ def _group_prior_rates(tot: pd.DataFrame, latest_season: int) -> pd.DataFrame:
 
 
 def _per_minute_rates(
-    g: pd.DataFrame, wmin: float, prior: pd.Series, age_now: float, params: Params
+    g: pd.DataFrame, emin: float, prior: pd.Series, age_now: float, params: Params
 ) -> dict[str, float]:
-    """Season-weighted per-minute rates regressed toward the group `prior`, then age-adjusted."""
+    """Season-weighted per-minute rates regressed toward the group `prior`, then age-adjusted.
+
+    `emin` = effective_minutes(g); the stat sums use the same w_s / mean(w) scaling, so `prior_min`
+    is the prior's weight in effective minutes."""
+    scale = emin / float((g["w"] * g["mp"]).sum()) if emin > 0 else 0.0  # = 1 / mean(w)
     rate = {}
     for s in RATE_STATS:
-        rate[s] = ((g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (
-            wmin + params.prior_min
+        rate[s] = (scale * (g["w"] * g[s]).sum() + params.prior_min * prior[s]) / (
+            emin + params.prior_min
         )
     # keep makes <= attempts after regression
     rate["fgm"] = min(rate["fgm"], rate["fga"])
     rate["ftm"] = min(rate["ftm"], rate["fta"])
     rate["fg3m"] = min(rate["fg3m"], rate["fgm"])
     m = age_mult(age_now)
-    for s in ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk"]:
+    for s in RATE_STATS:  # incl. tov: turnovers scale with usage (pre-0.3.0 exempted them; bug)
         rate[s] *= m
     return rate
 
@@ -308,8 +346,7 @@ def _project_mpg(g: pd.DataFrame, latest_season: int, age_now: float, params: Pa
         * float(np.clip((80.0 - g_total) / 50.0, 0.0, 1.0))
     )
     mpg = (1 - shrink) * mpg + shrink * params.mpg_prior
-    if mpg < 30:
-        mpg += MPG_GROWTH.get(int(round(age_now)), 0.0)
+    mpg += mpg_growth(mpg, age_now)
     if age_now >= 33:
         mpg -= 0.5 * (age_now - 32)
     # players whose last season is old (missed latest season entirely) keep their minutes
@@ -364,20 +401,31 @@ ROOKIE_STAT_COLS = ["age", "gp", "mpg", "fgm", "fga", "ftm", "fta", "fg3m", "reb
 USAGE_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "ast", "tov"]  # scaled by `usage_mult` (role change)
 
 
+GP_SCALES = {"baseline01", "fitted"}  # `gp_scale` column values; blank = baseline01
+
+
 class _ManualGp:
-    """Converts a hand-entered games-played value to the active GP model's scale (and notes it)."""
+    """Converts a hand-entered games-played value to the active GP model's scale (and notes it).
+
+    Each manual row says which scale its `gp` was entered on (`gp_scale` column): "baseline01" (the
+    default when blank: the old rule, ~10% optimistic) is multiplied by `manual_gp_scale`; "fitted"
+    (entered as realistic expected games) is taken literally, so it is not haircut twice."""
 
     def __init__(self, params: Params, notes: dict[str, list[str]]) -> None:
         self.fitted = params.gp_model == "fitted"
         self.scale = params.manual_gp_scale if self.fitted else 1.0
         self.notes = notes
 
-    def __call__(self, pid: str, value: float) -> float:
-        if self.scale != 1.0:
+    def __call__(self, pid: str, value: float, gp_scale: str = "") -> float:
+        kind = (gp_scale or "baseline01").strip()
+        if kind not in GP_SCALES:
+            raise ValueError(f"{pid}: gp_scale {gp_scale!r} not in {sorted(GP_SCALES)}")
+        scale = self.scale if kind == "baseline01" else 1.0
+        if scale != 1.0:
             self.notes.setdefault(pid, []).append(
-                f"manual gp {value:g} x {self.scale:g} (manual_gp_scale: baseline-0.1 scale -> fitted)"
+                f"manual gp {value:g} x {scale:g} (manual_gp_scale: baseline-0.1 scale -> fitted)"
             )
-        return float(value) * self.scale
+        return float(value) * scale
 
 
 def _drop_inactive(df: pd.DataFrame) -> pd.DataFrame:
@@ -401,14 +449,14 @@ def _add_rookies(df: pd.DataFrame, notes: dict[str, list[str]], manual_gp: _Manu
         if pid in df.index:
             continue
         stats = {c: float(r[c]) for c in ROOKIE_STAT_COLS}
-        stats["gp"] = manual_gp(pid, stats["gp"])
+        stats["gp"] = manual_gp(pid, stats["gp"], str(r.get("gp_scale", "")))
         sd = float(r.get("gp_sd") or 12.0)
         if manual_gp.fitted:  # never tighter than the calibrated residual sd at that level
             sd = max(sd, gp_sd_from_model(stats["gp"]))
         meta = dict(
             name=r["name"], team=r["team"], bbref_pos=r["positions"].split("|")[0],
             gp_sd=sd, g1_latest=np.nan, last_season=0, seasons_used="",
-            weighted_minutes=0.0, birth_date="", status="healthy", injury_note="",
+            effective_minutes=0.0, birth_date="", status="healthy", injury_note="",
             adp=np.nan, source="manual_rookie_prior", bbref_id="",
         )  # fmt: skip
         df.loc[pid] = pd.Series({**stats, **meta})
@@ -426,11 +474,12 @@ def _apply_override(df: pd.DataFrame, pid: str, r: pd.Series, notes: dict[str, l
     if r.get("injury_note"):
         df.at[pid, "injury_note"] = r["injury_note"]
     if r.get("gp"):
-        df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]))
+        df.at[pid, "gp"] = manual_gp(pid, float(r["gp"]), str(r.get("gp_scale", "")))
         if manual_gp.fitted:  # the manual value replaces the model's level: sd at that level (not the
             # low-minute model's sd, which belongs to its own, discarded prediction)
             df.at[pid, "gp_sd"] = gp_sd_from_model(float(df.at[pid, "gp"]))
-    if r.get("games_missed"):
+    if r.get("games_missed"):  # multiplicative on the (fitted or manual) gp; sd widened by 0.15/game
+        # (PRIOR, unfitted) - an n-game absence is not subtracted, it removes the share n/82
         df.at[pid, "gp"] = max(
             0.0, float(df.at[pid, "gp"]) * (82 - float(r["games_missed"])) / 82
         )

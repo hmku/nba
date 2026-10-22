@@ -4,152 +4,155 @@
 # usage_mult scales FGA/FGM/FTA/FTM/3PM/AST/TOV for role changes. mpg replaces projected minutes.
 # Sources: WebSearch summaries fetched 2026-10-18 (see docs/research/data_sources.md); verify before relying.
 # Injury rows refreshed 2026-10-18 from the ESPN injuries API (CBS cross-check); see source column.
-name,team,status,injury_note,gp,games_missed,mpg,usage_mult,note,source
-Giannis Antetokounmpo,MIA,,,,,32.5,,traded MIL->MIA (June 2026),Yahoo Sports trade tracker via WebSearch
-Bobby Portis,MIA,,,,,,,traded MIL->MIA in Giannis deal,Yahoo Sports trade tracker via WebSearch
-Tyler Herro,MIL,,,,,,1.05,traded MIA->MIL; bigger role,Yahoo Sports trade tracker via WebSearch
-Kel'el Ware,MIL,,,,,,,traded MIA->MIL,Yahoo Sports trade tracker via WebSearch
-Jaime Jaquez Jr.,MIL,,,,,,,traded MIA->MIL; projected starter,Yahoo Sports trade tracker via WebSearch
-Kasparas Jakucionis,MIL,,,,,,,traded MIA->MIL,Yahoo Sports trade tracker via WebSearch
-Ja Morant,POR,,,,,,,traded MEM->POR,Yahoo Sports trade tracker via WebSearch
-Jerami Grant,MEM,gtd,Undisclosed: day-to-day for opener,,,,,traded POR->MEM,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Kris Murray,MEM,,,,,,,traded POR->MEM,Yahoo Sports trade tracker via WebSearch
-Miles Bridges,PHO,,,,,,,traded CHO->PHO,Yahoo Sports trade tracker via WebSearch
-Grayson Allen,CHO,gtd,Right Knee: day-to-day for opener,,,,,traded PHO->CHO,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Royce O'Neale,CHO,,,,,,,traded PHO->CHO,Yahoo Sports trade tracker via WebSearch
-Julius Randle,BRK,,,,,,,traded MIN->BRK (4-team deal),NBA.com via WebSearch
-Nic Claxton,CHI,gtd,"Not Specified Hamstring: hamstring, re-eval before opener",,1,,,traded BRK->CHI,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-21); CBS lists (prior: NBA.com + covers.com via WebSearch)"
-LaMelo Ball,MIN,,,,,,0.95,traded CHO->MIN; shares ball with Edwards,NBA.com via WebSearch
-Josh Green,MIN,,,,,,,traded CHO->MIN,NBA.com via WebSearch
-Naz Reid,CHO,,,,,,1.05,traded MIN->CHO; larger role,NBA.com via WebSearch
-Luguentz Dort,ATL,,,,,,,traded OKC->ATL (3-team),Yahoo Sports trade tracker via WebSearch
-Zaccharie Risacher,DAL,,,,,,,traded ATL->DAL (3-team),Yahoo Sports trade tracker via WebSearch
-Walker Kessler,LAL,,,,,,,traded UTA->LAL; jammed pinkie not expected to cost games,Yahoo Sports + covers.com via WebSearch
-Khris Middleton,WAS,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-D'Angelo Russell,MEM,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-Isaiah Stewart,MEM,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-Santi Aldama,DAL,gtd,Not Specified Knee: day-to-day for opener,,,,,six-team deal,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Marcus Sasser,DAL,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-Caris LeVert,MIL,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-John Collins,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-Gary Harris,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-Taurean Prince,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch
-LeBron James,PHI,,,,,,0.95,signed with PHI (2yr/$8M) at age 41,ABC/ESPN via WebSearch
-Jaylen Brown,PHI,,,,,,0.88,on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron,Bleacher Report via WebSearch
-Norman Powell,CHI,,,,,,,FA signing,ESPN via WebSearch
-Mitchell Robinson,BOS,,,,,,,FA signing,ESPN via WebSearch
-Rui Hachimura,LAC,,,,,,,FA signing,ESPN via WebSearch
-Sandro Mamukelashvili,LAL,,,,,,,FA signing,ESPN via WebSearch
-Collin Sexton,LAL,gtd,Right Lower Leg: day-to-day for opener,,,,,FA signing,"ESPN via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Quentin Grimes,LAL,,,,,,,FA signing,ESPN via WebSearch
-Bradley Beal,LAC,out,"Not Specified Knee: knee, not ready for start; ESPN placeholder 9 vs prior 15 -> mean",,12,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-08); CBS lists (prior: covers.com / previews via WebSearch)"
-Max Strus,LAC,out,"Right Foot: plantar fascia, re-eval 4 weeks from Oct 5 (re-eval, not return) -> keep prior 12",,12,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-11-08); CBS lists (prior: covers.com via WebSearch)"
-Kristaps Porziņģis,GSW,out,"Undisclosed: undisclosed illness, back at facility Oct 15; ESPN placeholder 9 vs prior 25 -> mean",,17,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-09); CBS lists (prior: covers.com via WebSearch)"
-Moses Moody,GSW,out,Left Knee: Dec-Jan return window -> midpoint ~Jan 1,,34,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-12-01); CBS lists (prior: covers.com via WebSearch)"
-Jimmy Butler,GSW,out,Right Knee: Jan-Feb return window -> midpoint ~Feb 1,,49,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2027-01-02); CBS lists (prior: covers.com / NBC Sports via WebSearch)"
-Julian Strawther,DEN,out,"Left Knee: knee sprain, re-eval in 6 weeks from Oct 17",,22,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-11-29); not on CBS (prior: covers.com via WebSearch)"
-Jusuf Nurkić,UTA,out,"Right Foot: toe, at least 4 weeks from Oct 7 -> keep prior 8",,8,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-07, est return 2026-11-04); CBS lists (prior: covers.com via WebSearch)"
-Kon Knueppel,CHO,gtd,"Left Hamstring: hamstring, opener in doubt",,1,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-10-21); CBS lists (prior: covers.com via WebSearch)"
-Coby White,CHO,gtd,"Left Calf: calf strain, no preseason; ESPN est. Oct 21 vs prior 6 -> mean",,3,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-21); CBS lists (prior: NBC Sports via WebSearch)"
-Tyrese Haliburton,IND,healthy,returned from Achilles tear (missed 2025-26); full go for opener,66,,33.0,,missed 2025-26; projected from 2023-25,NBC Sports via WebSearch
-Damian Lillard,POR,healthy,returning from Achilles tear (missed 2025-26),58,,31.0,,missed 2025-26; age 36,Yahoo Sports via WebSearch
-Kyrie Irving,DAL,healthy,returning from ACL tear (missed 2025-26),58,,32.0,,missed 2025-26; age 34,NBC Sports via WebSearch
-Fred VanVleet,HOU,healthy,returning from ACL tear (missed 2025-26),64,,32.0,,missed 2025-26,manual assumption
-Kawhi Leonard,TOR,,,,,,,traded LAC->TOR for Brandon Ingram,ESPN Raptors/Clippers recaps via WebSearch
-Brandon Ingram,LAC,out,"Not Specified Achilles: partial Achilles tear, not ready for start; ESPN placeholder 9 vs prior 25 -> mean",,17,,,traded TOR->LAC,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-11-08); CBS lists (prior: NBA.com/TSN via WebSearch)"
-Paul George,BOS,,,,,,,traded PHI->BOS for Jaylen Brown,AP/NBA.com via WebSearch
-Mike Conley,BOS,,,,,,,FA addition,ESPN Celtics recap via WebSearch
-Nikola Vučević,ORL,,,,,,,added by ORL,ESPN/NBA.com via WebSearch
-Anfernee Simons,PHI,gtd,Hamstring: day-to-day for opener,,,,,added by PHI,"ESPN 76ers recap via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-20); CBS lists"
-Kentavious Caldwell-Pope,PHI,,,,,,,added by PHI,ESPN 76ers recap via WebSearch
-Kelly Oubre Jr.,IND,unknown,,,,,,left PHI; destination not confirmed,ESPN 76ers recap via WebSearch | team per Yahoo public API 2026-10-18
-Andre Drummond,NYK,,,,,,,added by NYK,ESPN Knicks recap via WebSearch
-Isaiah Joe,DET,,,,,,,traded OKC->DET,ESPN/NBA.com via WebSearch
-Aaron Wiggins,ATL,,,,,,,traded OKC->ATL,ESPN Hawks recap via WebSearch
-Klay Thompson,MIA,,,,,,,FA signing,ESPN Heat recap via WebSearch
-Tim Hardaway Jr.,MIA,,,,,,,FA signing,ESPN Heat recap via WebSearch
-Nick Richards,MIA,,,,,,,addition,ESPN Heat recap via WebSearch
-DeMar DeRozan,DEN,,,,,,,waived by SAC; signed DEN,ESPN/Bleacher Report via WebSearch
-Jonathan Kuminga,MIN,,,,,,,signed MIN (2yr),ESPN via WebSearch
-Peyton Watson,CLE,,,,,,,sign-and-trade DEN->CLE,ESPN Cavaliers recap via WebSearch
-Dennis Schröder,CHO,,,,,,,added by CHO,ESPN Hornets recap via WebSearch
-Dorian Finney-Smith,CHO,,,,,,,added by CHO,ESPN Hornets recap via WebSearch
-Kyle Anderson,TOR,,,,,,,added by TOR,ESPN Raptors recap via WebSearch
-Gradey Dick,LAC,,,,,,,traded TOR->LAC,NBA.com via WebSearch
-Bennedict Mathurin,NOP,,,,,,,added by NOP,NBA.com/RealGM via WebSearch
-Bogdan Bogdanović,HOU,,,,,,,added by HOU,NBA.com via WebSearch
-Marcus Smart,HOU,,,,,,,added by HOU,NBA.com via WebSearch
-Deandre Ayton,WAS,,,,,,,added by WAS,ESPN Wizards recap via WebSearch
-Tre Mann,WAS,,,,,,,added by WAS,ESPN Wizards recap via WebSearch
-Anthony Davis,WAS,,,,,,,acquired by WAS at 2025-26 deadline,ESPN Wizards recap via WebSearch
-Kevon Looney,LAL,,,,,,,added by LAL,NBA.com via WebSearch
-Luke Kennard,PHO,gtd,Left Knee: day-to-day for opener,,,,,added by PHO,"NBA.com via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-18, est return 2026-10-21); CBS lists"
-Mark Williams,PHO,out,Left Shoulder: labrum surgery Sep 11; ESPN est. Feb 3,,50,,,re-signed PHO,"ESPN injuries API 2026-10-18 (upd 2026-09-11, est return 2027-02-03); CBS lists (prior: FantasyAlarm via WebSearch)"
-Shaedon Sharpe,POR,out,"Right Knee: torn meniscus, ~6 months from Aug 24 -> ~late Feb",,60,,,,"ESPN injuries API 2026-10-18 (upd 2026-08-24, est return 2027-03-02); CBS lists (prior: FantasyAlarm via WebSearch)"
-Donte DiVincenzo,MIN,out,Right Achilles: ESPN est. Apr 2 is a placeholder; player expects return in-season -> keep prior 65,,65,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2027-04-02); CBS lists (prior: FantasyAlarm via WebSearch)"
-Jordan Miller,LAC,out,"Shoulder: rotator cuff, re-eval 6 months from Aug 26",,63,,,,"ESPN injuries API 2026-10-18 (upd 2026-08-26, est return 2027-03-01); CBS lists (prior: FantasyAlarm via WebSearch)"
-Isaiah Stewart,MEM,out,"Left Ankle: ankle, at least two weeks from Oct 9",,2,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-09, est return 2026-10-23); CBS lists (prior: FantasyAlarm via WebSearch)"
-Jeremy Sochan,POR,,,,,,,added by POR,ESPN Blazers recap via WebSearch
-Tobias Harris,SAS,gtd,Left Calf: day-to-day for opener,,,,,added by SAS,"ESPN Spurs recap via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-20); CBS lists"
-Jaxson Hayes,UTA,,,,,,,added by UTA,ESPN Jazz recap via WebSearch
-Josh Okogie,UTA,,,,,,,added by UTA,ESPN Jazz recap via WebSearch
-Quinten Post,MEM,,,,,,,added by MEM,ESPN Grizzlies recap via WebSearch
-Keon Ellis,BRK,,,,,,,added by BRK,ESPN Nets recap via WebSearch
-Georges Niang,GSW,,,,,,,added by GSW,NBA.com via WebSearch
-Marvin Bagley III,DEN,,,,,,,added by DEN,NBA.com via WebSearch
-Jalen Duren,DET,healthy,,,,,,re-signed DET 5yr/$200M (Oct 1),ESPN via WebSearch
-Jayson Tatum,,,,66,,,,full season after Achilles return (16 games in 2025-26),manual
-Walker Kessler,,,,64,,,,2025-26 games lost to one-off shoulder surgery; healthy now,manual
-Mouhamed Gueye,,gtd,Left Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-07-19, est return 2026-10-21); CBS lists"
-Devin Carter,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-18, est return 2026-10-20); CBS lists"
-Moussa Diabate,,gtd,Right Elbow: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Grant Williams,,gtd,Right Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-25, est return 2026-10-21); CBS lists"
-Isaac Okoro,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Zach Collins,,gtd,Right Toe: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Sam Merrill,,gtd,Right Elbow: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-22); CBS lists"
-Nae'Qwan Tomlin,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-13, est return 2026-10-22); CBS lists"
-Jett Howard,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Dereck Lively II,,gtd,Right Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Spencer Jones,,gtd,Not Specified Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-13, est return 2026-10-22); CBS lists"
-Jarace Walker,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-T.J. McConnell,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Aaron Nesmith,,gtd,Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-21); CBS lists"
-Johnny Furphy,,out,Right Knee: ESPN est. return 2027-01-01,,35,,,,"ESPN injuries API 2026-10-18 (upd 2026-02-09, est return 2027-01-01); CBS lists"
-Yanic Konan Niederhauser,,out,Right Foot: ESPN est. return 2026-11-08,,9,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-11-08); CBS lists"
-Jarred Vanderbilt,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-GG Jackson,,gtd,Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); not on CBS"
-Micah Peavy,,gtd,Not Specified Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-21); CBS lists"
-Pelle Larsson,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Dru Smith,,gtd,Right Calf: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Bam Adebayo,,gtd,Right Groin: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Jericho Sims,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Nate Ament,,gtd,Left Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Dejounte Murray,,gtd,Right Toe: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Josh Hart,,gtd,Right Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists"
-Jaylin Williams,,gtd,Heel: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists"
-Cason Wallace,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists"
-Nikola Topic,,gtd,Not Specified Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists"
-Chet Holmgren,,gtd,Quadriceps: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists"
-Jase Richardson,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Noah Penda,,out,Right Hamstring: ESPN est. return 2026-11-18,,14,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-11-18); CBS lists"
-Franz Wagner,,gtd,Right Shoulder: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Jonathan Isaac,,gtd,Left Knee: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Anthony Black,,gtd,Right Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Dominick Barlow,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-20); not on CBS"
-Dean Wade,PHI,gtd,Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-20); CBS lists | team per Yahoo public API 2026-10-18"
-Adem Bona,,gtd,Not Specified Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-20); CBS lists"
-Oso Ighodaro,,gtd,Hip: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Micah Potter,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Jrue Holiday,,gtd,Right Hand: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Malik Monk,,gtd,Left Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists"
-Dylan Cardwell,,out,Left Calf: ESPN est. return 2026-11-02,,6,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-02); CBS lists"
-Maxime Raynaud,,out,"Right Knee: knee, at least first 5-6 games, potentially longer",,7,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-02); CBS lists"
-Blake Hinson,,gtd,Left Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Kyle Filipowski,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-10, est return 2026-10-21); CBS lists"
-AJ Dybantsa,,gtd,Not Specified Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists"
-Tristan Vukcevic,,out,Left Hip: ESPN est. return 2026-11-02,,6,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-01, est return 2026-11-02); CBS lists"
-Jamir Watkins,,out,Left Knee: ESPN est. return 2027-04-02,,78,,,,"ESPN injuries API 2026-10-18 (upd 2026-07-30, est return 2027-04-02); CBS lists"
-Bruce Brown,NYK,,,,,,,,team per Yahoo public API 2026-10-18
-Ziaire Williams,LAL,,,,,,,,team per Yahoo public API 2026-10-18
-John Konchar,NYK,,,,,,,,team per Yahoo public API 2026-10-18
-Brandon Williams,GSW,,,,,,,,team per Yahoo public API 2026-10-18
+# gp_scale: scale the gp value was entered on. blank / baseline01 = old baseline-0.1 rule (~10% optimistic;
+#   multiplied by Params.manual_gp_scale=0.90 at build); fitted = realistic expected games, taken literally.
+#   NEW rows with a gp should use fitted. games_missed is relative (gp x (82-n)/82, gp_sd + 0.15n).
+name,team,status,injury_note,gp,games_missed,mpg,usage_mult,note,source,gp_scale
+Giannis Antetokounmpo,MIA,,,,,32.5,,traded MIL->MIA (June 2026),Yahoo Sports trade tracker via WebSearch,
+Bobby Portis,MIA,,,,,,,traded MIL->MIA in Giannis deal,Yahoo Sports trade tracker via WebSearch,
+Tyler Herro,MIL,,,,,,1.05,traded MIA->MIL; bigger role,Yahoo Sports trade tracker via WebSearch,
+Kel'el Ware,MIL,,,,,,,traded MIA->MIL,Yahoo Sports trade tracker via WebSearch,
+Jaime Jaquez Jr.,MIL,,,,,,,traded MIA->MIL; projected starter,Yahoo Sports trade tracker via WebSearch,
+Kasparas Jakucionis,MIL,,,,,,,traded MIA->MIL,Yahoo Sports trade tracker via WebSearch,
+Ja Morant,POR,,,,,,,traded MEM->POR,Yahoo Sports trade tracker via WebSearch,
+Jerami Grant,MEM,gtd,Undisclosed: day-to-day for opener,,,,,traded POR->MEM,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Kris Murray,MEM,,,,,,,traded POR->MEM,Yahoo Sports trade tracker via WebSearch,
+Miles Bridges,PHO,,,,,,,traded CHO->PHO,Yahoo Sports trade tracker via WebSearch,
+Grayson Allen,CHO,gtd,Right Knee: day-to-day for opener,,,,,traded PHO->CHO,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Royce O'Neale,CHO,,,,,,,traded PHO->CHO,Yahoo Sports trade tracker via WebSearch,
+Julius Randle,BRK,,,,,,,traded MIN->BRK (4-team deal),NBA.com via WebSearch,
+Nic Claxton,CHI,gtd,"Not Specified Hamstring: hamstring, re-eval before opener",,1,,,traded BRK->CHI,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-21); CBS lists (prior: NBA.com + covers.com via WebSearch)",
+LaMelo Ball,MIN,,,,,,0.95,traded CHO->MIN; shares ball with Edwards,NBA.com via WebSearch,
+Josh Green,MIN,,,,,,,traded CHO->MIN,NBA.com via WebSearch,
+Naz Reid,CHO,,,,,,1.05,traded MIN->CHO; larger role,NBA.com via WebSearch,
+Luguentz Dort,ATL,,,,,,,traded OKC->ATL (3-team),Yahoo Sports trade tracker via WebSearch,
+Zaccharie Risacher,DAL,,,,,,,traded ATL->DAL (3-team),Yahoo Sports trade tracker via WebSearch,
+Walker Kessler,LAL,,,,,,,traded UTA->LAL; jammed pinkie not expected to cost games,Yahoo Sports + covers.com via WebSearch,
+Khris Middleton,WAS,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+D'Angelo Russell,MEM,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+Isaiah Stewart,MEM,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+Santi Aldama,DAL,gtd,Not Specified Knee: day-to-day for opener,,,,,six-team deal,"Yahoo Sports trade tracker via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Marcus Sasser,DAL,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+Caris LeVert,MIL,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+John Collins,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+Gary Harris,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+Taurean Prince,DET,,,,,,,six-team deal,Yahoo Sports trade tracker via WebSearch,
+LeBron James,PHI,,,,,,0.95,signed with PHI (2yr/$8M) at age 41,ABC/ESPN via WebSearch,
+Jaylen Brown,PHI,,,,,,0.88,on PHI per lineup rankings; shares usage with Maxey/Embiid/LeBron,Bleacher Report via WebSearch,
+Norman Powell,CHI,,,,,,,FA signing,ESPN via WebSearch,
+Mitchell Robinson,BOS,,,,,,,FA signing,ESPN via WebSearch,
+Rui Hachimura,LAC,,,,,,,FA signing,ESPN via WebSearch,
+Sandro Mamukelashvili,LAL,,,,,,,FA signing,ESPN via WebSearch,
+Collin Sexton,LAL,gtd,Right Lower Leg: day-to-day for opener,,,,,FA signing,"ESPN via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Quentin Grimes,LAL,,,,,,,FA signing,ESPN via WebSearch,
+Bradley Beal,LAC,out,"Not Specified Knee: knee, not ready for start; ESPN placeholder 9 vs prior 15 -> mean",,12,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-08); CBS lists (prior: covers.com / previews via WebSearch)",
+Max Strus,LAC,out,"Right Foot: plantar fascia, re-eval 4 weeks from Oct 5 (re-eval, not return) -> keep prior 12",,12,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-11-08); CBS lists (prior: covers.com via WebSearch)",
+Kristaps Porziņģis,GSW,out,"Undisclosed: undisclosed illness, back at facility Oct 15; ESPN placeholder 9 vs prior 25 -> mean",,17,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-09); CBS lists (prior: covers.com via WebSearch)",
+Moses Moody,GSW,out,Left Knee: Dec-Jan return window -> midpoint ~Jan 1,,34,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-12-01); CBS lists (prior: covers.com via WebSearch)",
+Jimmy Butler,GSW,out,Right Knee: Jan-Feb return window -> midpoint ~Feb 1,,49,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2027-01-02); CBS lists (prior: covers.com / NBC Sports via WebSearch)",
+Julian Strawther,DEN,out,"Left Knee: knee sprain, re-eval in 6 weeks from Oct 17",,22,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-11-29); not on CBS (prior: covers.com via WebSearch)",
+Jusuf Nurkić,UTA,out,"Right Foot: toe, at least 4 weeks from Oct 7 -> keep prior 8",,8,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-07, est return 2026-11-04); CBS lists (prior: covers.com via WebSearch)",
+Kon Knueppel,CHO,gtd,"Left Hamstring: hamstring, opener in doubt",,1,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-10-21); CBS lists (prior: covers.com via WebSearch)",
+Coby White,CHO,gtd,"Left Calf: calf strain, no preseason; ESPN est. Oct 21 vs prior 6 -> mean",,3,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-21); CBS lists (prior: NBC Sports via WebSearch)",
+Tyrese Haliburton,IND,healthy,returned from Achilles tear (missed 2025-26); full go for opener,66,,33.0,,missed 2025-26; projected from 2023-25,NBC Sports via WebSearch,baseline01
+Damian Lillard,POR,healthy,returning from Achilles tear (missed 2025-26),58,,31.0,,missed 2025-26; age 36,Yahoo Sports via WebSearch,baseline01
+Kyrie Irving,DAL,healthy,returning from ACL tear (missed 2025-26),58,,32.0,,missed 2025-26; age 34,NBC Sports via WebSearch,baseline01
+Fred VanVleet,HOU,healthy,returning from ACL tear (missed 2025-26),64,,32.0,,missed 2025-26,manual assumption,baseline01
+Kawhi Leonard,TOR,,,,,,,traded LAC->TOR for Brandon Ingram,ESPN Raptors/Clippers recaps via WebSearch,
+Brandon Ingram,LAC,out,"Not Specified Achilles: partial Achilles tear, not ready for start; ESPN placeholder 9 vs prior 25 -> mean",,17,,,traded TOR->LAC,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-11-08); CBS lists (prior: NBA.com/TSN via WebSearch)",
+Paul George,BOS,,,,,,,traded PHI->BOS for Jaylen Brown,AP/NBA.com via WebSearch,
+Mike Conley,BOS,,,,,,,FA addition,ESPN Celtics recap via WebSearch,
+Nikola Vučević,ORL,,,,,,,added by ORL,ESPN/NBA.com via WebSearch,
+Anfernee Simons,PHI,gtd,Hamstring: day-to-day for opener,,,,,added by PHI,"ESPN 76ers recap via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-20); CBS lists",
+Kentavious Caldwell-Pope,PHI,,,,,,,added by PHI,ESPN 76ers recap via WebSearch,
+Kelly Oubre Jr.,IND,unknown,,,,,,left PHI; destination not confirmed,ESPN 76ers recap via WebSearch | team per Yahoo public API 2026-10-18,
+Andre Drummond,NYK,,,,,,,added by NYK,ESPN Knicks recap via WebSearch,
+Isaiah Joe,DET,,,,,,,traded OKC->DET,ESPN/NBA.com via WebSearch,
+Aaron Wiggins,ATL,,,,,,,traded OKC->ATL,ESPN Hawks recap via WebSearch,
+Klay Thompson,MIA,,,,,,,FA signing,ESPN Heat recap via WebSearch,
+Tim Hardaway Jr.,MIA,,,,,,,FA signing,ESPN Heat recap via WebSearch,
+Nick Richards,MIA,,,,,,,addition,ESPN Heat recap via WebSearch,
+DeMar DeRozan,DEN,,,,,,,waived by SAC; signed DEN,ESPN/Bleacher Report via WebSearch,
+Jonathan Kuminga,MIN,,,,,,,signed MIN (2yr),ESPN via WebSearch,
+Peyton Watson,CLE,,,,,,,sign-and-trade DEN->CLE,ESPN Cavaliers recap via WebSearch,
+Dennis Schröder,CHO,,,,,,,added by CHO,ESPN Hornets recap via WebSearch,
+Dorian Finney-Smith,CHO,,,,,,,added by CHO,ESPN Hornets recap via WebSearch,
+Kyle Anderson,TOR,,,,,,,added by TOR,ESPN Raptors recap via WebSearch,
+Gradey Dick,LAC,,,,,,,traded TOR->LAC,NBA.com via WebSearch,
+Bennedict Mathurin,NOP,,,,,,,added by NOP,NBA.com/RealGM via WebSearch,
+Bogdan Bogdanović,HOU,,,,,,,added by HOU,NBA.com via WebSearch,
+Marcus Smart,HOU,,,,,,,added by HOU,NBA.com via WebSearch,
+Deandre Ayton,WAS,,,,,,,added by WAS,ESPN Wizards recap via WebSearch,
+Tre Mann,WAS,,,,,,,added by WAS,ESPN Wizards recap via WebSearch,
+Anthony Davis,WAS,,,,,,,acquired by WAS at 2025-26 deadline,ESPN Wizards recap via WebSearch,
+Kevon Looney,LAL,,,,,,,added by LAL,NBA.com via WebSearch,
+Luke Kennard,PHO,gtd,Left Knee: day-to-day for opener,,,,,added by PHO,"NBA.com via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-18, est return 2026-10-21); CBS lists",
+Mark Williams,PHO,out,Left Shoulder: labrum surgery Sep 11; ESPN est. Feb 3,,50,,,re-signed PHO,"ESPN injuries API 2026-10-18 (upd 2026-09-11, est return 2027-02-03); CBS lists (prior: FantasyAlarm via WebSearch)",
+Shaedon Sharpe,POR,out,"Right Knee: torn meniscus, ~6 months from Aug 24 -> ~late Feb",,60,,,,"ESPN injuries API 2026-10-18 (upd 2026-08-24, est return 2027-03-02); CBS lists (prior: FantasyAlarm via WebSearch)",
+Donte DiVincenzo,MIN,out,Right Achilles: ESPN est. Apr 2 is a placeholder; player expects return in-season -> keep prior 65,,65,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2027-04-02); CBS lists (prior: FantasyAlarm via WebSearch)",
+Jordan Miller,LAC,out,"Shoulder: rotator cuff, re-eval 6 months from Aug 26",,63,,,,"ESPN injuries API 2026-10-18 (upd 2026-08-26, est return 2027-03-01); CBS lists (prior: FantasyAlarm via WebSearch)",
+Isaiah Stewart,MEM,out,"Left Ankle: ankle, at least two weeks from Oct 9",,2,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-09, est return 2026-10-23); CBS lists (prior: FantasyAlarm via WebSearch)",
+Jeremy Sochan,POR,,,,,,,added by POR,ESPN Blazers recap via WebSearch,
+Tobias Harris,SAS,gtd,Left Calf: day-to-day for opener,,,,,added by SAS,"ESPN Spurs recap via WebSearch | injury: ESPN injuries API 2026-10-18 (upd 2026-10-05, est return 2026-10-20); CBS lists",
+Jaxson Hayes,UTA,,,,,,,added by UTA,ESPN Jazz recap via WebSearch,
+Josh Okogie,UTA,,,,,,,added by UTA,ESPN Jazz recap via WebSearch,
+Quinten Post,MEM,,,,,,,added by MEM,ESPN Grizzlies recap via WebSearch,
+Keon Ellis,BRK,,,,,,,added by BRK,ESPN Nets recap via WebSearch,
+Georges Niang,GSW,,,,,,,added by GSW,NBA.com via WebSearch,
+Marvin Bagley III,DEN,,,,,,,added by DEN,NBA.com via WebSearch,
+Jalen Duren,DET,healthy,,,,,,re-signed DET 5yr/$200M (Oct 1),ESPN via WebSearch,
+Jayson Tatum,,,,66,,,,full season after Achilles return (16 games in 2025-26),manual,baseline01
+Walker Kessler,,,,64,,,,2025-26 games lost to one-off shoulder surgery; healthy now,manual,baseline01
+Mouhamed Gueye,,gtd,Left Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-07-19, est return 2026-10-21); CBS lists",
+Devin Carter,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-18, est return 2026-10-20); CBS lists",
+Moussa Diabate,,gtd,Right Elbow: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Grant Williams,,gtd,Right Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-25, est return 2026-10-21); CBS lists",
+Isaac Okoro,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Zach Collins,,gtd,Right Toe: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Sam Merrill,,gtd,Right Elbow: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-22); CBS lists",
+Nae'Qwan Tomlin,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-13, est return 2026-10-22); CBS lists",
+Jett Howard,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Dereck Lively II,,gtd,Right Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Spencer Jones,,gtd,Not Specified Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-13, est return 2026-10-22); CBS lists",
+Jarace Walker,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+T.J. McConnell,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Aaron Nesmith,,gtd,Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-21); CBS lists",
+Johnny Furphy,,out,Right Knee: ESPN est. return 2027-01-01,,35,,,,"ESPN injuries API 2026-10-18 (upd 2026-02-09, est return 2027-01-01); CBS lists",
+Yanic Konan Niederhauser,,out,Right Foot: ESPN est. return 2026-11-08,,9,,,,"ESPN injuries API 2026-10-18 (upd 2026-09-28, est return 2026-11-08); CBS lists",
+Jarred Vanderbilt,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+GG Jackson,,gtd,Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); not on CBS",
+Micah Peavy,,gtd,Not Specified Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-21); CBS lists",
+Pelle Larsson,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Dru Smith,,gtd,Right Calf: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Bam Adebayo,,gtd,Right Groin: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Jericho Sims,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Nate Ament,,gtd,Left Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Dejounte Murray,,gtd,Right Toe: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Josh Hart,,gtd,Right Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists",
+Jaylin Williams,,gtd,Heel: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists",
+Cason Wallace,,gtd,Undisclosed: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists",
+Nikola Topic,,gtd,Not Specified Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists",
+Chet Holmgren,,gtd,Quadriceps: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-20); CBS lists",
+Jase Richardson,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Noah Penda,,out,Right Hamstring: ESPN est. return 2026-11-18,,14,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-11-18); CBS lists",
+Franz Wagner,,gtd,Right Shoulder: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Jonathan Isaac,,gtd,Left Knee: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Anthony Black,,gtd,Right Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Dominick Barlow,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-20); not on CBS",
+Dean Wade,PHI,gtd,Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-20); CBS lists | team per Yahoo public API 2026-10-18",
+Adem Bona,,gtd,Not Specified Foot: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-10-20); CBS lists",
+Oso Ighodaro,,gtd,Hip: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Micah Potter,,gtd,Illness: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Jrue Holiday,,gtd,Right Hand: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Malik Monk,,gtd,Left Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-16, est return 2026-10-21); CBS lists",
+Dylan Cardwell,,out,Left Calf: ESPN est. return 2026-11-02,,6,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-02); CBS lists",
+Maxime Raynaud,,out,"Right Knee: knee, at least first 5-6 games, potentially longer",,7,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-15, est return 2026-11-02); CBS lists",
+Blake Hinson,,gtd,Left Hamstring: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Kyle Filipowski,,gtd,Back: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-10, est return 2026-10-21); CBS lists",
+AJ Dybantsa,,gtd,Not Specified Ankle: day-to-day for opener,,,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-17, est return 2026-10-21); CBS lists",
+Tristan Vukcevic,,out,Left Hip: ESPN est. return 2026-11-02,,6,,,,"ESPN injuries API 2026-10-18 (upd 2026-10-01, est return 2026-11-02); CBS lists",
+Jamir Watkins,,out,Left Knee: ESPN est. return 2027-04-02,,78,,,,"ESPN injuries API 2026-10-18 (upd 2026-07-30, est return 2027-04-02); CBS lists",
+Bruce Brown,NYK,,,,,,,,team per Yahoo public API 2026-10-18,
+Ziaire Williams,LAL,,,,,,,,team per Yahoo public API 2026-10-18,
+John Konchar,NYK,,,,,,,,team per Yahoo public API 2026-10-18,
+Brandon Williams,GSW,,,,,,,,team per Yahoo public API 2026-10-18,

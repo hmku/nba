@@ -394,3 +394,54 @@ Limitations:
 - Bootstrap SEs treat players within season as exchangeable. The between-season variance of the gain (+0.004 to +0.033,
   all positive) is the more honest uncertainty statement.
 - FantasyPros weights are a prior (no history). The bbref per-36 projections, Hashtag Basketball and DARKO were not ingested.
+
+## 6. Review fixes: `baseline-0.3.0` / `projections-2026-27-0.4.0` (2026-10-22)
+
+**Two behaviour changes (TOV, minutes growth) and three clarifications with no effect on output.** Sizes are measured on the
+unblended base build against `baseline-0.2.2`. The default file is the 50/50 blend, so for players ESPN covers about half of
+each change reaches it.
+
+1. **Bug: TOV skipped the age curve. Fixed.** `_per_minute_rates` scaled makes, attempts, REB, AST, STL and BLK by
+   `age_mult` but not TOV. The docstring said "turnovers scale with usage too". Older stars therefore kept all their
+   turnovers while losing 5-12% of their usage. TOV now scales with the other stats, so TOV / (FGA + 0.44·FTA + AST) does not
+   depend on age (test `test_tov_follows_age_curve_so_tov_per_usage_is_age_invariant`). This settles the open question
+   "projections docstring vs code on the age curve for TOV" (handoff 2026-10-20-main-session). Size: 362 players change TOV
+   only, by up to 0.32/g. LeBron goes from 2.64 to 2.33 (rank 132 → 120), Durant 2.87 → 2.61 (46 → 39), Harden 3.30 → 3.04
+   (53 → 45), Curry 2.51 → 2.29 (42 → 35), Lillard 2.34 → 2.17 (49 → 42). Young players gain TOV: Flagg 2.21 → 2.37 and
+   Knueppel 1.97 → 2.09 (40 → 50).
+   *Out-of-sample check (fitted, thin).* Only bbref 2022-26 is committed, so this covers target seasons 2025 and 2026, with
+   rotation players at ≥ 40 g and ≥ 20 mpg (n = 413). Pooled TOV MSE is unchanged: paired Δ −0.00005 (SE 0.0034). Bias
+   (realised − projected) improves for ages ≤ 24, from +0.25 to +0.19 (SE 0.04). It gets worse for ages 33+ (n = 38), from
+   +0.05 to +0.18 (SE 0.07): in these two seasons old players' turnovers fell less than their production. This is too few
+   seasons to support or reject the fix. The change rests on internal consistency (a usage stat should follow usage).
+   **TODO:** re-run the 9-season backtest (§1, full upstream totals) for TOV by age bucket. If the 33+ under-projection
+   holds up, give TOV its own (flatter) age curve rather than exempting it.
+2. **`prior_min` units (no output change).** The rate prior was documented as "400 minutes" but was added to Σ w_s·min_s with
+   weights 5/3/2 that sum to 10. That is about 80 real minutes for a player with only the latest season, and about 40 per
+   season for three equal seasons. The new `effective_minutes()` = Σ (w_s / mean w)·min_s puts weighted minutes on a
+   real-minute scale (three equal seasons of M count as 3M), and `prior_min = 120` effective minutes reproduces the old
+   strength exactly. The undocumented `× 2` in the inclusion rule is now `min_total_minutes = 225` effective minutes, which is
+   the same rule. Rebuilds are bit-identical outside TOV and minutes, and a test pins the legacy formula. Applying the literal
+   documented value instead (400 effective minutes, 3.3× stronger) would move up to 1.5 pts/g and 20 top-150 ranks (Ty Jerome
+   +20, Robert Williams +16, Thybulle +15), so the default keeps the old strength. **Prior, unfitted. TODO:** refit
+   `prior_min` per stat in the §1 backtest. Counting stats and percentages probably need different strengths.
+3. **`MPG_GROWTH` cliff (behaviour change, prior).** Young players got the full +0.5 to +3 mpg below 30 mpg and nothing at
+   or above it, so 29.9 and 30.1 mpg projected 32.4 and 30.1. Growth now tapers linearly from full at 27 mpg to 0 at 30
+   (`mpg_growth()`). The 3-mpg band equals the largest growth, so projected mpg never decreases as historical mpg rises
+   (tested). Eleven players are affected, all losing minutes: Carrington −1.3 mpg, Castle −1.3 (rank 153 → 180 with the TOV
+   change), Coulibaly −0.9, Mathurin −0.5, K. George −0.4, Podziemski / Duren / J. Green −0.3, Holmgren −0.2, Bailey and Sarr
+   −0.1. §1 found ages 22-25 slightly *under*-projected in minutes, so this is a consistency fix and not an accuracy claim.
+   Refitting `AGE_CURVE` / `MPG_GROWTH` is still the open item from §1.
+4. **Manual gp scale per row (no output change).** Every hand-entered `gp` was multiplied by `manual_gp_scale = 0.90`,
+   which converts values set on the old baseline-0.1 scale (`availability_model.md`). A value entered as a realistic
+   expectation would have been cut twice. The new column `gp_scale` in `player_overrides_2026_27.csv` (and optionally in
+   `rookies_2026_27.csv`) takes `baseline01` (also the meaning of a blank) or `fitted` (taken literally). The six existing gp
+   rows are marked `baseline01`, so output is unchanged. **New rows with a gp should use `fitted`.** Unknown values raise.
+5. **Documented, unchanged.**
+   - `games_missed` multiplies the gp the player already has (fitted or manual) by (82−n)/82 and widens `gp_sd` by 0.15·n.
+     Both are priors. A 10-game absence on a 60-gp projection removes 7.3 games, not 10.
+   - The blend dilutes manual `mpg` / `usage_mult` / rookie priors to w_ours (50%) for every player ESPN covers (see the
+     `blend.py` docstring and handoff 2026-10-19-blend-adoption).
+   - `external._finish` now asserts that a directly given FG% / FT% (FantasyPros) is in (0, 1]. A percent-scale value
+     would otherwise be clipped silently by `impute_attempts` (k ∈ [0.5, 2]). Percentages derived from makes and attempts are
+     not checked: ESPN's stored 2020-21 and 2022-23 files contain 14 rows with FTM > FTA, and the blend clamps those.

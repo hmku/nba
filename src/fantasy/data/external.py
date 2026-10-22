@@ -190,6 +190,14 @@ def _finish(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[has_fg, "fg_pct"] = df.loc[has_fg, "fgm"] / df.loc[has_fg, "fga"]
     has_ft = df["fta"].fillna(0) > 0
     df.loc[has_ft, "ft_pct"] = df.loc[has_ft, "ftm"] / df.loc[has_ft, "fta"]
+    # Percentages given directly (no attempts: FantasyPros) feed blend.impute_attempts, which would clip a
+    # percent-scale value (47.5) or a 0 silently: they must be fractions in (0, 1]. Percentages derived from
+    # makes/attempts are not checked: ESPN's stored 2020-21 / 2022-23 files have 14 rows with FTM > FTA
+    # (a source glitch; the blend clamps makes to attempts).
+    for c, att in (("fg_pct", has_fg), ("ft_pct", has_ft)):
+        v = df.loc[~att, c].dropna()
+        bad = v[(v <= 0) | (v > 1)]
+        assert bad.empty, f"{c} outside (0, 1]: {df.loc[bad.index, ['name', c]].head().to_dict('records')}"
     # one row per player id (keep the better-ranked duplicate)
     df = df.sort_values("source_rank").drop_duplicates("player_id").reset_index(drop=True)
     return df

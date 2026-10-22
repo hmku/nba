@@ -78,6 +78,14 @@ def test_parse_fantasypros_totals_to_per_game():
     assert r["fg_pct"] == pytest.approx(0.528) and np.isnan(r["fga"])
 
 
+def test_direct_percentages_must_be_fractions():
+    """A percent-scale FG% (52.8) would be clipped silently by impute_attempts: reject it at parse time."""
+    with pytest.raises(AssertionError, match="fg_pct"):
+        external.parse_fantasypros(FP_HTML.replace(">.528<", ">52.8<"), 2027)
+    with pytest.raises(AssertionError, match="ft_pct"):
+        external.parse_fantasypros(FP_HTML.replace(">.887<", ">0<"), 2027)
+
+
 def _ours(n: int = 260) -> pd.DataFrame:
     df = make_projections(n)
     df["source"] = "bbref_baseline"

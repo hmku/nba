@@ -15,6 +15,11 @@ Rules (docs/research/projection_quality.md, "Blend"):
 - Points are recomputed from blended makes (pts = 2*FGM + 3PM + FTM).
 - Games (gp, gp_sd) stay ours (fitted availability model, docs/research/availability_model.md)
   unless `gp_weights` is given; minutes (mpg) are blended for information only.
+- Manual overrides are diluted: `mpg`, `usage_mult` and rookie priors act on *our* rows before the
+  blend, so for a player an external source covers only w_ours of the adjustment survives (50% with
+  the default ours=0.5,espn=0.5). Team/status/gp overrides are not affected (non-stat columns, our gp).
+- External FG% / FT% must lie in (0, 1] (asserted in `external._finish`); `impute_attempts` would
+  otherwise clip silently.
 """
 
 from __future__ import annotations
@@ -36,7 +41,8 @@ from fantasy.data.provenance import PROCESSED_DIR, REPO_ROOT
 BLEND_VERSION = "blend-0.2.0"
 # Version of the default projections file (data/processed/projections_2026_27.csv) as a whole.
 # 0.3.1: games from gp-ols-0.2 (baseline-0.2.2; docs/research/availability_model.md §0)
-PROJECTIONS_VERSION = "projections-2026-27-0.3.1"
+# 0.4.0: baseline-0.3.0 (TOV follows the age curve; tapered MPG_GROWTH; projection_quality.md §6)
+PROJECTIONS_VERSION = "projections-2026-27-0.4.0"
 BLEND_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov", "mpg"]
 BLEND_OUTPUT = PROCESSED_DIR / "projections_2026_27.blend.csv"
 BASE_OUTPUT = PROCESSED_DIR / "projections_2026_27.base.csv"
