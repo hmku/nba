@@ -27,8 +27,9 @@ def test_idempotent_plan(live_run):
         transactions.plan("lineup", reordered, live_run)
     assert ei.value.exit_code == 5
     assert ei.value.details["existing"]["txn_id"] == t1["txn_id"]
-    # different scope or attempt -> new txn
-    t2 = transactions.plan("lineup", LINEUP, live_run, scope="2026-10-22")
+    # different scope or attempt -> new txn (scope must differ from the default = today's UTC date: never a real date,
+    # or the test fails on that day -- it did on 2026-10-22, T-019)
+    t2 = transactions.plan("lineup", LINEUP, live_run, scope="not-a-date-scope")
     t3 = transactions.plan("lineup", LINEUP, live_run, attempt=2)
     assert len({t1["txn_id"], t2["txn_id"], t3["txn_id"]}) == 3
 
