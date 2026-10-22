@@ -106,6 +106,9 @@ is interested in X; details private"). A thread message
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once
   available, the streaming tool from `src/fantasy/inseason/` (week-1 analysis handoff `docs/handoffs/2026-10-20-week1-trades.md`).
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
+- Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
+  this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from
+  `teams[].totals`), else it warns "stats banked ... assumed 0" and its week numbers ignore the score (2026-10-22).
 - Streams/trades: `fantasy inseason stream|trade|trade-scan` (inseason-0.3.0, quant-reviewed): realistic chain (stream stint then k-th FA), base includes the best free move, realistic refill, schedule-neutral delta, three projection sets (blend/market/stress), seed-averaged. Present only `helps` verdicts as recommendations; `speculative` = mention as an idea.
 - Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
 

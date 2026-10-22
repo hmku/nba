@@ -1,0 +1,39 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Champagnie (now a free agent), drop Bailey",
+  "status": "awaiting_yes",
+  "headline": "Julian Champagnie (SAS, SF/PF) went unclaimed on waivers and is a free agent: add now, drop Ace Bailey.",
+  "week": 1,
+  "verdict": "Small but consistent gain in both projection sets. No waiver priority spent.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(playoffs), in-season projections", "value": 0.73, "se": 0.35, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title), in-season projections", "value": 0.63, "se": 0.41, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs), preseason projections", "value": 0.43, "se": 0.29, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title), preseason projections", "value": 0.97, "se": 0.45, "unit": "pp", "evidence": "simulated", "key": false},
+   {"label": "Δcategory wins/season, in-season", "value": 0.35, "se": 0.05, "evidence": "simulated", "key": false}
+  ],
+  "risks": [
+   "Effect is ~2 SE: real but small.",
+   "Lose Bailey's rookie upside.",
+   "± are Monte Carlo SEs only (2 seeds × 3,000)."
+  ],
+  "links": [{"label": "Daily log 2026-10-22", "path": "docs/daily/2026-10-22.md"}],
+  "rationale": [
+   "- Champagnie: 3s, rebounds, few turnovers; projects ~10 more games than Bailey.",
+   "- Playoffs +0.4 to +0.7 pp, title +0.6 to +1.0 pp (season-sim-0.6.0 paired, simulated).",
+   "- Free agent now: instant add, no waiver priority (we are already last)."
+  ],
+  "why_now": {
+   "before": "Draft pick 156 was an exact tie with Bailey; on 10-21 we proposed a waiver claim (approval expired unanswered).",
+   "changed": [
+    {"text": "Waivers cleared 10-22 and nobody claimed him: he is a free agent.", "kind": "league"},
+    {"text": "Re-checked with in-season projections (ros-proj-0.3.0): still positive, smaller title gain.", "kind": "model"}
+   ],
+   "evidence": ["ΔP(playoffs), in-season projections"]
+  }
+ },
+ "params": {"add": "julian-champagnie", "drop": "ace-bailey", "tool": "season-sim-0.6.0 sim compare"},
+ "inputs": {}
+}
