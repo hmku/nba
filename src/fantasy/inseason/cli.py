@@ -57,7 +57,23 @@ StressOpt = Annotated[Path | None, typer.Option("--stress-projections", help="In
 NoAltOpt = Annotated[bool, typer.Option("--no-alt", help="Blend projections only (no market/stress sets)")]
 SETS_NOTE = ("blend and market share OUR fitted availability model (games played); the stress set (espn-only-gp) "
              "uses ESPN's per-game stats AND ESPN's games (known ~+11 games/player optimistic), so it is the only set "
-             "independent of our availability model")
+             "independent of our availability model. When the blend is in-season but the stress file was built from "
+             "the PRESEASON base, it is renamed 'stress_preseason' and reported as a sensitivity only: it never votes in "
+             "'helps under every set' (it would mix preseason injuries/roles with current ones)")
+
+
+def _stale_vs_inseason(path: Path, blend_path: str | Path) -> bool:
+    """True when the blend is an in-season file (`*.inseason.csv`) but `path` is a preseason build: its name is not
+    `*.inseason.csv` and its .meta.json has no in-season `as_of`. Such a set still has preseason injuries/roles."""
+    import json
+
+    if not str(blend_path).endswith(".inseason.csv") or path.name.endswith(".inseason.csv"):
+        return False
+    meta = path.with_name(path.stem + ".meta.json")
+    try:
+        return not (meta.exists() and json.loads(meta.read_text()).get("as_of"))
+    except (OSError, ValueError):
+        return True
 
 
 def _proj_sets(ctx, st, lg, sched, market: Path | None, stress: Path | None, no_alt: bool,
@@ -86,6 +102,11 @@ def _proj_sets(ctx, st, lg, sched, market: Path | None, stress: Path | None, no_
                                 "`fantasy data update-projections`")
         if Path(path).exists():
             pr = load_projections(Path(path))
+            if name == "stress" and _stale_vs_inseason(Path(path), ctx.proj.path):
+                name = "stress_preseason"  # streamscan.SENSITIVITY_SETS: reported, never votes
+                warnings.append(f"stress projections {path} were built from the preseason base while the blend is "
+                                "in-season: reported as 'stress_preseason' (sensitivity only), excluded from the "
+                                "'helps under every set' rule")
             out[name] = build_context(pr, st, lg.team_ids, schedule_file=sched, nba=ctx.nba)
             info[name] = {"path": str(path), "sha256": pr.sha256}
         else:

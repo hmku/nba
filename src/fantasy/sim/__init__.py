@@ -11,4 +11,7 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 # 0.5.0: per-game variance from the one game-noise model shared with the draft (fantasy.model.noise,
 #        noise-var-1.0; same a*m + b*m^2 values); the constant-CV option (SimParams.game_var="cv") is deleted.
 #        Drafted rosters change via valuation-0.3.0 / optimizer-0.3.0. Run params record "noise_model".
-SIM_VERSION = "season-sim-0.6.0"
+# 0.6.0: IL replacement on by default.
+# 0.7.0: injury spells placed on the fantasy window as a circle (uniform rotation + gap): availability is flat at
+#        gp/82 in every week (0.6.0 was U-shaped and 1-12% low on average: min/max placement on the NBA-season axis)
+SIM_VERSION = "season-sim-0.7.0"

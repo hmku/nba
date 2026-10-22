@@ -13,8 +13,12 @@ numbers for everyone else):
    projected PTS.
 2. Availability: games-played fraction f ~ Beta with mean gp/82 and sd gp_sd/82. The missed share
    1-f is split into injury *spells* (share 1 - rest_share: one spell, or two with probability
-   two_spell_prob, placed uniformly without overlap on the NBA-season timeline; players listed
-   out/out_for_season start the season in a spell) and scattered one-game rests (share rest_share,
+   two_spell_prob, without overlap) and placed on the fantasy window treated as a circle (uniform
+   rotation, uniform gap; a spell running past the last day continues on day 0). Since season-sim-0.7.0
+   this makes P(day in a spell) exactly (1 - rest_share) * (1 - f) on every day and keeps the realised
+   window missed share equal to 1 - f (flat availability = gp/82 in every week; before, spell starts
+   were min/max of two uniforms on the NBA-season axis: U-shaped, below gp/82). Players listed
+   out/out_for_season start the season in their spell (day 0, no wrap) and scattered one-game rests (share rest_share,
    iid per game). A player can therefore miss whole weeks, as in reality. If the projections carry
    `playoff_mult` (< 1: late-season rest/tanking), playoff-week games are additionally missed with
    probability 1 - playoff_mult.
@@ -208,6 +212,11 @@ class SeasonSimulator:
         po = set(self.playoff_weeks)
         self.po_days = np.array([w.week in po for w in calendar for _ in w.days()], dtype=bool)
         self.fday_offset = np.array([(d - self.season_start).days for d in self.fdays], dtype=float)
+        # injury spells live on the fantasy window (first to last fantasy day), so the missed share q applies
+        # to the days that count (season-sim-0.7.0; before, the NBA-season axis + min/max placement made
+        # availability U-shaped and ~2-9% below gp/82 in the window)
+        self.window_start = float(self.fday_offset[0])
+        self.window_days = float(self.fday_offset[-1] - self.fday_offset[0] + 1)
         if self.p.stat_sd is not None:
             self._stat_sd_vec = np.full(len(FACTOR_STATS), float(self.p.stat_sd))
         else:
@@ -239,11 +248,13 @@ class SeasonSimulator:
         health = np.zeros((N, P + 1, D), dtype=bool)  # last row = padding (never plays)
         il_on = self.p.il_replacement
         # long-spell intervals [start, end) on the season-day axis, 2 per player (empty: start = end = 0)
-        il_start = np.zeros((N, P + 1, 2)) if il_on else None
-        il_end = np.zeros((N, P + 1, 2)) if il_on else None
+        # (each of the 2 spells is at most 2 pieces after wrapping: 4 slots per player)
+        il_start = np.zeros((N, P + 1, 4)) if il_on else None
+        il_end = np.zeros((N, P + 1, 4)) if il_on else None
         team_rows = np.full(P + 1, -1, dtype=int)
         fi = [SI[s] for s in FACTOR_STATS]
-        t_mid = self.fday_offset + 0.5
+        w0, Tw = self.window_start, self.window_days
+        t_w = self.fday_offset - w0 + 0.5  # day midpoints on the fantasy-window axis [0, Tw)
         for j, pid in enumerate(pids):
             rng = np.random.default_rng([self.p.seed, _key(pid)])
             if pid in df.index:
@@ -283,23 +294,32 @@ class SeasonSimulator:
             out_now = status in ("out", "out_for_season")
             q = 1.0 - f  # missed share
             rest = 0.0 if out_now else self.p.rest_share
-            spell_len = (1 - rest) * q * self.season_days
+            spell_len = (1 - rest) * q * Tw  # total spell days on the fantasy-window circle
             h = 1 - (1 - rest) * q
             r_iid = np.clip(1 - (1 - q) / np.maximum(h, 1e-9), 0, 1)
+            # spells on a circle of length T (the fantasy window): uniform rotation c and a uniform gap g
+            # between the two spells, so every day is in a spell with probability exactly (1-rest)*q and the
+            # in-window missed share is exactly q in every sim (the fitted gp sd is not inflated). Players
+            # listed out start the season in their (single) spell: no rotation, no wrap.
             two = (rng.random(N) < self.p.two_spell_prob) & (not out_now)
             u = np.where(two, rng.uniform(0.2, 0.8, N), 1.0)
             L1, L2 = spell_len * u, spell_len * (1 - u)
-            free = np.maximum(self.season_days - spell_len, 0)
-            x, y = rng.random(N) * free, rng.random(N) * free
-            a1 = np.where(out_now, 0.0, np.minimum(x, y))
-            a2 = np.maximum(x, y) + L1
+            c = 0.0 if out_now else rng.random(N) * Tw
+            g = rng.random(N) * np.maximum(Tw - spell_len, 0)
+            a1, a2 = c, np.mod(c + L1 + g, Tw)
             if il_start is not None and il_end is not None:
                 for k_, (st_, ln_) in enumerate(((a1, L1), (a2, L2))):
                     long_ = ln_ >= self.p.il_min_spell_days
-                    il_start[:, j, k_] = np.where(long_, st_, 0.0)
-                    il_end[:, j, k_] = np.where(long_, st_ + ln_, 0.0)
-            in_spell = ((t_mid[None, :] >= a1[:, None]) & (t_mid[None, :] < (a1 + L1)[:, None])) | (
-                (t_mid[None, :] >= a2[:, None]) & (t_mid[None, :] < (a2 + L2)[:, None]))
+                    st_ = np.broadcast_to(st_, (N,))
+                    # pieces on the season-day axis: [st, min(st+L, T)) and the wrapped part [0, st+L-T)
+                    il_start[:, j, 2 * k_] = np.where(long_, w0 + st_, 0.0)
+                    il_end[:, j, 2 * k_] = np.where(long_, w0 + np.minimum(st_ + ln_, Tw), 0.0)
+                    over = np.maximum(st_ + ln_ - Tw, 0.0)
+                    il_start[:, j, 2 * k_ + 1] = np.where(long_ & (over > 0), w0, 0.0)
+                    il_end[:, j, 2 * k_ + 1] = np.where(long_ & (over > 0), w0 + over, 0.0)
+            a1n, a2n = np.broadcast_to(a1, (N,)), a2
+            in_spell = (np.mod(t_w[None, :] - a1n[:, None], Tw) < L1[:, None]) | (
+                np.mod(t_w[None, :] - a2n[:, None], Tw) < L2[:, None])
             rest_draw = rng.integers(0, 256, (N, D), dtype=np.uint8)
             healthy = ~in_spell & (rest_draw >= np.round(r_iid * 256)[:, None])
             if self.p.use_playoff_mult and pmult < 1.0 and self.po_days.any():
@@ -357,7 +377,7 @@ class SeasonSimulator:
         il_games = np.zeros((N, W, T), dtype=np.float32) if il_on else None
         il_slot_days = np.zeros((N, W, T), dtype=np.float32) if il_on else None
         if il_on:
-            il_s, il_e = arr["il_start"][:, idx], arr["il_end"][:, idx]  # (N, T, R, 2)
+            il_s, il_e = arr["il_start"][:, idx], arr["il_end"][:, idx]  # (N, T, R, 4)
         team_rngs = [np.random.default_rng([self.p.seed, 7_000_003, int(t)]) for t in team_ids]
         noise_i = {s: k for k, s in enumerate(NOISE_STATS)}
         for wi, (d0, d1) in enumerate(self.week_slices):

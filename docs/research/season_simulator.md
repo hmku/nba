@@ -16,12 +16,12 @@ streaming, standings and the playoff bracket. Code: `src/fantasy/sim/` (`engine.
 | Calendar | Mon-Sun weeks; week 1 starts on opening night (Tue 2026-10-20). The All-Star break (Feb 19-24, 2027, detected from the schedule; `ALLSTAR_BREAK_GUESS` for the synthetic fallback) merges the two weeks it touches into one long week (Yahoo practice; `--no-merge-allstar`). Week 1's length is **fitted to `settings.playoff_end_date`** (Yahoo settings page, verified: weeks 18-20 end Sun 2027-03-21): that needs a two-week week 1 (Oct 20 - Nov 1), so week 17 = Feb 15-28 (All-Star) and playoffs = Mar 1-7, 8-14, 15-21 (`fit_week1_end`; `--week1-end` overrides). Regular season = weeks before the first playoff week. JSON (`--schedule`) can give explicit week dates. | `schedule.py`, `context.py` |
 | Matchups | Circle-method round robin for weeks 1-17 (11-round cycle, repeated for weeks 12-17), or Yahoo's schedule from JSON. | `schedule.py` |
 | Season-level projection error | per player-sim: volume factor `exp(N(0, vol_sd))` on all counting stats + attempts; per-stat factor `exp(N(0, stat_sds[s]))` on FGA, FTA, 3PM, REB, AST, STL, BLK, TO; additive FG% and FT% shifts. **Fitted (season-sim-0.4.0, `sim_calibration.md`):** vol_sd / FG / FT sd by projected mpg = 0.15 / 0.022 / 0.038 (30+), 0.25 / 0.027 / 0.041 (24-30), 0.33 / 0.033 / 0.049 (<24); stat sds FGA 0.15, FTA 0.28, 3PM 0.37, REB 0.05, AST 0.24, STL 0.06, BLK 0.18, TO 0.16 (0.3.0 priors: 0.08 / 0.08 / 0.015 / 0.03). Makes = attempts × shifted %; PTS = 2·FGM + 3PM + FTM rescaled to projected PTS. | `engine._player_arrays` |
-| Availability | games-played share f ~ Beta(mean gp/82, sd gp_sd/82) (projections' fitted gp / gp_sd; gp_sd ≤ 0 → 12). Missed share 1-f: 75% as injury **spells** (one spell, or with prob 0.5 two spells with a U(0.2, 0.8) split; placed uniformly, non-overlapping, on the NBA-season day axis; `out`/`out_for_season` players start the season in their spell), 25% (`rest_share`) as iid one-game rests. If projections carry `playoff_mult` < 1, playoff-week games are additionally missed with prob 1 - playoff_mult. | `engine._player_arrays` |
+| Availability | games-played share f ~ Beta(mean gp/82, sd gp_sd/82) (projections' fitted gp / gp_sd; gp_sd ≤ 0 → 12). Missed share 1-f: 75% as injury **spells** (one spell, or with prob 0.5 two spells with a U(0.2, 0.8) split; placed on the **fantasy window as a circle** since season-sim-0.7.0: uniform rotation and a uniform gap between the two spells, a spell past the last fantasy day continues on day 0, so every day is in a spell with probability exactly (1-rest_share)·(1-f) and the realised window missed share is exactly 1-f; `out`/`out_for_season` players start the season in their spell, no wrap — see "Availability timing fix" below), 25% (`rest_share`) as iid one-game rests. If projections carry `playoff_mult` < 1, playoff-week games are additionally missed with prob 1 - playoff_mult. | `engine._player_arrays` |
 | Daily lineup | each day, healthy players whose NBA team plays start in order of projected value until the 10 starting slots are full. Positions ignored (2 Util slots make it rarely binding). This is a *daily* cap; a weekly "10 × game-days" cap almost never binds (13 players × ~0.5 games/day ≈ 6.5 starters/day on average) and would miss the real loss, which happens on heavy days. | `engine.run` |
 | Streaming | each team adds `min(adds_per_week × games_per_add × stream_usage, open starting slot-days)` replacement-level games per week (6 × 2 × 0.5 = 6 by default); replacement line = valuation's replacement level. Same for every team, so it mostly compresses differences and fills injured teams' holes. | `engine.run` |
-| IL replacement (opt-in, `il_replacement`, default off) | while a rostered player is in an injury spell ≥ `il_min_spell_days` (7, prior) his team carries a replacement-level player (typical-team games × `il_rep_availability` 0.85, prior), up to `il_slots` (3) at a time, all teams; fills open slots before streamers. CLI `--il-replacement`. Results: `il_replacement.md`. | `engine.run` |
+| IL replacement (`il_replacement`, default on since season-sim-0.6.0) | while a rostered player is in an injury spell ≥ `il_min_spell_days` (7, prior) his team carries a replacement-level player (typical-team games × `il_rep_availability` 0.85, prior), up to `il_slots` (3) at a time, all teams; fills open slots before streamers. CLI `--il-replacement`. Results: `il_replacement.md`. | `engine.run` |
 | Weekly totals | given counted games k per player: team attempts and counting stats ~ Normal(Σk·mean, Σk·var(mean)) with the fitted per-game variance var = a·m + b·m² (`fantasy.model.noise`, the one noise model shared with the draft since 0.5.0; the 0.3.0 constant-CV option was deleted); noise drawn at team level, stream keyed by team id, correlated across stats with the fitted within-game correlation (`noise_corr`); makes \| attempts ~ Normal(p_team·A, binomial + mix variance); counts rounded to integers, percentages to 3 decimals (ties happen: ~3% STL/BLK, ~1% PTS). | `engine.run` |
-| H2H + standings | per scheduled pair, 9 category comparisons (TO lower wins), ties = 0.5. Standings by category wins + 0.5·ties (Yahoo H2H categories), random tie-break. | `engine._score` |
+| H2H + standings | per scheduled pair, 9 category comparisons (TO lower wins), ties = 0.5. Standings by category wins + 0.5·ties (Yahoo H2H categories), random tie-break (**unverified**: Yahoo's real regular-season tie-break rule — e.g. head-to-head record or points — is not modelled). | `engine._score` |
 | Playoffs | top 6 (`playoff_teams`) over weeks 18/19/20, byes for the top 2^rounds - n seeds (seeds 1-2). **Re-seeded after every round** (`settings.playoff_reseed`, verified yes: the top remaining seed plays the lowest; `SimParams.reseed` overrides). Winner = more categories won; category-count ties go to the higher seed (`settings.playoff_tiebreak = "higher_seed"`, verified). | `engine._playoffs` |
 
 Determinism: all randomness comes from `np.random.default_rng([seed, key])` with `key` = hash(player
@@ -64,7 +64,42 @@ ADP; 2,000 sims, seed 0; SE of P(title) ≈ 0.011):
 P(playoffs) is robust; P(title) moves by ±0.04-0.07 with the schedule source, the projection-error
 prior and the injury-spell structure — calibrate those before trusting title odds to better than ±5 pp.
 
+## Availability timing fix (season-sim-0.7.0, 2026-10-22)
+**Bug (0.2.0-0.6.0).** Spell starts were min/max of two U(0, free) draws on the NBA-season day axis (Oct 20 - Apr 11,
+174 days), and never before day 0. Spell coverage therefore ramped up from day 0, peaked mid-season and fell again, and
+the fantasy window (first 153 days, to Mar 21) cut off the low right edge: availability was **U-shaped over the
+season and below gp/82 on average**. `sim_calibration.md` §4 validated spell *lengths* (run-length distribution,
+weekly variance), not their *timing*, so this was not caught.
+**Fix.** Spells live on the fantasy window treated as a circle (uniform rotation, uniform gap between two spells).
+By rotation symmetry every day is in a spell with probability exactly (1-rest_share)·q, and the realised in-window
+missed share equals q in every sim, so the fitted games-played sd (Beta, `gp_sd`) is not inflated (a clip-at-the-
+edges placement would add ~±6 games of sd at gp 60). Cost: a spell that runs past the last fantasy day reappears at
+day 0 (a mild early/late correlation for that player-sim). IL intervals are stored as ≤ 2 pieces per spell.
+**Before/after** (synthetic schedule, one player, gp_sd 10, 20,000 sims, `use_playoff_mult` off; simulated;
+one-off script, not committed; the same check is `tests/test_sim.py::test_availability_flat_at_gp_share_every_week`):
+
+| gp (target gp/82) | rest_share | 0.6.0 mean / min-max week | 0.7.0 mean / min-max week |
+|---|---|---|---|
+| 30 (0.366) | 0.25 | 0.321 / 0.19-0.59 | 0.365 / 0.36-0.37 |
+| 45 (0.549) | 0.25 | 0.509 / 0.39-0.73 | 0.548 / 0.54-0.56 |
+| 60 (0.732) | 0.25 | 0.709 / 0.64-0.83 | 0.732 / 0.73-0.74 |
+| 75 (0.915) | 0.25 | 0.908 / 0.88-0.94 | 0.914 / 0.91-0.92 |
+| 30 (0.366) | 0 | 0.286 / 0.14-0.79 | 0.365 / 0.36-0.37 |
+| 60 (0.732) | 0 | 0.696 / 0.59-0.90 | 0.732 / 0.73-0.74 |
+
+0.6.0 week profile at gp 60: 0.83 (wk 1) … 0.64 (wks 5-7) … 0.80 (wk 20). Effect: injury-prone players were
+undervalued by 3-12% of their games in 0.6.0, most in mid-season and least in weeks 1 and 18-20 (playoffs), so
+season/playoff odds and add/drop/trade deltas from earlier runs carry that bias; rerun before relying on them.
+
 ## Limitations (read before acting on outputs)
+- **Streaming cap per matchup week (assumption).** `stream_cap` = 6 replacement games per *matchup week*, also in the
+  two-week weeks 7 (Nov 30 - Dec 13) and 17 (All-Star, Feb 15-28). Whether Yahoo's `max_weekly_adds` resets per
+  calendar week or per matchup week in those weeks is unverified; if per calendar week, those weeks get up to 12.
+- **Regular-season tie-break** is random in the simulator; Yahoo's rule is unverified (see the H2H row).
+- **Season-level projection error does not shrink in-season.** The error sds (`sim_calibration.md` §1) are fitted for
+  preseason projections and are applied unchanged to the in-season (rest-of-season) projections, whose stat
+  shrinkage uses box scores to date. Early in the season this is nearly right; later it overstates remaining-season
+  uncertainty (spread of outcomes too wide, odds too close to 50/50). Not modelled yet.
 - **In-sample optimism.** The simulator uses the same projections the optimizer drafted with, and
   opponents are drafted by noisy ADP with no strategy. A team that "beats the market" by our own
   projections will look dominant (e.g. 95% playoffs / 57% title on `mock-full`). The market's ADP

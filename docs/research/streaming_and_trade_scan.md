@@ -279,6 +279,18 @@ How to read it:
   yahoo-browser skill and the txn ledger.
 
 ## Caveats
+- **Stale stress set (2026-10-22).** `espn-only-gp.csv` is built from the PRESEASON base, while blend and market default
+  to the in-season files (`*.inseason.csv`) once `fantasy data update-projections` has run. Mixing them made "helps
+  under every set" compare current injuries/roles with preseason ones. Now, when the blend is in-season and the stress
+  file has no in-season `as_of` in its meta, it is reported as `stress_preseason`, a **sensitivity only** that never
+  votes (`streamscan.SENSITIVITY_SETS`; stream verdict, trade `helps_all`/`partner_ok`, stage-2 class/`win_win`), with
+  a warning. An in-season stress variant would need ESPN's in-season games, not our ROS availability model (that would
+  remove its independence), so none is built.
+- **Optimizer's curse in the trade scan.** The shortlist is the top of the screen *ranked by our own projections*, so
+  the selected trades are those where our projections are most favourable vs everyone else's — their simulated gains
+  are biased upward even under paired sims. Before recommending a trade, require the **market** set's class alone to be
+  "helps" (market = 50/50 ESPN + FantasyPros stats, so its errors are the least correlated with the blend that selected
+  the trade), not only "helps under every set" — this is a recommendation, not yet enforced in code.
 - The simulator is optimistic for us: other teams never trade, stream or adjust lineups. 0.3.0 refills with the
   6th-best realistic free agent by default (a prior); the best-FA refill is only the optimistic bound.
 - ± values are Monte Carlo SEs only (0.3.0: seed-aware). Projection error is handled by comparing the projection sets,

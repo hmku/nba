@@ -272,6 +272,25 @@ def test_injury_spells_miss_whole_weeks(ctx):
     assert abs(played.sum(1).mean() / team_games - gp / 82) < 0.08
 
 
+@pytest.mark.parametrize("rest", [0.25, 0.0])
+def test_availability_flat_at_gp_share_every_week(ctx, rest):
+    """Regression (season-sim-0.7.0): spell placement must not make availability U-shaped or biased low."""
+    from fantasy.sim.engine import SeasonSimulator
+
+    pid = ctx.values.index[0]
+    for gp in (30, 45, 60, 75):
+        df = ctx.proj.df.copy()
+        df.loc[pid, ["gp", "gp_sd", "status"]] = [gp, 10.0, ""]
+        sim = SeasonSimulator(df, ctx.values, ctx.replacement, ctx.settings, ctx.nba, ctx.calendar, ctx.matchups,
+                              _params(n_sims=8000, rest_share=rest, use_playoff_mult=False))
+        h = sim._player_arrays([pid])["health"][:, 0]
+        plays = sim.plays[sim.team_row[str(df.loc[pid, "team"])]]
+        wk = np.array([h[:, a:b].sum() / (plays[a:b].sum() * len(h)) for a, b in sim.week_slices])
+        assert np.abs(wk - gp / 82).max() < 0.02, (gp, rest, wk.round(3))
+        # the fitted games-played sd is not inflated by the placement (Beta sd 10 games)
+        assert abs(h.sum(1).std() / plays.sum() * 82 - 10.0) < 1.0
+
+
 def test_bracket_and_playoffs(ctx):
     assert bracket_positions(8) == [1, 8, 4, 5, 2, 7, 3, 6]
     sim = ctx.simulator(_params(n_sims=4))
@@ -540,7 +559,8 @@ def test_il_replacement_adds_games_only_during_long_spells(ctx):
     arr = sim._player_arrays(pids)
     s, e = arr["il_start"][:, :-1], arr["il_end"][:, :-1]
     ln = e - s
-    assert ((ln == 0) | (ln >= 10)).all() and (ln > 0).any()
+    spell = ln[..., 0::2] + ln[..., 1::2]  # each spell is at most 2 pieces (wrapped past the window end)
+    assert ((spell == 0) | (spell >= 10 - 1e-9)).all() and (spell > 0).any()
     t_mid = sim.fday_offset + 0.5
     inside = ((t_mid >= s[..., None]) & (t_mid < e[..., None])).any(axis=2)  # (N, P, D)
     assert not (inside & arr["health"][:, :-1]).any()
@@ -587,4 +607,4 @@ def test_il_replacement_position_aware(ctx):
 def test_il_replacement_is_default_since_0_6_0():
     from fantasy.sim import SIM_VERSION
     assert SimParams().il_replacement is True
-    assert SIM_VERSION == "season-sim-0.6.0"
+    assert SIM_VERSION == "season-sim-0.7.0"

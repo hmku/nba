@@ -212,14 +212,25 @@ def make_stream_season_eval(
     return ev
 
 
+# Projection sets reported as a sensitivity only: excluded from every "helps under every set" rule. The preseason
+# stress set (espn-only-gp built from the PRESEASON base) is demoted to this when the blend is in-season, because it
+# still carries preseason injuries/roles while blend and market carry current ones (inseason/cli.py:_proj_sets).
+SENSITIVITY_SETS = frozenset({"stress_preseason"})
+
+
+def decisive_sets(names) -> list[str]:
+    """The projection sets that vote in unanimity rules (all but SENSITIVITY_SETS)."""
+    return [n for n in names if n not in SENSITIVITY_SETS]
+
+
 def stream_verdict(season: dict, sig: float = 2.0) -> str:
     """Verdict of a season result. Chain results (`by_set`): 'helps' only if the realistic chain helps under every
-    projection set and the stream is not significantly worse than the direct move (else 'direct_better'); otherwise
+    decisive projection set (SENSITIVITY_SETS excluded) and the stream is not significantly worse than the direct move (else 'direct_better'); otherwise
     the worst set's verdict ('hurts' before 'tradeoff' before 'noise'). Plain results: `season_verdict`."""
     if "by_set" not in season:
         return season_verdict(season, sig)
     prim = season["primary_chain"]
-    rs = list(season["by_set"].values())
+    rs = [season["by_set"][k] for k in decisive_sets(season["by_set"])]
     vs = [season_verdict(r[prim]["stream"], sig) for r in rs]
     if all(v == "helps" for v in vs):
         worse = any(sig_sign(r[prim]["stream_vs_direct"][m], sig) < 0 for r in rs for m in ("p_playoffs", "p_title"))

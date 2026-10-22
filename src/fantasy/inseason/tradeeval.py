@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 from fantasy.inseason.possim import make_sim, replacement_id
+from fantasy.inseason.streamscan import decisive_sets
 from fantasy.inseason.trade import Trade, apply_trade, rostered
 from fantasy.sim.engine import SimResult
 from fantasy.sim.league import LeagueState
@@ -218,8 +219,9 @@ def evaluate_trade(trade: Trade, pre: LeagueState, base_league: LeagueState, my_
                              "schedule_bet": bool(share is not None and share > 0.5)}
         by_set[name] = r
     classes = [r["class"] for r in by_set.values()]
-    overall = combine_classes(classes)
-    partner_ok = all(r["partner_ok"] for r in by_set.values())
+    voting = [by_set[k] for k in decisive_sets(by_set)]  # sensitivity-only sets are reported, never vote
+    overall = combine_classes([r["class"] for r in voting])
+    partner_ok = all(r["partner_ok"] for r in voting)
     shares = [r["schedule"] for r in by_set.values() if "schedule" in r]
     raw_m = float(np.mean([s["title_raw"] for s in shares])) if shares else 0.0
     neu_m = float(np.mean([s["title_neutral"] for s in shares])) if shares else 0.0
@@ -227,7 +229,7 @@ def evaluate_trade(trade: Trade, pre: LeagueState, base_league: LeagueState, my_
         "by_set": by_set, "class": overall, "class_by_set": dict(zip(by_set, classes, strict=True)),
         "partner_ok": partner_ok,
         "win_win": overall == "helps" and all((r["partner"]["p_playoffs"]["delta"] or 0.0) >= 0
-                                              for r in by_set.values()),
+                                              for r in voting),
         "schedule_bet": bool(shares) and raw_m > 0 and (raw_m - neu_m) > 0.5 * raw_m,
         "seeds": list(params.seeds), "n_sims": params.n_sims,
         "refill": "replacement level" if params.replacement else f"realistic free agent #{params.refill_skip + 1}",
