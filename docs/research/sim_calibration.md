@@ -201,6 +201,13 @@ noise, so the **priors are kept and are now validated**. By missed-games band:
 - players who miss 20-39 games: 79% of missed games are in runs of 5+, and 49% of these players have 2+ long
   spells.
 
+**What this did not validate: spell timing.** The comparison above is on spell *lengths* and weekly variance with the
+same missed counts. *Where* the spells fall in the season was not checked, and the 0.2.0-0.6.0 placement (min/max of
+two uniforms on the NBA-season axis) made availability U-shaped and 1-12% below gp/82 in the fantasy window. Fixed in
+season-sim-0.7.0 (circular placement on the fantasy window: flat at gp/82 in every week, realised missed share = q;
+before/after table in `season_simulator.md`, "Availability timing fix"; regression test
+`test_availability_flat_at_gp_share_every_week`). Run lengths are unchanged by the fix (the same length draws).
+
 ## 5. Effect on simulator outputs
 _Note: every number in this section was computed with the prior constant CV in the draft model (the default at
 the time). The constant-CV code was deleted on 2026-10-19; reproduce these tables from git history (commit a6079da

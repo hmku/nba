@@ -111,6 +111,23 @@ def test_stream_verdict_all_sets_and_direct():
     worse = dict(good, stream_vs_direct=_res(-0.03, 0.0, 0.0))
     assert stream_verdict(mk(blend=worse)) == "direct_better"
     assert stream_verdict(_res(0.03, 0.0, 0.1)) == "helps"  # plain (legacy) result
+    # a stale preseason stress set is a sensitivity only: reported, never votes
+    assert stream_verdict(mk(blend=good, market=good, stress_preseason=bad)) == "helps"
+    assert stream_verdict(mk(blend=good, market=good, stress=bad)) == "hurts"
+
+
+def test_preseason_stress_set_demoted_when_blend_is_inseason(tmp_path):
+    from fantasy.inseason.cli import _stale_vs_inseason
+
+    pre = tmp_path / "espn-only-gp.csv"
+    pre.write_text("x\n")
+    (tmp_path / "espn-only-gp.meta.json").write_text(json.dumps({"blend_version": "blend-0.2.0"}))
+    assert _stale_vs_inseason(pre, "data/processed/projections_2026_27.inseason.csv")
+    assert not _stale_vs_inseason(pre, "data/processed/projections_2026_27.csv")  # preseason blend: consistent
+    cur = tmp_path / "stress2.csv"
+    cur.write_text("x\n")
+    (tmp_path / "stress2.meta.json").write_text(json.dumps({"as_of": "2026-10-21"}))
+    assert not _stale_vs_inseason(cur, "p.inseason.csv")
 
 
 # ---------------------------------------------------------------- M1: base with the free move, realistic refill

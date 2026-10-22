@@ -16,6 +16,11 @@ and a team's extra games were capped at about 6 a week however many of its playe
 that this understates injury-prone rosters (slot 12: Morant, A. Davis, Gordon, J. Williams), overstates our odds,
 and over-penalises injury-prone trade targets (Jamal Murray).
 
+> **season-sim-0.7.0 (2026-10-22):** spells are now placed on the fantasy window as a circle (flat availability at
+> gp/82; `season_simulator.md`, "Availability timing fix"). A spell that wraps past the last fantasy day is stored as
+> two IL intervals (≤ 4 per player); the ≥ `il_min_spell_days` test uses the whole spell. The results below were
+> computed with 0.6.0 placement (U-shaped availability, too few mid-season spells), so IL games there are biased.
+
 ## Method
 - **Trigger.** The engine already draws each player's injury spells (one or two per season, validated in
   `sim_calibration.md` §4). An IL replacement exists for every day inside a spell of at least `il_min_spell_days`

@@ -50,7 +50,7 @@ from scipy.stats import norm
 
 from fantasy.inseason.lineup import PlayerSpec, simulate_lineups
 from fantasy.inseason.possim import make_sim
-from fantasy.inseason.streamscan import season_verdict
+from fantasy.inseason.streamscan import decisive_sets, season_verdict
 from fantasy.inseason.trade import Trade, apply_trade, naive_value
 from fantasy.inseason.tradeeval import (
     PARTNER_PO_TOL,
@@ -300,7 +300,7 @@ def resimulate_top(table: list[dict], rows_by_label: Mapping[str, dict], base_le
         rs = x.get("resim")
         if rs is None:
             return (1, 9, 0.0)
-        ts = [r["me"]["p_title"]["delta"] or 0.0 for r in rs["by_set"].values()]
+        ts = [rs["by_set"][k]["me"]["p_title"]["delta"] or 0.0 for k in decisive_sets(rs["by_set"])]
         return (0, order.get(rs["class"], 9), -min(ts))
 
     table.sort(key=key)
@@ -314,7 +314,8 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
     for r in rows:
         tr = r["trade"]
         sim = r.get("sim", {})
-        helps_all = bool(sets) and all(sim.get(s, {}).get("verdict") == "helps" for s in sets)
+        voting = decisive_sets(sets)  # a sensitivity-only set (stale preseason stress) is reported, never votes
+        helps_all = bool(voting) and all(sim.get(s, {}).get("verdict") == "helps" for s in voting)
         row = {
             "trade": tr.label(names), "partner": tr.partner, "partner_name": league.team_name(tr.partner),
             "give": [str(names.get(p, p)) for p in tr.give], "get": [str(names.get(p, p)) for p in tr.get],
@@ -330,7 +331,7 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
                                if p in tr.get],
             "sim": sim,
             "helps_all": helps_all,
-            "partner_ok": bool(sets) and all(sim.get(s, {}).get("partner_ok", False) for s in sets),
+            "partner_ok": bool(voting) and all(sim.get(s, {}).get("partner_ok", False) for s in voting),
             "decomposition": {"schedule": schedule_hooks(tr, proj, nba, calendar, playoff_weeks, gpw)},
         }
         if len(sets) >= 2 and all(s in sim for s in sets):
@@ -341,7 +342,7 @@ def trade_rows(rows: list[dict], values: pd.DataFrame, proj: pd.DataFrame, nba: 
         out.append(row)
 
     def key(x: dict) -> tuple:
-        ts = [x["sim"][s]["me"]["p_title"]["delta"] for s in sets if s in x["sim"]]
+        ts = [x["sim"][s]["me"]["p_title"]["delta"] for s in decisive_sets(sets) if s in x["sim"]]
         return (not x["helps_all"], -(min(ts) if ts else -1.0))
 
     out.sort(key=key)
