@@ -72,6 +72,14 @@ is interested in X; details private"). A thread message
 5. Yahoo notification emails (Gmail connector, read-only; inbox in local memory `yahoo-notification-inbox`):
    `from:yahoo newer_than:1d` — waiver results, trade offers, transactions. A trade offer is reported to the user,
    never answered.
+6. Rest-of-season projections (cheap, run daily; at least weekly): `fantasy data update-projections --fetch --json`
+   (incremental ESPN box scores -> `data/processed/projections_2026_27.inseason.csv` + `.meta.json`, and
+   `var/projections_alt/market.inseason.csv`). Every tool loads the in-season file by default from then on
+   (`FANTASY_PROJECTIONS=preseason` = old behaviour). Log `model_version`, `as_of` and the top `movers` as an
+   `observation`; a big mover on my roster or a target is a THINK input (with its why-now: "N of K team games
+   played"). Players in the meta's `low_confidence` list (|Δgp| > 10 after ≤ 3 team games) need the reason checked
+   (injury news / waived / DNP-CD) before any recommendation rests on them. In the in-season file `gp` = 82 x expected share of REMAINING games; `season_gp_exp` = season total.
+   Model/evidence: `docs/research/inseason_updates.md`. Commit the box-score files (`data/raw/espn_boxscores/`).
 
 ## 2. THINK
 - Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted

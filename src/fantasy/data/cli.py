@@ -158,6 +158,64 @@ def fetch_injuries(as_json: bool = typer.Option(False, "--json")) -> None:
     _emit({"fetched": fetch()}, as_json)
 
 
+@app.command("fetch-boxscores")
+def fetch_boxscores(
+    season: int = typer.Option(2027, help="season end year (2027 = 2026-27)"),
+    start: str = typer.Option("", help="YYYY-MM-DD; default = resume from the latest date on file"),
+    end: str = typer.Option("", help="YYYY-MM-DD; default = Apr 30 of the season, clipped to today"),
+    rps: float = typer.Option(6.0, help="max requests per second to ESPN"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Fetch ESPN regular-season player box scores into data/raw/espn_boxscores/ (incremental)."""
+    from datetime import date
+
+    from fantasy.data.boxscores import fetch_season
+
+    out = fetch_season(
+        season,
+        date.fromisoformat(start) if start else None,
+        date.fromisoformat(end) if end else None,
+        rps=rps,
+        progress=lambda s: typer.echo(s, err=True),
+    )
+    _emit(out, as_json)
+
+
+@app.command("update-projections")
+def update_projections_cmd(
+    as_of: str = typer.Option("", "--as-of", help="YYYY-MM-DD, games on that date included; default = today"),
+    season: int = typer.Option(2027, help="season end year"),
+    fetch: bool = typer.Option(False, "--fetch", help="first run `fetch-boxscores` incrementally"),
+    out: str = typer.Option("", "--out", help="write here instead of the default in-season file (dry run)"),
+    alt: bool = typer.Option(True, "--alt/--no-alt", help="also update var/projections_alt/market.csv -> "
+                             "market.inseason.csv (the stress set stays preseason: independent of our model)"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Rest-of-season projections from the preseason projections + ESPN box scores to date (fantasy.model.inseason).
+
+    Writes data/processed/projections_2026_27.inseason.csv (+ .meta.json), which every tool then loads by default
+    (FANTASY_PROJECTIONS=preseason forces the preseason file). gp there = 82 x expected share of remaining games."""
+    from datetime import date
+
+    from fantasy.model.inseason import write_inseason
+
+    if fetch:
+        from fantasy.data.boxscores import fetch_season
+
+        fetch_season(season, progress=lambda s: typer.echo(s, err=True))
+    from pathlib import Path
+
+    from fantasy.data.provenance import REPO_ROOT
+
+    day = as_of or date.today().isoformat()
+    res = write_inseason(day, season=season, out_path=Path(out) if out else None)
+    market = REPO_ROOT / "var" / "projections_alt" / "market.csv"
+    if alt and not out and market.exists():
+        m = write_inseason(day, season=season, prior_path=market, out_path=market.with_name("market.inseason.csv"))
+        res["market"] = {"output": m["output"], "rows": m["rows"]}
+    _emit(res, as_json)
+
+
 @app.command("fetch-external")
 def fetch_external(
     source: str = typer.Option(..., help="espn | fantasypros | all"),

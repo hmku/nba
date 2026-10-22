@@ -1,0 +1,18 @@
+{
+  "path": "data/raw/espn_boxscores/team_games_2026.csv.gz",
+  "url": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={ymd}&limit=100",
+  "fetched_at": "2026-10-21T23:45:42Z",
+  "method": "httpx GET (fantasy.data.boxscores.fetch_season)",
+  "sha256": "71e9c1b773af64bbe366b77183fdf33c5aac4f47f56142197b1ba2db4f88933a",
+  "rows": 2462,
+  "notes": "ESPN scoreboard, one row per (game, team); season.type 2, completed, All-Star dropped, NBA Cup final regular_season=False",
+  "season": 2026,
+  "last_fetch_range": [
+    "2025-10-01",
+    "2026-04-30"
+  ],
+  "games": 1231,
+  "regular_season_games": 1230,
+  "first_date": "2025-10-21",
+  "last_date": "2026-04-12"
+}

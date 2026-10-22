@@ -34,7 +34,7 @@ def _init(model_path: str, n_eval: int) -> None:
 
     from fantasy.draft.optimizer import DraftContext
     from fantasy.league.settings import load_settings
-    from fantasy.model.lines import load_projections
+    from fantasy.model.lines import DEFAULT_PROJECTIONS, load_projections
     from fantasy.sim.context import build_context
     from fantasy.sim.market_truth import market_implied_projections
     from fantasy.valuesearch.features import Featurizer
@@ -43,7 +43,7 @@ def _init(model_path: str, n_eval: int) -> None:
 
     threadpool_limits(1)
     s = load_settings()
-    proj = load_projections()
+    proj = load_projections(DEFAULT_PROJECTIONS)  # draft-time model: always the preseason projections
     ctx = DraftContext(proj, s)
     teams = list(range(1, s.num_teams + 1))
     sctx = build_context(proj, s, teams)

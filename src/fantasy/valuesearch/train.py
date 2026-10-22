@@ -140,7 +140,7 @@ def fit_variant(X: np.ndarray, Y: np.ndarray, g: np.ndarray, team: np.ndarray, p
 def main() -> None:
     from fantasy.draft.optimizer import DraftContext
     from fantasy.league.settings import load_settings
-    from fantasy.model.lines import load_projections
+    from fantasy.model.lines import DEFAULT_PROJECTIONS, load_projections
     from fantasy.model.valuation import git_sha
 
     ap = argparse.ArgumentParser()
@@ -157,7 +157,7 @@ def main() -> None:
     a = ap.parse_args()
     t0 = time.time()
     s = load_settings()
-    proj = load_projections()
+    proj = load_projections(DEFAULT_PROJECTIONS)  # draft-time model: always the preseason projections
     ctx = DraftContext(proj, s)
     feat = Featurizer(ctx, proj.df)
     leagues = load_leagues(a.data)

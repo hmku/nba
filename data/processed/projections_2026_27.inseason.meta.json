@@ -1,0 +1,84 @@
+{
+  "model_version": "ros-proj-0.3.0+ros-avail-0.3+stat-shrink-0.1",
+  "as_of": "2026-10-21",
+  "git_sha": "58923c6",
+  "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
+  "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
+  "prior_sha256": "9b0949aab79443fffd6a3a0ca6bed72b1ce8c84e1dc01d3f07aa8d3d967973ba",
+  "rows": 454,
+  "players_with_box_scores": 61,
+  "max_team_games": 1,
+  "gp_semantics": "gp = 82 x expected share of remaining team games played (per-game play probability x 82); season_gp_exp = games played + expected remaining games",
+  "availability": {
+    "version": "ros-avail-0.3",
+    "data": "player timelines 2011-2026 excl. 2020-21 (NocturneBear box scores to 2024, ESPN 2025-26); opening-night rosters not injured coming in; n=59811 checkpoints",
+    "oos": "fit 2011-2024, test 2025-26: RMSE remaining games update/static/iid-beta-binomial k=1 17.42/18.61/17.81, k=10 15.59/17.18/18.55, k=30 11.79/13.66/13.58",
+    "report": "scripts/inseason_model/report_avail.json"
+  },
+  "stats": {
+    "version": "stat-shrink-0.1",
+    "n0": {
+      "mpg": 5.2,
+      "reb": 433.2,
+      "ast": 288.8,
+      "stl": 1398.6,
+      "blk": 635.7,
+      "tov": 687.5,
+      "fg3m": 379.6,
+      "fga": 205.8,
+      "fta": 493.9,
+      "fg_pct": 398.0,
+      "ft_pct": 115.9
+    },
+    "n0_se": {
+      "mpg": 0.4,
+      "reb": 29.9,
+      "ast": 18.3,
+      "stl": 124.7,
+      "blk": 68.4,
+      "tov": 42.1,
+      "fg3m": 26.0,
+      "fga": 10.2,
+      "fta": 28.3,
+      "fg_pct": 30.1,
+      "ft_pct": 10.9
+    },
+    "units": "mpg: games; fg_pct: fga; ft_pct: fta; others: minutes",
+    "report": "scripts/inseason_model/report_stats.json"
+  },
+  "games_missed_overrides": 23,
+  "gtd_window_prior": {
+    "players": 49,
+    "games": 1.0
+  },
+  "status": "injury feed fetched 2026-10-21",
+  "playoff_share": {
+    "remaining_schedule": 0.1298,
+    "season_schedule": 0.1283,
+    "remaining_used": 0.1518,
+    "season_used": 0.15
+  },
+  "latest_box_score_date": "2026-10-20",
+  "warnings": [
+    "7 players in box scores without a projection row (not projected): aday-mara, bennett-stirtz, brooks-barnhizer, david-jones-garcia, jakobi-gillespie, maliq-brown, tarris-reed-jr"
+  ],
+  "inputs": [
+    {
+      "path": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
+      "sha256": "9b0949aab79443fffd6a3a0ca6bed72b1ce8c84e1dc01d3f07aa8d3d967973ba"
+    },
+    {
+      "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
+      "sha256": "c0d4d8889c88689ad46c14d873a7914340f22e6ddeca60d7a7d86ee7c522643f"
+    },
+    {
+      "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/team_games_2027.csv.gz",
+      "sha256": "45a3d5a13ca569eb7656fcfd907e3ce4013d9393dd1c1a5fbad75b3490ffa33c"
+    },
+    {
+      "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
+      "sha256": "c7ef69638e9d5d12ea4b253c2625bd63bf5113e13bdbbf6194fbc0a259b61835"
+    }
+  ],
+  "sha256": "0f02e544dc256c8d436dc04e859916c070fcbcc29f717bf391faa2aeebdcfa5c"
+}

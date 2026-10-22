@@ -14,7 +14,11 @@ docs/research/availability_model.md.
 from __future__ import annotations
 
 import hashlib
+import json
+import os
+import warnings
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +26,11 @@ import pandas as pd
 
 from fantasy.league.settings import REPO_ROOT
 
-DEFAULT_PROJECTIONS = REPO_ROOT / "data" / "processed" / "projections_2026_27.csv"
+DEFAULT_PROJECTIONS = REPO_ROOT / "data" / "processed" / "projections_2026_27.csv"  # preseason (draft) projections
+# Rest-of-season projections (`fantasy data update-projections`, fantasy.model.inseason): the default once written;
+# FANTASY_PROJECTIONS=preseason forces the preseason file.
+INSEASON_PROJECTIONS = REPO_ROOT / "data" / "processed" / "projections_2026_27.inseason.csv"
+INSEASON_MAX_AGE_DAYS = 7  # older in-season projections still load, with a warning
 STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
 SEASON_GAMES = 82
 GAMES_PER_WEEK = 3.5  # 82 games over ~23.5 matchup weeks
@@ -48,8 +56,35 @@ def parse_positions(value: object) -> list[str]:
     return [p.strip() for p in str(value).replace(",", "|").replace("/", "|").split("|") if p.strip()]
 
 
+def default_projections_path() -> Path:
+    """In-season projections when they exist (unless FANTASY_PROJECTIONS=preseason), else the preseason file.
+
+    Warns when the in-season file was built from a different preseason file than the current one (re-run
+    `fantasy data update-projections`)."""
+    if os.environ.get("FANTASY_PROJECTIONS", "").lower() == "preseason" or not INSEASON_PROJECTIONS.exists():
+        return DEFAULT_PROJECTIONS
+    meta = INSEASON_PROJECTIONS.with_name(INSEASON_PROJECTIONS.stem + ".meta.json")
+    try:
+        m = json.loads(meta.read_text())
+    except (OSError, ValueError):
+        m = {}
+    built_from = m.get("prior_sha256")
+    try:
+        age = (date.today() - date.fromisoformat(str(m.get("as_of")))).days
+    except ValueError:
+        age = None
+    if age is not None and age > INSEASON_MAX_AGE_DAYS:
+        warnings.warn(f"{INSEASON_PROJECTIONS.name} is {age} days old (as of {m.get('as_of')}): "
+                      "run `fantasy data update-projections --fetch`", stacklevel=2)
+    if built_from and DEFAULT_PROJECTIONS.exists() and built_from != hashlib.sha256(
+            DEFAULT_PROJECTIONS.read_bytes()).hexdigest():
+        warnings.warn(f"{INSEASON_PROJECTIONS.name} was built from an older {DEFAULT_PROJECTIONS.name}: "
+                      "re-run `fantasy data update-projections`", stacklevel=2)
+    return INSEASON_PROJECTIONS
+
+
 def load_projections(path: Path | str | None = None) -> ProjectionSet:
-    p = Path(path) if path else DEFAULT_PROJECTIONS
+    p = Path(path) if path else default_projections_path()
     raw = p.read_bytes()
     df = pd.read_csv(p)
     missing = {"player_id", "name", *STATS, "gp"} - set(df.columns)

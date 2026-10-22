@@ -73,6 +73,17 @@ def _proj_sets(ctx, st, lg, sched, market: Path | None, stress: Path | None, no_
     alt = REPO_ROOT / "var" / "projections_alt"
     for name, path, recipe in (("market", market or alt / "market.csv", "--blend market"),
                                ("stress", stress or alt / "espn-only-gp.csv", "--blend espn-only --blend-gp espn=1")):
+        if name == "market" and market is None and (alt / "market.inseason.csv").exists() \
+                and str(ctx.proj.path).endswith(".inseason.csv"):
+            path = alt / "market.inseason.csv"  # in-season blend -> in-season market set (update-projections)
+            import hashlib
+            import json
+
+            meta = json.loads((alt / "market.inseason.meta.json").read_text()) if (
+                alt / "market.inseason.meta.json").exists() else {}
+            if meta.get("prior_sha256") != hashlib.sha256((alt / "market.csv").read_bytes()).hexdigest():
+                warnings.append("market.inseason.csv was built from another market.csv: re-run "
+                                "`fantasy data update-projections`")
         if Path(path).exists():
             pr = load_projections(Path(path))
             out[name] = build_context(pr, st, lg.team_ids, schedule_file=sched, nba=ctx.nba)

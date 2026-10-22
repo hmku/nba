@@ -1,6 +1,6 @@
 # Project status
 
-_Last updated: 2026-10-21 ET (gp-ols-0.2 games model; main local session: in-season operations live). Update this file when state or priorities change._
+_Last updated: 2026-10-21 ET (in-season projections ros-proj-0.3.0; gp-ols-0.2 games model; main local session: in-season operations live). Update this file when state or priorities change._
 
 ## Where we are
 **Phase 2 (in-season) — live.** Draft done 2026-10-19 (13/13 verified on Yahoo; `docs/handoffs/2026-10-20-draft.md`). A local
@@ -10,6 +10,7 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
 | Area | State |
 |---|---|
 | Projections | 456 players, 3-season weighted per-minute rates + age + fitted games model `gp-ols-0.2` (`docs/research/availability_model.md` §0) + manual offseason/injury overrides + rookie priors. **Default = 50/50 ours/ESPN per-game blend, GP ours** (`projections-2026-27-0.3.1`, `baseline-0.2.2+blend-0.2.0`, config `data/manual/projection_blend.json`; unblended model in `projections_2026_27.base.csv`, `--blend none` to revert). Yahoo ADP for 293 players and Yahoo positions for the top 250 via Yahoo's public API (`fantasy data fetch-yahoo --apply`); injuries from ESPN API + CBS (`fantasy data fetch-injuries`). Backtest: `docs/research/projection_quality.md`; `docs/handoffs/2026-10-19-blend-adoption.md`, `2026-10-18-data-refresh-v2.md`. |
+| In-season projections | `ros-proj-0.3.0` (`src/fantasy/model/inseason.py`): rest-of-season availability (`ros-avail-0.3`: per-k WLS on prior share, observed share, current missed streak, dressed-DNP share; OOS 2025-26 RMSE of remaining games −1.0 to −1.9 vs the static prior, −0.4 to −3.0 vs iid Beta-binomial) + per-game shrinkage (`stat-shrink-0.1`: n0 per stat; OOS 9-cat z error −14% vs prior). `gp` there = 82 × expected share of remaining games. Before a team's first game = preseason. Box scores: `fantasy data fetch-boxscores` (ESPN, `data/raw/espn_boxscores/`). |
 | Valuation | `valuation-0.3.0`: G-scores (H2H-aware) with makes/attempts for FG%/FT%, availability blended with streaming replacement, replacement-level adjusted; game noise from the one fitted model `noise-var-1.0` (`src/fantasy/model/noise.py`). |
 | Draft policy (default) | **`fantasy draft recommend` with no flags = value search + simulated availability, room `mixed`** (`recommend-0.2.0`, `optimizer-0.4.0`, value model `value-model-0.2.0`; user-approved 2026-10-19). Optimizer: rollouts over the final roster's expected category wins vs a league-average opponent; availability from 300 simulated rooms (3 sharp + 8 noisy-ADP drafters) from the current board; 3RR/custom order; positional feasibility; punt-strategy scan. The value search re-ranks the optimizer's top 6 by simulated season outcome. Evidence: +1.9 pp P(playoffs), +1.4 pp P(title) vs the old default in the mixed room (z 8.7 / 4.7, 200 paired simulated drafts, slot 1; fitted, `docs/research/draft_policy.md`); value model 0.2.0 vs 0.1.0: +0.5 pp P(playoffs) (z 2.8), +1.2 pp P(title) (z 3.8) (`docs/research/value_search.md`). Rule: **take `recommendations[0]`** (no score tie-break). Guard: every recommend must show `value_search_status: ok` and `value_model_version: value-model-0.2.0` (`FANTASY_VALUE_MODEL` unset). `draft watch` uses the same policy (shared `Recommender`); ≈2–3 s wall per `recommend --json`. Old behaviour: `--search advise --availability adp`. |
 | Draft ops | `draft init/board/pick/undo/recommend/watch/simulate/queue/set-order/prepare-pick/confirm-pick`; txn ledger + locks + policy enforced for picks. `pick --allow-unknown` / explicit `--overwrite` (`--force` alone no longer overwrites); `board` reports `gaps` and `behind`; `prepare-pick` refuses while earlier picks are unrecorded (`behind`, own submitted picks in `behind_mine`) and warns when the latest recommendation is for an older board; `set-order` refuses to re-own recorded picks without `--force` (`reassigned_picks`); `undo` of an empty pick exits 6; `watch` reloads the order. Handoffs: `2026-10-19-draft-review-fixes.md`, `2026-10-19-review2-fixes.md`. |
@@ -33,7 +34,10 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
    user's yes, ideas, threaded agent feed; `/inbox`), Draft, More. Live score: `fantasy league score` from
    `scripts/yahoo/capture_matchup.js`; lineup-0.3.0 uses banked totals. Daily task 07:10 ET. Advisor channel built
    (user sets ADVISOR_API_TOKEN). Privacy migration applied (anon can't read chat/snapshots).
-4. Decide: in-season projection updates (proposed session, backtest first).
+4. **In-season projections live (2026-10-21, `ros-proj-0.3.0`):** `fantasy data update-projections --fetch` (daily-routine
+   step 1.6) -> `projections_2026_27.inseason.csv`, the default for every tool (`FANTASY_PROJECTIONS=preseason` reverts).
+   Availability + per-game stats updated from ESPN box scores, fitted and backtested on 2025-26 (`docs/research/inseason_updates.md`).
+   Follow-ups: T-018 (sim from today with banked results), T-020 (early-drop bias).
 5. Streaming (T-006) + trade scan (T-008) done and quant-reviewed (inseason-0.3.0); T-016: draft-room part done (first sample), in-season tag priors / rest_share open.
 6. Advisor channel (`/advisor`, ADVISOR_API_TOKEN, read-only GPT dot): built; user sets the token (USER_TODO) and pastes the setup prompt.
 7. Tech debt: `docs/research/tech_debt.md`; session-start hook now loads `.venv` + `.env`.

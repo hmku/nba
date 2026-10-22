@@ -45,6 +45,11 @@ Never edit raw files by hand. Raw data is (c) Sports Reference: personal use, do
 Rules: always fill `source` (URL/outlet + date, and "via WebSearch" when it was a snippet); prefer
 the smallest override that captures the news (e.g. `games_missed` rather than a hand-set `gp`); one
 row per player (update in place). Percentages are never inputs - edit makes/attempts.
+**In season (since 2026-10-21):** the preseason file is the PRIOR of `fantasy data update-projections`
+(`fantasy.model.inseason`), which reads `games_missed` as "expected out for the first n team games of the season" and
+ignores those games when updating. So never add an in-season injury as `games_missed` (it would be placed at the season
+start and double count the absence the box scores already show): current injuries come in through `status` (daily
+`fetch-injuries`) and the in-season update. After any `build-projections` re-run `update-projections`.
 
 ## 3. Rebuild (deterministic, no network)
 ```bash
