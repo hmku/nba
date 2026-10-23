@@ -131,7 +131,9 @@ def test_scan_streams_week_and_rule(ctx, proj_path):
         d = {"delta": 0.03 if up else 0.0, "delta_se": 0.005}
         return {"p_playoffs": d, "p_title": d, "exp_cat_wins": d}
 
-    params = StreamParams(week_sims=300, season_top=4, waiver_lag=0)
+    # season_top 6: with lineup-0.4.1 (best visited plan on a non-converging fixed point) the 3 good pairs tie on week
+    # gain, so top-2-by-week + top-2-by-proxy (season_top=4) could drop one of them
+    params = StreamParams(week_sims=300, season_top=6, waiver_lag=0)
     assert fas[1].available_from(d0, 1) == days[6]  # default lag: plays the day after the claim processes
     rep = scan_streams(df, st, nba, me, opp, fas, days, generic, vals["value"], params, season_eval=stub)
     assert rep["n_pairs_scanned"] == 2 * 3  # 2 eligible free agents x 3 default drops
