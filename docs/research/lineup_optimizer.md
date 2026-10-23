@@ -1,4 +1,4 @@
-# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.4.0, task T-005)
+# Daily lineup optimizer (`fantasy lineup plan`, lineup-0.4.1, task T-005)
 
 Code: `src/fantasy/lineup/` (`players.py` statuses / P(plays), `optimize.py` exact assignment, `value.py` weekly
 category model + Monte Carlo, `plan.py` planner + baselines, `cli.py`). Tests: `tests/test_lineup.py`. Validation
@@ -16,7 +16,9 @@ Rows = my 13 players. Columns = PG, SG, G, SF, PF, F, C, C, Util, Util, 3 x BN, 
 that day for an eligible starting slot (`SLOT_ELIGIBILITY`), 0 for BN, 0 for IL if the player is IL-eligible
 (Yahoo O / out for season), forbidden otherwise. O/INJ/NA/SUSP players are never startable. Solved exactly with
 `scipy.optimize.linear_sum_assignment` (tested against brute force). Tie-breaks: +1e-7 for keeping a player's
-current slot (no needless moves for the browser executor), +1e-8 for an IL-eligible player in IL. A player with a
+current slot (KEEP_BONUS; no needless moves for the browser executor), +2e-7 for an IL-eligible player in IL
+(IL_BONUS > KEEP_BONUS, so an O player on the bench moves to a free IL slot). For the **opponent** a player already
+in IL is also IL-eligible even without a tag (lineup-0.4.1, section 10). A player with a
 game is worth at least `GAME_FLOOR` = 1e-5 more than a player without one, so a player with a game is never
 benched for one without (unless `--protect-ratios`, which allows benching a player whose matchup value is negative,
 e.g. to protect FG%).
@@ -118,6 +120,7 @@ streaming adds create a crunch and mid-week banked totals (section 8) make some 
 * **IL tie-break.** IL_BONUS (2e-7) > KEEP_BONUS (1e-7), so an O player on the bench is moved to a free IL slot.
 * **Infeasible roster.** When there are more non-IL-eligible players than starting + bench slots (e.g. a player
   back from IL), the CLI exits 2 with `code: "infeasible_roster"` and `action: "drop ... or keep ... in IL"`.
+  Since lineup-0.4.1 the JSON names the side (`side: "mine" | "opponent"`, `roster` of that side).
 * **Warnings.** A mid-week plan without banked totals (section 8) warns that banked stats are taken as 0. Positions or NBA
   team filled from projections for a Yahoo row that lacks them (tagged rows) are also warned.
 * **Availability is explicit.** `expected.availability_assumption` states the P(plays) model. `--rest-share`
@@ -217,7 +220,29 @@ Caveats: (1) the bench candidates come from the first-order gradient, which igno
 benching removes) — a close FT% is protected both by a better mean and by less variance; the MC comparison does
 include both, so the gradient can only miss candidates, not overstate a suggested gain. (2) Benching can lock a ratio
 category (no remaining attempts → σ ≈ 0 → weight ≈ 0), so the protect fixed point can cycle (bench → weight 0 →
-start → …); the check then keeps the visited plan with the highest analytic E[cats] (`ratio_bench.fixed_point`). The
-plain `--protect-ratios` plan does not (unchanged behaviour). (3) The opponent's lineup is held fixed (as everywhere
+start → …); the fixed point then keeps the visited plan with the highest analytic E[cats] (`fixed_point.picked`).
+Since lineup-0.4.1 this holds for every plan, including a plain `--protect-ratios` re-plan (in 0.4.0 only the check
+did it, so the re-plan returned the cycle's last plan and, with the default 6 iterations, started the player the check
+said to sit). (3) The opponent's lineup is held fixed (as everywhere
 in this model). (4) It is a suggestion only: acting on it needs the user's explicit OK, then a re-plan with
 `--protect-ratios`.
+
+## 10. Review fixes (lineup-0.4.1)
+Synthetic repros (`tests/synthetic.py` projections); evidence: **simulated / synthetic**.
+* **Non-converged fixed point → best visited plan, for every caller.** `optimize_week` returns the visited plan with
+  the highest analytic E[cats] and records `fixed_point.picked` (`converged` | `best visited plan by analytic
+  E[cats]`). Late-week FT case with `--protect-ratios`: before, iterations 5/7 benched the shooter (E[cats] 9.000)
+  and 6 (the default) started him (8.352); now all three bench him (9.000). Converged plans are unchanged (16
+  scenarios, identical output before the PTS change below). Test: `test_protect_ratios_plan_benches_the_suggested_player_for_any_iteration_count`.
+* **Opponent untagged player in IL.** The opponent's lineup is solved with `il_sticky=True` (a player in IL may stay
+  there; warning). Before, a 14-man opponent with a cleared tag in IL raised `infeasible_roster`, reported as *my*
+  roster, and aborted the plan. My roster keeps the strict rule (the user must act). The CLI names the side.
+* **PTS variance consistent with the Monte Carlo** (`value.pts_var_terms`): the MC builds PTS from FGA/FGM/FTA/FTM/3PM
+  (stat factors, % shifts, correlated game noise); the analytic model used the fitted PTS game variance and only the
+  volume factor. Synthetic 13-man week, sd: analytic 68.9 → 75.6 vs MC 76.6 (variance −19% → −3%). All categories
+  now agree within 6% in sd and 3% in mean (`test_analytic_moments_match_monte_carlo`, 40k sims). Decisions in the
+  16 scenarios: same started sets (some equivalent slot permutations); E[cats] moved ≤ 0.02.
+* **`il_moves` cap** counts an IL slot as used only if its occupant stays in IL (a healthy player moved out frees it).
+* **Locked starters play** (`LineupParams.locked_p_play` = 1.0, a modelling choice): a `--locked` player in a starting
+  slot with a game today and no out tag gets P(plays today) = 1 instead of the tag prior (Q 0.5). Inactive lists are
+  out before tip-off; if he was ruled out, re-sync so his tag is O (P = 0). `None` keeps the tag prior.

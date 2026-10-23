@@ -173,9 +173,14 @@ def plan(
         out = build_plan(me, opp, proj.df, nba, days, settings, generic, acc.get("me"), acc.get("opp"), params)
     except ValueError as e:
         if str(e).startswith("infeasible_roster"):
-            _fail(str(e), as_json, code="infeasible_roster", exit_code=EXIT_USAGE,
-                  action="drop a player or keep an injured player in IL (more players than starting + bench slots)",
-                  roster=[{"player_id": p.player_id, "slot": p.slot, "status": p.status} for p in me])
+            theirs = str(e).startswith("infeasible_roster[opponent]")
+            action = ("the OPPONENT's roster as captured has no legal lineup (more players than slots): re-sync the "
+                      "league (fantasy league sync) or pass a corrected roster; my lineup is not the problem"
+                      if theirs else
+                      "drop a player or keep an injured player in IL (more players than starting + bench slots)")
+            _fail(str(e), as_json, code="infeasible_roster", exit_code=EXIT_USAGE, side="opponent" if theirs else "mine",
+                  action=action,
+                  roster=[{"player_id": p.player_id, "slot": p.slot, "status": p.status} for p in (opp if theirs else me)])
         _fail(str(e), as_json)
     names = _team_names(league)
     out = {"model_version": LINEUP_MODEL_VERSION, "week": fw.week, "week_start": fw.start.isoformat(),

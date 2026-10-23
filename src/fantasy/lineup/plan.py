@@ -49,7 +49,12 @@ from fantasy.sim.schedule import NBASchedule
 # 0.3.0: banked matchup totals (matchup_score) + per-category P(win)
 # 0.4.0: ratio_bench -- the protect-ratios plan is solved alongside the default one and compared by paired Monte
 #        Carlo (suggestion only; the executed plan / target_slots are unchanged)
-LINEUP_MODEL_VERSION = "lineup-0.4.0"
+# 0.4.1: review fixes -- a non-converged fixed point returns the best visited plan by analytic E[cats] for every
+#        caller (was: the last one, so a cycling --protect-ratios plan depended on the parity of `iterations`);
+#        opponent players sitting in IL stay there (an untagged one made MY plan fail as infeasible); analytic PTS
+#        variance built from FGA/FGM/FTA/FTM/3PM like the Monte Carlo (was ~10% low); il_moves no longer counts an
+#        IL slot being vacated as used; locked starters with a game today get P(plays) = 1 (locked_p_play)
+LINEUP_MODEL_VERSION = "lineup-0.4.1"
 # PRIOR (not calibrated): smallest gain in expected categories won worth bothering the user with. Needed because with
 # common random numbers the paired SE is tiny, so a meaningless +0.0003 can clear 2 SE.
 RATIO_BENCH_MIN_EFFECT = 0.05
@@ -70,11 +75,16 @@ class LineupParams:
     # 1.0 = plain season-average availability gp/82 (what `fantasy sim` uses for a random week).
     rest_share: float = REST_SHARE
     locked: tuple[str, ...] = ()  # player ids whose game has started today: pinned to their current slot
+    # P(plays today) for a LOCKED player in a starting slot with a game today and no out tag (lineup-0.4.1). 1.0:
+    # his game has started and NBA inactive lists are out before tip-off, so a tag's uncertainty (Q 0.5 ...) has
+    # resolved; if he was ruled out, re-sync (his tag becomes O -> 0) or pass his status. None = keep the tag prior.
+    locked_p_play: float | None = 1.0
 
     def to_dict(self) -> dict:
         return {"iterations": self.iterations, "n_sims": self.n_sims, "seed": self.seed,
                 "protect_ratios": self.protect_ratios, "tag_priors": self.tag_priors,
                 "rest_share": self.rest_share, "rest_share_label": "prior", "locked": list(self.locked),
+                "locked_p_play": self.locked_p_play,
                 "game_floor": GAME_FLOOR, "objective": "expected_categories_won"}
 
     def availability_assumption(self) -> str:
@@ -121,13 +131,17 @@ def team_week(players: list[RosterPlayer], proj: pd.DataFrame, P: np.ndarray, ac
 def daily_plan(
     players: list[RosterPlayer], values: np.ndarray, P: np.ndarray, slots: DaySlots, protect_ratios: bool = False,
     locked: tuple[str, ...] | frozenset[str] = (),
+    il_sticky: bool = False,
 ) -> tuple[np.ndarray, list[list[str]]]:
     """Solve each day; values (n, D) = expected value if started. Returns (X started (n, D), labels per day).
 
     Unless `protect_ratios`, values of players with a game are shifted monotonically, v - min(v over players with a
     game) + GAME_FLOOR, so they are all positive (a player with a game always beats one without) while their order
     is kept. Shifting all weights of a transversal matroid by a constant does not change which feasible set of
-    starters is best among the maximum ones. `locked` players are pinned to their current slot on day 0."""
+    starters is best among the maximum ones. `locked` players are pinned to their current slot on day 0.
+    `il_sticky` (used for the OPPONENT, whose roster we only model): a player currently in IL may stay there even
+    without an IL tag (he is where he is; Yahoo only blocks that team's own moves). For my roster an untagged player
+    in IL is a real problem the user must fix, so it stays infeasible there."""
     for pid in locked:
         p = next((q for q in players if q.player_id == pid), None)
         if p is None or p.slot is None:
@@ -139,7 +153,7 @@ def daily_plan(
     current: Sequence[str | None] = [p.slot for p in players]
     pos = [p.positions for p in players]
     startable = [not p.is_out for p in players]
-    il_ok = [p.il_eligible for p in players]
+    il_ok = [p.il_eligible or (il_sticky and p.slot == "IL") for p in players]
     for d in range(D):
         has = P[:, d] > 0
         v = values[:, d]
@@ -192,18 +206,21 @@ class WeekResult:
     final_state: CatState  # moments of the final plan
     iterations: int
     converged: bool
+    picked: str = "converged"  # how the returned plan was chosen (see optimize_week)
 
 
 def optimize_week(
     me: TeamSide, opp_X: np.ndarray, opp: TeamSide, cats: list[Category], slots: DaySlots,
-    generic: dict[str, float], params: LineupParams, best_on_cycle: bool = False,
+    generic: dict[str, float], params: LineupParams,
 ) -> tuple[WeekResult, np.ndarray, list[list[str]]]:
     """Fixed-point matchup-aware plan. Returns (result, baseline X, baseline labels).
 
-    `best_on_cycle` (used by the ratio-bench check only, so the executed plan is unchanged): if the iteration does
-    not converge, return the visited plan with the highest analytic expected categories instead of the last one.
-    Typical cycle: benching a player locks a ratio category (sd ~ 0 -> weight ~ 0), so at the next step his value
-    is ~0 and he starts again."""
+    If the iteration does not converge within `params.iterations`, the visited plan with the highest analytic
+    expected categories is returned (`WeekResult.picked`), never simply the last one: the last element of a cycle
+    depends on the parity of `iterations` (lineup-0.4.1; 0.4.0 did this for the ratio-bench check only, so a plain
+    `--protect-ratios` plan could start the player the check said to sit). Typical cycle: benching a player locks a
+    ratio category (sd ~ 0 -> weight ~ 0), so at the next step his value is ~0 and he starts again. A converged plan
+    is unaffected (the loop stops at the fixed point)."""
     gv = generic_values(me.players, generic)
     X0, lab0 = daily_plan(me.players, gv[:, None] * me.P, me.P, slots, locked=params.locked)
     X, labels = X0, lab0
@@ -221,11 +238,13 @@ def optimize_week(
             X = X_new
             break
         X = X_new
-    if best_on_cycle and not converged and visited:
+    picked = "converged"
+    if not converged and visited:
         score = [cat_state(me.tw, v[0], opp.tw, opp_X, cats).expected_cats for v in visited]
         X, labels, values, pg, contrib, state = visited[int(np.argmax(score))]
+        picked = "best visited plan by analytic E[cats]"
     final = cat_state(me.tw, X, opp.tw, opp_X, cats)
-    return WeekResult(X, labels, values, pg, contrib, state, final, it, converged), X0, lab0
+    return WeekResult(X, labels, values, pg, contrib, state, final, it, converged, picked), X0, lab0
 
 
 def static_plan(me: TeamSide, slots: DaySlots) -> np.ndarray:
@@ -285,12 +304,10 @@ def ratio_bench(
     lower them, e.g. FT%), `cats_hurt` = what benching gives up (counting stats). `starts` = the reverse (rare)."""
     if params.protect_ratios:
         return {"checked": False, "reason": "the plan itself already uses protect_ratios"}
-    alt, _, _ = optimize_week(me, opp_X, opp, cats, slots, generic, replace(params, protect_ratios=True),
-                              best_on_cycle=True)
+    alt, _, _ = optimize_week(me, opp_X, opp, cats, slots, generic, replace(params, protect_ratios=True))
     base = {"checked": True, "rule": RATIO_BENCH_RULE, "delta_expected_cats": 0.0, "delta_expected_cats_se": None,
             "delta_p_win": 0.0, "delta_p_win_se": None, "benches": [], "starts": [],
-            "fixed_point": {"iterations": alt.iterations, "converged": alt.converged,
-                            **({} if alt.converged else {"picked": "best visited plan by analytic E[cats]"})}}
+            "fixed_point": fixed_point_info(alt)}
     if np.array_equal(alt.X, res.X):
         return {**base, "differs": False, "suggest": False, "method": "plans identical: Monte Carlo skipped"}
     keys = [c.key for c in cats]
@@ -324,6 +341,10 @@ def ratio_bench(
             "delta_expected_cats": dc, "delta_expected_cats_se": dc_se,
             "delta_p_win": -diff["p_win_matchup"], "delta_p_win_se": diff["p_win_matchup_se"],
             "suggest": suggest_rule(dc, dc_se, len(benches))}
+
+
+def fixed_point_info(res: WeekResult) -> dict:
+    return {"iterations": res.iterations, "converged": res.converged, "picked": res.picked}
 
 
 def suggest_rule(delta: float, se: float | None, n_benches: int) -> bool:
@@ -422,8 +443,9 @@ def tagged_players(me: TeamSide, days: list[date]) -> list[dict]:
 
 
 def il_moves(me: TeamSide, labels: list[str], slots: DaySlots) -> list[dict]:
-    """Players today's plan puts in IL who are not there yet, capped by the free IL slots."""
-    used_il = sum(1 for p in me.players if p.slot == "IL")
+    """Players today's plan puts in IL who are not there yet, capped by the free IL slots. An IL slot counts as used
+    only if its current occupant stays in IL (one the plan moves out frees his slot)."""
+    used_il = sum(1 for p, lab in zip(me.players, labels, strict=True) if p.slot == "IL" and lab == "IL")
     moves = [{"player_id": p.player_id, "name": p.name, "status": p.status, "from": p.slot, "to": "IL"}
              for p, lab in zip(me.players, labels, strict=True) if lab == "IL" and p.slot != "IL"]
     return moves[: max(slots.n_il - used_il, 0)]
@@ -445,6 +467,16 @@ def changes_vs_current(players: list[RosterPlayer], labels: list[str]) -> list[d
             for p, lab in zip(players, labels, strict=True) if p.slot != lab]
 
 
+def _side_error(e: ValueError, side: str) -> str:
+    """'infeasible_roster: ...' -> 'infeasible_roster[<side>]: <side> roster: ...' so the CLI can say whose roster."""
+    msg = str(e)
+    head = "infeasible_roster"
+    if not msg.startswith(head):
+        return msg
+    who = "my roster" if side == "mine" else "opponent's roster"
+    return f"{head}[{side}]: {who}: {msg[len(head):].lstrip(': ')}"
+
+
 def build_plan(
     me_players: list[RosterPlayer], opp_players: list[RosterPlayer], proj: pd.DataFrame, nba: NBASchedule,
     days: list[date], settings: LeagueSettings, generic: dict[str, float], acc_me: dict | None = None,
@@ -457,16 +489,30 @@ def build_plan(
     slots = DaySlots(tuple(settings.starting_slots), rs.get("BN", 0), rs.get("IL", 0) + rs.get("IL+", 0))
     warnings: list[str] = []
 
-    def side(players: list[RosterPlayer], acc: dict | None) -> TeamSide:
+    def side(players: list[RosterPlayer], acc: dict | None, locked: tuple[str, ...] = ()) -> TeamSide:
         G, w = games_matrix(players, days, nba)
         warnings.extend(w)
         P = p_matrix(players, G, params.rest_share)
+        if params.locked_p_play is not None and G.shape[1]:
+            start = set(slots.starting)
+            for i, p in enumerate(players):
+                if p.player_id in locked and G[i, 0] and p.slot in start and not p.is_out:
+                    P[i, 0] = params.locked_p_play
         return TeamSide(players, G, P, team_week(players, proj, P, acc))
 
-    me, opp = side(me_players, acc_me), side(opp_players, acc_opp)
+    me, opp = side(me_players, acc_me, params.locked), side(opp_players, acc_opp)
     ogv = generic_values(opp.players, generic)
-    opp_X, _ = daily_plan(opp.players, ogv[:, None] * opp.P, opp.P, slots)
-    res, X_naive, _ = optimize_week(me, opp_X, opp, cats, slots, generic, params)
+    stuck = [p.name for p in opp.players if p.slot == "IL" and not p.il_eligible]
+    if stuck:
+        warnings.append(f"opponent has untagged player(s) in IL ({', '.join(stuck)}): modelled as staying in IL")
+    try:
+        opp_X, _ = daily_plan(opp.players, ogv[:, None] * opp.P, opp.P, slots, il_sticky=True)
+    except ValueError as e:
+        raise ValueError(_side_error(e, "opponent")) from e
+    try:
+        res, X_naive, _ = optimize_week(me, opp_X, opp, cats, slots, generic, params)
+    except ValueError as e:
+        raise ValueError(_side_error(e, "mine")) from e
     X_static = static_plan(me, slots)
     naive_state = cat_state(me.tw, X_naive, opp.tw, opp_X, cats)
     static_state = cat_state(me.tw, X_static, opp.tw, opp_X, cats)
@@ -504,7 +550,7 @@ def build_plan(
             "static_current_lineup": summarize_state(static_state),
             **cat_win_probs(res.final_state, mc)},
         "monte_carlo": mc,
-        "fixed_point": {"iterations": res.iterations, "converged": res.converged},
+        "fixed_point": fixed_point_info(res),
         "week_plan": [day_summary(me.players, res.labels[d], me.P[:, d], res.values[:, d], slots, day,
                                   first_game=(me.G[:, :d].sum(axis=1) == 0))
                       for d, day in enumerate(days)],

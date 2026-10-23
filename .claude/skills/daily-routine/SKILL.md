@@ -91,8 +91,11 @@ is interested in X; details private"). A thread message
   pass `--locked <ids of players whose games started>`. The plan uses the newest saved matchup score of the week as banked totals
   automatically (lineup-0.3.0): check `accumulated_source.kind == "matchup_score"` and that its `observed_at` is this
   morning; a MID-WEEK or BANKED STATS warning means re-capture (1b). `expected.cat_win_prob` = chance to win each
-  category by Sunday (simulated; availability priors). Exit 2 `infeasible_roster` = too
-  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. Read `target_slots` (the full
+  category by Sunday (simulated; availability priors). Exit 2 `infeasible_roster`: check `side`. `side: "mine"` = too
+  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. `side: "opponent"` = the
+  opponent's captured roster is impossible (re-sync; not our problem to fix). An opponent's untagged player in IL is
+  modelled as staying there (warning only, lineup-0.4.1). `--locked` starters with a game today are taken to play
+  (P = 1, `params.locked_p_play`); if one was ruled out at tip-off, re-sync so his tag is O. Read `target_slots` (the full
   final state to reach), `changes_vs_current`, `il_moves`, `decide_at_tipoff` (with `swap_with`), `warnings`, and
   `expected` (state P(win) together with its `availability_assumption`; rest_share 0.25 is a prior).
   Quote P(win week) only from TODAY's plan built on this morning's matchup read (`expected.covers_week: true`). A plan
@@ -104,7 +107,9 @@ is interested in X; details private"). A thread message
   `benches` lists player-days with `cats_helped`/`cats_hurt`, `starts` the bench players who start instead). **`ratio_bench` is a suggestion only — never apply it on Yahoo**; the
   executor sets `target_slots` (the default plan) as always. Mention it in the daily log and, if `suggest` is true,
   tell the user (one line, with the ± SE); it needs the user's explicit OK like any non-default lineup choice — then
-  re-plan with `--protect-ratios` and execute that plan's `target_slots` in the live run.
+  re-plan with `--protect-ratios` and execute that plan's `target_slots` in the live run. Before executing, check that
+  re-plan's `target_slots` benches the suggested player(s) (since lineup-0.4.1 a cycling fixed point returns the best
+  visited plan, `fixed_point.picked`; 0.4.0 could return the cycle's other plan and start him).
 - Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once

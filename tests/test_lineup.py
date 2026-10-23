@@ -238,7 +238,7 @@ def test_cli_plan_json_smoke(tmp_path, proj_path):
     assert r.exit_code == 0, r.output
     out = json.loads(r.output)
     assert out["week"] == 1 and out["opponent"]["team_id"] == 2 and len(out["week_plan"]) == 5
-    assert out["model_version"] == "lineup-0.4.0"
+    assert out["model_version"] == "lineup-0.4.1"
     assert {"lineup", "bench", "il_moves", "changes_vs_current", "decide_at_tipoff", "category_weights",
             "expected", "inputs", "params"} <= set(out)
     assert out["inputs"]["accumulated"]["sha256"]
@@ -295,13 +295,14 @@ def test_load_team_null_draft_slot_and_league_lineup_status_maps(tmp_path, proj_
 
 
 # ---------------------------------------------------------------- review fixes (lineup-0.2.0)
-def _cli_world(tmp_path, proj_path, captured_at="2026-10-21T13:05:00Z", n_me=13, statuses=None, slots=None):
+def _cli_world(tmp_path, proj_path, captured_at="2026-10-21T13:05:00Z", n_me=13, statuses=None, slots=None,
+               n_opp=13):
     proj = load_projections(proj_path)
     ids = list(proj.df.index)
     games = tmp_path / "games.csv"
     rows = ["date,visitor,home"] + [f"{(D0 + timedelta(days=k)).isoformat()},BOS,DET" for k in range(6)]
     games.write_text("\n".join(rows) + "\n")
-    mine, theirs = ids[0:2 * n_me:2], ids[1:26:2]
+    mine, theirs = ids[0:2 * n_me:2], ids[1:2 * n_opp:2]
     lf = tmp_path / "league.json"
     lf.write_text(json.dumps({"my_team": 1, "teams": {"1": {"name": "Me", "players": mine},
                                                       "2": {"name": "Them", "players": theirs}}}))
@@ -368,6 +369,55 @@ def test_cli_infeasible_roster_returns_json(tmp_path, proj_path):
     base, _ = _cli_world(tmp_path, proj_path, n_me=14)
     code, out = _run(base + ["--date", "2026-10-21"])
     assert code == 2 and out["code"] == "infeasible_roster" and "drop" in out["action"]
+    assert out["side"] == "mine" and "my roster" in out["error"]
+
+
+def test_cli_opponent_untagged_player_in_il_does_not_break_my_plan(tmp_path, proj_path):
+    """lineup-0.4.1: the opponent's 14th player sits in IL with no tag (cleared). He stays there (warning); before,
+    the opponent's solve raised infeasible_roster and the CLI reported MY roster as infeasible."""
+    base, _ = _cli_world(tmp_path, proj_path, n_opp=14)  # 14th capture row gets slot IL, status None
+    code, out = _run(base + ["--date", "2026-10-21"])
+    assert code == 0, out
+    assert any("opponent has untagged player(s) in IL" in w for w in out["warnings"])
+    # a genuinely impossible opponent roster (17 players, 16 slots) is reported as the OPPONENT's
+    base, _ = _cli_world(tmp_path, proj_path, n_opp=17)
+    code, out = _run(base + ["--date", "2026-10-21"])
+    assert code == 2 and out["code"] == "infeasible_roster" and out["side"] == "opponent"
+    assert "opponent" in out["error"] and "OPPONENT" in out["action"] and len(out["roster"]) == 17
+
+
+def test_my_untagged_player_in_il_is_still_infeasible():
+    """For MY roster an untagged player in IL is a problem the user must fix (Yahoo blocks moves): no sticky IL."""
+    from fantasy.lineup.plan import daily_plan
+
+    slots = DaySlots(("C",), 1, 1)
+    ps = [RosterPlayer(x, x, ("C",), "AAA", None, s, 70.0) for x, s in (("a", "C"), ("b", "BN"), ("c", "IL"))]
+    with pytest.raises(ValueError, match="infeasible_roster"):
+        daily_plan(ps, np.ones((3, 1)), np.ones((3, 1)), slots)
+    _, labels = daily_plan(ps, np.ones((3, 1)), np.ones((3, 1)), slots, il_sticky=True)
+    assert labels[0][2] == "IL"
+
+
+def test_il_moves_count_a_vacated_il_slot_as_free():
+    """lineup-0.4.1: a now-healthy player moved OUT of IL frees his slot for an O player moving in."""
+    from fantasy.lineup.plan import TeamSide, il_moves
+
+    ps = [RosterPlayer("h", "H", ("C",), "AAA", None, "IL", 70.0), RosterPlayer("o", "O", ("C",), "AAA", "O", "BN")]
+    me = TeamSide(ps, np.zeros((2, 1), bool), np.zeros((2, 1)), tw=None)  # type: ignore[arg-type]
+    moves = il_moves(me, ["BN", "IL"], DaySlots(("C",), 1, 1))
+    assert [m["player_id"] for m in moves] == ["o"]
+
+
+def test_locked_starter_plays_with_probability_one(tmp_path, proj_path):
+    """lineup-0.4.1: a Q player locked in a starting slot (his game started) is no longer discounted to P = 0.5."""
+    base, mine = _cli_world(tmp_path, proj_path, statuses={0: "Q"})  # mine[0]: slot PG, plays every day
+    code, free = _run(base + ["--date", "2026-10-21"])
+    row = next(r for r in free["players"] if r["player_id"] == mine[0])
+    assert code == 0 and row["p_play_today"] == 0.5
+    code, out = _run(base + ["--date", "2026-10-21", "--locked", mine[0]])
+    row = next(r for r in out["players"] if r["player_id"] == mine[0])
+    assert code == 0 and row["p_play_today"] == 1.0 and out["target_slots"][mine[0]]["slot"] == "PG"
+    assert out["params"]["locked_p_play"] == 1.0
 
 
 def test_cli_locked_player_stays_in_current_slot(tmp_path, proj_path):
@@ -597,3 +647,45 @@ def test_ratio_bench_identical_plans_skip_monte_carlo(world, monkeypatch):
     assert rb["differs"] is False and rb["suggest"] is False and "skipped" in rb["method"]
     assert rb["delta_expected_cats_se"] is None and rb["benches"] == []
     assert calls == [{"optimized", "naive_season_value", "static_current_lineup"}]
+
+
+@pytest.mark.parametrize("iterations", [5, 6, 7])
+def test_protect_ratios_plan_benches_the_suggested_player_for_any_iteration_count(world, iterations):
+    """lineup-0.4.1: the protect fixed point 2-cycles here (bench -> FT% locked -> weight 0 -> start). The plan must
+    be the best visited one, not the last one (whose parity depended on `iterations`: 6 started the shooter)."""
+    proj, settings, day, sched, mine, theirs, generic, acc_me, acc_opp, pid = _late_week_ft_case(world)
+    out = build_plan(mine, theirs, proj.df, sched, day, settings, generic, acc_me, acc_opp,
+                     params=LineupParams(n_sims=0, protect_ratios=True, iterations=iterations))
+    assert out["target_slots"][pid]["slot"] == "BN"
+    assert out["fixed_point"] == {"iterations": iterations, "converged": False,
+                                  "picked": "best visited plan by analytic E[cats]"}
+
+
+def test_converged_fixed_point_reports_picked(world):
+    out = _plan(world, n_sims=0)
+    assert out["fixed_point"]["converged"] is True and out["fixed_point"]["picked"] == "converged"
+
+
+def test_analytic_moments_match_monte_carlo(world):
+    """lineup-0.4.1: the analytic normal model's per-category mean / sd agree with the Monte Carlo it summarises
+    (PTS variance was ~10% low before its terms were derived from the MC's FGA/FGM/FTA/FTM/3PM build)."""
+    from fantasy.lineup.plan import daily_plan, games_matrix, generic_values, p_matrix, team_week
+    from fantasy.lineup.value import SI, draw, simulate_totals, team_moments
+
+    proj, settings, days, nba, me, _, generic = world
+    me = [RosterPlayer(p.player_id, p.name, p.positions, p.team, "Q" if k == 0 else None, None, p.gp)
+          for k, p in enumerate(me)]
+    G, _ = games_matrix(me, days, nba)
+    P = p_matrix(me, G)
+    acc = {"fgm": 100, "fga": 220, "ftm": 50, "fta": 70, "fg3m": 30, "pts": 300, "reb": 120, "ast": 70, "stl": 20,
+           "blk": 10, "tov": 40}
+    tw = team_week(me, proj.df, P, acc)
+    X, _ = daily_plan(me, generic_values(me, generic)[:, None] * P, P, DaySlots(tuple(settings.starting_slots), 3, 3))
+    tm = team_moments(tw, X, settings.cats)
+    tot = simulate_totals(tw, X, draw(tw, 40000, 0, "me"))
+    for j, c in enumerate(settings.cats):
+        mc = tot[:, SI[c.stat_col]] if c.kind == "count" else tot[:, SI[c.num_col]] / tot[:, SI[c.den_col]]
+        assert tm.mean[j] == pytest.approx(mc.mean(), rel=0.03), c.key
+        assert np.sqrt(tm.var[j]) == pytest.approx(mc.std(), rel=0.06), c.key
+        if c.key == "pts":
+            assert np.sqrt(tm.var[j]) == pytest.approx(mc.std(), rel=0.03)

@@ -10,6 +10,8 @@ G_i = sum_d X[i,d] * Bernoulli(P[i,d]) are his games. Normal approximation (mome
   var   = sum_i [ k_i var_game(S_is)                  per-game noise, fantasy.model.noise (FITTED)
                 + q_i S_is^2                          Bernoulli games-played noise
                 + (k_i S_is)^2 * (vol_i^2 + sd_s^2) ] season-level projection error (FITTED, sim.calibration)
+PTS (lineup-0.4.1): the game-noise and season-error terms are derived from the components the Monte Carlo builds PTS
+from (2 FGM + 3PM + FTM, rescaled), see pts_var_terms.
 FG% / FT%: delta method on M - p_team * A (makes minus team % times attempts), as in fantasy.model.catmodel, plus
 the same Bernoulli and projection-error terms (FG%/FT% shift sds from sim.calibration); var(pct) = var / A^2.
 
@@ -75,6 +77,38 @@ class TeamWeek:
         return self.P.shape[1]
 
 
+def pts_var_terms(tw: TeamWeek) -> tuple[np.ndarray, np.ndarray]:
+    """PTS variance pieces consistent with `simulate_totals`, which builds PTS = scale (2 FGM + 3PM + FTM) from the
+    components (lineup-0.4.1; 0.4.0 used the fitted PTS game variance and only the volume factor, ~10% low vs MC).
+
+    Returns per player (game-noise variance per game, season-error variance per game^2), linearised at the
+    projected line: game noise = scale^2 w' C w over cal.NOISE_ORDER with w = (fga: 2 p_fg sd_fga, fgm: 2 sd_bin_fg,
+    fta: p_ft sd_fta, ftm: sd_bin_ft, fg3m: sd_3pm) (C = cal.NOISE_CORR, sd_* = sqrt(fantasy.model.noise.game_var));
+    season error = PTS^2 vol^2 + scale^2 [(2 FGM sd_fga)^2 + (3PM sd_3pm)^2 + (FTM sd_fta)^2 + (2 FGA fg_sd)^2
+    + (FTA ft_sd)^2] (stat factors cal.STAT_SD, % shifts fg_sd / ft_sd)."""
+    S = tw.S
+    fga, fgm, fta, ftm, f3 = (S[:, SI[s]] for s in ("fga", "fgm", "fta", "ftm", "fg3m"))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        p_fg = np.clip(np.where(fga > 0, fgm / np.maximum(fga, _EPS), 0.0), 0.0, 1.0)
+        p_ft = np.clip(np.where(fta > 0, ftm / np.maximum(fta, _EPS), 0.0), 0.0, 1.0)
+        raw = 2 * fgm + f3 + ftm
+        scale = np.where(raw > 0, S[:, SI["pts"]] / np.maximum(raw, _EPS), 0.0)
+    zi = {s: j for j, s in enumerate(cal.NOISE_ORDER)}
+    W = np.zeros((S.shape[0], len(cal.NOISE_ORDER)))
+    W[:, zi["fga"]] = 2 * p_fg * np.sqrt(game_var("fga", fga))
+    W[:, zi["fgm"]] = 2 * np.sqrt(fga * p_fg * (1 - p_fg))
+    W[:, zi["fta"]] = p_ft * np.sqrt(game_var("fta", fta))
+    W[:, zi["ftm"]] = np.sqrt(fta * p_ft * (1 - p_ft))
+    W[:, zi["fg3m"]] = np.sqrt(game_var("fg3m", f3))
+    C = np.array(cal.NOISE_CORR)
+    g_var = scale**2 * np.einsum("ij,jk,ik->i", W, C, W)
+    sd = cal.STAT_SD
+    season = (S[:, SI["pts"]] ** 2 * tw.vol**2
+              + scale**2 * ((2 * fgm * sd["fga"]) ** 2 + (f3 * sd["fg3m"]) ** 2 + (ftm * sd["fta"]) ** 2
+                            + (2 * fga * tw.fg_sd) ** 2 + (fta * tw.ft_sd) ** 2))
+    return g_var, season
+
+
 @dataclass
 class TeamMoments:
     mean: np.ndarray  # (n_cats,) category value (pct for ratio cats)
@@ -94,8 +128,12 @@ def team_moments(tw: TeamWeek, X: np.ndarray, cats: list[Category]) -> TeamMomen
         if c.kind == "count":
             s = SI[c.stat_col]
             x = tw.S[:, s]
-            ln_sd2 = tw.vol ** 2 + _stat_sd(c.stat_col) ** 2
             mean.append(tw.acc[s] + (k * x).sum())
+            if c.stat_col == "pts":
+                g_var, season_var = pts_var_terms(tw)
+                var.append((k * g_var + q * x**2 + k**2 * season_var).sum())
+                continue
+            ln_sd2 = tw.vol ** 2 + _stat_sd(c.stat_col) ** 2
             var.append((k * V[:, s] + q * x**2 + (k * x) ** 2 * ln_sd2).sum())
         else:
             mi, ai = SI[c.num_col], SI[c.den_col]
