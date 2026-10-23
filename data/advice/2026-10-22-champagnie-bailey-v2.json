@@ -1,0 +1,102 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Champagnie (free agent), drop Bailey — rechecked on fixed models",
+  "status": "awaiting_yes",
+  "headline": "Add Julian Champagnie (SAS, SF/PF, free agent); drop Ace Bailey.",
+  "week": 1,
+  "verdict": "Only add/drop that helps under both projection sets after today's model fixes. Small but consistent gain.",
+  "requires_user_yes": true,
+  "metrics": [
+   {
+    "label": "ΔP(title), blend",
+    "value": 1.3,
+    "se": 0.3,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs), blend",
+    "value": 0.79,
+    "se": 0.29,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(title), market",
+    "value": 1.64,
+    "se": 0.29,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs), market",
+    "value": 1.82,
+    "se": 0.27,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": false
+   },
+   {
+    "label": "Δcategory wins/season, blend",
+    "value": 0.27,
+    "se": 0.07,
+    "evidence": "simulated",
+    "key": false
+   },
+   {
+    "label": "ΔP(title), preseason projections, blend",
+    "value": 0.82,
+    "se": 0.36,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": false
+   }
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds; Champagnie plays only 2 games this week (≈ −0.4 ± 0.5 pp this week's P(win): noise).",
+   "Lose Bailey's rookie upside.",
+   "± are Monte Carlo SEs only (6 seeds × 2,000, paired)."
+  ],
+  "links": [
+   {
+    "label": "Model fixes handoff",
+    "path": "docs/handoffs/2026-10-22-model-review-fixes.md"
+   }
+  ],
+  "rationale": [
+   "- Champagnie: 3s, rebounds, few turnovers; projects more games than Bailey.",
+   "- Helps under blend and market; holds on preseason projections too.",
+   "- Bailey, not Fears: Fears only looks weaker after 1 game (fails on preseason projections)."
+  ],
+  "why_now": {
+   "before": "Pick 156 was an exact tie with Bailey; this morning's card (old sim) showed playoffs +0.7 ± 0.35 pp and expired unanswered.",
+   "changed": [
+    {
+     "text": "Season sim 0.7.0 (flat injury timing), lineup 0.4.1, in-season projections 0.4.0: move re-run, same sign, tighter SE.",
+     "kind": "model"
+    },
+    {
+     "text": "Still a free agent: no waiver claim needed.",
+     "kind": "league"
+    }
+   ],
+   "evidence": [
+    "ΔP(title), blend"
+   ]
+  }
+ },
+ "params": {
+  "add": "julian-champagnie",
+  "drop": "ace-bailey",
+  "tool": "season-sim-0.7.0 position-aware add/drop scan + sim compare",
+  "supersedes": "2026-10-22-champagnie-add"
+ },
+ "inputs": {
+  "free_agents": "data/raw/yahoo/free_agents_2026-10-22.json",
+  "league_file": "data/manual/league_rosters_2026-27.json"
+ }
+}
