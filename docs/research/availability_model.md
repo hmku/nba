@@ -165,7 +165,7 @@ the fitted model, a literal reading of those values would lift those players rel
 else. In an intermediate build Haliburton went to #4, Kyrie from 47 to 32, Lillard from 69 to 52
 and VanVleet from 65 to 46. The old rule's realised/predicted ratio for rotation players is 0.87-0.92
 (0.89 for 2025-26 pooled with 2024-25 at mpg≥24, 0.92 pooled over 2014-26), so manual gp values are
-multiplied by 0.90. Set `Params(manual_gp_scale=1.0)` to take them literally. `games_missed` is
+multiplied by 0.90. Set `Params(manual_gp_scale=1.0)` to take them literally. Since baseline-0.3.0 each override row has a `gp_scale` column: `fitted` rows are taken literally (no haircut), blank/`baseline01` rows get the 0.90. `games_missed` is
 relative and is not rescaled. For reference, players who lost a whole season after a 1000-minute
 season and later returned averaged 34-37 games in their return season (n = 117). That figure
 includes players who were not ready on opening night, so the healthy-for-opener manual values are

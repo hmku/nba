@@ -120,17 +120,13 @@ def _prior_rates() -> pd.Series:
                       "ast": 0.09, "stl": 0.03, "blk": 0.02, "tov": 0.05})  # fmt: skip
 
 
-def test_tov_follows_age_curve_so_tov_per_usage_is_age_invariant():
-    """Turnovers scale with usage: TOV / (FGA + 0.44 FTA + AST) must not depend on the age multiplier."""
+def test_tov_is_exempt_from_the_age_curve():
+    """TOV is not age-scaled (out-of-sample 2025-26: scaling worsened the 33+ bias; projection_quality.md §6.1)."""
     g, prior, params = _synthetic_seasons(), _prior_rates(), P.Params()
     emin = P.effective_minutes(g["w"], g["mp"], params.season_weights)
-    ratios = []
-    for age in (22.0, 27.0, 34.0, 40.0):
-        r = P._per_minute_rates(g, emin, prior, age, params)
-        ratios.append(r["tov"] / (r["fga"] + 0.44 * r["fta"] + r["ast"]))
-    assert np.allclose(ratios, ratios[0], rtol=1e-12)
     old, young = (P._per_minute_rates(g, emin, prior, a, params) for a in (40.0, 27.0))
-    assert old["tov"] / young["tov"] == pytest.approx(P.age_mult(40) / P.age_mult(27))
+    assert old["tov"] == pytest.approx(young["tov"])
+    assert old["fga"] / young["fga"] == pytest.approx(P.age_mult(40) / P.age_mult(27))
 
 
 def test_prior_min_is_in_effective_minutes_and_preserves_pre_030_strength():

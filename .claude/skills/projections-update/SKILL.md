@@ -36,7 +36,7 @@ Never edit raw files by hand. Raw data is (c) Sports Reference: personal use, do
 ## 2. Manual overlays (`data/manual/`, `#` lines are comments, matched by name via `canonical_id`)
 | File | Columns | Use |
 |---|---|---|
-| `player_overrides_2026_27.csv` | `name,team,status,injury_note,gp,games_missed,mpg,usage_mult,note,source` | trades/team, injury status (`healthy|out|gtd|out_for_season|unknown`), `games_missed` (gp x (82-n)/82), `mpg` replaces minutes, `usage_mult` scales FGA/FGM/FTA/FTM/3PM/AST/TOV. Blank = keep baseline. A player with no 2025-26 season MUST be listed here to be projected. |
+| `player_overrides_2026_27.csv` | `name,team,status,injury_note,gp,games_missed,mpg,usage_mult,note,source,gp_scale` | trades/team, injury status (`healthy|out|gtd|out_for_season|unknown`), `games_missed` (gp x (82-n)/82), `mpg` replaces minutes, `usage_mult` scales FGA/FGM/FTA/FTM/3PM/AST/TOV. `gp_scale`: `fitted` = take `gp` literally (use this for new rows), blank/`baseline01` = ×0.90 haircut (old rows). Note the default blend halves `mpg`/`usage_mult` overrides (ESPN is blended after them). Blank = keep baseline. A player with no 2025-26 season MUST be listed here to be projected. |
 | `rookies_2026_27.csv` | `name,team,positions,age,gp,gp_sd,mpg,fgm,fga,ftm,fta,fg3m,reb,ast,stl,blk,tov,note` | per-game priors for players without NBA history (low confidence) |
 | `inactive_2026_27.csv` | `name,note,source` | retired / overseas / unsigned -> removed |
 | `adp_yahoo_2026_27.csv` | `name,adp,source,as_of` | Yahoo ADP (last duplicate wins); blanks fall back to model rank in `market_order` |

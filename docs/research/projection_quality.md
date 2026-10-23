@@ -401,21 +401,17 @@ Limitations:
 unblended base build against `baseline-0.2.2`. The default file is the 50/50 blend, so for players ESPN covers about half of
 each change reaches it.
 
-1. **Bug: TOV skipped the age curve. Fixed.** `_per_minute_rates` scaled makes, attempts, REB, AST, STL and BLK by
-   `age_mult` but not TOV. The docstring said "turnovers scale with usage too". Older stars therefore kept all their
-   turnovers while losing 5-12% of their usage. TOV now scales with the other stats, so TOV / (FGA + 0.44·FTA + AST) does not
-   depend on age (test `test_tov_follows_age_curve_so_tov_per_usage_is_age_invariant`). This settles the open question
-   "projections docstring vs code on the age curve for TOV" (handoff 2026-10-20-main-session). Size: 362 players change TOV
-   only, by up to 0.32/g. LeBron goes from 2.64 to 2.33 (rank 132 → 120), Durant 2.87 → 2.61 (46 → 39), Harden 3.30 → 3.04
-   (53 → 45), Curry 2.51 → 2.29 (42 → 35), Lillard 2.34 → 2.17 (49 → 42). Young players gain TOV: Flagg 2.21 → 2.37 and
-   Knueppel 1.97 → 2.09 (40 → 50).
-   *Out-of-sample check (fitted, thin).* Only bbref 2022-26 is committed, so this covers target seasons 2025 and 2026, with
-   rotation players at ≥ 40 g and ≥ 20 mpg (n = 413). Pooled TOV MSE is unchanged: paired Δ −0.00005 (SE 0.0034). Bias
-   (realised − projected) improves for ages ≤ 24, from +0.25 to +0.19 (SE 0.04). It gets worse for ages 33+ (n = 38), from
-   +0.05 to +0.18 (SE 0.07): in these two seasons old players' turnovers fell less than their production. This is too few
-   seasons to support or reject the fix. The change rests on internal consistency (a usage stat should follow usage).
-   **TODO:** re-run the 9-season backtest (§1, full upstream totals) for TOV by age bucket. If the 33+ under-projection
-   holds up, give TOV its own (flatter) age curve rather than exempting it.
+1. **TOV and the age curve: kept exempt, on evidence (decided 2026-10-22).** `_per_minute_rates` scales makes, attempts,
+   REB, AST, STL and BLK by `age_mult` but not TOV; the old docstring claimed "turnovers scale with usage too". A review
+   flagged the mismatch and a fix (scale TOV too) was built and tested. *Out-of-sample check (fitted, thin):* bbref 2022-26,
+   target seasons 2025 and 2026, rotation players ≥ 40 g and ≥ 20 mpg (n = 413). Pooled TOV MSE unchanged (paired Δ
+   −0.00005, SE 0.0034). Bias (realised − projected) improved for ages ≤ 24 (+0.25 → +0.19, SE 0.04) but worsened for 33+
+   (n = 38; +0.05 → +0.18, SE 0.07): old players' turnovers fall less than their production. With no pooled gain and the
+   larger move against the change, the code stays as it was (TOV exempt) and the docstring was corrected to match. Had it
+   shipped, LeBron 2.64 → 2.33 TO/g (rank 132 → 120), Durant 46 → 39, Knueppel 40 → 50. This settles the open question
+   "projections docstring vs code on the age curve for TOV". Test: `test_tov_is_exempt_from_the_age_curve`.
+   **TODO:** 9-season backtest (§1, full upstream totals) for TOV by age bucket; if young players' TOV is
+   under-projected there too, give TOV its own age curve (rising for the young, flat for the old).
 2. **`prior_min` units (no output change).** The rate prior was documented as "400 minutes" but was added to Σ w_s·min_s with
    weights 5/3/2 that sum to 10. That is about 80 real minutes for a player with only the latest season, and about 40 per
    season for three equal seasons. The new `effective_minutes()` = Σ (w_s / mean w)·min_s puts weighted minutes on a

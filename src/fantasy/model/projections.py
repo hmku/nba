@@ -8,7 +8,9 @@ Pipeline (all inputs are cached files; no network):
    minutes* (see `effective_minutes`: minutes weighted by w_s / mean(w)).
    Makes and attempts are projected separately (FG%, FT% are derived, never averaged).
 3. Age curve multiplier on production rates (makes and attempts scaled together so efficiency
-   is unchanged; turnovers scale with usage too, so TOV per possession used is unchanged).
+   is unchanged). Turnovers are deliberately NOT age-scaled: a 2025-26 out-of-sample check found
+   that scaling them worsened the 33+ bias (+0.05 -> +0.18 TO/g, SE 0.07) with no pooled gain
+   (projection_quality.md §6.1); old players' turnovers fall less than their production.
 4. Minutes per game: recency-weighted MPG plus young-player growth (tapered to 0 at 30 mpg),
    then manual role overrides.
 5. Games: fitted model (fantasy.model.availability.predict_gp, gp-ols-0.2: last three seasons' games
@@ -49,8 +51,8 @@ from fantasy.model.availability import (
 # 0.2.0: fitted games-played model + calibrated gp_sd + playoff_mult column
 # 0.2.1: playoff_mult refit on the league's real playoff window (Mar 1-21; playoff-mult-0.2)
 # 0.2.2: gp-ols-0.2 (role hinge, recent-era calibration, low-minute / lost-season model)
-# 0.3.0: review fixes (docs/research/projection_quality.md §6): TOV now follows the age curve like
-#        the other usage stats (was exempt, contradicting this docstring); MPG_GROWTH tapers
+# 0.3.0: review fixes (docs/research/projection_quality.md §6): TOV stays exempt from the age curve
+#        (tested both ways out of sample; docstring corrected to match); MPG_GROWTH tapers
 #        linearly to 0 between 27 and 30 mpg (was a step at 30); prior_min / min_total_minutes
 #        restated in effective minutes with the same effective strength (outputs unchanged);
 #        per-row `gp_scale` column in player_overrides (default baseline01 = unchanged).
@@ -324,8 +326,9 @@ def _per_minute_rates(
     rate["ftm"] = min(rate["ftm"], rate["fta"])
     rate["fg3m"] = min(rate["fg3m"], rate["fgm"])
     m = age_mult(age_now)
-    for s in RATE_STATS:  # incl. tov: turnovers scale with usage (pre-0.3.0 exempted them; bug)
-        rate[s] *= m
+    for s in RATE_STATS:
+        if s != "tov":  # TOV exempt on evidence (projection_quality.md §6.1), not an oversight
+            rate[s] *= m
     return rate
 
 
