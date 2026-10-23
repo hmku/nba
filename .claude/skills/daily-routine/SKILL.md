@@ -77,8 +77,12 @@ is interested in X; details private"). A thread message
    `var/projections_alt/market.inseason.csv`). Every tool loads the in-season file by default from then on
    (`FANTASY_PROJECTIONS=preseason` = old behaviour). Log `model_version`, `as_of` and the top `movers` as an
    `observation`; a big mover on my roster or a target is a THINK input (with its why-now: "N of K team games
-   played"). Players in the meta's `low_confidence` list (|Δgp| > 10 after ≤ 3 team games) need the reason checked
-   (injury news / waived / DNP-CD) before any recommendation rests on them. In the in-season file `gp` = 82 x expected share of REMAINING games; `season_gp_exp` = season total.
+   played"). Players in the meta's `low_confidence` list (|Δgp| > 4, either direction, after 1-5 team games; early
+   updates are damped by k/5, a prior) need the reason checked (injury news / waived / DNP-CD / a star back) before any
+   recommendation rests on them. In the in-season file `gp` is a RATE (82 x expected share of the REMAINING
+   fantasy-season games, through Mar 21), not a count; counts: `ros_games`, `fantasy_gp_exp` (fantasy season),
+   `season_gp_exp` (82-game total). Run it after the night's games are final; a fetch during live games is safe
+   (unfinished scoreboards are never cached) but simply misses those games until the next run.
    Model/evidence: `docs/research/inseason_updates.md`. Commit the box-score files (`data/raw/espn_boxscores/`).
 
 ## 2. THINK

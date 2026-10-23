@@ -24,6 +24,8 @@ python scripts/inseason_model/fit_stats.py --tl /tmp/inseason_raw/tl_all.pkl --p
 ```
 
 - `timelines.py`: box scores -> player team-game timelines (rules shared with production via `inseason.player_timeline`).
-- `fit_availability.py`: per-checkpoint WLS of the rest-of-season play share; OOS vs static prior and iid Beta-binomial.
+- `fit_availability.py`: per-checkpoint WLS of the rest-of-season play share through the fantasy-season end (NBA last
+  day - 21 days; `--to-nba-end` = the ros-avail-0.3 target); OOS vs static prior, iid Beta-binomial and the deployed
+  early damping (`update_damped`).
 - `fit_stats.py`: stat-specific stabilisation constants (n0) shrinking observed rates toward the preseason projection.
 - Production constants are pasted from `report_avail.json` (`production_model`: all seasons) and `report_stats.json` (`n0`).

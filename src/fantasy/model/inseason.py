@@ -3,21 +3,27 @@
 The preseason projections (data/processed/projections_2026_27.csv: per-game line + gp/gp_sd) are the prior; ESPN box
 scores to date (`fantasy data fetch-boxscores`, data/raw/espn_boxscores/) are the evidence. Two fitted updates:
 
-1. Availability (ros-avail-*): the share of his team's REMAINING games a player plays, from the prior share p0 = gp/82,
-   the observed share o = played/k after k team games, the current run of missed games (injuries come in spells, so
-   an ongoing absence predicts more absence; an iid Beta-binomial update ignores that and over-reacts to a hot start)
-   and the share of games he was dressed for but did not play (coach's decision). Per checkpoint k a weighted OLS on
-   2011-2026 player timelines (scripts/inseason_model/fit_availability.py); k = 0 is a fitted calibration of the prior
-   to the timeline share; between checkpoints mean and variance are interpolated linearly in k.
+1. Availability (ros-avail-*): the share of his team's REMAINING games UP TO THE FANTASY-SEASON END (Mar 21, 2027 =
+   the NBA's last day - 21 days; the NBA's last 3 weeks are outside the fantasy season) a player plays, from the prior
+   share p0 = gp/82, the observed share o = played/k after k team games, the current run of missed games (injuries
+   come in spells, so an ongoing absence predicts more absence; an iid Beta-binomial update ignores that and
+   over-reacts to a hot start) and the share of games he was listed in the box score but did not play (`dnp`: mostly
+   coach's decisions, ~20% injury/illness/suspension reasons). Per checkpoint k a weighted OLS on 2011-2026 player
+   timelines (scripts/inseason_model/fit_availability.py); between checkpoints mean and variance are interpolated
+   linearly in k. For k < EARLY_K the update (mean and variance) is damped toward the prior by k / EARLY_K (a PRIOR:
+   history's early absences include undeclared preseason injuries, which production handles with injury windows).
 2. Per-game stats (stat-shrink-*): observed rates shrunk toward the prior with stat-specific stabilisation constants
    (minutes per game in games; counting stats per minute in minutes; FG%/FT% in attempts), fitted on 2012-2022
    (scripts/inseason_model/fit_stats.py).
 
-Output keeps the projections schema so every consumer works unchanged; `gp` becomes the 82-game-equivalent
-rest-of-season play rate (82 x expected share of remaining team games played: consumers use gp / 82 as the per-game
-probability of playing) and `gp_sd` its sd on the same scale; `status` is refreshed (ESPN injury feed, else cleared
-once a preseason-injured player is back); `playoff_mult` is renormalised to the remaining calendar. Season-to-date
-columns are added (gp_preseason, games_played, team_games, missed_streak, season_gp_exp, ...).
+Output keeps the projections schema so every consumer works unchanged; `gp` becomes a RATE, not a count: 82 x the
+expected share of remaining (fantasy-season) team games played, i.e. consumers use gp / 82 as the per-game
+probability of playing; `gp_sd` is its sd on the same scale. Counts are separate columns: `ros_team_games` /
+`ros_games` (remaining team games / expected games through the fantasy-season end), `fantasy_gp_exp` (played +
+ros_games) and `season_gp_exp` (the 82-game season total: played + share x all remaining NBA team games). `status`
+is refreshed (ESPN injury feed; a silent feed keeps a preseason injury while its games_missed window lasts; without
+a feed it is cleared once a preseason-injured player is back); `playoff_mult` is renormalised to the remaining
+calendar. Season-to-date columns are added (gp_preseason, games_played, team_games, missed_streak, ...).
 """
 
 from __future__ import annotations
@@ -27,17 +33,27 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-ROS_AVAIL_VERSION = "ros-avail-0.3"
+ROS_AVAIL_VERSION = "ros-avail-0.4"
 STAT_SHRINK_VERSION = "stat-shrink-0.1"
 # rest-of-season projection model (distinct from fantasy.inseason.INSEASON_VERSION, the in-season analysis tools)
-INSEASON_MODEL_VERSION = f"ros-proj-0.3.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}"
+INSEASON_MODEL_VERSION = f"ros-proj-0.4.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}"
 SEASON_GAMES = 82
+FANTASY_END_DAYS = 21  # the fantasy season (playoffs end Mar 21, 2027) ends 21 days before the NBA's last day (Apr 11)
+FANTASY_TEAM_GAMES = 70  # team games through the fantasy end when no schedule is given (2026-27: 68-71 per team)
+# PRIOR (not fitted): for k < EARLY_K team games the fitted update is damped toward the prior by k / EARLY_K. The fit
+# population's early absences include undeclared preseason injuries (no injury info in history), so the fitted first-game
+# moves (p0 0.72: play game 1 -> 62.4, miss -> 35.7 on the 82 scale) are too large for players known to be healthy.
+# OOS on 2025-26 (scripts/inseason_model/report_avail.json, "update_damped"): costs 0.64 +- 0.27 games RMSE at k = 1,
+# 0.17 +- 0.21 at k = 2, gains 0.16 +- 0.15 at k = 3 -- on a population that still contains those undeclared injuries.
+EARLY_K = 5
 GTD_EXPECTED_MISSED = 1.0  # PRIOR: games a preseason day-to-day (gtd) player is expected to miss at the start
 RETURN_SD_PER_GAME = 0.15  # projections.py: gp_sd += 0.15 x games_missed (return-timing uncertainty), kept in-season
 PLAYOFF_CALENDAR_SHARE = 3 / 20  # = lines.PLAYOFF_CALENDAR_SHARE: how consumers decode playoff_mult
 GP_SD_FLOOR = 0.5  # gp_sd 0 would make consumers substitute their default sd (sim engine: 12)
 INJURY_FEED_MAX_AGE_DAYS = 3
-LOW_CONF_MAX_K, LOW_CONF_DGP = 3, 10.0  # early big moves are flagged low-confidence in the meta (review finding)
+INJURY_FEED_MIN_AGE_DAYS = -1  # feed fetched (ET date) the morning after as_of = yesterday's games: allowed
+# early moves either way are flagged low-confidence in the meta (a review threshold, not a fitted quantity)
+LOW_CONF_MAX_K, LOW_CONF_DGP = EARLY_K, 4.0
 ENTRY_GRACE = 5  # listed within his first team's first 5 games -> on the roster since opening night
 FEATURES = ["const", "p0", "o", "log_streak", "all_missed", "dnp"]
 
@@ -48,39 +64,40 @@ FEATURES = ["const", "p0", "o", "log_streak", "all_missed", "dnp"]
 # k = 1: o, streak, all_missed are collinear with x (min-norm fit, predictions exact);
 # var(R - Rhat) = a * Rhat (1 - Rhat) + c / remaining + d * log1p(streak) (NNLS); k = 0 uses the prior's sd.
 ROS_AVAIL_COEF: dict[int, dict[str, float]] = {
-    0: {'const': 0.0556, 'p0': 0.9762, 'o': 0.0, 'log_streak': 0.0, 'all_missed': 0.0, 'dnp': 0.0},
-    1: {'const': 0.1129, 'p0': 0.6773, 'o': 0.1986, 'log_streak': -0.0594, 'all_missed': -0.0858, 'dnp': 0.1699},
-    2: {'const': -0.0499, 'p0': 0.6357, 'o': 0.3966, 'log_streak': 0.0377, 'all_missed': 0.0043, 'dnp': 0.1556},
-    3: {'const': -0.0261, 'p0': 0.6164, 'o': 0.3892, 'log_streak': 0.0222, 'all_missed': -0.0109, 'dnp': 0.1479},
-    5: {'const': 0.0418, 'p0': 0.5941, 'o': 0.3414, 'log_streak': -0.0302, 'all_missed': -0.0012, 'dnp': 0.1249},
-    10: {'const': 0.1433, 'p0': 0.519, 'o': 0.3046, 'log_streak': -0.0571, 'all_missed': -0.0223, 'dnp': 0.0396},
-    15: {'const': 0.2139, 'p0': 0.4654, 'o': 0.2795, 'log_streak': -0.0664, 'all_missed': -0.0517, 'dnp': -0.0365},
-    20: {'const': 0.2416, 'p0': 0.4207, 'o': 0.2907, 'log_streak': -0.0726, 'all_missed': -0.0502, 'dnp': -0.0622},
-    30: {'const': 0.2802, 'p0': 0.3529, 'o': 0.311, 'log_streak': -0.0802, 'all_missed': -0.0667, 'dnp': -0.0935},
-    40: {'const': 0.3526, 'p0': 0.2812, 'o': 0.2986, 'log_streak': -0.1029, 'all_missed': -0.0322, 'dnp': -0.1292},
-    50: {'const': 0.3789, 'p0': 0.2134, 'o': 0.3237, 'log_streak': -0.1143, 'all_missed': 0.0432, 'dnp': -0.0707},
-    60: {'const': 0.5577, 'p0': 0.111, 'o': 0.2186, 'log_streak': -0.1634, 'all_missed': 0.1143, 'dnp': -0.1552},
+    0: {'const': 0.0365, 'p0': 1.0165, 'o': 0.0, 'log_streak': 0.0, 'all_missed': 0.0, 'dnp': 0.0},
+    1: {'const': 0.1069, 'p0': 0.6991, 'o': 0.2013, 'log_streak': -0.0654, 'all_missed': -0.0944, 'dnp': 0.1714},
+    2: {'const': -0.0681, 'p0': 0.6532, 'o': 0.4152, 'log_streak': 0.0353, 'all_missed': 0.0086, 'dnp': 0.1537},
+    3: {'const': -0.0426, 'p0': 0.6331, 'o': 0.4069, 'log_streak': 0.0234, 'all_missed': -0.0123, 'dnp': 0.143},
+    5: {'const': 0.0303, 'p0': 0.6112, 'o': 0.3539, 'log_streak': -0.0321, 'all_missed': -0.004, 'dnp': 0.1171},
+    10: {'const': 0.1439, 'p0': 0.5316, 'o': 0.3099, 'log_streak': -0.066, 'all_missed': -0.0193, 'dnp': 0.0239},
+    15: {'const': 0.2141, 'p0': 0.4761, 'o': 0.2877, 'log_streak': -0.0746, 'all_missed': -0.047, 'dnp': -0.0571},
+    20: {'const': 0.2422, 'p0': 0.4306, 'o': 0.3002, 'log_streak': -0.08, 'all_missed': -0.0464, 'dnp': -0.0885},
+    30: {'const': 0.2915, 'p0': 0.3649, 'o': 0.3112, 'log_streak': -0.093, 'all_missed': -0.0558, 'dnp': -0.1344},
+    40: {'const': 0.3616, 'p0': 0.2945, 'o': 0.305, 'log_streak': -0.1161, 'all_missed': -0.0149, 'dnp': -0.1844},
+    50: {'const': 0.3895, 'p0': 0.2362, 'o': 0.3256, 'log_streak': -0.1307, 'all_missed': 0.0703, 'dnp': -0.1287},
+    60: {'const': 0.6047, 'p0': 0.1232, 'o': 0.1994, 'log_streak': -0.1927, 'all_missed': 0.1643, 'dnp': -0.2499},
 }  # fmt: skip
 ROS_AVAIL_VAR: dict[int, dict[str, float]] = {
-    0: {'a': 0.2885, 'c': 0.0, 'd': 0.0},
-    1: {'a': 0.2249, 'c': 0.0, 'd': 0.0259},
-    2: {'a': 0.222, 'c': 0.0, 'd': 0.0203},
-    3: {'a': 0.2232, 'c': 0.0, 'd': 0.017},
-    5: {'a': 0.2218, 'c': 0.0, 'd': 0.0146},
-    10: {'a': 0.2146, 'c': 0.0, 'd': 0.0141},
-    15: {'a': 0.216, 'c': 0.0, 'd': 0.0136},
-    20: {'a': 0.2217, 'c': 0.0, 'd': 0.0116},
-    30: {'a': 0.2415, 'c': 0.0, 'd': 0.0092},
-    40: {'a': 0.2488, 'c': 0.0, 'd': 0.0104},
-    50: {'a': 0.2772, 'c': 0.0, 'd': 0.0108},
-    60: {'a': 0.2915, 'c': 0.0, 'd': 0.0104},
+    0: {'a': 0.2993, 'c': 0.0, 'd': 0.0},
+    1: {'a': 0.2312, 'c': 0.0, 'd': 0.0266},
+    2: {'a': 0.2281, 'c': 0.0, 'd': 0.0208},
+    3: {'a': 0.2291, 'c': 0.0, 'd': 0.0177},
+    5: {'a': 0.2274, 'c': 0.0, 'd': 0.0157},
+    10: {'a': 0.2182, 'c': 0.0, 'd': 0.0152},
+    15: {'a': 0.2198, 'c': 0.0, 'd': 0.0146},
+    20: {'a': 0.2279, 'c': 0.0, 'd': 0.0122},
+    30: {'a': 0.2518, 'c': 0.0, 'd': 0.0094},
+    40: {'a': 0.263, 'c': 0.0, 'd': 0.0098},
+    50: {'a': 0.2926, 'c': 0.0, 'd': 0.0102},
+    60: {'a': 0.3393, 'c': 0.0, 'd': 0.01},
 }  # fmt: skip
 ROS_AVAIL_FIT: dict[str, str] = {
+    "target": "share of remaining team games played through the fantasy-season end (NBA last day - 21 days)",
     "data": "player timelines 2011-2026 excl. 2020-21 (NocturneBear box scores to 2024, ESPN 2025-26); opening-night "
-            "rosters not injured coming in; n=59811 checkpoints",
-    "oos": "fit 2011-2024, test 2025-26: RMSE remaining games update/static/iid-beta-binomial "
-           "k=1 17.42/18.61/17.81, k=10 15.59/17.18/18.55, "
-           "k=30 11.79/13.66/13.58",
+            "rosters not injured coming in; n=59386 checkpoints",
+    "oos": "fit 2011-2024, test 2025-26: RMSE remaining (fantasy-season) games update/damped/static/iid-beta-binomial "
+           "k=1 15.22/15.86/16.44/15.37, k=3 15.11/14.95/16.15/16.27, "
+           "k=10 13.34/13.34/14.9/15.38, k=30 9.28/9.28/11.07/10.46",
     "report": "scripts/inseason_model/report_avail.json",
 }
 
@@ -119,7 +136,9 @@ def ros_availability(p0, sd0, k, x, streak, dnp, rem) -> tuple[np.ndarray, np.nd
     streak: games missed in a row up to now; dnp: missed games he was dressed for; rem: remaining team games.
     k = 0 returns (p0, sd0); between the fitted checkpoints mean and variance are interpolated linearly in k (the
     player's own observed shares o = x/k and dnp/k are used at both neighbouring checkpoints); beyond the last
-    checkpoint the last is used.
+    checkpoint the last is used. For k < EARLY_K both are then damped toward (p0, sd0^2) by k / EARLY_K.
+    dnp: listed in the box score without minutes -- mostly coach's decisions, but ~20% of such rows carry an
+    injury/illness/suspension reason; the historical fit has no reason field, so production does not split it.
     """
     p0, sd0, k, x, streak, dnp, rem = (np.atleast_1d(np.asarray(v, float))
                                        for v in (p0, sd0, k, x, streak, dnp, rem))
@@ -138,14 +157,20 @@ def ros_availability(p0, sd0, k, x, streak, dnp, rem) -> tuple[np.ndarray, np.nd
         w = 0.0 if g_hi == g_lo else (kk[i] - g_lo) / (g_hi - g_lo)
         mu[i] = (1 - w) * m_lo[0] + w * m_hi[0]
         var[i] = (1 - w) * v_lo[0] + w * v_hi[0]
-    return np.clip(mu, 0.0, 1.0), np.sqrt(var)
+    # early damping (EARLY_K, a prior): mean and variance move from the prior's by k / EARLY_K, so one game neither
+    # swings the mean by ~13 games (82 scale) nor collapses the sd from the preseason value
+    e = np.minimum(k / EARLY_K, 1.0)
+    mu = p0 + e * (mu - p0)
+    var = sd0**2 + e * (var - sd0**2)
+    return np.clip(mu, 0.0, 1.0), np.sqrt(np.maximum(var, 1e-6))
 
 
 def player_timeline(listings: pd.DataFrame, schedules: dict[str, pd.DataFrame], start_team: str | None) -> pd.DataFrame:
     """The team games a player was on the roster for, in order, with `played`.
 
     listings: his box-score rows (game_id, game_date, team, played), any order (`listed` in the output: he is in that
-    game's box score, i.e. dressed; a missed game that is listed is a coach's decision, not an injury); schedules: team -> that team's
+    game's box score; a missed game that is listed is mostly a coach's decision, but ~20% carry an injury, illness or
+    suspension reason in ESPN 2025-26); schedules: team -> that team's
     completed games (game_id, game_date) in date order; start_team: the team he was on before the first game
     (preseason projection team in production, the previous season's team in the historical fit). Rules (also used to
     build the history): a stint on his first team starts at its game 1 if it is `start_team` or he is listed within
@@ -180,12 +205,12 @@ def player_timeline(listings: pd.DataFrame, schedules: dict[str, pd.DataFrame], 
     tl = pd.concat(segs, ignore_index=True)
     played = set(li.loc[li["played"].astype(bool), "game_id"].astype(str))
     tl["played"] = tl["game_id"].astype(str).isin(played)
-    tl["listed"] = tl["game_id"].astype(str).isin(set(li["game_id"].astype(str)))  # in the box (dressed), any minutes
+    tl["listed"] = tl["game_id"].astype(str).isin(set(li["game_id"].astype(str)))  # in the box score, any minutes
     return tl[cols]
 
 
 def timeline_features(tl: pd.DataFrame) -> tuple[int, int, int, int]:
-    """(k team games, x played, current streak of missed games, dnp = missed games he was dressed for)."""
+    """(k team games, x played, current streak of missed games, dnp = missed games he was listed in the box for)."""
     p = tl["played"].to_numpy(bool)
     k = len(p)
     hits = np.flatnonzero(p)
@@ -247,8 +272,13 @@ def playoff_mult_remaining(m: np.ndarray, s_rem: float, s_season: float) -> np.n
 def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_games: pd.DataFrame, as_of: str,
                        games_missed: dict[str, float] | None = None, skip_window: dict[str, float] | None = None,
                        injuries: pd.DataFrame | None = None, playoff_share_remaining: float | None = None,
-                       playoff_share_season: float | None = None) -> tuple[pd.DataFrame, UpdateSummary]:
+                       playoff_share_season: float | None = None,
+                       fantasy_games: dict[str, int] | None = None) -> tuple[pd.DataFrame, UpdateSummary]:
     """Rest-of-season projections as of `as_of` (ISO date, games on that date included).
+
+    fantasy_games: team -> its scheduled games through the fantasy-season end (`fantasy_season_games`; default
+    FANTASY_TEAM_GAMES); remaining = that minus the team's completed games, so games later on `as_of` itself that are
+    not final yet still count as remaining. This is the window the availability model was fitted on.
 
     prior: preseason projections (player_id, team, gp, gp_sd, mpg, STATS, status, ...); player_games / team_games: the
     ESPN ingester's tables (regular-season rows used). Players without box-score rows keep their prior stats; their
@@ -260,8 +290,9 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     earlier), excludes the window's remaining games from the expected remaining games and keeps the return-timing
     sd 0.15 x (games of the window still to come). skip_window: the same window skip WITHOUT rescaling the prior
     (preseason day-to-day players, GTD_EXPECTED_MISSED, a prior). The historical fit had no preseason injury info.
-    injuries: current feed (player_id, status, injury_note) -> `status`/`injury_note` (absent = healthy); without it a
-    preseason out/gtd is cleared once the player has played and is not in a missed streak.
+    injuries: current feed (player_id, status, injury_note) -> `status`/`injury_note` (absent = healthy, except that a
+    preseason injury status is kept while its games_missed / skip window still has games to come and he has not
+    played); without it a preseason out/gtd is cleared once the player has played and is not in a missed streak.
     playoff_share_remaining / _season: fantasy-playoff share of the remaining / full calendar -> `playoff_mult`
     renormalised to the remaining-season average (playoff_mult_remaining).
     """
@@ -276,7 +307,15 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     pg["game_date"] = pg["game_date"].astype(str)
     pg[COUNT_COLS] = pg[COUNT_COLS].apply(pd.to_numeric, errors="coerce").fillna(0.0)
     pg["played"] = pg["played"].astype(bool) & (pg["min"] > 0)
-    pg = pg[pg["player_id"].astype(str).str.len() > 0]
+    pg = pg[pg["player_id"].astype(str).str.len() > 0].reset_index(drop=True)
+    warnings: list[str] = []
+    # canonical-id collisions: two ESPN players whose names map to one slug would merge into one timeline
+    ids = pg.get("espn_player_id", pd.Series("", index=pg.index)).fillna("").astype(str)
+    n_ids = ids[ids.str.len() > 0].groupby(pg["player_id"]).nunique()
+    if (n_ids > 1).any():
+        warnings.append(f"player_id collisions (one slug, several ESPN players; their rows are merged, one row per "
+                        f"game kept): {', '.join(sorted(n_ids[n_ids > 1].index)[:15])}")
+    pg = pg.sort_values("min", ascending=False).drop_duplicates(["game_id", "player_id"])
     by_player = dict(tuple(pg.groupby("player_id")))
     df = prior.copy().reset_index(drop=True)
     for c in ("gp", "gp_sd", "mpg", *STATS):
@@ -294,14 +333,17 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
         w = int(min(np.ceil(m), first_play, k_all))  # expected-out games already elapsed (uninformative)
         k, x, streak, dnp = timeline_features(tl.iloc[w:])
         team_now = str(tl["team"].iloc[-1]) if len(tl) else str(r.team)
-        rem = max(SEASON_GAMES - len(schedules.get(team_now, [])), 0)
+        n_team = len(schedules.get(team_now, []))
+        rem_nba = max(SEASON_GAMES - n_team, 0)  # every remaining NBA game (season_gp_exp)
+        n_fant = fantasy_games.get(team_now, FANTASY_TEAM_GAMES) if fantasy_games else FANTASY_TEAM_GAMES
+        rem = max(int(n_fant) - n_team, 0)  # remaining fantasy-season games (the fitted target's window)
         left = 0.0 if x_all else min(max(0.0, m - k_all), rem)  # expected-out games still to come
         gp_h = min(float(r.gp) * SEASON_GAMES / max(SEASON_GAMES - m_gm, 1.0), 80.0) if m_gm else float(r.gp)
         # healthy prior sd (preseason: gp_sd = sd_healthy + 0.15 m, see RETURN_SD_PER_GAME), on the share scale
         # chosen so that before any game the output reproduces the preseason gp_sd exactly
         sd_h0 = max(float(r.gp_sd) - RETURN_SD_PER_GAME * m_gm, 0.0) / (SEASON_GAMES - m_gm if m_gm else 82.0)
         rows.append({"k": k, "x": x, "streak": streak, "dnp": dnp, "k_all": k_all, "x_all": x_all,
-                     "streak_all": streak_all, "dnp_all": dnp_all, "rem": rem, "left": left,
+                     "streak_all": streak_all, "dnp_all": dnp_all, "rem": rem, "rem_nba": rem_nba, "left": left,
                      "p0": min(max(gp_h / 82, 0.0), 1.0), "sd0": sd_h0,
                      "team_now": team_now, "listed_any": mine is not None and len(mine) > 0, "m": m})
     feat = pd.DataFrame(rows)
@@ -316,11 +358,14 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     out["gp_preseason"], out["gp_sd_preseason"] = df["gp"], df["gp_sd"]
     out["team_games"], out["games_played"] = feat["k_all"], feat["x_all"]
     out["missed_streak"], out["dnp_dressed"] = feat["streak_all"], feat["dnp_all"]
-    out["ros_team_games"] = feat["rem"]
+    out["ros_team_games"] = feat["rem"]  # remaining team games through the fantasy-season end
     out["ros_share"] = np.round(mu, 4)
     out["ros_games"] = np.round(mu * rem, 1)
-    out["season_gp_exp"] = np.round(feat["x_all"] + mu * rem, 1)
-    out["gp"] = np.round(mu * SEASON_GAMES, 1)
+    out["fantasy_gp_exp"] = np.round(feat["x_all"] + mu * rem, 1)  # games in the fantasy season (to Mar 21)
+    # the 82-game season total (same share applied to every remaining NBA game; the fit does not cover the last weeks)
+    out["season_gp_exp"] = np.round(feat["x_all"] + mu_h * np.maximum(feat["rem_nba"].to_numpy(float) - feat["left"]
+                                                                      .to_numpy(float), 0.0), 1)
+    out["gp"] = np.round(mu * SEASON_GAMES, 1)  # a RATE: 82 x per-game play probability, not a count
     out["gp_sd"] = np.maximum(np.round(sd * SEASON_GAMES, 1), GP_SD_FLOOR)
     moved = feat["team_now"] != df["team"].astype(str)
     out.loc[moved, "team"] = feat.loc[moved, "team_now"]
@@ -328,9 +373,16 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     out["status_preseason"] = df["status"]
     if injuries is not None:
         st = injuries.drop_duplicates("player_id").set_index("player_id")
-        out["status"] = out["player_id"].map(st["status"]).fillna("healthy")
+        feed = out["player_id"].map(st["status"])
+        # a silent feed does not clear a preseason injury whose expected-out window still has games to come
+        pre = df["status"].fillna("").astype(str)
+        keep = feed.isna() & (feat["left"] > 0) & ~pre.isin(["", "healthy"])
+        out["status"] = feed.fillna("healthy").where(~keep, pre)
         if "injury_note" in st:
-            out["injury_note"] = out["player_id"].map(st["injury_note"]).fillna("")
+            note = out["player_id"].map(st["injury_note"]).fillna("")
+            if "injury_note" in df:
+                note = note.where(~keep, df["injury_note"].fillna("").astype(str))
+            out["injury_note"] = note
     else:
         back = df["status"].isin(["out", "gtd"]) & (feat["x_all"] > 0) & (feat["streak_all"] == 0)
         out.loc[back, "status"] = "healthy"
@@ -358,8 +410,8 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     known = set(df["player_id"])
     unmatched = sorted({p for p in pg.loc[pg["played"], "player_id"] if p not in known})
     summary = UpdateSummary(as_of=as_of, players=len(out), updated=updated,
-                            max_team_games=int(max(team_n.values(), default=0)), unlisted=unlisted,
-                            unmatched=unmatched)
+                            max_team_games=int(max(team_n.values(), default=0)), warnings=warnings,
+                            unlisted=unlisted, unmatched=unmatched)
     return out, summary
 
 
@@ -373,18 +425,30 @@ def _sha(path) -> str:
 
 def load_injury_feed(as_of: str) -> tuple[pd.DataFrame | None, str]:
     """Current ESPN injury report (`fantasy data fetch-injuries`) as (player_id, status, injury_note), or None when it
-    is missing or older than INJURY_FEED_MAX_AGE_DAYS before `as_of`; plus a note for the meta."""
-    from datetime import date
+    is missing or older than INJURY_FEED_MAX_AGE_DAYS before `as_of`; plus a note for the meta.
 
+    Age is in US Eastern calendar days (the box scores' dates): fetched_at is UTC, so an evening fetch is already the
+    next UTC day. A feed fetched the morning after `as_of` (age -1: as_of = yesterday's games) is accepted; a feed
+    fetched 2+ days after `as_of` is refused (backfill: it would leak the future)."""
+    from datetime import date, datetime
+
+    from fantasy.data.boxscores import ET
     from fantasy.data.injuries import model_status, parse_espn
     from fantasy.data.provenance import RAW_DIR, read_provenance
 
     path = RAW_DIR / "espn" / "injuries.json"
     if not path.exists():
         return None, "no injury feed (run `fantasy data fetch-injuries`): preseason status kept unless back"
-    fetched = str((read_provenance(path) or {}).get("fetched_at") or "")[:10]
+    raw = str((read_provenance(path) or {}).get("fetched_at") or "")
+    fetched = ""
+    if raw:
+        try:
+            ts = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            fetched = (ts.astimezone(ET) if ts.tzinfo else ts).date().isoformat()
+        except ValueError:
+            fetched = raw[:10]
     age = (date.fromisoformat(as_of) - date.fromisoformat(fetched)).days if fetched else None
-    if age is None or not 0 <= age <= INJURY_FEED_MAX_AGE_DAYS:  # stale, or fetched after as_of (backfill: no leak)
+    if age is None or not INJURY_FEED_MIN_AGE_DAYS <= age <= INJURY_FEED_MAX_AGE_DAYS:
         return None, f"injury feed fetched {fetched or '?'} is stale for {as_of}: preseason status kept unless back"
     inj = parse_espn(path)
     if inj.empty:
@@ -414,6 +478,17 @@ def playoff_share_remaining(as_of: str) -> tuple[float, float]:
     return s_rem, float(in_po.mean())
 
 
+def fantasy_season_games(end: str | None = None) -> dict[str, int]:
+    """team -> its scheduled games through the fantasy-season end (default: the league's playoff_end_date,
+    Mar 21, 2027 = the NBA's last day - FANTASY_END_DAYS) from the NBA schedule."""
+    from fantasy.data.provenance import RAW_DIR
+    from fantasy.league.settings import load_settings
+
+    sched = pd.read_csv(RAW_DIR / "bbref_schedule" / "nba_2027_games.csv")
+    s = sched[sched["date"].astype(str) <= (end or load_settings().playoff_end_date)]
+    return {str(t): int(n) for t, n in pd.concat([s["home"], s["visitor"]]).value_counts().items()}
+
+
 def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=None) -> dict:
     """Read the preseason projections and the season's ESPN box scores, write the rest-of-season projections
     (default data/processed/projections_2026_27.inseason.csv, the default `load_projections()` file from then on)
@@ -428,7 +503,7 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
         player_games_path,
         team_games_path,
     )
-    from fantasy.league.settings import REPO_ROOT
+    from fantasy.league.settings import REPO_ROOT, load_settings
     from fantasy.model.lines import DEFAULT_PROJECTIONS, INSEASON_PROJECTIONS
     from fantasy.model.projections import load_manual
 
@@ -455,9 +530,11 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
     s_rem, s_sched = playoff_share_remaining(as_of)
     # rescale relative to the full-season share that consumers decode playoff_mult with (lines.PLAYOFF_CALENDAR_SHARE)
     s_rem_cal = s_rem * PLAYOFF_CALENDAR_SHARE / s_sched if s_sched > 0 else s_rem
+    fantasy_end = load_settings().playoff_end_date
     out, summ = update_projections(prior, pg, tg, as_of, games_missed=games_missed, skip_window=skip,
                                    injuries=injuries, playoff_share_remaining=min(s_rem_cal, 1.0),
-                                   playoff_share_season=PLAYOFF_CALENDAR_SHARE)
+                                   playoff_share_season=PLAYOFF_CALENDAR_SHARE,
+                                   fantasy_games=fantasy_season_games(fantasy_end))
     warnings += summ.warnings
     if summ.unlisted:
         warnings.append(f"{len(summ.unlisted)} projected players never in a box score although their team played "
@@ -483,8 +560,11 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
         "rows": len(out),
         "players_with_box_scores": summ.updated,
         "max_team_games": summ.max_team_games,
-        "gp_semantics": "gp = 82 x expected share of remaining team games played (per-game play probability x 82); "
-                        "season_gp_exp = games played + expected remaining games",
+        "gp_semantics": "gp is a RATE, not a count: 82 x expected share of the remaining fantasy-season team games "
+                        f"played (per-game play probability x 82; fantasy season ends {fantasy_end}); ros_team_games / "
+                        "ros_games = remaining team games / expected games through that date; fantasy_gp_exp = games "
+                        "played + ros_games; season_gp_exp = 82-game season total (games played + the same share of "
+                        "every remaining NBA game)",
         "availability": {"version": ROS_AVAIL_VERSION, **ROS_AVAIL_FIT},
         "stats": {"version": STAT_SHRINK_VERSION, "n0": STAT_N0, "n0_se": STAT_N0_SE,
                   "units": "mpg: games; fg_pct: fga; ft_pct: fta; others: minutes",
@@ -500,15 +580,18 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
                    for p in (prior_path, player_games_path(season), team_games_path(season), ov_path)],
         "sha256": _sha(out_path),
     }
-    meta_path = out_path.with_name(out_path.stem + ".meta.json")
-    meta_path.write_text(json.dumps(meta, indent=2, default=str) + "\n")
-    early = out[(out["team_games"] <= LOW_CONF_MAX_K) & ((out["gp"] - out["gp_preseason"]).abs() > LOW_CONF_DGP)]
+    # team_games 0 is excluded: a games_missed player's rate there changes mechanically (his out-games are a larger
+    # share of the 68-71 fantasy-season games than of 82; season_gp_exp still equals the preseason gp)
+    early = out[out["team_games"].between(1, LOW_CONF_MAX_K)
+                & ((out["gp"] - out["gp_preseason"]).abs() > LOW_CONF_DGP)]
     meta["low_confidence"] = {
-        "rule": f"|gp - gp_preseason| > {LOW_CONF_DGP:g} after <= {LOW_CONF_MAX_K} team games: check the reason (injury news, "
-                "waived/not with team, coach's decision) before acting; history mixes known-injured players into "
-                "early absences, so the fitted drop may be too large for a healthy-listed player",
+        "rule": f"|gp - gp_preseason| > {LOW_CONF_DGP:g} (either direction) after 1-{LOW_CONF_MAX_K} team games: check "
+                "the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; "
+                "early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
         "players": sorted(early["player_id"]),
     }
     meta["movers"] = [{"player_id": r.player_id, "gp_preseason": r.gp_preseason, "gp": r.gp,
                        "played": int(r.games_played), "team_games": int(r.team_games)} for r in movers.itertuples()]
+    meta_path = out_path.with_name(out_path.stem + ".meta.json")
+    meta_path.write_text(json.dumps(meta, indent=2, default=str) + "\n")
     return meta

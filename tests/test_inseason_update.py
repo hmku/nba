@@ -123,7 +123,9 @@ def test_update_projections_end_to_end():
     out, summ = I.update_projections(prior, _games(sched), tg, "2027-01-01")
     p1, p2 = out.set_index("player_id").loc["p1"], out.set_index("player_id").loc["p2"]
     assert summ.updated == 1 and summ.max_team_games == 20 and summ.unlisted == ["p2"]
-    assert p1["games_played"] == 20 and p1["team_games"] == 20 and p1["ros_team_games"] == 62
+    # remaining games run to the fantasy-season end (default FANTASY_TEAM_GAMES without a schedule)
+    assert p1["games_played"] == 20 and p1["team_games"] == 20 and p1["ros_team_games"] == I.FANTASY_TEAM_GAMES - 20
+    assert p1["season_gp_exp"] > p1["fantasy_gp_exp"] == pytest.approx(20 + p1["ros_games"], abs=0.11)
     assert p1["gp"] > 38.5 and p1["gp_preseason"] == 38.5
     assert 30 < p1["mpg"] < 34 and p1["pts"] > 17
     assert p1["status"] == "healthy" and p1["status_preseason"] == "out"  # back from injury: status cleared
@@ -142,7 +144,11 @@ def test_before_any_game_the_preseason_projection_is_unchanged():
                           _prior_row(player_id="p3", gp=0.0, gp_sd=0.0)])
     out, _ = I.update_projections(prior, _empty(sched), tg, "2026-01-01", games_missed={"p2": m})
     out = out.set_index("player_id")
-    for pid, gp, sd in (("p1", 60.0, 15.0), ("p2", round(60 * 62 / 82, 1), 18.0)):
+    # healthy player: exactly the preseason line. Injured p2: the 20 games out are 20 of the 70 fantasy-season games
+    # (not 20 of 82), so his per-game rate over the remaining fantasy season is 60 x 50/70, sd rescaled likewise
+    n = I.FANTASY_TEAM_GAMES
+    sd2 = 15.0 / 62 * (n - m) / n * 82 + 0.15 * m * 82 / n
+    for pid, gp, sd in (("p1", 60.0, 15.0), ("p2", round(60 * (n - m) / n, 1), sd2)):
         assert out.loc[pid, "team_games"] == 0
         assert out.loc[pid, "gp"] == pytest.approx(gp, abs=0.051)
         assert out.loc[pid, "gp_sd"] == pytest.approx(sd, abs=0.051)
@@ -166,7 +172,8 @@ def test_expected_absence_window_is_not_news_and_keeps_return_uncertainty():
     assert skip.iloc[0]["season_gp_exp"] < r["season_gp_exp"]
     # skip_window does not rescale: before any game the gtd player keeps ~ his preseason gp (minus the 1 game)
     pre, _ = I.update_projections(prior, _empty(sched), tg, "2026-01-01", skip_window={"p1": 1})
-    assert pre.iloc[0]["gp"] == pytest.approx(prior.iloc[0]["gp"] * 81 / 82, abs=0.06)
+    n = I.FANTASY_TEAM_GAMES
+    assert pre.iloc[0]["gp"] == pytest.approx(prior.iloc[0]["gp"] * (n - 1) / n, abs=0.06)
 
 
 def test_traded_player_uses_new_team_and_injury_feed_sets_status():
@@ -177,7 +184,7 @@ def test_traded_player_uses_new_team_and_injury_feed_sets_status():
     inj = pd.DataFrame({"player_id": ["p1"], "status": ["gtd"], "injury_note": ["Ankle: questionable"]})
     out, _ = I.update_projections(prior, rows, tg, "2027-06-01", injuries=inj, playoff_share_remaining=0.2)
     r = out.iloc[0]
-    assert r["team"] == "BBB" and r["ros_team_games"] == 82 - 12
+    assert r["team"] == "BBB" and r["ros_team_games"] == I.FANTASY_TEAM_GAMES - 12
     assert r["status"] == "gtd" and r["injury_note"].startswith("Ankle")
     assert r["fg3m"] <= r["fgm"]
     assert r["playoff_mult"] < 1 and r["playoff_mult_preseason"] == 0.95

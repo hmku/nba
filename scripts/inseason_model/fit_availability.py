@@ -1,7 +1,11 @@
 """Fit + out-of-sample test of the in-season availability update (ros-avail-*). See docs/research/inseason_updates.md.
 
 Unit: a player-season timeline (timelines.py) observed after k of his team's games. Target: the share of his
-remaining timeline games he plays, R = played[k:] / (n - k). Model per checkpoint k (WLS, weights = remaining games):
+remaining timeline games he plays UP TO THE FANTASY-SEASON END, R = played[k:e] / (e - k), where e = his timeline
+games dated <= the season's last regular-season day - FANTASY_END_DAYS (league 44495: the fantasy playoffs end Sun
+Mar 21, 2027, 21 days before the NBA's last day, Apr 11; the same window convention as availability.py's playoff
+multiplier). The NBA's final ~3 weeks (tanking, resting, shut-downs) are outside the fantasy season and are not
+predicted (ros-avail-0.4; through ros-avail-0.3 the target ran to the NBA season end, `--to-nba-end`). Model per checkpoint k (WLS, weights = remaining games):
   k = 0:  R = b0 + b1 * p0                      (level of the prior vs the timeline share: "level", NOT deployed)
   k >= 1: R = b0 + b1 * p0 + b2 * o + b3 * log1p(streak) + b4 * [missed all k] + b5 * dnp / k
 Deployed prediction: k = 0 -> p0 (the prior; its level shift has no out-of-sample support: equal RMSE, and the 2025-26
@@ -11,7 +15,9 @@ Population: production-like = on the opening-night roster (timeline starts at th
 injured coming in (lost season, or a 10+ game absence at the end of T-1): production handles known preseason injuries
 with games_missed / day-to-day windows instead.
 p0 = preseason prior share (gp-ols gp / 82), o = observed share played[:k] / k, streak = current run of missed games
-(an ongoing absence: injuries come in spells), dnp = missed games he was dressed for (coach's decision, not injury).
+(an ongoing absence: injuries come in spells), dnp = missed games he was dressed for (listed in the box score without minutes: mostly coach's decisions, but
+~20% of such rows carry an injury / illness / suspension reason in ESPN 2025-26; the historical box scores have no
+reason field, so the feature means "listed, did not play", not "healthy scratch").
 Features come from fantasy.model.inseason.timeline_features, as in production.
 Baselines: static prior (R = p0); calibrated static (per-k WLS of R on p0 alone: the prior's recalibration without any
 game information); iid Beta-binomial (Beta prior with mean p0 and sd gp_sd / 82, posterior mean); observed share.
@@ -37,6 +43,8 @@ from fantasy.model.inseason import timeline_features  # noqa: E402
 
 KS = (0, 1, 2, 3, 5, 10, 15, 20, 30, 40, 50, 60)
 MIN_REMAINING = 10
+FANTASY_END_DAYS = 21  # the fantasy season ends this many days before the NBA regular season's last day
+EARLY_K = 5  # = fantasy.model.inseason.EARLY_K (production damping of the first games' update, a prior)
 FEATURES = ["const", "p0", "o", "log_streak", "all_missed", "dnp"]
 K0_FEATURES = ["const", "p0"]
 EXCLUDE = (2020, 2021)  # COVID seasons: bubble / protocol absences
@@ -44,9 +52,17 @@ FIT_SEASONS = range(2011, 2025)
 STREAK_BUCKETS = [(0, 0), (1, 2), (3, 9), (10, 10_000)]
 
 
-def checkpoints(tl: pd.DataFrame, pri: pd.DataFrame, ks=KS) -> pd.DataFrame:
-    """One row per (player-season, k) with features and the rest-of-season target."""
+def fantasy_end(tl: pd.DataFrame, days: int = FANTASY_END_DAYS) -> dict[int, str]:
+    """season -> last date (ISO) inside the fantasy season: the season's last regular-season game day - `days`."""
+    last = pd.to_datetime(tl.groupby("season")["game_date"].max())
+    return {int(s): (d - pd.Timedelta(days=days)).date().isoformat() for s, d in last.items()}
+
+
+def checkpoints(tl: pd.DataFrame, pri: pd.DataFrame, ks=KS, end_days: int | None = FANTASY_END_DAYS) -> pd.DataFrame:
+    """One row per (player-season, k) with features and the rest-of-season target: timeline games k.. through the
+    fantasy-season end (`end_days` None: through the NBA season end, the ros-avail-0.3 target)."""
     p = pri.drop_duplicates(["season", "slug"]).set_index(["season", "slug"])[["gp_prior", "gp_sd_prior"]]
+    ends = fantasy_end(tl, end_days) if end_days is not None else {}
     rows = []
     for (season, slug), d in tl.groupby(["season", "slug"], sort=False):
         d = d.sort_values("t")
@@ -54,15 +70,16 @@ def checkpoints(tl: pd.DataFrame, pri: pd.DataFrame, ks=KS) -> pd.DataFrame:
             d = d.assign(listed=d["played"])
         played = d["played"].to_numpy(bool)
         n = len(played)
+        e = int((d["game_date"].astype(str) <= ends[int(season)]).sum()) if ends else n
         gp, sd = p.loc[(season, slug)]
         for k in ks:
-            if n - k < MIN_REMAINING:
+            if e - k < MIN_REMAINING:
                 continue
             _, x, streak, dnp = timeline_features(d.iloc[:k])
-            rows.append({"season": season, "slug": slug, "k": k, "n": n, "rem": n - k,
+            rows.append({"season": season, "slug": slug, "k": k, "n": n, "rem": e - k,
                          "p0": min(gp, 82.0) / 82.0, "sd0": sd / 82.0, "x": x,
                          "o": x / k if k else min(gp, 82.0) / 82.0, "streak": streak, "dnp": dnp,
-                         "R": played[k:].mean(), "ros": int(played[k:].sum())})
+                         "R": played[k:e].mean(), "ros": int(played[k:e].sum())})
     return pd.DataFrame(rows)
 
 
@@ -155,6 +172,14 @@ def predict(c: pd.DataFrame, model: dict) -> tuple[np.ndarray, np.ndarray]:
     return mu, sd
 
 
+def damped(c: pd.DataFrame, mu: np.ndarray, early_k: int = EARLY_K) -> np.ndarray:
+    """Production's early-season damping (a PRIOR, ros-proj-0.4.0): for k < early_k deploy p0 + (k/early_k)(mu - p0).
+    History's early absences include undeclared preseason injuries (no injury feed in the fit), so the fitted early
+    moves are too large for a player known to be healthy; reported here so the OOS cost on history is visible."""
+    w = np.minimum(c["k"].to_numpy(float) / early_k, 1.0)
+    return c["p0"].to_numpy() + w * (mu - c["p0"].to_numpy())
+
+
 def calibrated_static(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarray:
     """Per-k WLS of R on p0 alone (fit on train): the prior's recalibration without game information."""
     out = np.zeros(len(test))
@@ -216,7 +241,8 @@ def coverage(c: pd.DataFrame, mu: np.ndarray, sd: np.ndarray) -> dict:
     return out
 
 
-def example(model: dict, gp: float = 38.5, k: int = 20, x: int = 20, n: int = 82) -> dict:
+def example(model: dict, gp: float = 38.5, k: int = 20, x: int = 20, n: int = 70) -> dict:
+    """n: timeline games through the fantasy-season end (2026-27: 68-71 per team)."""
     d = pd.DataFrame({"k": [k], "p0": [gp / 82], "o": [x / k], "streak": [0 if x else k], "x": [x], "dnp": [0],
                       "rem": [n - k], "sd0": [24 / 82]})
     mu, sd = predict(d, model)
@@ -237,9 +263,11 @@ def main() -> None:
     ap.add_argument("--priors", required=True)
     ap.add_argument("--test", default="2025,2026")
     ap.add_argument("--out")
+    ap.add_argument("--to-nba-end", action="store_true", help="ros-avail-0.3 target: through the NBA season end")
     a = ap.parse_args()
     tl, pri = pd.read_pickle(a.tl), pd.read_pickle(a.priors)
-    c_all = checkpoints(tl, pri)
+    end_days = None if a.to_nba_end else FANTASY_END_DAYS
+    c_all = checkpoints(tl, pri, end_days=end_days)
     c_all = c_all[~c_all["season"].isin(EXCLUDE)]
     c = population(c_all, tl, pri)
     test_seasons = [int(s) for s in a.test.split(",")]
@@ -247,7 +275,7 @@ def main() -> None:
     test = c[c["season"].isin(test_seasons)].reset_index(drop=True)
     m_train = fit(train)
     mu, sd = predict(test, m_train)
-    preds = {"update": mu, "static": test["p0"].to_numpy(), "calibrated_static": calibrated_static(train, test),
+    preds = {"update": mu, "update_damped": damped(test, mu), "static": test["p0"].to_numpy(), "calibrated_static": calibrated_static(train, test),
              "beta_binomial": beta_binomial(test), "observed": test["o"].to_numpy()}
     m_prod = fit(c)
     k1 = c[c["k"] > 0]
@@ -255,7 +283,9 @@ def main() -> None:
     bias = {int(k): {"update": round(float(((test.iloc[i]["R"] - mu[i]) * test.iloc[i]["rem"]).mean()), 2),
                      "static": round(float(((test.iloc[i]["R"] - test.iloc[i]["p0"]) * test.iloc[i]["rem"]).mean()), 2)}
             for k, i in test.groupby("k").indices.items()}
-    rep = {"population": "opening-night roster, not injured coming in (lost season / 10+ game absence at end of T-1)",
+    rep = {"target": "share of remaining timeline games played through the " + (
+               "NBA season end" if end_days is None else f"fantasy-season end (NBA last day - {end_days} days)"),
+           "population":"opening-night roster, not injured coming in (lost season / 10+ game absence at end of T-1)",
            "population_share_of_all_checkpoints": round(len(c) / len(c_all), 3),
            "fit_seasons": [min(FIT_SEASONS), max(FIT_SEASONS)], "test_seasons": test_seasons,
            "n_train": len(train), "n_test": len(test), "train_model": m_train,

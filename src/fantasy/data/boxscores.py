@@ -13,7 +13,9 @@ games) has `regular_season = True`. Play-in (type 5) and playoffs (type 3) are e
 Outputs (committed, gzipped CSV + provenance sidecar):
   data/raw/espn_boxscores/player_games_<season>.csv.gz  one row per (game, team, player in the box)
   data/raw/espn_boxscores/team_games_<season>.csv.gz    one row per (game, team) from the scoreboard
-Raw JSON responses are cached (gzipped) in the gitignored var/cache/espn/ so re-runs are cheap.
+Raw JSON responses are cached (gzipped) in the gitignored var/cache/espn/ so re-runs are cheap. A scoreboard that
+still has a regular-season event not completed (in progress, scheduled, postponed) is never cached nor served from
+the cache (`scoreboard_final`): otherwise a later run would keep reading the stale board and silently lose that game.
 `season` is the end year (2025 = 2024-25). Team codes are basketball-reference style (BRK, CHO, PHO).
 
 Parsers (`parse_scoreboard`, `parse_summary`, `team_games_rows`) are pure functions of decoded JSON.
@@ -131,6 +133,11 @@ def keep_game(g: dict[str, Any]) -> bool:
     return (g["season_type"] == REGULAR_SEASON_TYPE and g["completed"]
             and g["comp_type"] not in EXCLUDED_COMP_TYPES
             and g["home"] in TEAMS and g["away"] in TEAMS)
+
+
+def scoreboard_final(d: dict[str, Any]) -> bool:
+    """True when every regular-season (type 2) event on the scoreboard is completed: only then may it be cached."""
+    return all(g["completed"] for g in parse_scoreboard(d) if g["season_type"] == REGULAR_SEASON_TYPE)
 
 
 def team_games_rows(games: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -263,10 +270,15 @@ class _Http:
         if t > now:
             time.sleep(t - now)
 
-    def get_json(self, url: str, cache: Path | None, use_cache: bool = True) -> dict[str, Any]:
+    def get_json(self, url: str, cache: Path | None, use_cache: bool = True,
+                 cacheable: Callable[[dict[str, Any]], bool] | None = None) -> dict[str, Any]:
+        """`cacheable(data)` False: the response is neither written to the cache nor served from it (a cache
+        file written before this check existed is re-validated on read)."""
         if cache is not None and use_cache and cache.exists():
             with gzip.open(cache, "rt") as f:
-                return json.load(f)
+                data = json.load(f)
+            if cacheable is None or cacheable(data):
+                return data
         err: Exception | None = None
         for attempt in range(self.retries + 1):
             self._wait()
@@ -277,7 +289,7 @@ class _Http:
                     raise httpx.HTTPStatusError(f"{r.status_code}", request=r.request, response=r)
                 r.raise_for_status()
                 data = r.json()
-                if cache is not None:
+                if cache is not None and (cacheable is None or cacheable(data)):
                     cache.parent.mkdir(parents=True, exist_ok=True)
                     tmp = cache.with_suffix(".tmp")
                     with gzip.open(tmp, "wt") as f:
@@ -332,8 +344,9 @@ def fetch_season(
     """Fetch/parse completed regular-season games in [start, end] and merge into the season files.
 
     Without `start`, resumes from the latest game_date already in the file (re-fetching that day),
-    else from Oct 1. Scoreboards for the last 2 days before `today` are always re-downloaded;
-    completed-game summaries are cached forever. Returns a JSON-able summary.
+    else from Oct 1. Scoreboards for the last 2 days before `today`, and any scoreboard with a regular-season
+    event not yet completed, are always re-downloaded (`scoreboard_final`); completed-game summaries are cached
+    forever. Returns a JSON-able summary.
     """
     today = today or date.today()
     d0, d1 = default_range(season, today)
@@ -353,7 +366,8 @@ def fetch_season(
             ymd = dt.strftime("%Y%m%d")
             cache = CACHE_DIR / "scoreboard" / f"{ymd}.json.gz"
             fresh = dt < today - timedelta(days=2)
-            return parse_scoreboard(http.get_json(SCOREBOARD_URL.format(ymd=ymd), cache, use_cache=fresh))
+            return parse_scoreboard(http.get_json(SCOREBOARD_URL.format(ymd=ymd), cache, use_cache=fresh,
+                                                  cacheable=scoreboard_final))
 
         with ThreadPoolExecutor(workers) as ex:
             for dt, gs in zip(_dates(start, end), ex.map(scoreboard, _dates(start, end)), strict=True):

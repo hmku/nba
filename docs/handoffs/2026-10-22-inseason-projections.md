@@ -58,3 +58,25 @@
 ## Notes for next agent
 - DB: task ledger on Supabase (T-018..T-020 added). No runs/locks/txns opened (no Yahoo writes).
 - Historical inputs (NocturneBear box scores, bbref totals) are not committed; README has the curl lines.
+
+## Addendum: review fixes -> ros-proj-0.4.0 (+ros-avail-0.4), worktree agent
+- **Box-score cache bug (major, silent):** a scoreboard fetched while a game was in progress was cached and served on
+  later runs, so that game never entered `team_games`. Now a board with any unfinished regular-season event is neither
+  cached nor served from cache (`boxscores.scoreboard_final`; old bad cache files are re-validated). Two-run
+  MockTransport test. Checked 2026-10-22: 2026-27 team_games match the schedule (3 + 11 games); the only unfinished
+  cached boards are 2026-01-08/24/25 (postponed 2025-26 games) and today's, now ignored.
+- **Fantasy-season window (refit):** availability target and remaining games now end at the fantasy-season end
+  (NBA last day - 21 days; production: settings `playoff_end_date` via the bbref schedule). Refit on the same local
+  inputs (reproduced the 0.3 report exactly first). OOS 2025-26 RMSE (remaining fantasy games) update vs static:
+  k=1 15.22 vs 16.44, k=10 13.34 vs 14.90, k=30 9.28 vs 11.07. Prior under-predicts fantasy-season games by ~2.3
+  (k=0 mean residual): gp-model calibration question, not deployed.
+- **Early damping (prior):** k < 5 -> prior + (k/5)(fit - prior) for mean and variance (Embiid 44.3 -> 45.9, not 52.0;
+  gp_sd 22.3 -> 21.7, not 13.8). OOS cost on history: 0.64 ± 0.27 games at k=1. `low_confidence` = |Δgp| > 4 either
+  direction after 1-5 team games; meta now written after it (was missing from the file).
+- Status: a silent feed keeps a preseason injury while its window has games to come. Feed age in ET days, -1..3.
+- `dnp` docs: ~21% of listed-not-played ESPN rows have injury/illness/rest/suspension reasons (not split: no reason
+  field in the training data). id collisions warned + one row per (game, player).
+- Columns: `gp` = RATE over the remaining fantasy season; new `fantasy_gp_exp`; `season_gp_exp` = 82-game total.
+  A `games_missed` player's `gp` changes before any game (his out-games are 20/70, not 20/82, of the fantasy season).
+- **Main session:** regenerate `data/processed/projections_2026_27.inseason.*` (`fantasy data update-projections`).
+- Not done / follow-up: feed-conditioned early update; `fit_stats.py` targets still run to the NBA season end (minor).

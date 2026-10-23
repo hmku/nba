@@ -155,3 +155,60 @@ def test_fetch_season_offline_incremental(tmp_path, monkeypatch: pytest.MonkeyPa
     assert (tmp_path / "out" / "player_games_2027.csv.gz.provenance.json").exists()
     # summary for game 1 came from the cache on the second run
     assert sum("event=1" in c for c in calls) == 1
+
+
+def test_in_progress_scoreboard_is_not_cached(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review finding (ros-proj-0.4.0): a scoreboard fetched while a game was in progress was cached and served
+    on later runs, so that game never entered team_games. Run 1 sees game 2 in progress; run 2 (weeks later, when
+    the cache would count as old enough to serve) must re-download the board and pick the game up."""
+    state = {"done": False}
+
+    def board() -> dict[str, Any]:
+        return {"events": [_event("1", "2026-10-21T00:00Z", "SA", "GS"),
+                           _event("2", "2026-10-21T02:30Z", "NY", "BOS", completed=state["done"])]}
+
+    calls: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        calls.append(str(req.url))
+        if req.url.path.endswith("/scoreboard"):
+            return httpx.Response(200, json=board() if req.url.params["dates"] == "20261020" else {"events": []})
+        eid = req.url.params["event"]
+        home, away = ("SA", "GS") if eid == "1" else ("NY", "BOS")
+        return httpx.Response(200, json=_summary(eid, "2026-10-21T00:00Z", home, away))
+
+    real = httpx.Client
+    monkeypatch.setattr(bs.httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(bs, "OUT_DIR", tmp_path / "out")
+    monkeypatch.setattr(bs, "CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(bs, "RAW_DIR", tmp_path)
+    board_file = tmp_path / "cache" / "scoreboard" / "20261020.json.gz"
+
+    out1 = bs.fetch_season(2027, date(2026, 10, 20), date(2026, 10, 20), today=date(2026, 10, 21), rps=1000)
+    assert out1["games"] == 1 and out1["skipped_events"] == {"not_completed": 1}
+    assert not board_file.exists()
+    state["done"] = True
+    n_boards = sum("/scoreboard" in c for c in calls)
+    out2 = bs.fetch_season(2027, end=date(2026, 10, 20), today=date(2026, 12, 1), rps=1000)
+    assert sum("/scoreboard" in c for c in calls) == n_boards + 1  # re-downloaded although "old"
+    assert out2["games"] == 2
+    t = pd.read_csv(tmp_path / "out" / "team_games_2027.csv.gz", dtype={"game_id": str})
+    assert sorted(t["game_id"].unique()) == ["1", "2"]
+    # final now: cached, and served from the cache on a third run
+    assert board_file.exists()
+    bs.fetch_season(2027, end=date(2026, 10, 20), today=date(2026, 12, 2), rps=1000)
+    assert sum("/scoreboard" in c for c in calls) == n_boards + 1
+
+
+def test_stale_cached_in_progress_board_is_revalidated(tmp_path) -> None:
+    """A cache file written before the check existed (an in-progress board) is not served."""
+    import gzip
+    import json
+
+    cache = tmp_path / "b.json.gz"
+    with gzip.open(cache, "wt") as f:
+        json.dump({"events": [_event("2", "2026-10-21T02:30Z", "NY", "BOS", completed=False)]}, f)
+    fresh = {"events": [_event("2", "2026-10-21T02:30Z", "NY", "BOS")]}
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=fresh)))
+    got = bs._Http(client, rps=1000).get_json("https://x/scoreboard", cache, cacheable=bs.scoreboard_final)
+    assert got == fresh and bs.scoreboard_final(got)
