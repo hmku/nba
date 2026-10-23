@@ -1,18 +1,19 @@
 {
-  "model_version": "ros-proj-0.3.0+ros-avail-0.3+stat-shrink-0.1",
+  "model_version": "ros-proj-0.4.0+ros-avail-0.4+stat-shrink-0.1",
   "as_of": "2026-10-22",
-  "git_sha": "85fece2",
+  "git_sha": "362f6cb",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
   "prior_sha256": "bb402303ef350526a62c1db383fbd3f84dc6084bde79e0830a8ff5cbd97c104a",
   "rows": 454,
   "players_with_box_scores": 286,
   "max_team_games": 1,
-  "gp_semantics": "gp = 82 x expected share of remaining team games played (per-game play probability x 82); season_gp_exp = games played + expected remaining games",
+  "gp_semantics": "gp is a RATE, not a count: 82 x expected share of the remaining fantasy-season team games played (per-game play probability x 82; fantasy season ends 2027-03-21); ros_team_games / ros_games = remaining team games / expected games through that date; fantasy_gp_exp = games played + ros_games; season_gp_exp = 82-game season total (games played + the same share of every remaining NBA game)",
   "availability": {
-    "version": "ros-avail-0.3",
-    "data": "player timelines 2011-2026 excl. 2020-21 (NocturneBear box scores to 2024, ESPN 2025-26); opening-night rosters not injured coming in; n=59811 checkpoints",
-    "oos": "fit 2011-2024, test 2025-26: RMSE remaining games update/static/iid-beta-binomial k=1 17.42/18.61/17.81, k=10 15.59/17.18/18.55, k=30 11.79/13.66/13.58",
+    "version": "ros-avail-0.4",
+    "target": "share of remaining team games played through the fantasy-season end (NBA last day - 21 days)",
+    "data": "player timelines 2011-2026 excl. 2020-21 (NocturneBear box scores to 2024, ESPN 2025-26); opening-night rosters not injured coming in; n=59386 checkpoints",
+    "oos": "fit 2011-2024, test 2025-26: RMSE remaining (fantasy-season) games update/damped/static/iid-beta-binomial k=1 15.22/15.86/16.44/15.37, k=3 15.11/14.95/16.15/16.27, k=10 13.34/13.34/14.9/15.38, k=30 9.28/9.28/11.07/10.46",
     "report": "scripts/inseason_model/report_avail.json"
   },
   "stats": {
@@ -80,5 +81,107 @@
       "sha256": "bef31732754010b7635f32d2db4824afb7ce9461d65120583298491a6d908fae"
     }
   ],
-  "sha256": "c99f60ce7650e35978ee0d0ea75fb1efdbe2233814ff5b5828047ee8fef4af18"
+  "sha256": "c0aea6c93fa0f67008cc6e01018002eaed85da86b1b1319f6e918bc0bfff4aec",
+  "low_confidence": {
+    "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
+    "players": [
+      "aaron-holiday",
+      "brandin-podziemski",
+      "bruce-brown",
+      "dalton-knecht",
+      "donte-divincenzo",
+      "dwight-powell",
+      "ethan-thompson",
+      "guerschon-yabusele",
+      "jalen-wilson",
+      "javon-small",
+      "jeremy-sochan",
+      "jimmy-butler",
+      "john-konchar",
+      "jordan-hawkins",
+      "jordan-miller",
+      "kevin-porter-jr",
+      "mark-williams",
+      "moses-moody",
+      "nicolas-batum",
+      "ochai-agbaji",
+      "rob-dillingham",
+      "ryan-nembhard",
+      "shaedon-sharpe",
+      "sharife-cooper",
+      "tyrese-martin"
+    ]
+  },
+  "movers": [
+    {
+      "player_id": "donte-divincenzo",
+      "gp_preseason": 13.7,
+      "gp": 3.0,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "jordan-miller",
+      "gp_preseason": 11.5,
+      "gp": 3.7,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "shaedon-sharpe",
+      "gp_preseason": 14.9,
+      "gp": 8.0,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "mark-williams",
+      "gp_preseason": 20.1,
+      "gp": 14.4,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "jimmy-butler",
+      "gp_preseason": 19.2,
+      "gp": 13.5,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "brandin-podziemski",
+      "gp_preseason": 66.2,
+      "gp": 60.9,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "bruce-brown",
+      "gp_preseason": 59.1,
+      "gp": 54.2,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "ryan-nembhard",
+      "gp_preseason": 54.2,
+      "gp": 49.6,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "kevin-porter-jr",
+      "gp_preseason": 54.9,
+      "gp": 50.3,
+      "played": 0,
+      "team_games": 1
+    },
+    {
+      "player_id": "nicolas-batum",
+      "gp_preseason": 52.9,
+      "gp": 48.4,
+      "played": 0,
+      "team_games": 1
+    }
+  ]
 }
