@@ -430,3 +430,17 @@ python -m fantasy.draft.policy_eval run --seeds 0:150 --slots 1 --regimes adp,sy
 python -m fantasy.draft.policy_eval run --seeds 0:150 --slots 1 --regimes mixed --policies vs_sim,vs_sim_skip,vs_sim_plan \
   --value-model data/models/value_search/value-model-0.2.0.npz --opt-strategy balanced --workers 2 --out mixed_vm2.jsonl
 ```
+
+## 12. 2026 draft retrospective (2026-10-22, corrected models: season-sim-0.7.0, gp-ols-0.2, baseline-0.3.0)
+Verdict: no clear mistake. Our 13 had the league's highest projected value (39.5 vs 31.0 next, corrected; 39.9 vs 30.4 at
+draft time). No single swap moves P(title) by more than ~2.5 pp (simulated, 3 seeds × 2000, paired, roster swap only).
+- #37 Kawhi over Bane (deviation): right; corrected sim → Bane title −1.3 ± 0.5 pp, playoffs −0.4 ± 0.3.
+- #133 Sheppard over DeRozan (guard rule): small process mistake for title (+2.2 ± 0.5 pp title, −0.9 ± 0.3 playoffs
+  for DeRozan); mostly the playoff-window schedule (DEN 11 vs HOU 10 games Mar 1-21).
+- #60/61 Ware/Reid vs MPJ: gap only after the gp-model correction (hindsight, not a mistake).
+- Draft-time P(title) levels (35-39%) were ~7-10 pp too high (old sim's playoff-week availability + ADP opponents).
+Lessons (applied to the skills): (1) playoff-window NBA games (Mar 1-21) move P(title) ±2-3 pp per pick and the value
+search/optimizer ignored them — add as a feature before next draft; (2) no ad-hoc overrides of rec[0]; encode concerns
+as `fantasy sim draft-check` runs or constraints; (3) treat back-to-back picks as one joint decision with more rollouts;
+(4) report odds differences, not levels; (5) quant-review the sim and availability models before the draft.
+Scratch: scratchpad/draftretro (swap and value outputs) — not committed.

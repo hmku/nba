@@ -156,6 +156,13 @@ record those picks too). Measure: sync time per pick, `recommend` latency, name-
 (exit 2), gaps. Optionally a second mock in `--mode live` to test clicking. End with
 `fantasy run end`, `unset FANTASY_DRAFT_ID`.
 
+## 8b. Model review before the draft (lesson from 2026)
+Run independent quant-reviewers on the season sim, availability (games) model and value search at least a week before
+the draft: in 2026 the sim's injury timing over-weighted playoff-week availability and the gp model was refit, both found
+two days after the draft. Check that the value search uses the playoff-window NBA schedule (Mar 1-21 games per team;
+moves P(title) ±2-3 pp per pick, ignored in 2026). Quote odds DIFFERENCES between candidates, not absolute levels
+(2026 levels were ~7-10 pp too optimistic). See docs/research/draft_policy.md §12.
+
 ## 9. Finish
 Release `yahoo:browser`, `fantasy run end --summary "settings verified: ..., order: ..., ADP rows: N, pre-ranks loaded: yes/no, mock: ..."`,
 `fantasy task done T-001 / T-015 / T-014 / T-002` as applicable, handoff note + commit (`handoff` skill).

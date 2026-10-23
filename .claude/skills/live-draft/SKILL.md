@@ -71,6 +71,11 @@ Then run the loop below, applying the value-model guard (§1) on every recommend
 `fantasy run end` (releases the locks), `unset FANTASY_DRAFT_ID`.
 
 ## 2. Loop (every pick)
+Lessons from the 2026 draft (docs/research/draft_policy.md §12): never override rec[0] with an ad-hoc rule (the 2026
+"prefer guards" rule cost ~2 pp title at #133); if fit worries you, run `fantasy sim draft-check` on the candidates.
+Treat back-to-back picks (e.g. 36/37) as one joint decision and give the value search more rollouts there (top-2 gaps
+were within ~1 SE at 48 rollouts).
+
 0. **League intel from Muse** (the user's Messenger-reading assistant, see docs/integrations/muse.md): every few picks run
    `fantasy run list --agent muse --json` / `fantasy run show <muse run id> --json` and read new `observation` events.
    A `draft_order` report (e.g. commissioner changed the order) means: re-read the order on Yahoo, `fantasy draft set-order`
