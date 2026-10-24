@@ -14,4 +14,7 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 # 0.6.0: IL replacement on by default.
 # 0.7.0: injury spells placed on the fantasy window as a circle (uniform rotation + gap): availability is flat at
 #        gp/82 in every week (0.6.0 was U-shaped and 1-12% low on average: min/max placement on the NBA-season axis)
-SIM_VERSION = "season-sim-0.7.0"
+# 0.8.0: roster cap - 13 non-IL players (settings starters + bench) + IL slots: a team's surplus (lowest value, not
+#        Out) is released from the day an IL player returns; IL replacement only fills below 13 healthy non-IL;
+#        league-file Yahoo Out players start in a spell (`--no-roster-cap` reproduces 0.7.0; il_replacement.md)
+SIM_VERSION = "season-sim-0.8.0"

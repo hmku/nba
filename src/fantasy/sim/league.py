@@ -37,6 +37,9 @@ class LeagueState:
     projected: dict[int, list[str]] = field(default_factory=dict)  # team id -> players added by completion
     draft_id: str | None = None
     warnings: list[str] = field(default_factory=list)
+    # players Yahoo lists as IL-eligible Out (O/INJ/OFS/IR) in the league file's `status`; with the roster cap
+    # (season-sim-0.8.0) the engine starts them inside an injury spell even if the projections call them healthy
+    out_now: set[str] = field(default_factory=set)
 
     @property
     def team_ids(self) -> list[int]:
@@ -52,7 +55,7 @@ class LeagueState:
         return LeagueState(
             rosters={t: list(p) for t, p in self.rosters.items()}, my_team=self.my_team, source=self.source,
             names=dict(self.names), projected={t: list(p) for t, p in self.projected.items()},
-            draft_id=self.draft_id, warnings=list(self.warnings),
+            draft_id=self.draft_id, warnings=list(self.warnings), out_now=set(self.out_now),
         )
 
     def with_change(self, team: int, add: list[str], drop: list[str]) -> LeagueState:
@@ -86,8 +89,13 @@ def from_draft(draft: dict, picks: list[dict], settings: LeagueSettings | None =
 
 
 def from_json(path: Path | str) -> LeagueState:
+    from fantasy.lineup.players import (  # local: fantasy.lineup imports the sim engine
+        IL_TAGS,
+        normalize_status,
+    )
+
     raw = json.loads(Path(path).read_text())
-    rosters, names = {}, {}
+    rosters, names, out_now = {}, {}, set()
     for k, v in raw["teams"].items():
         t = int(k)
         if isinstance(v, list):
@@ -96,9 +104,12 @@ def from_json(path: Path | str) -> LeagueState:
             rosters[t] = [str(x) for x in v["players"]]
             if v.get("name"):
                 names[t] = str(v["name"])
+            for pid, st in (v.get("status") or {}).items():
+                if normalize_status(st) in IL_TAGS and str(pid) in rosters[t]:
+                    out_now.add(str(pid))
     return LeagueState(rosters=rosters, my_team=int(raw.get("my_team", 1)),
                        source=str(raw.get("source") or f"json:{Path(path).name}"), names=names,
-                       draft_id=raw.get("draft_id"))
+                       draft_id=raw.get("draft_id"), out_now=out_now)
 
 
 def parse_team_names(raw: object, num_teams: int) -> dict[int, str]:

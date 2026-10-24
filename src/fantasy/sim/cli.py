@@ -58,6 +58,10 @@ ILOpt = Annotated[bool, typer.Option(
     help="Replace players in long injury spells with replacement-level players (IL slots; default on since season-sim-0.6.0, priors: "
          "docs/research/il_replacement.md)")]
 ILDaysOpt = Annotated[float, typer.Option("--il-min-spell-days", help="Shortest spell (days) that triggers an IL move (prior 7)")]
+CapOpt = Annotated[bool, typer.Option(
+    "--roster-cap/--no-roster-cap",
+    help="Enforce 13 non-IL players: surplus (lowest value) released when an IL player returns (default since "
+         "season-sim-0.8.0; --no-roster-cap reproduces 0.7.0)")]
 
 
 
@@ -135,8 +139,10 @@ def _optimizer_plan(draft: dict, picks: list[dict], ctx: SimContext) -> list[str
     return [rec["recommendations"][0]["player_id"]] + [p["player_id"] for p in rec.get("planned_picks", [])]
 
 
-def _params(sims: int, seed: int, streaming: bool, il: bool = False, il_days: float = 7.0) -> SimParams:
-    return SimParams(n_sims=sims, seed=seed, streaming=streaming, il_replacement=il, il_min_spell_days=il_days)
+def _params(sims: int, seed: int, streaming: bool, il: bool = False, il_days: float = 7.0,
+            roster_cap: bool = True) -> SimParams:
+    return SimParams(n_sims=sims, seed=seed, streaming=streaming, il_replacement=il, il_min_spell_days=il_days,
+                     roster_cap=roster_cap)
 
 
 def _save(save: bool, kind_detail: str, params: SimParams, setup: _Setup, summary: dict, extra_inputs: dict | None = None) -> str | None:
@@ -272,6 +278,7 @@ def season(
     my_plan: MyPlanOpt = "market", team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True,
     playoff_teams: POTeamsOpt = None, playoff_weeks: POWeeksOpt = None, streaming: StreamOpt = True,
     save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = True, il_min_spell_days: ILDaysOpt = 7.0,
+    roster_cap: CapOpt = True,
     scenario: Annotated[str | None, typer.Option(
         "--scenario", help='Label stored as summary.scenario, e.g. "post-draft: actual rosters" (dashboard)')] = None,
     as_json: JsonOpt = False,
@@ -281,7 +288,7 @@ def season(
         fail("--my-plan must be market or optimizer", as_json, exit_code=EXIT_USAGE)
     st = _setup(as_json, draft_id, league_file, complete_rosters_, my_plan, seed, schedule, nba_schedule,
                 projections, week1_end, merge_allstar, playoff_teams, playoff_weeks)
-    params = _params(sims, seed, streaming, il_replacement, il_min_spell_days)
+    params = _params(sims, seed, streaming, il_replacement, il_min_spell_days, roster_cap)
     res = st.ctx.simulator(params).run(st.league)
     t = team or st.league.my_team
     if t not in st.league.team_ids:
@@ -321,14 +328,14 @@ def matchup(
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True, streaming: StreamOpt = True,
     projections: ProjOpt = None, il_replacement: ILOpt = True, il_min_spell_days: ILDaysOpt = 7.0,
-    as_json: JsonOpt = False,
+    roster_cap: CapOpt = True, as_json: JsonOpt = False,
 ) -> None:
     """Week-N matchup breakdown for my team: per-category win probabilities, expected totals, games."""
     st = _setup(as_json, draft_id, league_file, complete_rosters_, "market", seed, schedule, nba_schedule,
                 projections, week1_end, merge_allstar, None, None)
     if week not in [w.week for w in st.ctx.calendar]:
         fail(f"week {week} outside the calendar 1..{st.ctx.calendar[-1].week}", as_json, exit_code=EXIT_USAGE)
-    res = st.ctx.simulator(_params(sims, seed, streaming, il_replacement, il_min_spell_days)).run(st.league)
+    res = st.ctx.simulator(_params(sims, seed, streaming, il_replacement, il_min_spell_days, roster_cap)).run(st.league)
     t = team or st.league.my_team
     try:
         rep = matchup_report(res, st.league, t, week, opponent)
@@ -352,7 +359,7 @@ def compare(
     schedule: SchedOpt = None, nba_schedule: NbaOpt = None, complete_rosters_: CompleteOpt = False,
     team: TeamOpt = None, week1_end: Week1Opt = None, merge_allstar: MergeOpt = True, streaming: StreamOpt = True,
     save: SaveOpt = True, projections: ProjOpt = None, il_replacement: ILOpt = True,
-    il_min_spell_days: ILDaysOpt = 7.0, as_json: JsonOpt = False,
+    il_min_spell_days: ILDaysOpt = 7.0, roster_cap: CapOpt = True, as_json: JsonOpt = False,
 ) -> None:
     """Change in P(playoffs)/P(title) for a roster change (add/drop), paired with common random numbers."""
     st = _setup(as_json, draft_id, league_file, complete_rosters_, "market", seed, schedule, nba_schedule,
@@ -366,7 +373,7 @@ def compare(
         alt_league = st.league.with_change(t, adds, drops)
     except ValueError as e:
         fail(str(e), as_json, exit_code=EXIT_USAGE)
-    params = _params(sims, seed, streaming, il_replacement, il_min_spell_days)
+    params = _params(sims, seed, streaming, il_replacement, il_min_spell_days, roster_cap)
     sim = st.ctx.simulator(params)
     base, alt = sim.run(st.league), sim.run(alt_league)
     delta = paired_delta(base, alt, t)
