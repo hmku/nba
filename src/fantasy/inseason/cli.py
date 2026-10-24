@@ -677,3 +677,41 @@ def trade_scan_cmd(
             lines += _resim_lines(r["resim"])
     lines += [f"warning: {w}" for w in warnings]
     emit(out, as_json, "\n".join(lines))
+
+
+@app.command("opportunity")
+def opportunity_cmd(
+    day: Annotated[str, typer.Option("--date", help="Today YYYY-MM-DD (default: today)")] = "",
+    free_agents: Annotated[Path | None, typer.Option("--free-agents", help="Yahoo free-agent capture (default newest "
+                                                     "data/raw/yahoo/free_agents_*.json)")] = None,
+    top: Annotated[int, typer.Option("--top", help="Candidates listed")] = 15,
+    eval_top: Annotated[int, typer.Option("--eval-top", help="Top available candidates given the paired week + "
+                                          "season evaluation (0 = none)")] = 5,
+    season_sims: Annotated[int, typer.Option("--season-sims", help="Paired season sims per candidate")] = 2000,
+    week_sims: Annotated[int, typer.Option("--week-sims", help="Paired matchup Monte Carlo sims")] = 4000,
+    seed: Annotated[int, typer.Option("--seed")] = 0,
+    include_rostered: Annotated[bool, typer.Option("--include-rostered", help="Also list other teams' players "
+                                                   "(flagged available: false)")] = False,
+    news_file: Annotated[Path | None, typer.Option("--news-file", help="ESPN news file (default newest "
+                                                   "data/raw/espn/news/news_*.json)")] = None,
+    market_projections: Annotated[Path | None, typer.Option("--market-projections", help="Market set for the "
+                                                            "season check (default var/projections_alt/"
+                                                            "market.inseason.csv)")] = None,
+    out: Annotated[Path | None, typer.Option("--out", help="Season override CSV (default var/opportunity/"
+                                             "opportunity_<date>.csv; the window file is <out>.window.csv)")] = None,
+    league_file: LeagueOpt = None, projections: ProjOpt = None, as_json: JsonOpt = False,
+) -> None:
+    """Minutes-opportunity detector (opportunity-0.1.0): free agents whose minutes are about to jump (an observed
+    model-A jump, or minutes vacated by an Out >= 28-mpg teammate), their opportunity line over the expected window,
+    window value vs my weakest player, and for the top ones the paired week + season evaluation. Writes override
+    projections (only candidate rows changed) for `sim compare` / `inseason stream --projections`. Analysis only."""
+    from fantasy.inseason.opportunity_run import run, text_report
+
+    d0 = date.fromisoformat(day) if day else date.today()
+    try:
+        res = run(d0, free_agents=free_agents, top=top, eval_top=eval_top, projections=projections,
+                  league_file=league_file, out=out, news_file=news_file, include_rostered=include_rostered,
+                  season_sims=season_sims, week_sims=week_sims, seed=seed, market=market_projections)
+    except (FileNotFoundError, ValueError) as e:
+        fail(str(e), as_json)
+    emit(res, as_json, text_report(res))

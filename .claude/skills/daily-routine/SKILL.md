@@ -130,6 +130,19 @@ is interested in X; details private"). A thread message
   (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once
   available, the streaming tool from `src/fantasy/inseason/` (week-1 analysis handoff `docs/handoffs/2026-10-20-week1-trades.md`).
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
+- **Minutes opportunities** (after `update-projections` (1.6) and the news triage (1.4b), so injuries, news and
+  model A are fresh): `fantasy inseason opportunity --date $D --free-agents data/raw/yahoo/free_agents_$D.json --json`
+  (opportunity-0.1.0, ~30 s; `docs/research/opportunity_detector.md`). It flags free agents with an observed minutes
+  jump (model A vs preseason) or with minutes vacated by an Out ≥ 28-mpg teammate (driver, source and date in
+  `drivers[].sources`). It gives the opportunity mpg × window, the window value vs my weakest player, and for the
+  top 5 the paired week ΔP(win) and season ΔP(playoffs)/ΔP(title) ± SE with a `verdict`.
+  - Present only `helps` verdicts as recommendations, with the usual justification + why-now. The why-now is
+    usually the injury (who, source, date) and "model A has / has not seen it yet".
+  - `speculative` = mention as an idea; `noise`/`hurts` = don't.
+  - A 1-3 game window is a stream: confirm with `fantasy inseason stream --projections <override .window.csv>`.
+    The season number assumes a hold.
+  - Candidates outside the capture's top 50 are "presumed FA": check their status on Yahoo before proposing.
+  - Never add without the user's yes.
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
   this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from
   `teams[].totals`), else it warns "stats banked ... assumed 0" and its week numbers ignore the score (2026-10-22).
