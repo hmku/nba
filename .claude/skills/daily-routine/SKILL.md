@@ -15,8 +15,9 @@ that wasn't decided, verify every Yahoo change by an independent re-read. Skills
 
 Timing: run ~10:00 ET (after overnight news, before tip-offs ~19:00 ET). Daily lineups lock **per player at tip-off**, so
 "decide at tip-off" players (Q/GTD with late games) may need a second look before their game. That second look is the
-scheduled task **fantasy-tipoff** (19:00 ET daily, added 2026-10-23 after Sheppard was ruled Out at 9:30 PM while
-Podziemski played on our bench): it re-reads news + Yahoo, re-plans with `--locked`, and applies verified lineup swaps.
+scheduled tasks **fantasy-tipoff** (18:30 ET daily), **fantasy-tipoff-late** (21:00 ET daily, for 21:30+ tips) and
+**fantasy-tipoff-weekend** (14:30 ET Sat/Sun, afternoon games) — added 2026-10-23 after Sheppard was ruled Out at 9:30 PM
+while Podziemski played on our bench: it re-reads news + Yahoo, re-plans with `--locked`, and applies verified lineup swaps.
 Write each decide-at-tip-off pair in the daily log so that run can find it.
 
 ## 0. Orient (2 min)
