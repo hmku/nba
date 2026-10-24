@@ -172,7 +172,7 @@ dashboard); then follow agent-run §6 with that approval, re-reading Yahoo first
 **Timing (learned 2026-10-23):** Yahoo refuses an add/drop once either player's game has started that day — POST
 `/nba/44495/11/addplayer` returns error #174 "A player has already played and is no longer editable for today" (the
 page shows no error; read the network response). Execute add/drops in the morning run or before the earlier tip-off of
-the two players, else after Yahoo's day rolls over. **Approval gap:** `fantasy txn plan` always files its OWN approval,
+the two players, else after Yahoo's day rolls over — NOT by 01:00 ET (#174 again at 01:00 ET 2026-10-24); the 07:00 run works. **Approval gap:** `fantasy txn plan` always files its OWN approval,
 so an advice approval (`fantasy approval request`) the user already approved can't satisfy the txn; the user must approve
 the txn's approval too (one extra click). Plan the txn as early as possible so both approvals land together.
 
