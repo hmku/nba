@@ -102,6 +102,11 @@ not comparable in level — fewer remaining games now.)
   to one `player_id` from several ESPN ids are warned about and deduplicated to one row per game.
 
 ## 2. Per-game stats (fitted)
+**Minutes (since `ros-proj-0.5.0`):** projected mpg comes from the recency-weighted minutes model
+(`minutes-0.2.0`, two EWMAs + prior; `mpg` = rest-of-season model with intercept, OOS RMSE 3.85 vs 4.32 for the MPG
+shrink below; `mpg_next5` = next-5-games model without intercept, 4.26 vs 4.83), see
+[minutes_model.md](minutes_model.md). The MPG row below is the pre-0.5.0 formula (`--minutes-model shrink`).
+
 `mpg_post = (n0·mpg_prior + g·mpg_obs)/(n0 + g)`; per-minute rates `(n0·r_prior + M·r_obs)/(n0 + M)`; FG%/FT% by
 attempts; makes = shrunk % × shrunk attempts; PTS from makes (prior's scoring ratio). One n0 per stat, pooled over
 k = 5..50 (per-k optima add 0.002 ± 0.001 z: not worth it). Train 2012-19 + 2022, validation 2023-24, test 2025-26.

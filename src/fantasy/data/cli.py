@@ -252,6 +252,8 @@ def update_projections_cmd(
     out: str = typer.Option("", "--out", help="write here instead of the default in-season file (dry run)"),
     alt: bool = typer.Option(True, "--alt/--no-alt", help="also update var/projections_alt/market.csv -> "
                              "market.inseason.csv (the stress set stays preseason: independent of our model)"),
+    minutes_model: str = typer.Option("ewma", "--minutes-model",
+                                      help="ewma (recency-weighted minutes-*, default) | shrink (pre-0.5.0 formula)"),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Rest-of-season projections from the preseason projections + ESPN box scores to date (fantasy.model.inseason).
@@ -260,8 +262,10 @@ def update_projections_cmd(
     (FANTASY_PROJECTIONS=preseason forces the preseason file). gp there = 82 x expected share of remaining games."""
     from datetime import date
 
-    from fantasy.model.inseason import write_inseason
+    from fantasy.model.inseason import MINUTES_MODELS, write_inseason
 
+    if minutes_model not in MINUTES_MODELS:
+        raise typer.BadParameter(f"--minutes-model must be one of {list(MINUTES_MODELS)}")
     if fetch:
         from fantasy.data.boxscores import fetch_season
 
@@ -271,10 +275,11 @@ def update_projections_cmd(
     from fantasy.data.provenance import REPO_ROOT
 
     day = as_of or date.today().isoformat()
-    res = write_inseason(day, season=season, out_path=Path(out) if out else None)
+    res = write_inseason(day, season=season, out_path=Path(out) if out else None, minutes_model=minutes_model)
     market = REPO_ROOT / "var" / "projections_alt" / "market.csv"
     if alt and not out and market.exists():
-        m = write_inseason(day, season=season, prior_path=market, out_path=market.with_name("market.inseason.csv"))
+        m = write_inseason(day, season=season, prior_path=market, out_path=market.with_name("market.inseason.csv"),
+                           minutes_model=minutes_model)
         res["market"] = {"output": m["output"], "rows": m["rows"]}
     _emit(res, as_json)
 
