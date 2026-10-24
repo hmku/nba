@@ -28,4 +28,6 @@ python scripts/inseason_model/fit_stats.py --tl /tmp/inseason_raw/tl_all.pkl --p
   day - 21 days; `--to-nba-end` = the ros-avail-0.3 target); OOS vs static prior, iid Beta-binomial and the deployed
   early damping (`update_damped`).
 - `fit_stats.py`: stat-specific stabilisation constants (n0) shrinking observed rates toward the preseason projection.
+- `fit_minutes.py`: recency-weighted minutes model (minutes-*; offline, committed ESPN 2024-25/2025-26 data only):
+  `PYTHONPATH=src python scripts/inseason_model/fit_minutes.py --n-boot 200` -> `report_minutes.json` (`deployed` -> `minutes.FITTED`).
 - Production constants are pasted from `report_avail.json` (`production_model`: all seasons) and `report_stats.json` (`n0`).

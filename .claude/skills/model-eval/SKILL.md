@@ -71,7 +71,7 @@ target season; manual overrides can't be replayed, so backtest the baseline only
 - **Bump the version** of the component whose outputs change: `MODEL_VERSION` in
   `src/fantasy/model/projections.py` (projections), `PROJECTIONS_VERSION` in `model/blend.py` (blend),
   `MODEL_VERSION` in `src/fantasy/model/valuation.py` (valuation; also for `lines.py`/`catmodel.py`/`noise.py`
-  changes that move values), `NOISE_MODEL_VERSION` (`model/noise.py`), `OPTIMIZER_VERSION`
+  changes that move values), `NOISE_MODEL_VERSION` (`model/noise.py`), `MINUTES_MODEL_VERSION` (`model/minutes.py`; also bump `INSEASON_MODEL_VERSION` in `model/inseason.py`), `OPTIMIZER_VERSION`
   (`draft/optimizer.py`, room sim), `RECOMMEND_VERSION` (`draft/cli_recommend.py`, default policy),
   `SIM_VERSION` (`sim/__init__.py`), value model `MODEL_VERSION` (`valuesearch/train.py`; artifact + the
   live-draft guard's expected version). `model_runs` records valuation, `draft_sim` and `season_sim` runs;
