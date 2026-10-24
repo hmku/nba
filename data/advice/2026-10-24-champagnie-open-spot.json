@@ -1,0 +1,46 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Champagnie into the open spot today (no drop); Bailey later",
+  "status": "awaiting_yes",
+  "headline": "Add Julian Champagnie (SAS, FA) now, no drop. Drop Bailey when Podziemski leaves IL (separate yes).",
+  "week": 1,
+  "verdict": "Podziemski on IL opened a spot, so Champagnie can play tonight (8 PM ET @DAL) and Bailey still plays Sunday. Must be done before 8 PM ET.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(win week 1), this add", "value": 7.6, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs), Champagnie for Bailey", "value": 1.0, "se": 0.5, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title), Champagnie for Bailey", "value": 1.5, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds (0 used so far).",
+   "When Podziemski is healthy (~Oct 26) a drop is needed; Bailey is the planned one (re-checked then).",
+   "Stream tool's +13 pp season figure for a no-drop add is an artifact (keeps 14 players all season); not used."
+  ],
+  "links": [{"label": "Daily log", "path": "docs/daily/2026-10-24.md"}],
+  "rationale": [
+   "- Same player you approved three times (vs Bailey); approvals expired after Yahoo #174 refusals.",
+   "- Today Bailey (UTA) has no game, Champagnie does: +1 game for the week at no cost.",
+   "- Season numbers: sim compare 2 seeds x 3000, season-sim-0.7.0, ros-proj-0.4.0."
+  ],
+  "why_now": {
+   "before": "Add Champagnie / drop Bailey, approved 2026-10-23 (chat + dashboard); Yahoo refused twice (#174, games in progress / day not rolled over).",
+   "changed": [
+    {"text": "Podziemski ruled out Sat (Yahoo O) and moved to IL this morning: a roster spot is open, so no drop is needed today.", "kind": "league"},
+    {"text": "Earlier approvals expired (09:00Z / 13:55Z today).", "kind": "other"}
+   ],
+   "evidence": ["ΔP(playoffs), Champagnie for Bailey"]
+  }
+ },
+ "params": {
+  "add": "julian-champagnie",
+  "drop": null,
+  "follow_up": "drop ace-bailey when brandin-podziemski returns from IL (separate approval)",
+  "tool": "fantasy sim compare (season-sim-0.7.0) + fantasy inseason stream (week ΔP(win))",
+  "supersedes": "2026-10-22-champagnie-bailey-v2"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "matchup": "data/raw/yahoo/matchup_2026-10-24T1438Z.json"
+ }
+}

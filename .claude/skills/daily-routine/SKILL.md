@@ -122,6 +122,12 @@ is interested in X; details private"). A thread message
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
   this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from
   `teams[].totals`), else it warns "stats banked ... assumed 0" and its week numbers ignore the score (2026-10-22).
+- **Open spot from an IL move is temporary (learned 2026-10-24):** after moving an O player to IL, `inseason stream`
+  pairs with `drop: (none: open spot)` show huge season deltas (+13-15 pp P(playoffs)) because the season sim keeps the
+  extra player all season after the IL player returns. Never quote that number: use `fantasy sim compare --add X --drop
+  <who you'd drop on his return>` for the season effect and the stream tool's `week_d_p_win` for the extra games now.
+- **Yahoo ids in payloads** (approvals, txns) are copied from today's capture or the player's `href` on Yahoo, never typed
+  from memory (2026-10-24: a Champagnie approval got Jalen Williams's id 6702; had to file a corrected one).
 - Streams/trades: `fantasy inseason stream|trade|trade-scan` (inseason-0.3.0, quant-reviewed): realistic chain (stream stint then k-th FA), base includes the best free move, realistic refill, schedule-neutral delta, three projection sets (blend/market/stress), seed-averaged. Present only `helps` verdicts as recommendations; `speculative` = mention as an idea.
 - Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
 
