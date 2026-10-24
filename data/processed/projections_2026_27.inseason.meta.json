@@ -1,7 +1,7 @@
 {
-  "model_version": "ros-proj-0.4.0+ros-avail-0.4+stat-shrink-0.1",
+  "model_version": "ros-proj-0.5.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0",
   "as_of": "2026-10-24",
-  "git_sha": "522af54",
+  "git_sha": "e6baf65",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
   "prior_sha256": "bb402303ef350526a62c1db383fbd3f84dc6084bde79e0830a8ff5cbd97c104a",
@@ -47,6 +47,59 @@
     "units": "mpg: games; fg_pct: fga; ft_pct: fta; others: minutes",
     "report": "scripts/inseason_model/report_stats.json"
   },
+  "minutes": {
+    "model": "ewma",
+    "version": "minutes-0.2.0",
+    "mpg": {
+      "horizon": "ros",
+      "version": "minutes-0.2.0",
+      "params": {
+        "half_lives": [
+          1.5,
+          10.0
+        ],
+        "b_ewma": [
+          0.2705,
+          0.5727
+        ],
+        "b_prior": 0.0283,
+        "const": 3.6028,
+        "shrink_n0": 0.0,
+        "b_shrink": 0.0,
+        "target": "ros",
+        "fallback_t": 0,
+        "coef_sum": 0.8715
+      },
+      "formula": "t=0: prior; t<=fallback_t: (5.2 prior + sum m)/(5.2 + t); else const + sum b_h EWMA_h + b_shrink (n0 prior + sum m)/(n0 + t) + b_prior prior; EWMAs of minutes in games played, initialised at the prior",
+      "report": "scripts/inseason_model/report_minutes.json",
+      "note": "docs/research/minutes_model.md"
+    },
+    "mpg_next5": {
+      "horizon": "next5",
+      "version": "minutes-0.2.0",
+      "params": {
+        "half_lives": [
+          1.5,
+          10.0
+        ],
+        "b_ewma": [
+          0.5103,
+          0.4352
+        ],
+        "b_prior": 0.0525,
+        "const": 0.0,
+        "shrink_n0": 0.0,
+        "b_shrink": 0.0,
+        "target": "next5",
+        "fallback_t": 0,
+        "coef_sum": 0.998
+      },
+      "formula": "t=0: prior; t<=fallback_t: (5.2 prior + sum m)/(5.2 + t); else const + sum b_h EWMA_h + b_shrink (n0 prior + sum m)/(n0 + t) + b_prior prior; EWMAs of minutes in games played, initialised at the prior",
+      "report": "scripts/inseason_model/report_minutes.json",
+      "note": "docs/research/minutes_model.md",
+      "use": "lineup / streaming: per-game counting stats x mpg_next5 / mpg"
+    }
+  },
   "games_missed_overrides": 23,
   "gtd_window_prior": {
     "players": 49,
@@ -81,7 +134,7 @@
       "sha256": "bef31732754010b7635f32d2db4824afb7ce9461d65120583298491a6d908fae"
     }
   ],
-  "sha256": "88a3fc8430946fd2400a4d704ba518743d87d948a5d7adb500ba57cad8044d14",
+  "sha256": "2a599bb75784d644636d7b8606fdcd5d2c89fcab6f50338ca8647f66fdaa5ed9",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": [
