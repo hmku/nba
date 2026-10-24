@@ -29,7 +29,7 @@ and over-penalises injury-prone trade targets (Jamal Murray).
 lists him Out, and once he is healthy the team must get back to 13 non-IL players (drop someone) before any move.
 0.7.0 treated every listed player as a roster member all season, so a team with 13 + k IL players effectively played
 13 + k players after the IL players returned, and IL replacement still added replacement-level players during
-spells. Found 2026-10-24: our team with 14 (Podziemski on IL) had P(playoffs) 0.892 vs 0.767 with Ace Bailey removed
+spells. Found 2026-10-24: our team with 14 (Podziemski on IL) had P(playoffs) 0.900 vs 0.779 with Ace Bailey removed
 (6000 sims, simulated). Teams 1, 6, 9, 10 (14 players) and 11 (15) were all inflated.
 
 **Rule (an assumption, documented; `SimParams.roster_cap`, `active_roster` = settings `num_rounds` = starters +
@@ -43,45 +43,57 @@ bench = 13; IL slots = settings `roster_slots["IL"]` = 3; `engine._apply_roster_
   to the end of the window nobody is released.
 - IL replacement now fills only below 13 healthy non-IL: replacements per day = max(0, min(#Out, il_slots) −
   (rostered − 13)^+). A 14-man team with one Out gets none (its 14th man *is* the replacement).
-- Players the league file lists as Out on Yahoo (`status` O/INJ/OFS/IR → `LeagueState.out_now`) start the season in
-  their spell, like projections status `out` (Podziemski, Flagg and Banchero were `healthy` in the projections but
-  Out on Yahoo, so 0.7.0 had them playing from day 0).
+- Players the league file lists as Out on Yahoo (`status` O/INJ/OFS/IR → `LeagueState.out_now`) start the season
+  out. If the projections already say `out`, nothing changes (whole missed share = one day-0 spell, no rests). If the
+  projections call him healthy (Podziemski, Flagg, Banchero), he keeps the usual spell model (25% scattered rests;
+  one spell, or two with prob 0.5 and the U(0.2, 0.8) split) with the **first spell rotated to start on day 0 and
+  lasting at least `il_min_spell_days`** (7, the same "Out" proxy as IL replacement; a prior). So he still has absence
+  risk later in the season, playoffs included; the floor adds at most 7 missed days when his drawn spell is shorter.
+  0.7.0 had these three playing from day 0. The first spell of any day-0-out player holds an IL slot however short.
 - No new random numbers (pure function of the existing spell draws): on/off and roster variants stay paired.
   Mid-season swaps in `PositionAwareSimulator` (windows) count only the window's members, so a swap is 13 → 13.
+- Trades (`inseason/trade.py::apply_trade`): Out players do not count against the 13 when a trade trims a roster, so
+  the traded and untraded sides are treated alike (the engine's cap handles the return on both); a no-op trade on a
+  14-man team with an IL player has delta exactly 0 (test). Before, every trade trimmed such a team to 13 at once
+  (possibly dropping the IL player), biasing its deltas.
 
 **Not modelled.** A real manager may drop someone other than the lowest season-value player, trade, or re-add later;
-an IL-slotted player listed Q (team 11's Anthony Black, team 7's Coby White) counts as not Out, so the team is over
-the cap from day 0 if it has more than 13 (Yahoo would block its moves until it fixes that).
+an IL-slotted player listed Q (team 11's Anthony Black, team 7's Coby White) counts as not Out. On the 2026-10-24
+file that never puts anyone over the cap at day 0: team 11 has 15 with Flagg **and** Banchero Out (15 − 2 = 13), and
+team 7 has 13. Return windows in injury notes are not parsed (the day-0 spell is the model's draw, floored at 7 days).
 
 ### Before/after (simulated; real rosters `data/manual/league_rosters_2026-27.json` captured 2026-10-24 16:49Z, Yahoo
-schedule, blend projections, 6000 sims, seed 0, paired; P(po) SE ≤ 0.65 pp, P(title) SE ≤ 0.6 pp, binomial over sims)
+schedule, blend projections after minutes-0.2.0 (main 5b2494a), 6000 sims, seed 0, paired; P(po) SE ≤ 0.65 pp,
+P(title) SE ≤ 0.6 pp, binomial over sims; "0.7.0" = `--no-roster-cap`, which reproduces 0.7.0 exactly)
 | team (players) | 0.7.0 P(po) / P(title) | cap, no Yahoo-Out | **0.8.0** P(po) / P(title) | released (P over sims) |
 |---|---|---|---|---|
-| 1 Harrison (14) | 0.892 / 0.284 | 0.836 / 0.236 | **0.837 / 0.235** | Fears 0.68 (median first release day 106 of 153) |
-| 2 Justin (13) | 0.381 / 0.031 | 0.464 / 0.051 | **0.466 / 0.052** | – |
-| 3 Shalom Jerome (13) | 0.461 / 0.056 | 0.560 / 0.085 | **0.567 / 0.086** | – |
-| 4 Haagen Daz (13) | 0.670 / 0.074 | 0.776 / 0.131 | **0.775 / 0.129** | – |
-| 5 jesse (13) | 0.406 / 0.049 | 0.507 / 0.083 | **0.510 / 0.082** | – |
-| 6 Yeet (14) | 0.627 / 0.200 | 0.524 / 0.147 | **0.520 / 0.145** | Sharpe 0.31 |
-| 7 Andrew (13) | 0.146 / 0.008 | 0.219 / 0.019 | **0.220 / 0.020** | – |
-| 8 Ed (13) | 0.450 / 0.041 | 0.536 / 0.067 | **0.538 / 0.066** | – |
-| 9 Jeffrey (14) | 0.498 / 0.042 | 0.403 / 0.035 | **0.405 / 0.034** | G. Santos 0.51 |
-| 10 Christian (14) | 0.558 / 0.088 | 0.454 / 0.074 | **0.463 / 0.074** | Kuminga 0.43 |
-| 11 SCOTTIER (15) | 0.582 / 0.105 | 0.302 / 0.033 | **0.284 / 0.037** | Drummond 0.84, Schröder 0.50 |
-| 12 Joshua (13) | 0.330 / 0.022 | 0.418 / 0.040 | **0.417 / 0.041** | – |
+| 1 Harrison (14) | 0.900 / 0.298 | 0.848 / 0.242 | **0.847 / 0.241** | Fears 0.68 (median first release day 106 of 153) |
+| 2 Justin (13) | 0.388 / 0.030 | 0.468 / 0.053 | **0.468 / 0.053** | – |
+| 3 Shalom Jerome (13) | 0.473 / 0.061 | 0.575 / 0.097 | **0.578 / 0.097** | – |
+| 4 Haagen Daz (13) | 0.656 / 0.064 | 0.761 / 0.119 | **0.760 / 0.118** | – |
+| 5 jesse (13) | 0.388 / 0.047 | 0.496 / 0.076 | **0.496 / 0.077** | – |
+| 6 Yeet (14) | 0.630 / 0.197 | 0.523 / 0.148 | **0.526 / 0.149** | Sharpe 0.31 |
+| 7 Andrew (13) | 0.151 / 0.011 | 0.231 / 0.020 | **0.229 / 0.021** | – |
+| 8 Ed (13) | 0.451 / 0.039 | 0.537 / 0.069 | **0.537 / 0.068** | – |
+| 9 Jeffrey (14) | 0.497 / 0.038 | 0.403 / 0.034 | **0.404 / 0.034** | G. Santos 0.51 |
+| 10 Christian (14) | 0.555 / 0.086 | 0.446 / 0.067 | **0.459 / 0.069** | Kuminga 0.43 |
+| 11 SCOTTIER (15) | 0.583 / 0.104 | 0.293 / 0.030 | **0.280 / 0.031** | Drummond 0.85, Schröder 0.52 |
+| 12 Joshua (13) | 0.330 / 0.023 | 0.419 / 0.044 | **0.416 / 0.044** | – |
 
-- The 13-man teams gain 7-11 pp because the inflated teams lose; nearly all of the change is the cap itself
-  ("cap, no Yahoo-Out" column), the league-file Out status adds little.
-- **Our team vs the same roster with Ace Bailey removed** (paired, 14-man minus 13-man): 0.7.0 ΔP(po) **+0.126 ±
-  0.004**, ΔP(title) +0.104 ± 0.005 (the bug); 0.8.0 ΔP(po) **+0.013 ± 0.003**, ΔP(title) −0.009 ± 0.004. The small
+- The 13-man teams gain 8-11 pp because the inflated teams lose; nearly all of the change is the cap itself
+  ("cap, no Yahoo-Out" column); the league-file Out status adds little.
+- **Our team vs the same roster with Ace Bailey removed** (paired, 14-man minus 13-man): 0.7.0 ΔP(po) **+0.121 ±
+  0.004**, ΔP(title) +0.112 ± 0.005 (the bug); 0.8.0 ΔP(po) **+0.009 ± 0.003**, ΔP(title) −0.012 ± 0.004. The small
   playoff gain is the real IL-period depth. The 14-man run releases Fears (lowest season value), not Bailey, so the
   two variants are not the same 13 afterwards; the title sign suggests Bailey is the better playoff-week keep — a
   value-ordering question, not a cap effect.
-- IL replacement games per team-season (0.7.0 → 0.8.0): team 1 113 → 79, 6 141 → 92, 9 131 → 88, 10 136 → 90,
-  11 135 → 62; 13-man teams unchanged (no double counting any more).
-- `--no-roster-cap` reproduces 0.7.0 exactly (identical league table on both files). Cost: 5.8 s → 7.3 s at 6000 sims.
+- IL replacement games per team-season (0.7.0 → 0.8.0): team 1 113.5 → 78.6, 6 141.0 → 91.6, 9 131.4 → 88.3,
+  10 136.1 → 89.8, 11 134.6 → 63.5 (no double counting any more). 13-man teams: identical except team 5 (+0.1,
+  134.8 → 134.9): projections-out players (Butler on team 2, Nurkic on team 5) now always hold an IL slot for their
+  first spell even when it is shorter than 7 days; Butler's spell is always ≥ 7 days here, so team 2 is unchanged.
+- Cost: 5.8 s → 7.3 s at 6000 sims.
 - Reproduce: `fantasy sim season --league-file <file> --sims 6000 --seed 0 --no-save --json [--no-roster-cap]`;
-  decomposition script `decomp.py` (session scratchpad `rcap/`). Tests: `tests/test_sim.py::test_roster_cap_*`.
+  decomposition script `decomp.py` (session scratchpad `rcap/`). Tests: `tests/test_sim.py::test_roster_cap_*`, `test_yahoo_out_only_*`, `test_noop_trade_*`, `tests/test_inseason.py::test_apply_trade_keeps_yahoo_out_*`.
 
 ## Method
 - **Trigger.** The engine already draws each player's injury spells (one or two per season, validated in

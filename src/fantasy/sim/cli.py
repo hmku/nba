@@ -152,6 +152,7 @@ def _save(save: bool, kind_detail: str, params: SimParams, setup: _Setup, summar
         from fantasy.sim.persist import save_sim_run
 
         inputs = {**setup.ctx.inputs(), "league_source": setup.league.source,
+                  "league_file_sha256": setup.league.file_sha256, "league_out_now": sorted(setup.league.out_now),
                   "draft_id": setup.draft["draft_id"] if setup.draft else setup.league.draft_id,
                   "rosters": setup.league.to_json()["teams"], **(extra_inputs or {})}
         return save_sim_run("season_sim", {**params.to_dict(), "command": kind_detail}, inputs, summary)

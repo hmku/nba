@@ -106,6 +106,16 @@ def test_apply_trade_refills_and_trims():
         apply_trade(lg, 1, Trade(2, ["b"], ["c"]), _values(), roster_size=3)
 
 
+def test_apply_trade_keeps_yahoo_out_players_above_the_cap():
+    """Out (IL) players don't count against the cap: a no-op trade leaves a 3 + 1 IL roster alone, and a trim never
+    drops the Out player (the engine's roster cap handles his return, as in the base run)."""
+    lg = LeagueState(rosters={1: ["a", "d", "e", "h"], 2: ["b", "c", "f"]}, my_team=1, source="t", out_now={"h"})
+    new, moves = apply_trade(lg, 1, Trade(2, [], []), _values(), roster_size=3)
+    assert new.rosters == lg.rosters and moves == {}
+    new, moves = apply_trade(lg, 1, Trade(2, ["d"], ["b", "c"]), _values(), roster_size=3)
+    assert "h" in new.rosters[1] and moves[1]["drop"] == ["e"]  # e (value 4) goes, not h (value 1, Out)
+
+
 @pytest.fixture(scope="module")
 def ctx(proj_path):
     return build_context(load_projections(proj_path), LeagueSettings(), [1, 2], nba=uniform_schedule(["TST"]))

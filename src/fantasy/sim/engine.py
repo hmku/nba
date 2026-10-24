@@ -44,8 +44,11 @@ numbers for everyone else):
    spell runs to the end of the window nobody goes). Released players never come back; later injuries are covered
    by IL replacement. IL replacement only fills an Out player's slot when the team has fewer than `active_roster`
    healthy non-IL players: replacements per day = max(0, min(#Out, il_slots) - (rostered - active_roster)^+).
-   Players the league file lists Out on Yahoo (`LeagueState.out_now`) start the season in their spell, like
-   projections status out. No extra random numbers. `roster_cap=False` reproduces season-sim-0.7.0 exactly.
+   Players the league file lists Out on Yahoo (`LeagueState.out_now`) but the projections call healthy keep the
+   usual spell model (rest_share rests; one spell, or two with prob two_spell_prob and the usual U(0.2, 0.8) split),
+   with the first spell rotated to start on day 0 and lasting at least `il_min_spell_days` (the second keeps a
+   uniform gap): the day-0 spell is the model's own first spell, not the whole missed share, so he keeps absence
+   risk later in the season. No extra random numbers. `roster_cap=False` reproduces season-sim-0.7.0 exactly.
 5. Weekly team totals: given the counted games k, team attempts/counting stats ~ Normal with mean
    sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the one game-noise model
    shared with the draft, var = a * mean + b * mean^2 (fantasy.model.noise). Noise is drawn at team level,
@@ -310,7 +313,10 @@ class SeasonSimulator:
             # --- availability
             a, b = _beta_params(np.array([gp / SEASON_GAMES]), np.array([gp_sd / SEASON_GAMES]))
             f = rng.beta(a[0], b[0], N)
-            out_now = status in ("out", "out_for_season") or pid in self._out_now
+            out_now = status in ("out", "out_for_season")  # projections: the whole missed share is one day-0 spell
+            # Out on Yahoo only (league file, 0.8.0): the usual spell model (rests, one or two spells with the usual
+            # split), but the first spell is rotated to start on day 0; the rest of the season keeps its risk
+            yahoo_out = (not out_now) and pid in self._out_now
             q = 1.0 - f  # missed share
             rest = 0.0 if out_now else self.p.rest_share
             spell_len = (1 - rest) * q * Tw  # total spell days on the fantasy-window circle
@@ -324,12 +330,17 @@ class SeasonSimulator:
             u = np.where(two, rng.uniform(0.2, 0.8, N), 1.0)
             L1, L2 = spell_len * u, spell_len * (1 - u)
             c = 0.0 if out_now else rng.random(N) * Tw
-            g = rng.random(N) * np.maximum(Tw - spell_len, 0)
+            if yahoo_out:  # draw consumed above so his other draws match a run without the Yahoo status
+                c = np.zeros(N)
+                # Out on Yahoo = out for a while: the day-0 spell lasts at least il_min_spell_days (the same "Out"
+                # proxy IL replacement uses; prior). Adds at most that many missed days when his draw was shorter.
+                L1 = np.maximum(L1, min(self.p.il_min_spell_days, Tw))
+            g = rng.random(N) * np.maximum(Tw - (L1 + L2), 0)
             a1, a2 = c, np.mod(c + L1 + g, Tw)
             if il_start is not None and il_end is not None:
                 for k_, (st_, ln_) in enumerate(((a1, L1), (a2, L2))):
-                    # a player listed out now holds his IL slot for his whole (first) spell, however short (0.8.0)
-                    long_ = (ln_ >= self.p.il_min_spell_days) | (cap_on and out_now)
+                    # a player listed out now holds his IL slot for his whole first spell, however short (0.8.0)
+                    long_ = (ln_ >= self.p.il_min_spell_days) | (cap_on and k_ == 0 and (out_now or yahoo_out))
                     st_ = np.broadcast_to(st_, (N,))
                     # pieces on the season-day axis: [st, min(st+L, T)) and the wrapped part [0, st+L-T)
                     il_start[:, j, 2 * k_] = np.where(long_, w0 + st_, 0.0)

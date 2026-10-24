@@ -15,6 +15,7 @@ market order or an explicit plan (the optimizer's planned picks). Completed pick
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,6 +41,7 @@ class LeagueState:
     # players Yahoo lists as IL-eligible Out (O/INJ/OFS/IR) in the league file's `status`; with the roster cap
     # (season-sim-0.8.0) the engine starts them inside an injury spell even if the projections call them healthy
     out_now: set[str] = field(default_factory=set)
+    file_sha256: str | None = None  # sha256 of the league JSON this state was read from (run provenance)
 
     @property
     def team_ids(self) -> list[int]:
@@ -56,6 +58,7 @@ class LeagueState:
             rosters={t: list(p) for t, p in self.rosters.items()}, my_team=self.my_team, source=self.source,
             names=dict(self.names), projected={t: list(p) for t, p in self.projected.items()},
             draft_id=self.draft_id, warnings=list(self.warnings), out_now=set(self.out_now),
+            file_sha256=self.file_sha256,
         )
 
     def with_change(self, team: int, add: list[str], drop: list[str]) -> LeagueState:
@@ -94,7 +97,8 @@ def from_json(path: Path | str) -> LeagueState:
         normalize_status,
     )
 
-    raw = json.loads(Path(path).read_text())
+    text = Path(path).read_bytes()
+    raw = json.loads(text)
     rosters, names, out_now = {}, {}, set()
     for k, v in raw["teams"].items():
         t = int(k)
@@ -109,7 +113,8 @@ def from_json(path: Path | str) -> LeagueState:
                     out_now.add(str(pid))
     return LeagueState(rosters=rosters, my_team=int(raw.get("my_team", 1)),
                        source=str(raw.get("source") or f"json:{Path(path).name}"), names=names,
-                       draft_id=raw.get("draft_id"), out_now=out_now)
+                       draft_id=raw.get("draft_id"), out_now=out_now,
+                       file_sha256=hashlib.sha256(text).hexdigest())
 
 
 def parse_team_names(raw: object, num_teams: int) -> dict[int, str]:

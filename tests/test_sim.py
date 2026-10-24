@@ -725,3 +725,39 @@ def test_roster_cap_counts_only_window_members_position_aware(ctx):
     D = len(sim.fdays)
     assert (sim.run(lg, swap).cap_drop_day[:, 0] == D).all()
     assert (sim.run(lg).cap_drop_day[:, 0] < D).any()  # without the window the 14th is released at some point
+
+
+def test_noop_trade_delta_zero_for_14_man_team_with_il_player(ctx):
+    from fantasy.inseason.trade import Trade, evaluate_trades
+
+    lg, df, hurt = _capped_league(ctx)
+    lg.out_now = {hurt}
+    sim = _sim_with(ctx, df, n_sims=100, il_replacement=True)
+    base, rows = evaluate_trades(sim, lg, 1, [Trade(2, [], [])], ctx.values, ctx.settings.num_rounds)
+    assert rows[0]["refill_moves"] == {}
+    assert all(v["delta"] == 0 and v["delta_se"] == 0 for v in rows[0]["me"].values())
+
+
+def test_yahoo_out_only_player_starts_out_but_keeps_later_absence_risk(ctx):
+    lg = _snake_league(ctx)
+    pid = lg.rosters[1][0]
+    assert ctx.proj.df.loc[pid, "status"] not in ("out", "out_for_season")
+    sim = ctx.simulator(_params(n_sims=400))
+    plays = sim.plays[sim.team_row.get(str(ctx.proj.df.loc[pid, "team"]), len(sim.team_row))]
+    base = sim._player_arrays([pid])
+    sim._out_now = {pid}
+    yo = sim._player_arrays([pid])
+    sim._out_now = set()
+    h0, h1 = base["health"][:, 0], yo["health"][:, 0]
+    first_game = int(np.flatnonzero(plays)[0])
+    # out from day 0 for at least il_min_spell_days in every sim (his first spell is rotated to day 0, floor 7 days)
+    early = plays & (sim.fday_offset - sim.window_start < sim.p.il_min_spell_days - 0.5)
+    assert early[first_game] and not h1[:, early].any()
+    # after his day-0 spell he still misses games (rests, and a second spell with the usual probability)
+    end1 = yo["il_end"][:, 0, 0] - sim.window_start  # day-0 spell end on the window axis
+    t_w = sim.fday_offset - sim.window_start
+    after = (t_w[None, :] >= end1[:, None] + 1) & plays[None, :]
+    miss_after = (~h1 & after).sum() / after.sum()
+    assert 0.02 < miss_after < 0.5
+    # about the same total availability as without the Yahoo status (timing changes; the 7-day floor adds a little)
+    assert -0.06 < h1[:, plays].mean() - h0[:, plays].mean() <= 0.005

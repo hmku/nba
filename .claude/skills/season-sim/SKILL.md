@@ -59,8 +59,8 @@ for experiments.
 4. **Roster cap (season-sim-0.8.0).** Rosters are 13 non-IL + up to 3 IL (Out only). A team listed with more than 13
    (IL players included) keeps the extras only while someone is Out; from the first day it would exceed 13 non-IL,
    its lowest-value non-Out player is released for the season (`warnings` names the teams; `SimResult.cap_drop_day`).
-   Before 0.8.0 such teams were inflated (us: +12.6 pp playoffs vs the same roster minus a bench player). The
-   league file's Yahoo `status` O/INJ/OFS/IR puts those players in a spell from day 0. When comparing "keep vs drop"
+   Before 0.8.0 such teams were inflated (us: +12.1 pp playoffs vs the same roster minus a bench player; now +0.9 pp). The
+   league file's Yahoo `status` O/INJ/OFS/IR puts those players in a spell from day 0 (≥ 7 days; healthy-projected ones keep later absence risk). Trades (`apply_trade`) no longer trim Out players. When comparing "keep vs drop"
    for a 14-man roster, the cap already drops the lowest-value player on return: compare against dropping a
    *specific* player, and remember the release choice is by season value (`il_replacement.md` "Roster cap").
 5. `SimParams` are fitted since season-sim-0.4.0 (`docs/research/sim_calibration.md`: projection error, game variance, within-game correlation; injury spells validated). Since season-sim-0.5.0 the per-game variance comes from `fantasy.model.noise` (the one noise model the draft also uses; there is no `game_var` option any more); `noise_corr` (within-game correlation) is simulator-only. Still not validated end-to-end: P(win matchup) against real fantasy outcomes, streaming, lineup behaviour; the season error is fitted on the baseline (not blended) projections.
