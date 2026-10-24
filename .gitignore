@@ -31,3 +31,8 @@ data/raw/espn/projections_[0-9][0-9][0-9][0-9]_[0-9][0-9].json
 data/raw/fantasypros/*.html
 CLAUDE.local.md
 .coverage
+
+# ESPN/Rotowire player-news blurbs (ToS: personal use) + the local "seen" state of the daily news triage;
+# both live only on the machine that runs the daily task (fantasy data fetch-news). Provenance is committed.
+data/raw/espn/news/*
+!data/raw/espn/news/*.provenance.json

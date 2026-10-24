@@ -1,0 +1,9 @@
+{
+  "path": "data/raw/espn/news/news_2026-10-24.json",
+  "url": "https://site.api.espn.com/apis/fantasy/v2/games/fba/news/players?playerId=<espn_id>",
+  "fetched_at": "2026-10-24T15:51:12Z",
+  "method": "httpx GET per player (161 players, <=4 concurrent, 1 retry)",
+  "sha256": "62bdbc9ed9149c916820719b682e061552a4be2954b6d1c10d46e6020968061d",
+  "rows": 2135,
+  "notes": "ESPN fantasy player news (Rotowire etc.), scope=rostered; compact fields id,type,headline,description,story,published,lastModified,playerId; items published in the last 45 days; story cut at 1500 chars"
+}

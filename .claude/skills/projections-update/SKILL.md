@@ -50,6 +50,9 @@ row per player (update in place). Percentages are never inputs - edit makes/atte
 ignores those games when updating. So never add an in-season injury as `games_missed` (it would be placed at the season
 start and double count the absence the box scores already show): current injuries come in through `status` (daily
 `fetch-injuries`) and the in-season update. After any `build-projections` re-run `update-projections`.
+News beyond the injury report (trades, waivers, roles, returns, "indefinite"): `fantasy data fetch-news` +
+`fantasy data news-digest --new-only` (daily-routine step 1.4b) list new ESPN/Rotowire blurbs per player with keyword
+severity, the current override row and `override_stale`; the agent reads them and decides any override edit.
 
 ## 3. Rebuild (deterministic, no network)
 ```bash
