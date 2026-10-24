@@ -58,7 +58,7 @@ draft for recommend experiments - never experiment on the real draft record.
 | `USAGE` share of rostered games that count | `src/fantasy/model/catmodel.py` | 0.85 | in-season lineup data |
 | `stream_recovery` share of missed games recovered by streamers | `ValuationParams` in `src/fantasy/model/valuation.py` | 0.5 | waiver activity / replacement-level games |
 | Projection params (`Params`, `AGE_CURVE`, `MPG_GROWTH`, gp prior 68) | `src/fantasy/model/projections.py` | heuristics | backtest (T-010) |
-| Opportunity detector thresholds (jump 4 mpg, vacated 2 mpg, observed after 2 games, 20-game window cap, news-only P(out) 0.5, 40-mpg cap); share weights / survival / `vacated_calib` 0.54 are FITTED | `OpportunityParams` in `src/fantasy/inseason/opportunity.py` | priors | sweep in `scripts/opportunity/backtest.py` (`docs/research/opportunity_detector.md`); re-fit with `scripts/opportunity/fit.py` each season |
+| Opportunity detector thresholds (jump 4 mpg, vacated 2 mpg, observed after 2 games, 20-game window cap, news-only P(out) 0.5, 40-mpg cap); share weights / survival / `vacated_calib` 0.95 / `value_calib` 1.0 are FITTED | `OpportunityParams` in `src/fantasy/inseason/opportunity.py` | priors | sweep in `scripts/opportunity/backtest.py` (`docs/research/opportunity_detector.md`); re-fit with `scripts/opportunity/fit.py` each season |
 Fit offline in a script or notebook outside `src/` first; move into code only with tests.
 
 ## 4. Backtesting (T-010, not built)

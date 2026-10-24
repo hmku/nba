@@ -10,7 +10,7 @@ See docs/research/opportunity_detector.md (method, fitted numbers, backtest). Tw
     projected mpg among available teammates) and on whether he shares a position group (G = PG/SG, W = SF,
     B = PF/C) with the star. The weights are the EXCESS gain over placebo windows (no absence) of the same depth
     bucket, so regression to the mean of the ranking is removed. Allocation never exceeds `share` x star mpg. For
-    free-agent-like players the allocation is then scaled by `vacated_calib` (0.54, FITTED on the 2024-25 backtest,
+    free-agent-like players the allocation is then scaled by `vacated_calib` (0.95, FITTED on the 2024-25 backtest,
     confirmed out of sample on 2025-26).
     Expected absence length (games still to miss) from the FITTED survival of >= 28-mpg absences given the games
     already missed, capped at `horizon` (PRIOR) games; out-for-season -> `horizon`.
@@ -39,7 +39,7 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 import pandas as pd
 
-OPPORTUNITY_VERSION = "opportunity-0.1.0"
+OPPORTUNITY_VERSION = "opportunity-0.1.1"  # 0.1.1: stream-chain season check, week window cut, leak-free calibration
 COUNT_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
 GROUPS = ("G", "W", "B")
 
@@ -53,25 +53,36 @@ ABSENCE_SURVIVAL: tuple[float, ...] = (
     0.0043, 0.0034, 0.0034, 0.0034, 0.0026, 0.0026, 0.0026, 0.0026, 0.0017, 0.0017)
 # Excess share of the star's minutes per teammate (event gain minus placebo gain of the same depth bucket, / star mpg),
 # by depth bucket (rank by projected mpg among available teammates: 1-3, 4-5, 6-8, 9-11, 12+) and position match.
-# Floored at 0 (the top-3 bucket LOSES ~0.06-0.08 x star mpg). 317 absences of >= 3 games, 3934 teammate rows; SEs
-# 0.013-0.019 (iid) on the main cells, placebo bucket means within +-0.6 mpg (SE 0.3-0.8). Keys: (bucket, match).
+# Position = the player's PRIMARY position (bbref's single position in the fit; the first Yahoo position here), from the
+# prior season's bbref data in the fit (no later-season data). Floored at 0 (the top-3 bucket LOSES ~0.05-0.08 x star
+# mpg). 317 absences of >= 3 games, 3934 teammate rows; SEs 0.008-0.020 (iid) on the cells, placebo bucket means within
+# +-0.6 mpg (SE 0.3-0.8). "unknown" (no position; n <= 21 in the fit, unstable) uses the "other" weight. Keys:
+# (bucket, match).
 SHARE_WEIGHTS: dict[tuple[int, str], float] = {
     (0, "same"): 0.0, (0, "other"): 0.0, (0, "unknown"): 0.0,
-    (1, "same"): 0.0711, (1, "other"): 0.0169, (1, "unknown"): 0.0037,
-    (2, "same"): 0.0996, (2, "other"): 0.0616, (2, "unknown"): 0.0797,
-    (3, "same"): 0.1862, (3, "other"): 0.1453, (3, "unknown"): 0.0897,
-    (4, "same"): 0.1604, (4, "other"): 0.1080, (4, "unknown"): 0.0387,
+    (1, "same"): 0.0858, (1, "other"): 0.0279, (1, "unknown"): 0.0279,
+    (2, "same"): 0.0992, (2, "other"): 0.0783, (2, "unknown"): 0.0783,
+    (3, "same"): 0.1654, (3, "other"): 0.1339, (3, "unknown"): 0.1339,
+    (4, "same"): 0.1059, (4, "other"): 0.0740, (4, "unknown"): 0.0740,
 }
 RANK_EDGES = (3, 5, 8, 11)  # bucket upper bounds (ranks are 1-based); rank > 11 -> last bucket
 # FITTED: sum over teammates of the excess gain / star mpg = 0.77, SE 0.034 (raw gain without the placebo
 # correction 0.81; the earlier research note's 0.73 kept teammates who were themselves out at the start).
 VACATED_SHARE = 0.77
-# FITTED (scripts/opportunity/backtest.py, 2024-25 backtest): for the detector's universe (players outside the top 156
-# by preseason value) the realised extra minutes while the teammate stays out are 0.54 (SE 0.057) x the allocated
-# extra; out of sample on 2025-26 the uncalibrated slope was 0.56 (SE 0.051) and the calibrated one 1.07 (SE 0.16).
-# (The share weights are averages over ALL teammates; free-agent-like players get less of the minutes than starters-
-# in-waiting in the same depth bucket.)
-VACATED_CALIB = 0.54
+# FITTED (scripts/opportunity/backtest.py, 2024-25 backtest, leakage-free "who is out" = pregame inactive list):
+# for the detector's universe (players outside the top 156 by preseason value) the realised extra minutes while the
+# teammate stays out = 0.95 (SE 0.15) x the allocated extra (slope through the origin). Out of sample on 2025-26 with
+# this calibration the slope was 1.27 (SE 0.20): no evidence of over-allocation. (An earlier backtest that took a
+# star "out" when he sat game g, rests included, gave 0.54: that was the leak, not the allocation.)
+VACATED_CALIB = 0.95
+# Value calibration (FITTED, same backtest): realised / predicted window value gain over the model-B line for VACATED
+# first flags (bias-corrected with the unflagged pool's per-game residual; G-scores are linear in the line, so window
+# totals add up) = 1.14 (SE 0.39) on 2024-25 and 1.06 (SE 0.41) out of sample on 2025-26: not different from 1, so 1.0
+# (capped at 1: conservative). For JUMP flags the ratio is ill-conditioned (the predicted uplift over model B is small;
+# realised value is higher, SE > 6) and no adjustment is applied: a jump candidate is "model A says his minutes rose".
+VALUE_CALIB = 1.0
+VALUE_CALIB_NOTE = ("vacated: 1.14 +- 0.39 (2024-25), 1.06 +- 0.41 (2025-26 OOS) -> 1.0 (capped); jump: ill-conditioned, "
+                    "not calibrated")
 
 
 @dataclass(frozen=True)
@@ -88,6 +99,7 @@ class OpportunityParams:
     # calibration of the allocation for the detector's universe (free-agent-like players): realised extra minutes during
     # the absence / allocated extra (slope through the origin). FITTED on the 2024-25 backtest, see VACATED_CALIB.
     vacated_calib: float = VACATED_CALIB
+    value_calib: float = VALUE_CALIB  # FITTED: scales the per-game value uplift of the opportunity line
     survival: tuple[float, ...] = field(default_factory=lambda: ABSENCE_SURVIVAL)
     weights: Mapping[tuple[int, str], float] = field(default_factory=lambda: dict(SHARE_WEIGHTS))
     rank_edges: tuple[int, ...] = RANK_EDGES
@@ -123,7 +135,8 @@ def position_groups(positions: object) -> frozenset[str]:
     if positions is None or (isinstance(positions, float) and np.isnan(positions)):
         return frozenset()
     text = "|".join(map(str, positions)) if isinstance(positions, list | tuple | set | frozenset) else str(positions)
-    s = {p.strip().upper() for p in text.replace(",", "|").replace("/", "|").split("|") if p.strip()}
+    text = text.replace(",", "|").replace("/", "|").replace("-", "|")
+    s = {p.strip().upper() for p in text.split("|") if p.strip()}
     g = set()
     if s & {"PG", "SG", "G"}:
         g.add("G")
@@ -132,6 +145,18 @@ def position_groups(positions: object) -> frozenset[str]:
     if s & {"PF", "C"}:
         g.add("B")
     return frozenset(g)
+
+
+def primary_group(positions: object) -> frozenset[str]:
+    """Group of the player's first (primary) listed position: the fitted weights use one position per player."""
+    if positions is None or (isinstance(positions, float) and np.isnan(positions)):
+        return frozenset()
+    if isinstance(positions, list | tuple):
+        items = [str(x) for x in positions]
+    else:
+        items = str(positions).replace(",", "|").replace("/", "|").replace("-", "|").split("|")
+    items = [x.strip() for x in items if x.strip()]
+    return position_groups(items[0]) if items else frozenset()
 
 
 def rank_bucket(rank: int, edges: Sequence[int] = RANK_EDGES) -> int:
@@ -165,13 +190,19 @@ def expected_absence_games(missed: int, params: OpportunityParams | None = None,
 
 def absence_window(a: Absence, params: OpportunityParams | None = None) -> tuple[float, str]:
     """(expected games still to miss, capped at the horizon; its source). Out for the season -> horizon; an ESPN
-    estimated return date -> the team games before it (an estimate, labelled); else the fitted survival."""
+    estimated return date -> the SHORTER of the team games before it and the fitted survival (PRIOR rule; both reported); else the fitted survival."""
     p = params or OpportunityParams()
     if a.season_out:
         return float(p.horizon), "out for season (horizon cap, prior)"
+    fitted = expected_absence_games(a.missed, p)
     if a.espn_games is not None:
-        return float(min(p.horizon, max(1, a.espn_games))), f"ESPN return estimate {a.return_date}"
-    return expected_absence_games(a.missed, p), f"fitted survival given {a.missed} missed"
+        espn = float(min(p.horizon, max(1, a.espn_games)))
+        if espn < fitted:
+            return espn, (f"ESPN return estimate {a.return_date} ({espn:.0f} g; fitted survival {fitted:.1f} g): the "
+                          "shorter one (PRIOR rule)")
+        return fitted, (f"fitted survival given {a.missed} missed ({fitted:.1f} g; ESPN return estimate "
+                        f"{a.return_date} = {espn:.0f} g): the shorter one (PRIOR rule)")
+    return fitted, f"fitted survival given {a.missed} missed"
 
 
 def allocate_vacated(star_mpg: float, star_groups: frozenset[str],
@@ -207,8 +238,8 @@ def detect(players: pd.DataFrame, absences: Sequence[Absence], params: Opportuni
     alloc: dict[str, list[dict]] = {}
     for a in absences:
         mates = df[(df["team"] == a.team) & (df.index != a.player_id) & ~df["out"].astype(bool)]
-        tm = [(pid, float(r["mpg"]), position_groups(r["positions"])) for pid, r in mates.iterrows()]
-        star_g = position_groups(df.loc[a.player_id, "positions"]) if a.player_id in df.index else frozenset()
+        tm = [(pid, float(r["mpg"]), primary_group(r["positions"])) for pid, r in mates.iterrows()]
+        star_g = primary_group(df.loc[a.player_id, "positions"]) if a.player_id in df.index else frozenset()
         ex = allocate_vacated(a.mpg, star_g, tm, p)
         win, src = absence_window(a, p)
         for pid, x in ex.items():
@@ -300,3 +331,31 @@ def override_frames(df: pd.DataFrame, cands: Sequence[dict]) -> tuple[pd.DataFra
     seas = {pid: season_mpg(df.loc[pid], opp[pid], next(float(c["window_games"]) for c in cands
                                                            if c["player_id"] == pid)) for pid in opp}
     return window, scaled_lines(df, seas, opp)
+
+
+def week_mpg(base_mpg: float, opp_mpg: float, window_games: float, week_games: int) -> float:
+    """Average mpg over his `week_games` games this matchup week when the opportunity minutes hold only for the first
+    `window_games` of them (model B's level afterwards): the week check must not credit the whole week."""
+    if week_games <= 0:
+        return float(base_mpg)
+    w = min(float(window_games), float(week_games))
+    return float((w * opp_mpg + (week_games - w) * base_mpg) / week_games)
+
+
+def stint_end_day(team: str, eff, window_games: float, games: Sequence[tuple]) -> object:
+    """First day AFTER the window: the day after his team's ceil(window_games)-th game on/after `eff` (games =
+    (date, visitor, home) rows); if fewer games remain, the day after the last one."""
+    from datetime import timedelta
+
+    days = sorted({d for d, v, h in games if d >= eff and team in (v, h)})
+    if not days:
+        return eff
+    k = max(1, int(np.ceil(float(window_games))))
+    return days[min(k, len(days)) - 1] + timedelta(days=1)
+
+
+def calibrated_gain(window_games: float, p_play: float, v_base: float, v_opp: float, p_drop: float, v_drop: float,
+                    value_calib: float) -> float:
+    """Window value gain vs the drop with the opportunity uplift (v_opp - v_base, per game) scaled by the FITTED
+    value calibration: window x (p x (v_base + calib x (v_opp - v_base)) - p_drop x v_drop)."""
+    return float(window_games * (p_play * (v_base + value_calib * (v_opp - v_base)) - p_drop * v_drop))

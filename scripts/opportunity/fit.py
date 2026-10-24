@@ -61,7 +61,7 @@ def fit(seasons: list[int], panel: pd.DataFrame | None = None, seed: int = 0) ->
     rng = np.random.default_rng(seed)
     p = panel if panel is not None else pd.concat([load_season(s) for s in seasons], ignore_index=True)
     p = p[p["season"].isin(seasons)]
-    grp = groups_map()
+    grp_by = {yr: groups_map(yr) for yr in seasons}  # prior-season bbref positions per season
     spells = absence_spells(p)
     S = survival(spells)
     mats = _mats(p)
@@ -91,6 +91,7 @@ def fit(seasons: list[int], panel: pd.DataFrame | None = None, seed: int = 0) ->
         r = _teammate_rows(M, INJ, int(e.g0), min(int(e.L), MAX_W), e.star)
         if r is None:
             continue
+        grp = grp_by[e.season]
         sg = set(grp.get(e.star, "") or "")
         match = []
         for pid in r.index:

@@ -1,8 +1,8 @@
 {
- "train_2025_insample": {
-  "constants_fit_on": "seasons [2025]",
+ "train_2025_minutes_calib": {
+  "constants": "fitted on seasons [2025]",
   "test": "season 2025",
-  "vacated_calib_applied": 1.0,
+  "vacated_calib": 1.0,
   "params": {
    "star_mpg": 28.0,
    "share": 0.7914,
@@ -14,6 +14,7 @@
    "jump_window": 5,
    "p_out_news": 0.5,
    "vacated_calib": 1.0,
+   "value_calib": 1.0,
    "survival": [
     1.0,
     0.3808,
@@ -44,19 +45,19 @@
    "weights": {
     "0:other": 0.0,
     "0:same": 0.0,
+    "1:other": 0.0385,
+    "1:same": 0.1029,
+    "2:other": 0.0882,
+    "2:same": 0.088,
+    "3:other": 0.139,
+    "3:same": 0.1733,
+    "4:other": 0.0545,
+    "4:same": 0.1048,
     "0:unknown": 0.0,
-    "1:other": 0.0176,
-    "1:same": 0.0954,
-    "1:unknown": 0.0121,
-    "2:other": 0.062,
-    "2:same": 0.1044,
-    "2:unknown": 0.0819,
-    "3:other": 0.1665,
-    "3:same": 0.1801,
-    "3:unknown": 0.1162,
-    "4:other": 0.12,
-    "4:same": 0.1281,
-    "4:unknown": 0.037
+    "1:unknown": 0.0385,
+    "2:unknown": 0.0882,
+    "3:unknown": 0.139,
+    "4:unknown": 0.0545
    },
    "rank_edges": [
     3,
@@ -65,264 +66,273 @@
     11
    ]
   },
-  "n_rows": 11438,
-  "n_players": 211,
-  "n_first_flags": 1013,
+  "n_rows": 13695,
+  "n_players": 212,
+  "n_first_flags": 563,
   "first_flags_by_signal": {
-   "vacated": 723,
-   "jump": 156,
-   "jump (absence)": 85,
-   "vacated+jump": 49
+   "jump": 257,
+   "vacated": 254,
+   "jump (absence)": 36,
+   "vacated+jump": 16
   },
   "d5": {
    "flagged": [
-    2.195,
-    0.326
+    4.002,
+    0.339
    ],
    "unflagged": [
-    -2.584,
-    0.332
+    -2.651,
+    0.346
    ],
    "lift": [
-    4.779,
-    0.369
+    6.653,
+    0.449
    ],
-   "n_flagged": 1013,
-   "n_unflagged": 7986
+   "n_flagged": 563,
+   "n_unflagged": 10889
   },
   "d10": {
    "flagged": [
-    2.159,
-    0.318
+    3.882,
+    0.344
    ],
    "unflagged": [
-    -2.284,
-    0.314
+    -2.259,
+    0.344
    ],
    "lift": [
-    4.443,
-    0.358
+    6.141,
+    0.445
    ],
-   "n_flagged": 1013,
-   "n_unflagged": 7986
+   "n_flagged": 563,
+   "n_unflagged": 10889
   },
   "big10": {
    "flagged": [
-    0.287,
-    0.026
+    0.422,
+    0.031
    ],
    "unflagged": [
-    0.092,
+    0.095,
     0.01
    ],
    "lift": [
-    0.195,
-    0.02
+    0.326,
+    0.031
    ],
-   "n_flagged": 1013,
-   "n_unflagged": 7986
+   "n_flagged": 563,
+   "n_unflagged": 10889
   },
   "d_value": {
    "flagged": [
-    0.587,
-    0.099
+    1.014,
+    0.122
    ],
    "unflagged": [
-    -0.241,
-    0.085
+    -0.251,
+    0.087
    ],
    "lift": [
-    0.828,
-    0.093
+    1.265,
+    0.13
    ],
-   "n_flagged": 1013,
-   "n_unflagged": 7986
+   "n_flagged": 563,
+   "n_unflagged": 10889
   },
   "dA5": {
    "flagged": [
-    0.855,
-    0.155
+    0.982,
+    0.229
    ],
    "unflagged": [
-    -0.04,
-    0.106
+    -0.053,
+    0.141
    ],
    "lift": [
-    0.895,
-    0.169
+    1.035,
+    0.258
    ],
-   "n_flagged": 1013,
-   "n_unflagged": 7986
-  },
-  "vacated_during": {
-   "n": 736,
-   "mean_during": 20.18,
-   "mean_model_a": 17.49,
-   "mean_pred_extra": 4.6,
-   "mean_realised_extra": 2.69,
-   "beta": 0.544,
-   "beta_se": 0.057,
-   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra (cluster bootstrap SE)"
+   "n_flagged": 563,
+   "n_unflagged": 10889
   },
   "by_signal_jump": {
    "d5": {
     "flagged": [
-     5.755,
-     0.389
+     5.773,
+     0.319
     ],
     "unflagged": [
-     -2.584,
-     0.329
+     -2.651,
+     0.341
     ],
     "lift": [
-     8.339,
-     0.497
+     8.425,
+     0.467
     ],
-    "n_flagged": 241,
-    "n_unflagged": 7986
+    "n_flagged": 293,
+    "n_unflagged": 10889
    },
    "d10": {
     "flagged": [
-     5.216,
-     0.453
+     5.404,
+     0.378
     ],
     "unflagged": [
-     -2.284,
-     0.322
+     -2.259,
+     0.315
     ],
     "lift": [
-     7.5,
-     0.554
+     7.664,
+     0.501
     ],
-    "n_flagged": 241,
-    "n_unflagged": 7986
+    "n_flagged": 293,
+    "n_unflagged": 10889
    },
    "d_value": {
     "flagged": [
-     1.268,
-     0.182
+     1.32,
+     0.152
     ],
     "unflagged": [
-     -0.241,
-     0.076
+     -0.251,
+     0.085
     ],
     "lift": [
-     1.51,
-     0.191
+     1.571,
+     0.17
     ],
-    "n_flagged": 241,
-    "n_unflagged": 7986
+    "n_flagged": 293,
+    "n_unflagged": 10889
    },
    "dA5": {
     "flagged": [
-     0.198,
-     0.301
+     0.535,
+     0.272
     ],
     "unflagged": [
-     -0.04,
-     0.105
+     -0.053,
+     0.14
     ],
     "lift": [
-     0.237,
-     0.334
+     0.589,
+     0.315
     ],
-    "n_flagged": 241,
-    "n_unflagged": 7986
+    "n_flagged": 293,
+    "n_unflagged": 10889
    }
   },
   "by_signal_vacated": {
    "d5": {
     "flagged": [
-     1.073,
-     0.28
+     1.986,
+     0.519
     ],
     "unflagged": [
-     -2.584,
-     0.334
+     -2.651,
+     0.323
     ],
     "lift": [
-     3.657,
-     0.35
+     4.637,
+     0.544
     ],
-    "n_flagged": 772,
-    "n_unflagged": 7986
+    "n_flagged": 270,
+    "n_unflagged": 10889
    },
    "d10": {
     "flagged": [
-     1.196,
-     0.298
+     2.15,
+     0.484
     ],
     "unflagged": [
-     -2.284,
-     0.343
+     -2.259,
+     0.339
     ],
     "lift": [
-     3.48,
-     0.322
+     4.409,
+     0.499
     ],
-    "n_flagged": 772,
-    "n_unflagged": 7986
+    "n_flagged": 270,
+    "n_unflagged": 10889
    },
    "d_value": {
     "flagged": [
-     0.372,
-     0.098
+     0.666,
+     0.155
     ],
     "unflagged": [
-     -0.241,
-     0.084
+     -0.251,
+     0.086
     ],
     "lift": [
-     0.614,
-     0.092
+     0.916,
+     0.156
     ],
-    "n_flagged": 772,
-    "n_unflagged": 7986
+    "n_flagged": 270,
+    "n_unflagged": 10889
    },
    "dA5": {
     "flagged": [
-     1.062,
-     0.204
+     1.49,
+     0.434
     ],
     "unflagged": [
-     -0.04,
-     0.103
+     -0.053,
+     0.133
     ],
     "lift": [
-     1.102,
-     0.193
+     1.543,
+     0.439
     ],
-    "n_flagged": 772,
-    "n_unflagged": 7986
+    "n_flagged": 270,
+    "n_unflagged": 10889
    }
   },
+  "vacated_during": {
+   "n": 180,
+   "mean_pred_extra": 3.7,
+   "mean_realised_extra": 4.14,
+   "beta": [
+    0.953,
+    0.151
+   ],
+   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra"
+  },
+  "value_calib": {
+   "all": [
+    1.969,
+    0.715
+   ],
+   "jump": [
+    16.386,
+    425.881
+   ],
+   "vacated": [
+    0.703,
+    0.378
+   ],
+   "note": "realised / predicted window value gain over the model-B line (bias-corrected)"
+  },
   "calibration_vacated": {
-   "n": 762,
-   "mean_actual_min5": 18.49,
-   "mean_opp_mpg": 22.04,
-   "mean_model_a": 17.43,
-   "mean_preseason": 17.42,
-   "rmse_opp": 6.53,
-   "rmse_model_a": 5.26,
-   "mean_pred_d_value": 0.975,
-   "mean_actual_d_value": 0.372
+   "n": 254,
+   "mean_actual_min5": 19.35,
+   "mean_opp_mpg": 21.59,
+   "mean_model_a": 17.86,
+   "rmse_opp": 6.29,
+   "rmse_model_a": 5.84
   },
   "calibration_jump": {
-   "n": 240,
-   "mean_actual_min5": 26.26,
-   "mean_opp_mpg": 26.06,
-   "mean_model_a": 26.06,
-   "mean_preseason": 20.5,
-   "rmse_opp": 4.56,
-   "rmse_model_a": 4.56,
-   "mean_pred_d_value": 1.107,
-   "mean_actual_d_value": 1.268
+   "n": 289,
+   "mean_actual_min5": 24.9,
+   "mean_opp_mpg": 24.36,
+   "mean_model_a": 24.36,
+   "rmse_opp": 4.72,
+   "rmse_model_a": 4.72
   }
  },
- "test_2026_uncalibrated": {
-  "constants_fit_on": "seasons [2025]",
-  "test": "season 2026",
-  "vacated_calib_applied": 1.0,
+ "train_2025_calibrated": {
+  "constants": "fitted on seasons [2025]",
+  "test": "season 2025",
+  "vacated_calib": 0.953,
   "params": {
    "star_mpg": 28.0,
    "share": 0.7914,
@@ -333,7 +343,8 @@
    "mpg_cap": 40.0,
    "jump_window": 5,
    "p_out_news": 0.5,
-   "vacated_calib": 1.0,
+   "vacated_calib": 0.953,
+   "value_calib": 1.0,
    "survival": [
     1.0,
     0.3808,
@@ -364,19 +375,19 @@
    "weights": {
     "0:other": 0.0,
     "0:same": 0.0,
+    "1:other": 0.0385,
+    "1:same": 0.1029,
+    "2:other": 0.0882,
+    "2:same": 0.088,
+    "3:other": 0.139,
+    "3:same": 0.1733,
+    "4:other": 0.0545,
+    "4:same": 0.1048,
     "0:unknown": 0.0,
-    "1:other": 0.0176,
-    "1:same": 0.0954,
-    "1:unknown": 0.0121,
-    "2:other": 0.062,
-    "2:same": 0.1044,
-    "2:unknown": 0.0819,
-    "3:other": 0.1665,
-    "3:same": 0.1801,
-    "3:unknown": 0.1162,
-    "4:other": 0.12,
-    "4:same": 0.1281,
-    "4:unknown": 0.037
+    "1:unknown": 0.0385,
+    "2:unknown": 0.0882,
+    "3:unknown": 0.139,
+    "4:unknown": 0.0545
    },
    "rank_edges": [
     3,
@@ -385,264 +396,273 @@
     11
    ]
   },
-  "n_rows": 11423,
-  "n_players": 207,
-  "n_first_flags": 1001,
+  "n_rows": 13695,
+  "n_players": 212,
+  "n_first_flags": 543,
   "first_flags_by_signal": {
-   "vacated": 726,
-   "jump": 154,
-   "jump (absence)": 82,
-   "vacated+jump": 39
+   "jump": 264,
+   "vacated": 230,
+   "jump (absence)": 36,
+   "vacated+jump": 13
   },
   "d5": {
    "flagged": [
-    2.05,
-    0.324
+    4.16,
+    0.35
    ],
    "unflagged": [
-    -3.577,
-    0.37
+    -2.633,
+    0.34
    ],
    "lift": [
-    5.627,
-    0.358
+    6.793,
+    0.456
    ],
-   "n_flagged": 1001,
-   "n_unflagged": 8449
+   "n_flagged": 543,
+   "n_unflagged": 10933
   },
   "d10": {
    "flagged": [
-    1.894,
-    0.33
+    4.018,
+    0.349
    ],
    "unflagged": [
-    -3.339,
-    0.395
+    -2.241,
+    0.317
    ],
    "lift": [
-    5.233,
-    0.406
+    6.259,
+    0.43
    ],
-   "n_flagged": 1001,
-   "n_unflagged": 8449
+   "n_flagged": 543,
+   "n_unflagged": 10933
   },
   "big10": {
    "flagged": [
-    0.249,
-    0.022
+    0.432,
+    0.031
    ],
    "unflagged": [
-    0.07,
-    0.009
+    0.096,
+    0.01
    ],
    "lift": [
-    0.179,
-    0.019
+    0.336,
+    0.03
    ],
-   "n_flagged": 1001,
-   "n_unflagged": 8449
+   "n_flagged": 543,
+   "n_unflagged": 10933
   },
   "d_value": {
    "flagged": [
-    0.566,
-    0.108
+    1.05,
+    0.121
    ],
    "unflagged": [
-    -0.491,
-    0.118
+    -0.248,
+    0.086
    ],
    "lift": [
-    1.058,
-    0.132
+    1.297,
+    0.124
    ],
-   "n_flagged": 1001,
-   "n_unflagged": 8449
+   "n_flagged": 543,
+   "n_unflagged": 10933
   },
   "dA5": {
    "flagged": [
-    0.915,
-    0.172
+    0.987,
+    0.23
    ],
    "unflagged": [
-    -0.46,
-    0.116
+    -0.049,
+    0.148
    ],
    "lift": [
-    1.375,
-    0.163
+    1.036,
+    0.25
    ],
-   "n_flagged": 1001,
-   "n_unflagged": 8449
-  },
-  "vacated_during": {
-   "n": 737,
-   "mean_during": 21.15,
-   "mean_model_a": 18.34,
-   "mean_pred_extra": 4.66,
-   "mean_realised_extra": 2.82,
-   "beta": 0.56,
-   "beta_se": 0.051,
-   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra (cluster bootstrap SE)"
+   "n_flagged": 543,
+   "n_unflagged": 10933
   },
   "by_signal_jump": {
    "d5": {
     "flagged": [
-     5.442,
-     0.547
+     5.864,
+     0.32
     ],
     "unflagged": [
-     -3.577,
-     0.398
+     -2.633,
+     0.334
     ],
     "lift": [
-     9.019,
-     0.62
+     8.497,
+     0.474
     ],
-    "n_flagged": 236,
-    "n_unflagged": 8449
+    "n_flagged": 300,
+    "n_unflagged": 10933
    },
    "d10": {
     "flagged": [
-     5.177,
-     0.569
+     5.491,
+     0.382
     ],
     "unflagged": [
-     -3.339,
-     0.383
+     -2.241,
+     0.318
     ],
     "lift": [
-     8.516,
-     0.671
+     7.732,
+     0.462
     ],
-    "n_flagged": 236,
-    "n_unflagged": 8449
+    "n_flagged": 300,
+    "n_unflagged": 10933
    },
    "d_value": {
     "flagged": [
      1.323,
-     0.189
+     0.148
     ],
     "unflagged": [
-     -0.491,
-     0.117
+     -0.248,
+     0.082
     ],
     "lift": [
-     1.814,
-     0.211
+     1.571,
+     0.165
     ],
-    "n_flagged": 236,
-    "n_unflagged": 8449
+    "n_flagged": 300,
+    "n_unflagged": 10933
    },
    "dA5": {
     "flagged": [
-     0.055,
-     0.397
+     0.607,
+     0.281
     ],
     "unflagged": [
-     -0.46,
-     0.117
+     -0.049,
+     0.136
     ],
     "lift": [
-     0.515,
-     0.416
+     0.656,
+     0.321
     ],
-    "n_flagged": 236,
-    "n_unflagged": 8449
+    "n_flagged": 300,
+    "n_unflagged": 10933
    }
   },
   "by_signal_vacated": {
    "d5": {
     "flagged": [
-     1.003,
-     0.281
+     1.938,
+     0.484
     ],
     "unflagged": [
-     -3.577,
-     0.383
+     -2.633,
+     0.326
     ],
     "lift": [
-     4.58,
-     0.374
+     4.572,
+     0.514
     ],
-    "n_flagged": 765,
-    "n_unflagged": 8449
+    "n_flagged": 243,
+    "n_unflagged": 10933
    },
    "d10": {
     "flagged": [
-     0.88,
-     0.288
+     2.097,
+     0.489
     ],
     "unflagged": [
-     -3.339,
-     0.371
+     -2.241,
+     0.332
     ],
     "lift": [
-     4.219,
-     0.409
+     4.338,
+     0.497
     ],
-    "n_flagged": 765,
-    "n_unflagged": 8449
+    "n_flagged": 243,
+    "n_unflagged": 10933
    },
    "d_value": {
     "flagged": [
-     0.333,
-     0.109
+     0.693,
+     0.157
     ],
     "unflagged": [
-     -0.491,
-     0.124
+     -0.248,
+     0.084
     ],
     "lift": [
-     0.824,
-     0.116
+     0.941,
+     0.167
     ],
-    "n_flagged": 765,
-    "n_unflagged": 8449
+    "n_flagged": 243,
+    "n_unflagged": 10933
    },
    "dA5": {
     "flagged": [
-     1.181,
-     0.168
+     1.483,
+     0.401
     ],
     "unflagged": [
-     -0.46,
-     0.113
+     -0.049,
+     0.143
     ],
     "lift": [
-     1.641,
-     0.182
+     1.532,
+     0.427
     ],
-    "n_flagged": 765,
-    "n_unflagged": 8449
+    "n_flagged": 243,
+    "n_unflagged": 10933
    }
   },
+  "vacated_during": {
+   "n": 158,
+   "mean_pred_extra": 3.79,
+   "mean_realised_extra": 4.18,
+   "beta": [
+    0.93,
+    0.159
+   ],
+   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra"
+  },
+  "value_calib": {
+   "all": [
+    3.047,
+    0.753
+   ],
+   "jump": [
+    24.054,
+    1223.511
+   ],
+   "vacated": [
+    1.141,
+    0.394
+   ],
+   "note": "realised / predicted window value gain over the model-B line (bias-corrected)"
+  },
   "calibration_vacated": {
-   "n": 761,
-   "mean_actual_min5": 19.41,
-   "mean_opp_mpg": 22.88,
-   "mean_model_a": 18.23,
-   "mean_preseason": 18.41,
-   "rmse_opp": 6.2,
-   "rmse_model_a": 4.81,
-   "mean_pred_d_value": 0.992,
-   "mean_actual_d_value": 0.333
+   "n": 227,
+   "mean_actual_min5": 19.31,
+   "mean_opp_mpg": 21.54,
+   "mean_model_a": 17.83,
+   "rmse_opp": 6.28,
+   "rmse_model_a": 5.85
   },
   "calibration_jump": {
-   "n": 235,
-   "mean_actual_min5": 26.93,
-   "mean_opp_mpg": 26.87,
-   "mean_model_a": 26.87,
-   "mean_preseason": 21.49,
-   "rmse_opp": 4.72,
-   "rmse_model_a": 4.72,
-   "mean_pred_d_value": 1.118,
-   "mean_actual_d_value": 1.323
+   "n": 296,
+   "mean_actual_min5": 24.9,
+   "mean_opp_mpg": 24.29,
+   "mean_model_a": 24.29,
+   "rmse_opp": 4.75,
+   "rmse_model_a": 4.75
   }
  },
  "test_2026_calibrated": {
-  "constants_fit_on": "seasons [2025]",
+  "constants": "fitted on seasons [2025]",
   "test": "season 2026",
-  "vacated_calib_applied": 0.544,
+  "vacated_calib": 0.953,
   "params": {
    "star_mpg": 28.0,
    "share": 0.7914,
@@ -653,7 +673,8 @@
    "mpg_cap": 40.0,
    "jump_window": 5,
    "p_out_news": 0.5,
-   "vacated_calib": 0.544,
+   "vacated_calib": 0.953,
+   "value_calib": 1.0,
    "survival": [
     1.0,
     0.3808,
@@ -684,19 +705,19 @@
    "weights": {
     "0:other": 0.0,
     "0:same": 0.0,
+    "1:other": 0.0385,
+    "1:same": 0.1029,
+    "2:other": 0.0882,
+    "2:same": 0.088,
+    "3:other": 0.139,
+    "3:same": 0.1733,
+    "4:other": 0.0545,
+    "4:same": 0.1048,
     "0:unknown": 0.0,
-    "1:other": 0.0176,
-    "1:same": 0.0954,
-    "1:unknown": 0.0121,
-    "2:other": 0.062,
-    "2:same": 0.1044,
-    "2:unknown": 0.0819,
-    "3:other": 0.1665,
-    "3:same": 0.1801,
-    "3:unknown": 0.1162,
-    "4:other": 0.12,
-    "4:same": 0.1281,
-    "4:unknown": 0.037
+    "1:unknown": 0.0385,
+    "2:unknown": 0.0882,
+    "3:unknown": 0.139,
+    "4:unknown": 0.0545
    },
    "rank_edges": [
     3,
@@ -705,258 +726,597 @@
     11
    ]
   },
-  "n_rows": 11423,
-  "n_players": 207,
-  "n_first_flags": 571,
+  "n_rows": 13583,
+  "n_players": 209,
+  "n_first_flags": 459,
   "first_flags_by_signal": {
-   "vacated": 255,
-   "jump": 181,
-   "jump (absence)": 118,
-   "vacated+jump": 17
+   "jump": 247,
+   "vacated": 177,
+   "jump (absence)": 19,
+   "vacated+jump": 16
   },
   "d5": {
    "flagged": [
-    3.744,
-    0.335
+    4.015,
+    0.327
    ],
    "unflagged": [
-    -3.206,
-    0.361
+    -3.726,
+    0.392
    ],
    "lift": [
-    6.949,
-    0.472
+    7.741,
+    0.447
    ],
-   "n_flagged": 571,
-   "n_unflagged": 9234
+   "n_flagged": 459,
+   "n_unflagged": 11301
   },
   "d10": {
    "flagged": [
-    3.567,
-    0.343
+    3.625,
+    0.327
    ],
    "unflagged": [
-    -2.991,
-    0.376
+    -3.419,
+    0.395
    ],
    "lift": [
-    6.558,
-    0.481
+    7.044,
+    0.47
    ],
-   "n_flagged": 571,
-   "n_unflagged": 9234
+   "n_flagged": 459,
+   "n_unflagged": 11301
   },
   "big10": {
    "flagged": [
-    0.377,
-    0.031
+    0.374,
+    0.032
    ],
    "unflagged": [
-    0.079,
+    0.072,
     0.009
    ],
    "lift": [
-    0.298,
+    0.302,
     0.028
    ],
-   "n_flagged": 571,
-   "n_unflagged": 9234
+   "n_flagged": 459,
+   "n_unflagged": 11301
   },
   "d_value": {
    "flagged": [
-    0.908,
-    0.115
+    0.94,
+    0.122
    ],
    "unflagged": [
-    -0.422,
-    0.116
+    -0.533,
+    0.119
    ],
    "lift": [
-    1.33,
-    0.149
+    1.473,
+    0.151
    ],
-   "n_flagged": 571,
-   "n_unflagged": 9234
+   "n_flagged": 459,
+   "n_unflagged": 11301
   },
   "dA5": {
    "flagged": [
-    0.659,
-    0.243
+    0.769,
+    0.261
    ],
    "unflagged": [
-    -0.332,
-    0.12
+    -0.575,
+    0.135
    ],
    "lift": [
-    0.991,
-    0.253
+    1.344,
+    0.258
    ],
-   "n_flagged": 571,
-   "n_unflagged": 9234
-  },
-  "vacated_during": {
-   "n": 265,
-   "mean_during": 20.62,
-   "mean_model_a": 17.1,
-   "mean_pred_extra": 3.16,
-   "mean_realised_extra": 3.52,
-   "beta": 1.072,
-   "beta_se": 0.156,
-   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra (cluster bootstrap SE)"
+   "n_flagged": 459,
+   "n_unflagged": 11301
   },
   "by_signal_jump": {
    "d5": {
     "flagged": [
-     5.583,
-     0.461
+     5.251,
+     0.345
     ],
     "unflagged": [
-     -3.206,
-     0.368
+     -3.726,
+     0.374
     ],
     "lift": [
-     8.789,
-     0.565
+     8.977,
+     0.503
     ],
-    "n_flagged": 299,
-    "n_unflagged": 9234
+    "n_flagged": 266,
+    "n_unflagged": 11301
    },
    "d10": {
     "flagged": [
-     5.236,
-     0.453
+     4.926,
+     0.345
     ],
     "unflagged": [
-     -2.991,
-     0.361
+     -3.419,
+     0.364
     ],
     "lift": [
-     8.228,
-     0.572
+     8.346,
+     0.519
     ],
-    "n_flagged": 299,
-    "n_unflagged": 9234
+    "n_flagged": 266,
+    "n_unflagged": 11301
    },
    "d_value": {
     "flagged": [
-     1.317,
-     0.163
+     1.204,
+     0.132
     ],
     "unflagged": [
-     -0.422,
+     -0.533,
      0.108
     ],
     "lift": [
-     1.738,
-     0.185
+     1.737,
+     0.162
     ],
-    "n_flagged": 299,
-    "n_unflagged": 9234
+    "n_flagged": 266,
+    "n_unflagged": 11301
    },
    "dA5": {
     "flagged": [
-     0.281,
-     0.328
+     0.315,
+     0.323
     ],
     "unflagged": [
-     -0.332,
-     0.123
+     -0.575,
+     0.135
     ],
     "lift": [
-     0.613,
-     0.318
+     0.89,
+     0.347
     ],
-    "n_flagged": 299,
-    "n_unflagged": 9234
+    "n_flagged": 266,
+    "n_unflagged": 11301
    }
   },
   "by_signal_vacated": {
    "d5": {
     "flagged": [
-     1.729,
-     0.388
+     2.232,
+     0.471
     ],
     "unflagged": [
-     -3.206,
-     0.343
+     -3.726,
+     0.362
     ],
     "lift": [
-     4.934,
-     0.509
+     5.958,
+     0.529
     ],
-    "n_flagged": 272,
-    "n_unflagged": 9234
+    "n_flagged": 193,
+    "n_unflagged": 11301
    },
    "d10": {
     "flagged": [
-     1.738,
-     0.439
+     1.747,
+     0.481
     ],
     "unflagged": [
-     -2.991,
-     0.369
+     -3.419,
+     0.383
     ],
     "lift": [
-     4.729,
-     0.516
+     5.167,
+     0.568
     ],
-    "n_flagged": 272,
-    "n_unflagged": 9234
+    "n_flagged": 193,
+    "n_unflagged": 11301
    },
    "d_value": {
     "flagged": [
-     0.46,
-     0.136
+     0.559,
+     0.181
     ],
     "unflagged": [
-     -0.422,
-     0.124
+     -0.533,
+     0.113
     ],
     "lift": [
-     0.882,
-     0.15
+     1.092,
+     0.168
     ],
-    "n_flagged": 272,
-    "n_unflagged": 9234
+    "n_flagged": 193,
+    "n_unflagged": 11301
    },
    "dA5": {
     "flagged": [
-     1.074,
-     0.347
+     1.424,
+     0.364
     ],
     "unflagged": [
-     -0.332,
-     0.107
+     -0.575,
+     0.136
     ],
     "lift": [
-     1.406,
-     0.342
+     1.999,
+     0.373
     ],
-    "n_flagged": 272,
-    "n_unflagged": 9234
+    "n_flagged": 193,
+    "n_unflagged": 11301
    }
   },
+  "vacated_during": {
+   "n": 133,
+   "mean_pred_extra": 3.38,
+   "mean_realised_extra": 4.11,
+   "beta": [
+    1.273,
+    0.197
+   ],
+   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra"
+  },
+  "value_calib": {
+   "all": [
+    3.039,
+    0.85
+   ],
+   "jump": [
+    12.808,
+    13.115
+   ],
+   "vacated": [
+    1.063,
+    0.425
+   ],
+   "note": "realised / predicted window value gain over the model-B line (bias-corrected)"
+  },
   "calibration_vacated": {
-   "n": 272,
-   "mean_actual_min5": 18.06,
-   "mean_opp_mpg": 20.14,
-   "mean_model_a": 16.99,
-   "mean_preseason": 16.33,
-   "rmse_opp": 5.74,
-   "rmse_model_a": 5.49,
-   "mean_pred_d_value": 0.848,
-   "mean_actual_d_value": 0.46
+   "n": 183,
+   "mean_actual_min5": 20.34,
+   "mean_opp_mpg": 22.35,
+   "mean_model_a": 18.91,
+   "rmse_opp": 5.07,
+   "rmse_model_a": 5.02
   },
   "calibration_jump": {
-   "n": 298,
-   "mean_actual_min5": 26.4,
-   "mean_opp_mpg": 26.12,
-   "mean_model_a": 26.12,
-   "mean_preseason": 20.82,
-   "rmse_opp": 4.71,
-   "rmse_model_a": 4.71,
-   "mean_pred_d_value": 1.115,
-   "mean_actual_d_value": 1.317
+   "n": 264,
+   "mean_actual_min5": 26.04,
+   "mean_opp_mpg": 25.72,
+   "mean_model_a": 25.72,
+   "rmse_opp": 4.63,
+   "rmse_model_a": 4.63
+  }
+ },
+ "test_2026_production_constants": {
+  "constants": "production",
+  "test": "season 2026",
+  "vacated_calib": 0.95,
+  "params": {
+   "star_mpg": 28.0,
+   "share": 0.77,
+   "horizon": 20,
+   "jump_min": 4.0,
+   "vacated_min": 2.0,
+   "observed_games": 2,
+   "mpg_cap": 40.0,
+   "jump_window": 5,
+   "p_out_news": 0.5,
+   "vacated_calib": 0.95,
+   "value_calib": 1.0,
+   "survival": [
+    1.0,
+    0.4055,
+    0.27,
+    0.1942,
+    0.1567,
+    0.1269,
+    0.1082,
+    0.0869,
+    0.075,
+    0.0664,
+    0.0545,
+    0.0486,
+    0.046,
+    0.0417,
+    0.0392,
+    0.0349,
+    0.0315,
+    0.0298,
+    0.0273,
+    0.023,
+    0.0179,
+    0.017,
+    0.0145,
+    0.0128,
+    0.0111
+   ],
+   "weights": {
+    "0:same": 0.0,
+    "0:other": 0.0,
+    "0:unknown": 0.0,
+    "1:same": 0.0858,
+    "1:other": 0.0279,
+    "1:unknown": 0.0279,
+    "2:same": 0.0992,
+    "2:other": 0.0783,
+    "2:unknown": 0.0783,
+    "3:same": 0.1654,
+    "3:other": 0.1339,
+    "3:unknown": 0.1339,
+    "4:same": 0.1059,
+    "4:other": 0.074,
+    "4:unknown": 0.074
+   },
+   "rank_edges": [
+    3,
+    5,
+    8,
+    11
+   ]
+  },
+  "n_rows": 13583,
+  "n_players": 209,
+  "n_first_flags": 453,
+  "first_flags_by_signal": {
+   "jump": 248,
+   "vacated": 169,
+   "jump (absence)": 21,
+   "vacated+jump": 15
+  },
+  "d5": {
+   "flagged": [
+    3.99,
+    0.323
+   ],
+   "unflagged": [
+    -3.707,
+    0.39
+   ],
+   "lift": [
+    7.697,
+    0.424
+   ],
+   "n_flagged": 453,
+   "n_unflagged": 11335
+  },
+  "d10": {
+   "flagged": [
+    3.597,
+    0.332
+   ],
+   "unflagged": [
+    -3.402,
+    0.388
+   ],
+   "lift": [
+    7.0,
+    0.489
+   ],
+   "n_flagged": 453,
+   "n_unflagged": 11335
+  },
+  "big10": {
+   "flagged": [
+    0.379,
+    0.032
+   ],
+   "unflagged": [
+    0.073,
+    0.009
+   ],
+   "lift": [
+    0.306,
+    0.026
+   ],
+   "n_flagged": 453,
+   "n_unflagged": 11335
+  },
+  "d_value": {
+   "flagged": [
+    0.945,
+    0.119
+   ],
+   "unflagged": [
+    -0.528,
+    0.119
+   ],
+   "lift": [
+    1.473,
+    0.153
+   ],
+   "n_flagged": 453,
+   "n_unflagged": 11335
+  },
+  "dA5": {
+   "flagged": [
+    0.644,
+    0.265
+   ],
+   "unflagged": [
+    -0.567,
+    0.136
+   ],
+   "lift": [
+    1.211,
+    0.276
+   ],
+   "n_flagged": 453,
+   "n_unflagged": 11335
+  },
+  "by_signal_jump": {
+   "d5": {
+    "flagged": [
+     5.314,
+     0.37
+    ],
+    "unflagged": [
+     -3.707,
+     0.412
+    ],
+    "lift": [
+     9.021,
+     0.495
+    ],
+    "n_flagged": 269,
+    "n_unflagged": 11335
+   },
+   "d10": {
+    "flagged": [
+     4.988,
+     0.346
+    ],
+    "unflagged": [
+     -3.402,
+     0.356
+    ],
+    "lift": [
+     8.391,
+     0.518
+    ],
+    "n_flagged": 269,
+    "n_unflagged": 11335
+   },
+   "d_value": {
+    "flagged": [
+     1.226,
+     0.134
+    ],
+    "unflagged": [
+     -0.528,
+     0.111
+    ],
+    "lift": [
+     1.753,
+     0.163
+    ],
+    "n_flagged": 269,
+    "n_unflagged": 11335
+   },
+   "dA5": {
+    "flagged": [
+     0.373,
+     0.33
+    ],
+    "unflagged": [
+     -0.567,
+     0.138
+    ],
+    "lift": [
+     0.94,
+     0.347
+    ],
+    "n_flagged": 269,
+    "n_unflagged": 11335
+   }
+  },
+  "by_signal_vacated": {
+   "d5": {
+    "flagged": [
+     1.958,
+     0.551
+    ],
+    "unflagged": [
+     -3.707,
+     0.344
+    ],
+    "lift": [
+     5.665,
+     0.533
+    ],
+    "n_flagged": 184,
+    "n_unflagged": 11335
+   },
+   "d10": {
+    "flagged": [
+     1.463,
+     0.472
+    ],
+    "unflagged": [
+     -3.402,
+     0.35
+    ],
+    "lift": [
+     4.865,
+     0.575
+    ],
+    "n_flagged": 184,
+    "n_unflagged": 11335
+   },
+   "d_value": {
+    "flagged": [
+     0.514,
+     0.18
+    ],
+    "unflagged": [
+     -0.528,
+     0.102
+    ],
+    "lift": [
+     1.042,
+     0.192
+    ],
+    "n_flagged": 184,
+    "n_unflagged": 11335
+   },
+   "dA5": {
+    "flagged": [
+     1.061,
+     0.43
+    ],
+    "unflagged": [
+     -0.567,
+     0.142
+    ],
+    "lift": [
+     1.628,
+     0.436
+    ],
+    "n_flagged": 184,
+    "n_unflagged": 11335
+   }
+  },
+  "vacated_during": {
+   "n": 129,
+   "mean_pred_extra": 3.24,
+   "mean_realised_extra": 3.99,
+   "beta": [
+    1.323,
+    0.229
+   ],
+   "note": "realised extra = mean minutes in his games played while the driving teammate stays out (<= 5) minus model A; beta = slope through the origin of realised on allocated extra"
+  },
+  "value_calib": {
+   "all": [
+    3.637,
+    0.945
+   ],
+   "jump": [
+    13.151,
+    6.01
+   ],
+   "vacated": [
+    1.256,
+    0.433
+   ],
+   "note": "realised / predicted window value gain over the model-B line (bias-corrected)"
+  },
+  "calibration_vacated": {
+   "n": 174,
+   "mean_actual_min5": 19.68,
+   "mean_opp_mpg": 21.93,
+   "mean_model_a": 18.62,
+   "rmse_opp": 5.47,
+   "rmse_model_a": 5.28
+  },
+  "calibration_jump": {
+   "n": 267,
+   "mean_actual_min5": 26.15,
+   "mean_opp_mpg": 25.78,
+   "mean_model_a": 25.78,
+   "rmse_opp": 4.65,
+   "rmse_model_a": 4.65
   }
  }
 }

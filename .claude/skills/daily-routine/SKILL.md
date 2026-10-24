@@ -132,16 +132,19 @@ is interested in X; details private"). A thread message
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
 - **Minutes opportunities** (after `update-projections` (1.6) and the news triage (1.4b), so injuries, news and
   model A are fresh): `fantasy inseason opportunity --date $D --free-agents data/raw/yahoo/free_agents_$D.json --json`
-  (opportunity-0.1.0, ~30 s; `docs/research/opportunity_detector.md`). It flags free agents with an observed minutes
-  jump (model A vs preseason) or with minutes vacated by an Out ≥ 28-mpg teammate (driver, source and date in
-  `drivers[].sources`). It gives the opportunity mpg × window, the window value vs my weakest player, and for the
-  top 5 the paired week ΔP(win) and season ΔP(playoffs)/ΔP(title) ± SE with a `verdict`.
-  - Present only `helps` verdicts as recommendations, with the usual justification + why-now. The why-now is
-    usually the injury (who, source, date) and "model A has / has not seen it yet".
-  - `speculative` = mention as an idea; `noise`/`hurts` = don't.
-  - A 1-3 game window is a stream: confirm with `fantasy inseason stream --projections <override .window.csv>`.
-    The season number assumes a hold.
+  (opportunity-0.1.1, 1-3 min; `docs/research/opportunity_detector.md`). It flags free agents with an observed
+  minutes jump (model A vs preseason; no adjustment beyond model A) or with minutes vacated by an Out ≥ 28-mpg
+  teammate (driver, source and date in `drivers[].sources`; the only signal with fitted information beyond model A,
+  +1.4 ± 0.4 mpg). It gives the opportunity mpg × window and the calibrated window value vs my weakest player. For
+  the top 5 it adds the week ΔP(win) (opportunity minutes on the window's games only) and the season **stream chain**
+  (candidate for his window, then the 6th-best FA; blend + market) with a `verdict`.
+  - Present only `helps` as a recommendation, with the usual justification + why-now: the injury (who, source,
+    date) and "model A has / has not seen it yet".
+  - `direct_helps` = the gain comes from dropping my player for the chain FA, not from this opportunity. Say that
+    instead of recommending the opportunity.
+  - `speculative` = mention as an idea; `noise` / `hurts` / `unevaluated` = don't.
   - Candidates outside the capture's top 50 are "presumed FA": check their status on Yahoo before proposing.
+  - `unprojected_risers` (no projection row) = look at them manually.
   - Never add without the user's yes.
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
   this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from

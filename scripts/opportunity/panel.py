@@ -80,13 +80,31 @@ def survival(spells: pd.DataFrame, kmax: int = 40) -> list[float]:
     return [float((L >= k).mean()) for k in range(1, kmax + 1)]
 
 
-def groups_map(proj_path: Path = ROOT / "data" / "processed" / "projections_2026_27.csv") -> dict[str, str]:
-    """Position group string ('G', 'W', 'B' letters) per player from the current projections (a proxy for past
-    seasons: positions are fairly stable)."""
+def groups_map(season: int) -> dict[str, str]:
+    """Position group string ('G', 'W', 'B' letters) per player for box-score season `season` (2026 = 2025-26), from
+    Basketball-Reference's PRIOR-season position (data/raw/bbref_sumitrodatta/player_totals.csv, same season label
+    convention); players without a prior season fall back to that season's own bbref position (season-level label,
+    a mild look-ahead). No later-season data (the 2026-27 projections are not used)."""
     import sys
 
     sys.path.insert(0, str(ROOT / "src"))
     from fantasy.inseason.opportunity import position_groups
 
-    pos = pd.read_csv(proj_path)[["player_id", "positions"]]
-    return {r.player_id: "".join(sorted(position_groups(r.positions))) for r in pos.itertuples()}
+    return {k: "".join(sorted(position_groups(v))) for k, v in positions_map(season).items()}
+
+
+def positions_map(season: int) -> dict[str, str]:
+    """Raw bbref position ('PG', 'SF', ...) per player: prior season, else the same season (see groups_map)."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "src"))
+    from fantasy.data.ids import canonical_id
+
+    t = pd.read_csv(ROOT / "data" / "raw" / "bbref_sumitrodatta" / "player_totals.csv", usecols=["season", "player", "pos"])
+    t = t[t["pos"].notna()]
+    t["pid"] = t["player"].map(canonical_id)
+    out: dict[str, str] = {}
+    for yr in (season, season - 1):  # later assignment (prior season) wins
+        for r in t[t["season"] == yr].drop_duplicates("pid").itertuples():
+            out[r.pid] = str(r.pos)
+    return out

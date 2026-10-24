@@ -118,8 +118,12 @@ def test_news_only_absence_is_discounted():
 def test_absence_window_sources():
     p = OpportunityParams()
     assert absence_window(Absence("s", "S", "AAA", 30.0, season_out=True), p)[0] == float(p.horizon)
-    g, src = absence_window(Absence("s", "S", "AAA", 30.0, return_date="2026-11-01", espn_games=4), p)
-    assert g == 4.0 and "ESPN" in src
+    # ESPN estimate vs fitted survival: the shorter (more conservative) one wins, both are named
+    fitted0 = expected_absence_games(0, p)
+    g, src = absence_window(Absence("s", "S", "AAA", 30.0, return_date="2026-11-01", espn_games=12), p)
+    assert g == pytest.approx(fitted0) and "ESPN" in src and "fitted" in src
+    g, src = absence_window(Absence("s", "S", "AAA", 30.0, return_date="2026-10-25", espn_games=1), p)
+    assert g == 1.0 and src.startswith("ESPN")
     e = [expected_absence_games(m, p) for m in range(6)]
     assert e[0] >= 1.0 and all(b >= a for a, b in zip(e, e[1:], strict=False))  # spells that last tend to last
     assert all(x <= p.horizon for x in e)
