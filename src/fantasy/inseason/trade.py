@@ -2,7 +2,8 @@
 
 A trade changes two rosters at once. Rosters are brought back to the drafted size: a team left
 short adds the best undrafted player by projected value (replacement), a team over the limit drops
-its lowest-value player. Both teams' P(playoffs)/P(title)/category wins are reported with paired SEs
+its lowest-value player that is not Out on Yahoo (Out players sit in IL; the engine's roster cap handles their
+return, as in the base run). Both teams' P(playoffs)/P(title)/category wins are reported with paired SEs
 (common random numbers), plus a naive "rankings" check (sum of projected value and ADP), because a
 human trade partner will mostly judge by rankings.
 """
@@ -59,8 +60,11 @@ def apply_trade(league: LeagueState, my_team: int, trade: Trade, values: pd.Data
     moves: dict[int, dict[str, list[str]]] = {}
     for t in (my_team, trade.partner):
         ps = new.rosters[t]
-        while len(ps) > roster_size:
-            worst = min(ps, key=lambda p: float(val.get(p, -99.0)))
+        # players Out on Yahoo (IL-eligible) do not count against the cap: the engine's roster cap (season-sim-0.8.0)
+        # releases the surplus when they return, exactly as in the untraded base run (so a 14-man team with one Out
+        # keeps its 14th player on both sides)
+        while sum(p not in new.out_now for p in ps) > roster_size:
+            worst = min((p for p in ps if p not in new.out_now), key=lambda p: float(val.get(p, -99.0)))
             ps.remove(worst)
             moves.setdefault(t, {"add": [], "drop": []})["drop"].append(worst)
         while len(ps) < roster_size and pool:

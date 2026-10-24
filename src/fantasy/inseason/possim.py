@@ -80,21 +80,42 @@ class PositionAwareSimulator(SeasonSimulator):
             j = pidx.get(pid)
             if j is None:
                 continue
-            lo = (a - self.season_start).days if a else -10**6
-            hi = (b - self.season_start).days if b else 10**6
+            lo, hi = self._window_bounds((a, b))
             arr["health"][:, j, :] &= ((days >= lo) & (days < hi))[None, :]
             if "il_start" in arr:
                 s = np.clip(arr["il_start"][:, j], lo, hi)
                 e = np.clip(arr["il_end"][:, j], lo, hi)
                 arr["il_start"][:, j], arr["il_end"][:, j] = s, np.maximum(e, s)
 
+    def _window_bounds(self, w: Window) -> tuple[int, int]:
+        a, b = w
+        return ((a - self.season_start).days if a else -10**6, (b - self.season_start).days if b else 10**6)
+
     def _player_arrays(self, pids: list[str]) -> dict[str, np.ndarray]:
         arr = super()._player_arrays(pids)
         if self._windows:
             self._apply_windows(arr, pids)
+        return arr
+
+    def _membership(self, pids: list[str]) -> np.ndarray | None:
+        """On the roster only inside his window, so the engine's roster cap (0.8.0) sees a swap as 13 -> 13."""
+        if not self._windows:
+            return None
+        pidx = {p: i for i, p in enumerate(pids)}
+        days = np.array([(d - self.season_start).days for d in self.fdays])
+        mem = np.ones((len(pids) + 1, len(days)), dtype=bool)
+        for pid, w in self._windows.items():
+            j = pidx.get(pid)
+            if j is not None:
+                lo, hi = self._window_bounds(w)
+                mem[j] = (days >= lo) & (days < hi)
+        return mem
+
+    def _finalize_arrays(self, arr: dict[str, np.ndarray], pids: list[str]) -> None:
+        """Position-aware starters on the final health (after windows and the roster cap)."""
         league = self._league
         if league is None:
-            return arr
+            return
         health = arr["health"]  # (N, P+1, D)
         pidx = {p: i for i, p in enumerate(pids)}
         val = self.values["value"] if "value" in self.values else None
@@ -110,4 +131,3 @@ class PositionAwareSimulator(SeasonSimulator):
             H = health[:, js, :]  # (N, R, D)
             st = bool_from_masks(solver.starters_array(masks_from_bool(H, axis=1)), len(js), axis=1)
             health[:, js, :] = H & st
-        return arr

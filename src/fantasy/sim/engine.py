@@ -34,7 +34,21 @@ numbers for everyone else):
    require), his team carries one replacement-level player in his place, up to `il_slots` at a time. Each
    replacement plays the expected games of a typical NBA team that day (share of the 30 teams playing) times
    `il_rep_availability`, and fills open starting slots after the roster's players and before streamers. No
-   extra random numbers are drawn, so runs with and without it stay paired. Default off (output unchanged).
+   extra random numbers are drawn, so runs with and without it stay paired.
+4c. Roster cap (default on since season-sim-0.8.0, `roster_cap`; docs/research/il_replacement.md "Roster cap"): a team
+   may hold `active_roster` (settings starters + bench = 13) non-IL players plus up to `il_slots` players who are
+   Out. On every fantasy day, a rostered player inside an IL-qualifying spell (>= `il_min_spell_days`, or any spell
+   of a player who starts the season listed out) occupies an IL slot; if the team's other rostered players exceed
+   `active_roster`, its lowest-value ones (same value order as the lineup) that are not Out are released for the
+   rest of the season from that day (e.g. 13 + 1 IL: when the IL player's spell ends, the 14th-best goes; if the
+   spell runs to the end of the window nobody goes). Released players never come back; later injuries are covered
+   by IL replacement. IL replacement only fills an Out player's slot when the team has fewer than `active_roster`
+   healthy non-IL players: replacements per day = max(0, min(#Out, il_slots) - (rostered - active_roster)^+).
+   Players the league file lists Out on Yahoo (`LeagueState.out_now`) but the projections call healthy keep the
+   usual spell model (rest_share rests; one spell, or two with prob two_spell_prob and the usual U(0.2, 0.8) split),
+   with the first spell rotated to start on day 0 and lasting at least `il_min_spell_days` (the second keeps a
+   uniform gap): the day-0 spell is the model's own first spell, not the whole missed share, so he keeps absence
+   risk later in the season. No extra random numbers. `roster_cap=False` reproduces season-sim-0.7.0 exactly.
 5. Weekly team totals: given the counted games k, team attempts/counting stats ~ Normal with mean
    sum(k * mean) and variance sum(k * var(mean)), where the per-game variance is the one game-noise model
    shared with the draft, var = a * mean + b * mean^2 (fantasy.model.noise). Noise is drawn at team level,
@@ -103,6 +117,9 @@ class SimParams:
     il_slots: int | None = None  # default: settings.roster_slots["IL"] (league 44495: 3)
     il_min_spell_days: float = 7.0
     il_rep_availability: float = 0.85  # share of his team's games the replacement plays (rest/minor injuries)
+    # roster cap (season-sim-0.8.0, step 4c): non-IL roster limited to active_roster; surplus released on return
+    roster_cap: bool = True
+    active_roster: int | None = None  # default: settings.num_rounds (starters + bench; league 44495: 13)
     # playoffs
     playoff_teams: int | None = None  # default: settings.playoff_teams
     playoff_weeks: list[int] | None = None  # default: settings.playoff_weeks
@@ -155,6 +172,8 @@ class SimResult:
     seconds: float = 0.0
     il_games: np.ndarray | None = None  # (N, W, T) IL-replacement games counted (None when il_replacement is off)
     il_slot_days: np.ndarray | None = None  # (N, W, T) IL slots occupied, summed over the week's days
+    cap_drop_day: np.ndarray | None = None  # (N, T, R) fantasy-day index a roster row is released (D = never)
+    cap_rosters: list[list[str]] | None = None  # roster rows (value order) that cap_drop_day refers to
 
     @property
     def n(self) -> int:
@@ -223,6 +242,8 @@ class SeasonSimulator:
             self._stat_sd_vec = np.array([float(self.p.stat_sds.get(s, 0.0)) for s in FACTOR_STATS])
         self._chol = np.linalg.cholesky(np.array(cal.NOISE_CORR)) if self.p.noise_corr else None
         self.il_slots = int(self.p.il_slots if self.p.il_slots is not None else settings.roster_slots.get("IL", 0))
+        self.active_roster = int(self.p.active_roster if self.p.active_roster is not None else settings.num_rounds)
+        self._out_now: set[str] = set()  # league-file Out players (set by run() when the roster cap is on)
         # expected games of a typical NBA team on each fantasy day (share of the NBA teams playing)
         self.team_game_share = self.plays[:-1].mean(axis=0)
         assert cal.NOISE_ORDER == NOISE_STATS
@@ -246,7 +267,8 @@ class SeasonSimulator:
         df = self.proj
         mu = np.zeros((N, P, len(STATS)), dtype=np.float64)
         health = np.zeros((N, P + 1, D), dtype=bool)  # last row = padding (never plays)
-        il_on = self.p.il_replacement
+        il_on = self.p.il_replacement or self.p.roster_cap  # spell intervals are needed by both
+        cap_on = self.p.roster_cap
         # long-spell intervals [start, end) on the season-day axis, 2 per player (empty: start = end = 0)
         # (each of the 2 spells is at most 2 pieces after wrapping: 4 slots per player)
         il_start = np.zeros((N, P + 1, 4)) if il_on else None
@@ -291,7 +313,10 @@ class SeasonSimulator:
             # --- availability
             a, b = _beta_params(np.array([gp / SEASON_GAMES]), np.array([gp_sd / SEASON_GAMES]))
             f = rng.beta(a[0], b[0], N)
-            out_now = status in ("out", "out_for_season")
+            out_now = status in ("out", "out_for_season")  # projections: the whole missed share is one day-0 spell
+            # Out on Yahoo only (league file, 0.8.0): the usual spell model (rests, one or two spells with the usual
+            # split), but the first spell is rotated to start on day 0; the rest of the season keeps its risk
+            yahoo_out = (not out_now) and pid in self._out_now
             q = 1.0 - f  # missed share
             rest = 0.0 if out_now else self.p.rest_share
             spell_len = (1 - rest) * q * Tw  # total spell days on the fantasy-window circle
@@ -305,11 +330,17 @@ class SeasonSimulator:
             u = np.where(two, rng.uniform(0.2, 0.8, N), 1.0)
             L1, L2 = spell_len * u, spell_len * (1 - u)
             c = 0.0 if out_now else rng.random(N) * Tw
-            g = rng.random(N) * np.maximum(Tw - spell_len, 0)
+            if yahoo_out:  # draw consumed above so his other draws match a run without the Yahoo status
+                c = np.zeros(N)
+                # Out on Yahoo = out for a while: the day-0 spell lasts at least il_min_spell_days (the same "Out"
+                # proxy IL replacement uses; prior). Adds at most that many missed days when his draw was shorter.
+                L1 = np.maximum(L1, min(self.p.il_min_spell_days, Tw))
+            g = rng.random(N) * np.maximum(Tw - (L1 + L2), 0)
             a1, a2 = c, np.mod(c + L1 + g, Tw)
             if il_start is not None and il_end is not None:
                 for k_, (st_, ln_) in enumerate(((a1, L1), (a2, L2))):
-                    long_ = ln_ >= self.p.il_min_spell_days
+                    # a player listed out now holds his IL slot for his whole first spell, however short (0.8.0)
+                    long_ = (ln_ >= self.p.il_min_spell_days) | (cap_on and k_ == 0 and (out_now or yahoo_out))
                     st_ = np.broadcast_to(st_, (N,))
                     # pieces on the season-day axis: [st, min(st+L, T)) and the wrapped part [0, st+L-T)
                     il_start[:, j, 2 * k_] = np.where(long_, w0 + st_, 0.0)
@@ -359,7 +390,19 @@ class SeasonSimulator:
         idx = np.full((T, R), pad, dtype=int)
         for ti, ps in enumerate(rosters):
             idx[ti, : len(ps)] = [pidx[p] for p in ps]
-        arr = self._player_arrays(pids)
+        cap_on = self.p.roster_cap
+        self._out_now = set(league.out_now) if cap_on else set()
+        try:
+            arr = self._player_arrays(pids)
+        finally:
+            self._out_now = set()
+        D = len(self.fdays)
+        member = self._membership(pids)  # (P+1, D) on the roster that day (None: always)
+        memTR = (np.ones((pad + 1, D), dtype=bool) if member is None else member.copy())
+        memTR[pad] = False
+        memTR = memTR[idx]  # (T, R, D)
+        drop_day = self._apply_roster_cap(arr, idx, memTR) if cap_on else None
+        self._finalize_arrays(arr, pids)
         mu = np.concatenate([arr["mu"], np.zeros((N, 1, len(STATS)))], axis=1)  # pad row
         health = arr["health"]
         muTR = mu[:, idx, :]  # (N, T, R, S)
@@ -374,6 +417,7 @@ class SeasonSimulator:
         games = np.zeros((N, W, T), dtype=np.float32)
         streams = np.zeros((N, W, T), dtype=np.float32)
         il_on = self.p.il_replacement
+        day_ix = np.arange(D)
         il_games = np.zeros((N, W, T), dtype=np.float32) if il_on else None
         il_slot_days = np.zeros((N, W, T), dtype=np.float32) if il_on else None
         if il_on:
@@ -391,8 +435,14 @@ class SeasonSimulator:
                 tm = self.fday_offset[d0:d1] + 0.5
                 in_il = ((tm >= il_s[..., None]) & (tm < il_e[..., None])).any(axis=3)  # (N, T, R, d)
                 n_il = np.minimum(in_il.sum(axis=2), self.il_slots)  # (N, T, d)
+                n_rep = n_il
+                if drop_day is not None:
+                    # a team carrying more than active_roster players already holds its replacement(s) itself
+                    alive = (day_ix[None, None, None, d0:d1] < drop_day[..., None]) & memTR[None, :, :, d0:d1]
+                    surplus = np.maximum(alive.sum(axis=2) - self.active_roster, 0)  # (N, T, d)
+                    n_rep = np.maximum(n_il - surplus, 0)
                 per_rep = self.team_game_share[d0:d1] * self.p.il_rep_availability
-                g_il_day = np.minimum(n_il * per_rep[None, None, :], open_day)
+                g_il_day = np.minimum(n_rep * per_rep[None, None, :], open_day)
                 g_il = g_il_day.sum(axis=2)
                 open_slots = (open_day - g_il_day).sum(axis=2)
                 il_games[:, wi] = g_il
@@ -443,10 +493,71 @@ class SeasonSimulator:
 
         res = self._score(totals, games, streams, team_ids, warnings)
         res.il_games, res.il_slot_days = il_games, il_slot_days
-        if il_on:
+        if il_on or cap_on:
             res.params["il_slots"] = self.il_slots
+        if drop_day is not None:
+            res.params["active_roster"] = self.active_roster
+            res.cap_drop_day, res.cap_rosters = drop_day, rosters
+            over = [t for ti, t in enumerate(team_ids) if memTR[ti].sum(axis=0).max() > self.active_roster]
+            if over:
+                warnings.append(
+                    f"roster cap (season-sim-0.8.0): teams {over} carry more than {self.active_roster} players; the "
+                    "surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)")
         res.seconds = time.perf_counter() - t0
         return res
+
+    # ------------------------------------------------------------------ roster cap
+    def _membership(self, pids: list[str]) -> np.ndarray | None:
+        """(P+1, D) bool: player is on his fantasy roster that day (None = every day). Subclasses with mid-season
+        roster changes override it so the roster cap counts only current members."""
+        return None
+
+    def _finalize_arrays(self, arr: dict[str, np.ndarray], pids: list[str]) -> None:
+        """Hook after the roster cap (subclasses re-solve lineups on the final health)."""
+
+    def _apply_roster_cap(self, arr: dict[str, np.ndarray], idx: np.ndarray, memTR: np.ndarray) -> np.ndarray:
+        """Release surplus players (step 4c). Returns drop_day (N, T, R): fantasy-day index from which roster row
+        (t, r) is released (D = never). Clears the released players' health and IL intervals from that day on.
+        Rows of idx are in value order (best first), so the lowest-value candidates are the last rows."""
+        N, (T, R, D) = self.p.n_sims, memTR.shape
+        drop_day = np.full((N, T, R), D, dtype=np.int32)
+        capped = [ti for ti in range(T) if memTR[ti].sum(axis=0).max() > self.active_roster]
+        if not capped:
+            return drop_day
+        js = idx[capped]  # (Tc, R) player indices (pad rows have empty intervals and are never members)
+        s, e = arr["il_start"][:, js], arr["il_end"][:, js]  # (N, Tc, R, 4)
+        mem = memTR[capped]  # (Tc, R, D)
+        kept = np.ones((N, len(capped), R), dtype=bool)
+        dd = np.full((N, len(capped), R), D, dtype=np.int32)
+        for d in range(D):
+            m = kept & mem[None, :, :, d]
+            n = m.sum(axis=2)
+            if n.max() <= self.active_roster:
+                continue
+            tm = self.fday_offset[d] + 0.5
+            out = ((tm >= s) & (tm < e)).any(axis=3) & m
+            excess = n - np.minimum(out.sum(axis=2), self.il_slots) - self.active_roster  # (N, Tc)
+            if not (excess > 0).any():
+                continue
+            cand = m & ~out
+            rank_from_bottom = np.cumsum(cand[..., ::-1], axis=2)[..., ::-1]
+            drop = cand & (rank_from_bottom <= excess[..., None])
+            kept &= ~drop
+            dd[drop] = d
+        drop_day[:, capped] = dd
+        # released from day dd: no games, no IL slot (intervals clipped to end before that day)
+        health = arr["health"]
+        cut = np.where(dd < D, self.fday_offset[np.minimum(dd, D - 1)], np.inf)  # (N, Tc, R) season-day offset
+        for ci in range(len(capped)):
+            for r in range(R):
+                j = js[ci, r]
+                if j == health.shape[1] - 1:  # pad row
+                    continue
+                health[:, j, :] &= np.arange(D)[None, :] < dd[:, ci, r, None]
+                c = cut[:, ci, r, None]
+                arr["il_end"][:, j] = np.minimum(arr["il_end"][:, j], c)
+                arr["il_start"][:, j] = np.minimum(arr["il_start"][:, j], arr["il_end"][:, j])
+        return drop_day
 
     # ------------------------------------------------------------------ scoring
     def compare(self, a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

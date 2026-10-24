@@ -607,4 +607,157 @@ def test_il_replacement_position_aware(ctx):
 def test_il_replacement_is_default_since_0_6_0():
     from fantasy.sim import SIM_VERSION
     assert SimParams().il_replacement is True
-    assert SIM_VERSION == "season-sim-0.7.0"
+    assert SIM_VERSION == "season-sim-0.8.0"
+
+
+# ---------------------------------------------------------------- roster cap (season-sim-0.8.0)
+def _capped_league(ctx, extra=True, gp_out=55.0):
+    """Team 1 = its 13 snake picks (+ the best undrafted player); its 5th-best is listed out (in a spell from day 0)."""
+    lg = _snake_league(ctx)
+    df = ctx.proj.df.copy()
+    hurt = lg.rosters[1][4]
+    df.loc[hurt, "status"] = "out"
+    df.loc[hurt, "gp"] = gp_out
+    if extra:
+        taken = {p for ps in lg.rosters.values() for p in ps}
+        fa = next(p for p in ctx.values.sort_values("value", ascending=False).index if p not in taken)
+        lg.rosters[1] = lg.rosters[1] + [fa]
+    return lg, df, hurt
+
+
+def _value_rows(sim, lg, t):
+    val = sim.values["value"]
+    return sorted(dict.fromkeys(lg.rosters[t]), key=lambda p: -float(val.get(p, -99.0)))
+
+
+def test_roster_cap_13_plus_il_only_13_non_il_after_return(ctx):
+    lg, df, hurt = _capped_league(ctx)
+    sim = _sim_with(ctx, df, n_sims=200, il_replacement=True)
+    r = sim.run(lg)
+    D = len(sim.fdays)
+    rows = r.cap_rosters[0]
+    assert rows == _value_rows(sim, lg, 1)
+    assert len(rows) == 14 and sim.active_roster == 13 == ctx.settings.num_rounds
+    dd = r.cap_drop_day[:, 0, :14]
+    rel = dd < D
+    assert (rel.sum(axis=1) <= 1).all() and rel.any(axis=1).mean() > 0.2  # at most one release, and it happens
+    # independent check on the raw draws: every day, rostered minus IL-slotted players <= 13; a release happens on a
+    # day the 14 would otherwise exceed it and hits the lowest-value player not in a spell
+    pids = list(dict.fromkeys(p for t in lg.team_ids for p in _value_rows(sim, lg, t)))
+    arr = sim._player_arrays(pids)
+    js = [pids.index(p) for p in rows]
+    s, e = arr["il_start"][:, js], arr["il_end"][:, js]  # (N, 14, 4)
+    t_mid = sim.fday_offset + 0.5
+    tm = t_mid[None, None, :, None]
+    out = ((tm >= s[:, :, None, :]) & (tm < e[:, :, None, :])).any(axis=3)  # (N, 14, D) in an IL-qualifying spell
+    assert out[:, rows.index(hurt), 0].all()  # listed out: in his spell (an IL slot) from day 0
+    alive = np.arange(D)[None, None, :] < dd[..., None]
+    non_il = alive.sum(axis=1) - np.minimum((out & alive).sum(axis=1), sim.il_slots)
+    assert (non_il <= 13).all()
+    for n in np.flatnonzero(rel.any(axis=1))[:40]:
+        r_, d = int(np.flatnonzero(rel[n])[0]), int(dd[n].min())
+        assert not out[n, r_, d] and (d == 0 or out[n, :, d - 1].any())  # healthy that day; someone was Out before
+        assert all(out[n, k, d] for k in range(r_ + 1, 14))  # every lower-value player is Out that day
+    # the released player accumulates nothing from his release day (health cleared in the arrays the run uses)
+    sim._apply_roster_cap(arr, np.array([js]), np.ones((1, 14, D), dtype=bool))
+    for n in np.flatnonzero(rel.any(axis=1))[:40]:
+        r_ = int(np.flatnonzero(rel[n])[0])
+        assert not arr["health"][n, js[r_], int(dd[n, r_]):].any()
+
+
+def test_roster_cap_never_binds_at_13(ctx):
+    lg, df, _ = _capped_league(ctx, extra=False)
+    on = _sim_with(ctx, df, n_sims=100).run(lg)
+    off = _sim_with(ctx, df, n_sims=100, roster_cap=False).run(lg)
+    assert on.cap_drop_day is not None and (on.cap_drop_day == len(_sim_with(ctx, df).fdays)).all()
+    assert off.cap_drop_day is None
+    assert np.array_equal(on.totals, off.totals) and np.array_equal(on.rank, off.rank)  # IL replacement off here
+    assert on.params["roster_cap"] is True and on.params["active_roster"] == 13 and off.params["roster_cap"] is False
+
+
+def test_roster_cap_removes_il_inflation_paired(ctx):
+    lg, df, hurt = _capped_league(ctx, gp_out=70.0)
+    rows = _value_rows(_sim_with(ctx, df, n_sims=1), lg, 1)
+    lowest = rows[-1] if rows[-1] != hurt else rows[-2]
+    lg13 = lg.with_change(1, [], [lowest])
+    d = {}
+    for cap in (True, False):
+        # every healthy player starts (active 13, no streaming) so depth shows up in the totals in this synthetic world
+        sim = _sim_with(ctx, df, n_sims=1500, il_replacement=True, roster_cap=cap, active=13, streaming=False)
+        a, b = sim.run(lg), sim.run(lg13)
+        d[cap] = (a.cat_wins[:, 0] - b.cat_wins[:, 0]).mean()  # paired: same seeds, same player draws
+    assert d[False] > 1.0  # without the cap the 14th player is a full-season extra
+    assert abs(d[True]) < 0.35 * d[False]  # with it only the IL-period depth remains (real, and small)
+
+
+def test_roster_cap_il_replacement_only_below_13(ctx):
+    lg13, df, hurt = _capped_league(ctx, extra=False, gp_out=30.0)
+    lg14, _, _ = _capped_league(ctx, extra=True, gp_out=30.0)
+    sim = _sim_with(ctx, df, n_sims=200, il_replacement=True)
+    r13, r14 = sim.run(lg13), sim.run(lg14)
+    # week 1: the out player is in his spell from day 0 (gp 30 -> a long spell)
+    assert (r13.il_slot_days[:, 0, 0] > 0).all() and (r14.il_slot_days[:, 0, 0] > 0).all()
+    assert r13.il_games[:, 0, 0].mean() > 0  # 13 + 1 Out: a replacement fills open slots in week 1
+    # 14 with one Out: the 14th man is the replacement; IL replacement only when a second player is also Out
+    assert r14.il_games[:, :, 0].sum() < 0.8 * r13.il_games[:, :, 0].sum()
+    assert r14.il_games[:, :, 0].sum() > 0
+    assert np.array_equal(r13.il_games[:, :, 1:], r14.il_games[:, :, 1:])  # other teams untouched
+
+
+def test_league_file_out_status_sets_out_now(tmp_path):
+    p = tmp_path / "lg.json"
+    p.write_text(json.dumps({"my_team": 1, "teams": {
+        "1": {"players": ["a", "b", "c"], "lineup": {"c": "IL"}, "status": {"a": "Q", "c": "O", "zz": "O"}},
+        "2": {"players": ["d"], "status": {"d": "INJ"}}}}))
+    lg = from_json(p)
+    assert lg.out_now == {"c", "d"} and lg.copy().out_now == {"c", "d"}
+
+
+def test_roster_cap_counts_only_window_members_position_aware(ctx):
+    """A mid-season swap (dropped player window (None, e), added (e, None)) is 13 -> 13: nobody is released."""
+    from fantasy.inseason.possim import PositionAwareSimulator
+
+    lg, df, _ = _capped_league(ctx)  # 14 players
+    sim = PositionAwareSimulator(df, ctx.values, ctx.replacement, ctx.settings, ctx.nba, ctx.calendar,
+                                 ctx.matchups, _params(n_sims=60, il_replacement=True))
+    e = sim.fdays[40]
+    swap = {lg.rosters[1][-1]: (e, None), lg.rosters[1][-2]: (None, e)}
+    D = len(sim.fdays)
+    assert (sim.run(lg, swap).cap_drop_day[:, 0] == D).all()
+    assert (sim.run(lg).cap_drop_day[:, 0] < D).any()  # without the window the 14th is released at some point
+
+
+def test_noop_trade_delta_zero_for_14_man_team_with_il_player(ctx):
+    from fantasy.inseason.trade import Trade, evaluate_trades
+
+    lg, df, hurt = _capped_league(ctx)
+    lg.out_now = {hurt}
+    sim = _sim_with(ctx, df, n_sims=100, il_replacement=True)
+    base, rows = evaluate_trades(sim, lg, 1, [Trade(2, [], [])], ctx.values, ctx.settings.num_rounds)
+    assert rows[0]["refill_moves"] == {}
+    assert all(v["delta"] == 0 and v["delta_se"] == 0 for v in rows[0]["me"].values())
+
+
+def test_yahoo_out_only_player_starts_out_but_keeps_later_absence_risk(ctx):
+    lg = _snake_league(ctx)
+    pid = lg.rosters[1][0]
+    assert ctx.proj.df.loc[pid, "status"] not in ("out", "out_for_season")
+    sim = ctx.simulator(_params(n_sims=400))
+    plays = sim.plays[sim.team_row.get(str(ctx.proj.df.loc[pid, "team"]), len(sim.team_row))]
+    base = sim._player_arrays([pid])
+    sim._out_now = {pid}
+    yo = sim._player_arrays([pid])
+    sim._out_now = set()
+    h0, h1 = base["health"][:, 0], yo["health"][:, 0]
+    first_game = int(np.flatnonzero(plays)[0])
+    # out from day 0 for at least il_min_spell_days in every sim (his first spell is rotated to day 0, floor 7 days)
+    early = plays & (sim.fday_offset - sim.window_start < sim.p.il_min_spell_days - 0.5)
+    assert early[first_game] and not h1[:, early].any()
+    # after his day-0 spell he still misses games (rests, and a second spell with the usual probability)
+    end1 = yo["il_end"][:, 0, 0] - sim.window_start  # day-0 spell end on the window axis
+    t_w = sim.fday_offset - sim.window_start
+    after = (t_w[None, :] >= end1[:, None] + 1) & plays[None, :]
+    miss_after = (~h1 & after).sum() / after.sum()
+    assert 0.02 < miss_after < 0.5
+    # about the same total availability as without the Yahoo status (timing changes; the 7-day floor adds a little)
+    assert -0.06 < h1[:, plays].mean() - h0[:, plays].mean() <= 0.005
