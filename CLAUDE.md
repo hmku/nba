@@ -100,5 +100,8 @@ data-auditor, draft-shadow (all read-only).
 - Python ≥3.11, typed, small modules; ingestion (`data/`) separate from modeling (`model/`).
 - Percent categories are always computed from makes/attempts.
 - Every model output is versioned (`model_runs`: model_version, git sha, params, input hashes).
+- **After any model change is merged** (user requirement): rebuild projections, re-simulate the rest of the season and
+  the rest of this week, and make sure the dashboard shows the new runs; report old → new odds (steps in the
+  model-eval skill, §5).
 - Tests use synthetic data (`tests/synthetic.py`) and temp SQLite; never hit the network in tests.
 - Don't build infrastructure ahead of need; prefer native Claude Code features (skills, subagents, hooks).

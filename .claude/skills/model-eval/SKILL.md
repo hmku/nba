@@ -76,6 +76,14 @@ target season; manual overrides can't be replayed, so backtest the baseline only
   `SIM_VERSION` (`sim/__init__.py`), value model `MODEL_VERSION` (`valuesearch/train.py`; artifact + the
   live-draft guard's expected version). `model_runs` records valuation, `draft_sim` and `season_sim` runs;
   recommendations carry `optimizer_version` / `recommend_policy`.
+- **After every merged model change, refresh everything downstream (user requirement, 2026-10-24)** — before telling
+  the user it's done: (1) rebuild projections (`fantasy data build-projections` if the preseason side changed, then
+  `fantasy data update-projections`); (2) re-simulate the rest of the season (`fantasy sim season --league-file
+  data/manual/league_rosters_2026-27.json --sims 12000 --scenario "<model change>: actual rosters <date>" --json`);
+  (3) re-simulate the rest of this week (`fantasy lineup plan --date <today ET> --week --save --json`, on today's
+  roster/matchup capture — re-capture first if stale); (4) check the dashboard shows the new runs (League / This week /
+  Lineup tabs; `cd web && node scripts/league-state.mjs` if league state changed), and report old → new P(playoffs),
+  P(title) and P(win week) with the model versions in the final message and the daily log.
 - **Tests**: add or update tests with synthetic data (`tests/synthetic.py`, `tests/test_scoring.py`,
   `tests/test_optimizer.py`, `tests/test_projections.py`); no network; deterministic seeds.
 - **Commit the fit script** next to the constants it produces (e.g. `scripts/gp_model/`, with its JSON report) — gp-ols-0.1's
