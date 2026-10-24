@@ -103,7 +103,8 @@ not comparable in level — fewer remaining games now.)
 
 ## 2. Per-game stats (fitted)
 **Minutes (since `ros-proj-0.5.0`):** projected mpg comes from the recency-weighted minutes model
-(`minutes-0.1.0`, two EWMAs + prior, no intercept; next-5 OOS RMSE 4.27 vs 4.83 for the MPG shrink below), see
+(`minutes-0.2.0`, two EWMAs + prior; `mpg` = rest-of-season model with intercept, OOS RMSE 3.85 vs 4.32 for the MPG
+shrink below; `mpg_next5` = next-5-games model without intercept, 4.26 vs 4.83), see
 [minutes_model.md](minutes_model.md). The MPG row below is the pre-0.5.0 formula (`--minutes-model shrink`).
 
 `mpg_post = (n0·mpg_prior + g·mpg_obs)/(n0 + g)`; per-minute rates `(n0·r_prior + M·r_obs)/(n0 + M)`; FG%/FT% by

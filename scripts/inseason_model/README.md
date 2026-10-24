@@ -28,6 +28,12 @@ python scripts/inseason_model/fit_stats.py --tl /tmp/inseason_raw/tl_all.pkl --p
   day - 21 days; `--to-nba-end` = the ros-avail-0.3 target); OOS vs static prior, iid Beta-binomial and the deployed
   early damping (`update_damped`).
 - `fit_stats.py`: stat-specific stabilisation constants (n0) shrinking observed rates toward the preseason projection.
-- `fit_minutes.py`: recency-weighted minutes model (minutes-*; offline, committed ESPN 2024-25/2025-26 data only):
-  `PYTHONPATH=src python scripts/inseason_model/fit_minutes.py --n-boot 200` -> `report_minutes.json` (`deployed` -> `minutes.FITTED`).
+- `fit_minutes.py`: recency-weighted minutes models (minutes-*): fit 2010-11..2024-25 (NocturneBear parts above +
+  committed ESPN 2024-25), test 2025-26; prior = `project_core` (needs the full sumitrodatta Player Totals):
+  `PYTHONPATH=src python scripts/inseason_model/fit_minutes.py --nocturne $S --totals "$S/Player%20Totals.csv" --n-boot 200`
+  -> `report_minutes.json` (`deployed` -> `minutes.FITTED`). Files used for minutes-0.2.0 (sha256):
+  part_1 ca9636d08c577e3d752f69e32f90b173f4c3374c15f4dc8494b655049fdfc557,
+  part_2 5643af8a9f15ce3540dced759375ca79e77c71644e23270136f23b7a57fc182d,
+  part_3 65a01fee3df865a272e578cf4b365dce7dbc62eef2ce6f15f0844cf6694ef375; Player Totals (all seasons to 2026)
+  1c081cd7f9c694755ea2210c3426e709540afedc31c1bf781456f3df4b7582b2.
 - Production constants are pasted from `report_avail.json` (`production_model`: all seasons) and `report_stats.json` (`n0`).

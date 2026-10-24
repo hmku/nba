@@ -15,10 +15,12 @@ scores to date (`fantasy data fetch-boxscores`, data/raw/espn_boxscores/) are th
 2. Per-game stats (stat-shrink-*): observed rates shrunk toward the prior with stat-specific stabilisation constants
    (counting stats per minute in minutes; FG%/FT% in attempts), fitted on 2012-2022
    (scripts/inseason_model/fit_stats.py).
-3. Minutes per game (minutes-*, fantasy.model.minutes, default since ros-proj-0.5.0): a no-intercept regression on a
-   short and a long EWMA of minutes in games played (both initialised at the prior) and the prior, fitted on ESPN
-   2024-25 and tested on 2025-26 (docs/research/minutes_model.md). `minutes_model="shrink"` restores the old
-   equal-weight shrink (n0 = STAT_N0['mpg'] games).
+3. Minutes per game (minutes-*, fantasy.model.minutes, default since ros-proj-0.5.0): regressions on EWMAs of minutes
+   in games played (initialised at the prior) and the prior, fitted on 2010-11..2024-25 and tested on 2025-26
+   (docs/research/minutes_model.md). `mpg` = the rest-of-season model (B); `mpg_next5` = the next-5-games model (A,
+   for lineup / streaming consumers: scale the per-game counting stats by mpg_next5 / mpg; per-minute rates and
+   percentages are the same). `minutes_model="shrink"` restores the old equal-weight shrink (n0 = STAT_N0['mpg']
+   games) and the ros-proj-0.4.0 version string; there mpg_next5 = mpg.
 
 Output keeps the projections schema so every consumer works unchanged; `gp` becomes a RATE, not a count: 82 x the
 expected share of remaining (fantasy-season) team games played, i.e. consumers use gp / 82 as the per-game
@@ -37,14 +39,25 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from fantasy.model.minutes import MINUTES_MODEL_VERSION, model_meta, project_mpg
+from fantasy.model.minutes import MINUTES_MODEL_VERSION, default_params, model_meta, project_mpg
 
 ROS_AVAIL_VERSION = "ros-avail-0.4"
 STAT_SHRINK_VERSION = "stat-shrink-0.1"
 # rest-of-season projection model (distinct from fantasy.inseason.INSEASON_VERSION, the in-season analysis tools)
-# 0.5.0: mpg from the recency-weighted minutes model (minutes-*) instead of the equal-weight shrink
-INSEASON_MODEL_VERSION = f"ros-proj-0.5.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}+{MINUTES_MODEL_VERSION}"
 MINUTES_MODELS = ("ewma", "shrink")
+
+
+def inseason_model_version(minutes_model: str = "ewma") -> str:
+    """Version of the rest-of-season projections for a minutes model. 0.5.0: mpg from the recency-weighted minutes
+    models (minutes-*) + the mpg_next5 column; "shrink" reproduces 0.4.0 (equal-weight mpg shrink)."""
+    if minutes_model == "shrink":
+        return f"ros-proj-0.4.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}"
+    if minutes_model == "ewma":
+        return f"ros-proj-0.5.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}+{MINUTES_MODEL_VERSION}"
+    raise ValueError(f"unknown minutes_model {minutes_model!r}; choose from {MINUTES_MODELS}")
+
+
+INSEASON_MODEL_VERSION = inseason_model_version("ewma")  # the default
 SEASON_GAMES = 82
 FANTASY_END_DAYS = 21  # the fantasy season (playoffs end Mar 21, 2027) ends 21 days before the NBA's last day (Apr 11)
 FANTASY_TEAM_GAMES = 70  # team games through the fantasy end when no schedule is given (2026-27: 68-71 per team)
@@ -410,20 +423,23 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
         s_season = playoff_share_season if playoff_share_season is not None else PLAYOFF_CALENDAR_SHARE
         out["playoff_mult"] = np.round(playoff_mult_remaining(pm, playoff_share_remaining, s_season), 4)
     updated = 0
+    out["mpg_next5"] = df["mpg"]
     for i, r in df.iterrows():
         mine = by_player.get(r["player_id"])
         if mine is None or not mine["played"].any():
             continue
         played = mine[mine["played"]].sort_values(["game_date", "game_id"])
-        mpg = (project_mpg(played["min"].to_numpy(float), float(r["mpg"]))
-               if minutes_model == "ewma" else None)
+        mins = played["min"].to_numpy(float)
+        mpg = project_mpg(mins, float(r["mpg"]), default_params("ros")) if minutes_model == "ewma" else None
         line = shrink_line(r, played[COUNT_COLS].sum(), float(len(played)), mpg=mpg)
+        line["mpg_next5"] = (project_mpg(mins, float(r["mpg"]), default_params("next5")) if minutes_model == "ewma"
+                             else line["mpg"])
         line["fg3m"] = min(line["fg3m"], line["fgm"])
         for c, v in line.items():
             out.at[i, c] = round(v, 3)
         updated += 1
     out["inseason_as_of"] = as_of
-    out["inseason_version"] = INSEASON_MODEL_VERSION
+    out["inseason_version"] = inseason_model_version(minutes_model)
     team_n = {t: len(s) for t, s in schedules.items()}
     unlisted = sorted(out.loc[~feat["listed_any"] & (feat["m"] == 0)
                               & (df["team"].map(team_n).fillna(0) >= 3), "player_id"])
@@ -572,7 +588,7 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
     seen = out[out["team_games"] > 0]
     movers = seen.reindex((seen["gp"] - seen["gp_preseason"]).abs().sort_values(ascending=False).index).head(10)
     meta = {
-        "model_version": INSEASON_MODEL_VERSION,
+        "model_version": inseason_model_version(minutes_model),
         "as_of": as_of,
         "git_sha": sha,
         "output": str(out_path),
@@ -590,8 +606,13 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
         "stats": {"version": STAT_SHRINK_VERSION, "n0": STAT_N0, "n0_se": STAT_N0_SE,
                   "units": "mpg: games; fg_pct: fga; ft_pct: fta; others: minutes",
                   "report": "scripts/inseason_model/report_stats.json"},
-        "minutes": ({"model": "ewma", **model_meta()} if minutes_model == "ewma" else
-                    {"model": "shrink", "version": STAT_SHRINK_VERSION, "n0_games": STAT_N0["mpg"]}),
+        "minutes": ({"model": "ewma", "version": MINUTES_MODEL_VERSION,
+                     "mpg": {"horizon": "ros", **model_meta(default_params("ros"))},
+                     "mpg_next5": {"horizon": "next5", **model_meta(default_params("next5")),
+                                   "use": "lineup / streaming: per-game counting stats x mpg_next5 / mpg"}}
+                    if minutes_model == "ewma" else
+                    {"model": "shrink", "version": STAT_SHRINK_VERSION, "n0_games": STAT_N0["mpg"],
+                     "mpg_next5": "= mpg"}),
         "games_missed_overrides": len(games_missed),
         "gtd_window_prior": {"players": len(skip), "games": GTD_EXPECTED_MISSED},
         "status": inj_note,
