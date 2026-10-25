@@ -109,7 +109,11 @@ is interested in X; details private"). A thread message
   automatically (lineup-0.3.0): check `accumulated_source.kind == "matchup_score"` and that its `observed_at` is this
   morning; a MID-WEEK or BANKED STATS warning means re-capture (1b). `expected.cat_win_prob` = chance to win each
   category by Sunday (simulated; availability priors). Exit 2 `infeasible_roster`: check `side`. `side: "mine"` = too
-  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. `side: "opponent"` = the
+  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. It also fires when my IL
+  players' tags soften to P/Q before Yahoo forces a move (2026-10-25 14:30: VanVleet P, Podziemski Q in IL; Yahoo showed
+  no illegal-roster warning and still offered IL in the edit form) and then blocks `lineup plan` and `inseason
+  opportunity`. Check the form; if the IL pair has no game that day, a scratch league file with their status set to O
+  is a fair stand-in for analysis (say so); never use it to execute. `side: "opponent"` = the
   opponent's captured roster is impossible (re-sync; not our problem to fix). An opponent's untagged player in IL is
   modelled as staying there (warning only, lineup-0.4.1). `--locked` starters with a game today are taken to play
   (P = 1, `params.locked_p_play`); if one was ruled out at tip-off, re-sync so his tag is O. Read `target_slots` (the full
