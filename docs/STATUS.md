@@ -4,7 +4,7 @@ _Last updated: 2026-10-21 ET (in-season projections ros-proj-0.3.0; gp-ols-0.2 g
 
 ## Where we are
 **Phase 2 (in-season) — live.** Draft done 2026-10-19 (13/13 verified on Yahoo; `docs/handoffs/2026-10-20-draft.md`). A local
-desktop session is the main agent; the scheduled task **fantasy-daily** (10:00 ET, `daily-routine` skill) syncs Yahoo, sets
+desktop session is the main agent; the scheduled task **fantasy-daily** (07:00 ET, `daily-routine` skill; tip-off re-checks = §6) syncs Yahoo, sets
 and verifies lineups (pre-authorised), and asks before any add/drop/trade. First live lineup (Wed 10-21) set + verified 2026-10-20.
 
 | Area | State |
@@ -27,7 +27,7 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
 | DB | Supabase `fantasy-nba` (ref `bdzpkdkhlzjzddkptjex`), schema from `src/fantasy/db/schema.py`. Local agents need `FANTASY_DB_URL` (user supplies). |
 
 ## Next priorities (see `fantasy task list` for the full backlog)
-1. Daily: scheduled task `fantasy-daily` (10:00 ET; first unattended run 2026-10-20). Watch its logs (`docs/daily/`) and fix friction.
+1. Daily: scheduled task `fantasy-daily` (07:00 ET; first unattended run 2026-10-20) + tip-off checks (daily-routine §6). Watch its logs (`docs/daily/`) and fix friction.
 2. **Awaiting the user's yes:** waiver claim Julian Champagnie / drop Ace Bailey (helps under all 3 projection sets; claim
    before Thu Oct 22). Murray trades: speculative schedule bet, not now (inseason-0.3.0, `docs/research/streaming_and_trade_scan.md` §0).
 3. Dashboard (2026-10-20): This week (score + both lineups + cat odds, `/week`), League, Inbox (decisions with Approve =

@@ -12,7 +12,7 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
 ## Which skill for which job
 | Job | Skill | Where it runs |
 |---|---|---|
-| Morning routine: sync, lineup + IL moves on Yahoo, recommendations, publish, log | **`daily-routine`** (scheduled task `fantasy-daily`, 10:00 ET) | local session with the built-in browser |
+| Morning routine: sync, lineup + IL moves on Yahoo, recommendations, publish, log | **`daily-routine`** (scheduled task `fantasy-daily`, 07:00 ET; tip-off checks = its §6: `fantasy-tipoff` 18:30, `fantasy-tipoff-late` 20:45, `fantasy-tipoff-weekend` 14:30 Sat/Sun) | local session with the built-in browser |
 | Playoff/title odds, week-N matchup, effect of an add/drop, conservative run | **`season-sim`** | anywhere (offline CLI) |
 | Recurring review from Muse intel → recommendations → approvals → execute → verify | **`league-loop`** | cloud (THINK) + local/Muse (EXECUTE) |
 | Operating Yahoo pages safely (lock, read-before-write, verification) | **`yahoo-browser`** | local session |
