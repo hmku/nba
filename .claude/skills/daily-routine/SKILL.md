@@ -183,7 +183,8 @@ is interested in X; details private"). A thread message
   - **Value for us** (`--no-save`, ≤ 8 sims/day, `--sims 4000`): `sim compare` refuses a player who is already
     rostered, so first rebuild the **pre-move league** (today's `data/manual/league_rosters_2026-27.json` with the moves
     undone) → `data/processed/verdicts/league-moves_${D}_premove_league.json`; then `fantasy sim compare --league-file
-    <premove> --add X --drop <baseline> --sims 4000 --no-save --json` (`delta` ± `delta_se`, paired season sims). Baseline:
+    <premove> --add X --drop <baseline> --sims 4000 --no-save --json` (`delta` ± `delta_se`, paired season sims; read its `notes` and the season-sim skill's compare caveats — P(title)
+    deltas need ≥ 3 seeds × 8000). Baseline:
     an open active roster spot → add with no drop; else our planned next drop (say which). Other team's own effect:
     `--team <id>` (league-state id = draft slot, NOT the Yahoo team id). Trades: each side with `--team`, and our
     P(playoffs) before/after (`fantasy sim season --no-save --league-file <premove|current>`, same seed; unpaired, quote

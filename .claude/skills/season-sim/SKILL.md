@@ -41,6 +41,16 @@ for experiments.
   what I lack and weak in what I have surplus of).
 - `league_table[]`: every team's P(playoffs), P(bye) (top-2 seeds), P(final), P(title), exp rank.
 - `compare`: `delta` with paired `delta_se` (common random numbers); |delta| < 2·SE is noise.
+  - **P(title) deltas need more sims** (learned 2026-10-25): at 4000 sims SE ≈ 0.55 pp and single-seed title deltas swing
+    ±0.7 pp between seeds. Before acting on a title delta use ≥ 3 seeds × 8000 (SE ≈ 0.23 pp).
+  - **Title ≠ regular-season strength:** as a likely bye seed our title rides on the last two playoff weeks
+    (`settings.playoff_weeks`), so a player whose NBA team plays 4+4 games there can raise P(title) while lowering
+    P(playoffs) (2026-10-25: Risacher for Bailey, +0.63 ± 0.22 pp title / −1.3 pp playoffs, simulated). That is a
+    modelled schedule effect, not a bug; say so when quoting it.
+  - **What the baseline is:** with open active spots and players Out, the engine fills spots with replacement-level
+    players (IL replacement), so an add without a drop is "vs a replacement-level pickup", not vs an empty slot; and when
+    a roster exceeds 13 non-IL the cap releases the lowest-`value` player, so a compare can include a future cut of
+    someone else (e.g. Fears instead of the added Wiggins). Read the compare `notes` before quoting a delta.
 - `draft-check`: per candidate P(playoffs)/P(title) and `*_diff_vs_first` ± `*_diff_se` (paired).
   It is advisory: ~3-4 s at 800 sims plus ~2 s start-up, so only use it when there is time (not on a
   60 s clock unless already prepared before the pick comes up); the live pick loop stays

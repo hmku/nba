@@ -398,7 +398,7 @@ def test_cli_season_compare_and_draft_check(proj_path, db_url, tmp_path):
     out = r.invoke(app, ["sim", "compare", "--draft-id", "mock-s1", "--complete-rosters", "--sims", "60",
                          "--drop", roster[0], "--add", "player-250", *common])
     assert out.exit_code == 0, out.output
-    assert "delta" in json.loads(out.output)["p_playoffs"]
+    assert "delta" in json.loads(out.output)["p_playoffs"] and isinstance(json.loads(out.output)["notes"], list)
     out = r.invoke(app, ["sim", "matchup", "--week", "2", "--draft-id", "mock-s1", "--complete-rosters",
                          "--sims", "60", *common])
     assert out.exit_code == 0, out.output
@@ -761,3 +761,64 @@ def test_yahoo_out_only_player_starts_out_but_keeps_later_absence_risk(ctx):
     assert 0.02 < miss_after < 0.5
     # about the same total availability as without the Yahoo status (timing changes; the 7-day floor adds a little)
     assert -0.06 < h1[:, plays].mean() - h0[:, plays].mean() <= 0.005
+
+
+# ---------------------------------------------------------------- add monotonicity + compare notes
+def _open_spot_league(ctx, out=False):
+    """Team 1 = its snake picks minus the 13th (an open spot); with out=True its 5th-best is listed Out."""
+    lg = _snake_league(ctx)
+    lg.rosters[1] = lg.rosters[1][:12]
+    df = ctx.proj.df.copy()
+    if out:
+        df.loc[lg.rosters[1][4], ["status", "gp"]] = ["out", 40.0]
+    return lg, df
+
+
+def _paired_cat_wins(sim, lg, add):
+    from fantasy.sim.report import paired_delta
+
+    return paired_delta(sim.run(lg), sim.run(lg.with_change(1, [add], [])), 1)["exp_cat_wins"]
+
+
+def test_add_to_open_spot_nobody_out_does_not_hurt(ctx):
+    lg, df = _open_spot_league(ctx)
+    taken = {p for ps in lg.rosters.values() for p in ps}
+    fa = next(p for p in ctx.values.sort_values("value", ascending=False).index if p not in taken)
+    assert ctx.values.loc[fa, "value"] > 0  # clearly better than replacement (value is relative to replacement)
+    d = _paired_cat_wins(_sim_with(ctx, df, n_sims=300, il_replacement=True), lg, fa)
+    assert d["delta"] > -2 * d["delta_se"], d
+
+
+def test_add_better_than_replacement_with_one_out_does_not_hurt(ctx):
+    """Open spot + one Out player: IL replacement already fills a slot, so the add is measured vs a replacement-level
+    pickup; a full-games player at replacement x1.2 must still not lower expected category wins."""
+    from fantasy.model.lines import STATS
+
+    lg, df = _open_spot_league(ctx, out=True)
+    row = df.loc[lg.rosters[1][0]].copy()
+    row[STATS] = ctx.replacement[STATS].to_numpy() * 1.2
+    row[["name", "gp", "gp_sd", "status"]] = ["Rep Plus", 82.0, 1.0, "healthy"]
+    df.loc["rep-plus"] = row
+    d = _paired_cat_wins(_sim_with(ctx, df, n_sims=300, il_replacement=True), lg, "rep-plus")
+    assert d["delta"] > -2 * d["delta_se"], d
+
+
+def test_roster_notes_release_and_il_replacement(ctx):
+    from fantasy.sim.report import compare_notes, roster_notes
+
+    names = ctx.values["name"]
+    lg14, df14, _ = _capped_league(ctx)  # 14 with one Out: the cap releases someone when he returns
+    sim = _sim_with(ctx, df14, n_sims=100, il_replacement=True)
+    notes = roster_notes(sim.run(lg14), lg14, 1, sim, names)
+    assert any(n.startswith("assumes the roster cap releases ") and "% of sims" in n for n in notes)
+    assert not any("open spot" in n for n in notes)  # 14 - 1 Out = 13: no open spot
+    lg13, df13, _ = _capped_league(ctx, extra=False)  # 13 with one Out: no release, IL replacement fills his spot
+    sim = _sim_with(ctx, df13, n_sims=100, il_replacement=True)
+    notes = roster_notes(sim.run(lg13), lg13, 1, sim, names)
+    assert notes == [n for n in notes if "1 open spot(s) filled by IL replacement" in n] and len(notes) == 1
+    lg, df = _open_spot_league(ctx)  # 12, nobody Out: neither assumption
+    sim = _sim_with(ctx, df, n_sims=60, il_replacement=True)
+    assert roster_notes(sim.run(lg), lg, 1, sim, names) == []
+    sim = _sim_with(ctx, df13, n_sims=60, il_replacement=False, roster_cap=False)
+    assert roster_notes(sim.run(lg13), lg13, 1, sim, names) == []  # both mechanisms off
+    assert compare_notes(["a", "b"], ["a", "c"]) == ["before & after: a", "before: b", "after: c"]

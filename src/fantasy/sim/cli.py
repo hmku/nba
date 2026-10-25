@@ -28,7 +28,13 @@ from fantasy.sim.league import (
     parse_team_names,
     remaining_order,
 )
-from fantasy.sim.report import matchup_report, paired_delta, season_summary
+from fantasy.sim.report import (
+    compare_notes,
+    matchup_report,
+    paired_delta,
+    roster_notes,
+    season_summary,
+)
 from fantasy.sim.schedule import LEAGUE_SCHEDULE_PATH
 
 app = typer.Typer(no_args_is_help=True, help="Season simulator: P(playoffs)/P(title), matchups, roster changes.")
@@ -383,12 +389,14 @@ def compare(
            "add": [{"player_id": p, "name": str(names.get(p, p))} for p in adds],
            "drop": [{"player_id": p, "name": str(names.get(p, p))} for p in drops],
            **delta, "compute_seconds": round(base.seconds + alt.seconds, 2),
+           "notes": compare_notes(roster_notes(base, st.league, t, sim, names), roster_notes(alt, alt_league, t, sim, names)),
            "warnings": st.ctx.warnings + st.league.warnings + base.warnings + alt.warnings}
     out["run_id"] = _save(save, "compare", params, st, out)
     lines = [f"team {t}: +{', '.join(a['name'] for a in out['add']) or '-'} / -{', '.join(d['name'] for d in out['drop']) or '-'}"]
     for k in ("p_playoffs", "p_title", "exp_cat_wins"):
         d = delta[k]
         lines.append(f"  {k:<12} {d['before']:.4f} -> {d['after']:.4f}  delta {d['delta']:+.4f} ± {d['delta_se']:.4f}")
+    lines += [f"  note: {n}" for n in out["notes"]]
     emit(out, as_json, "\n".join(lines))
 
 

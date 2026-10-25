@@ -219,3 +219,33 @@ def paired_delta(base: SimResult, alt: SimResult, team: int) -> dict:
         out[name] = {"before": _r(a.mean()), "after": _r(b.mean()), "delta": _r(d.mean()),
                      "delta_se": _r(d.std(ddof=1) / np.sqrt(len(d)))}
     return out
+
+
+def roster_notes(res: SimResult, league: LeagueState, team: int, sim: Any, names: Any, min_share: float = 0.10) -> list[str]:
+    """Hidden roster assumptions behind `team`'s result (docs/research/il_replacement.md): players the roster cap
+    releases in >= min_share of sims (step 4c), and open active spots that IL replacement fills while players are
+    Out (step 4b) - so an add without a drop is measured against a replacement-level pickup, not an empty slot."""
+    ti, notes = res.tindex(team), []
+    if res.cap_drop_day is not None and res.cap_rosters is not None:
+        dd, D = res.cap_drop_day[:, ti], len(sim.fdays)
+        for r, pid in enumerate(res.cap_rosters[ti]):
+            rel = dd[:, r] < D
+            if rel.mean() >= min_share:
+                day = sim.fdays[int(np.median(dd[rel, r]))]
+                notes.append(f"assumes the roster cap releases {names.get(pid, pid)} from ~{day.isoformat()} "
+                             f"(in {rel.mean():.0%} of sims)")
+    if res.il_games is not None and res.il_games[:, :, ti].sum(axis=1).mean() > 0:
+        ps = list(dict.fromkeys(league.rosters[team]))
+        status = sim.proj["status"] if "status" in sim.proj else {}
+        n_out = sum(1 for p in ps if p in league.out_now or status.get(p) in ("out", "out_for_season"))
+        n_open = min(n_out, sim.il_slots) - max(len(ps) - sim.active_roster, 0)
+        if n_open > 0:
+            notes.append(f"Δ vs a replacement-level pickup: {n_open} open spot(s) filled by IL replacement while "
+                         f"players are Out (~{res.il_games[:, :, ti].sum(axis=1).mean():.0f} replacement games/season)")
+    return notes
+
+
+def compare_notes(before: list[str], after: list[str]) -> list[str]:
+    """Merge before/after roster notes: shared ones once, the rest labelled with the state they apply to."""
+    return ([f"before & after: {n}" for n in before if n in after] + [f"before: {n}" for n in before if n not in after]
+            + [f"after: {n}" for n in after if n not in before])
