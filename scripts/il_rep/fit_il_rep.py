@@ -57,6 +57,7 @@ def ranked(season: int, settings) -> pd.DataFrame:
     avail = availability(df, p.gp_risk_lambda, p.playoff_weight)
     eff = effective_lines(df, None, avail=avail)
     order = df.index
+    # compute_values exposes no band index (its returned rank is one scoring pass later), so its loop is mirrored here
     for _ in range(p.iterations):  # same loop as compute_values; band = order[n_pool : n_pool + band] of the last pass
         scores = _cat_scores(eff, order[:n_pool], settings, p.kappa)
         order = (scores * weights).sum(axis=1).sort_values(ascending=False).index
@@ -164,7 +165,6 @@ def main() -> None:
         r = ranked(s, settings)
         g = realized_games(s)
         r["g"] = g.reindex(r.index).fillna(0.0)
-        r["no_nba_games"] = ~r.index.isin(g.index)
         r["share"] = r["g"] / 82.0
         if s in BOX_SEASONS:
             r = r.join(box_split(s))
@@ -176,38 +176,12 @@ def main() -> None:
     rep: dict = {"band_ranks": [band_lo, band_hi], "seasons": sorted(SEASONS), "long_days": LONG_DAYS}
 
     est, se = boot_mean(band, "share")
-    rep["full_season_share"] = {"mean_share": round(est, 4), "se_cluster_boot": round(se, 4), "n_player_seasons": len(band),
-                      "n_players": int(band.index.nunique()), "n_no_nba_games": int(band["no_nba_games"].sum()),
-                      "median_share": round(float(band["share"].median()), 4),
-                      "mean_projected_gp_share": round(float((band["gp"] / 82).mean()), 4)}
-    rep["by_season"] = {int(s): {"mean": round(float(v["share"].mean()), 4),
-                                 "sd": round(float(v["share"].std(ddof=1)), 4), "n": len(v)}
-                        for s, v in band.groupby("season")}
-    # out of sample: fit on the other seasons, check the held-out one (and the canonical old->new split)
-    loso = {}
-    for s in SEASONS:
-        tr, te = band[band["season"] != s]["share"], band[band["season"] == s]["share"]
-        loso[int(s)] = {"fit_other": round(float(tr.mean()), 4), "held_out": round(float(te.mean()), 4),
-                        "held_out_se": round(float(te.std(ddof=1) / np.sqrt(len(te))), 4),
-                        "z": round(float((te.mean() - tr.mean()) / (te.std(ddof=1) / np.sqrt(len(te)))), 2)}
-    rep["leave_one_season_out"] = loso
-    tr = band[band["season"] <= 2024]["share"]
-    te = band[band["season"] >= 2025]["share"]
-    rep["oos_fit_2022_2024_test_2025_2026"] = {
-        "fit": round(float(tr.mean()), 4), "fit_se": round(float(tr.std(ddof=1) / np.sqrt(len(tr))), 4),
-        "test": round(float(te.mean()), 4), "test_se": round(float(te.std(ddof=1) / np.sqrt(len(te))), 4),
-        "mse_fitted": round(float(((te - tr.mean()) ** 2).mean()), 4),
-        "mse_prior_0.85": round(float(((te - 0.85) ** 2).mean()), 4)}
-    # rank profile around the band (precision / smoothness check)
-    prof = {}
-    for lo in range(97, 241, 24):
-        w = allr[(allr["rank"] >= lo) & (allr["rank"] < lo + 24)]
-        prof[f"{lo}-{lo + 23}"] = {"mean": round(float(w["share"].mean()), 4),
-                                    "se": round(float(w["share"].std(ddof=1) / np.sqrt(len(w))), 4), "n": len(w)}
-    rep["rank_profile_share"] = prof
     wide = allr[(allr["rank"] >= n_pool - 11) & (allr["rank"] <= n_pool + 36)].copy()
     est_w, se_w = boot_mean(wide, "share")
-    rep["wide_band_145_192"] = {"mean_share": round(est_w, 4), "se": round(se_w, 4), "n": len(wide)}
+    rep["full_season_share"] = {"mean_share": round(est, 4), "se_cluster_boot": round(se, 4), "n_player_seasons": len(band),
+                                "median_share": round(float(band["share"].median()), 4),
+                                "mean_projected_gp_share": round(float((band["gp"] / 82).mean()), 4),
+                                "wide_145_192": {"mean_share": round(est_w, 4), "se": round(se_w, 4), "n": len(wide)}}
 
     # box-score decomposition (2025, 2026): what a manager who swaps out a long-injured replacement would get
     b = band[band["season"].isin(BOX_SEASONS)].copy()
@@ -220,7 +194,6 @@ def main() -> None:
                             "missed_in_long_absences_share": round(float(b["long_share"].mean()), 4),
                             "coach_decision_dnp_share": round(float(b["cd_share"].mean()), 4),
                             "share_if_long_absences_swapped": round(e2, 4), "se": round(se2, 4)}
-    rep["wide_band_by_season"] = {int(k): round(float(v["share"].mean()), 4) for k, v in wide.groupby("season")}
 
     # forward-looking (2025, 2026): a replacement is picked up while active; share of team games over the next H days
     fwd = {}
@@ -238,9 +211,6 @@ def main() -> None:
                                     "start_weighted_by_season": wby, "n": len(x),
                                     "n_never_active": int(d[c].isna().sum()), "by_season": by}
     rep["forward_share"] = fwd
-    # the band players (audit)
-    rep["band_players"] = band.rename_axis("player_id").reset_index()[["season", "rank", "player_id", "gp", "g"]].rename(
-        columns={"gp": "proj_gp"}).to_dict(orient="records")
     json.dump(rep, sys.stdout, indent=1, default=float)
 
 

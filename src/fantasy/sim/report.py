@@ -234,14 +234,15 @@ def roster_notes(res: SimResult, league: LeagueState, team: int, sim: Any, names
                 day = sim.fdays[int(np.median(dd[rel, r]))]
                 notes.append(f"assumes the roster cap releases {names.get(pid, pid)} from ~{day.isoformat()} "
                              f"(in {rel.mean():.0%} of sims)")
-    if res.il_games is not None and res.il_games[:, :, ti].sum(axis=1).mean() > 0:
+    if res.il_games is not None:
         ps = list(dict.fromkeys(league.rosters[team]))
         status = sim.proj["status"] if "status" in sim.proj else {}
-        n_out = sum(1 for p in ps if p in league.out_now or status.get(p) in ("out", "out_for_season"))
+        yahoo_out = league.out_now if sim.p.roster_cap else set()  # the engine uses out_now only with the cap on
+        n_out = sum(1 for p in ps if p in yahoo_out or status.get(p) in ("out", "out_for_season"))
         n_open = min(n_out, sim.il_slots) - max(len(ps) - sim.active_roster, 0)
         if n_open > 0:
-            notes.append(f"Δ vs a replacement-level pickup: {n_open} open spot(s) filled by IL replacement while "
-                         f"players are Out (~{res.il_games[:, :, ti].sum(axis=1).mean():.0f} replacement games/season)")
+            notes.append(f"Δ vs a replacement-level pickup: {n_open} replacement(s) carried from day 0 for Out players; "
+                         f"~{res.il_games[:, :, ti].sum(axis=1).mean():.0f} IL-replacement games/season in total")
     return notes
 
 

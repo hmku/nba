@@ -780,7 +780,7 @@ def _paired_cat_wins(sim, lg, add):
     return paired_delta(sim.run(lg), sim.run(lg.with_change(1, [add], [])), 1)["exp_cat_wins"]
 
 
-def test_add_to_open_spot_nobody_out_does_not_hurt(ctx):
+def test_clearly_better_add_does_not_hurt_open_spot(ctx):
     lg, df = _open_spot_league(ctx)
     taken = {p for ps in lg.rosters.values() for p in ps}
     fa = next(p for p in ctx.values.sort_values("value", ascending=False).index if p not in taken)
@@ -789,9 +789,10 @@ def test_add_to_open_spot_nobody_out_does_not_hurt(ctx):
     assert d["delta"] > -2 * d["delta_se"], d
 
 
-def test_add_better_than_replacement_with_one_out_does_not_hurt(ctx):
-    """Open spot + one Out player: IL replacement already fills a slot, so the add is measured vs a replacement-level
-    pickup; a full-games player at replacement x1.2 must still not lower expected category wins."""
+def test_clearly_better_add_does_not_hurt_one_out(ctx):
+    """Open spot + one Out player: the add does not take the IL replacement's roster spot (n_rep is unchanged, 12 -> 13
+    players with one Out) but crowds out IL-replacement games via the daily starting slots (`open_day`), so it is
+    measured vs a replacement-level pickup; a full-games player at replacement x1.2 must still not lower exp cat wins."""
     from fantasy.model.lines import STATS
 
     lg, df = _open_spot_league(ctx, out=True)
@@ -803,6 +804,16 @@ def test_add_better_than_replacement_with_one_out_does_not_hurt(ctx):
     assert d["delta"] > -2 * d["delta_se"], d
 
 
+def test_add_to_13_with_one_out_lowers_il_replacement_games(ctx):
+    lg, df, _ = _capped_league(ctx, extra=False)  # 13 with one Out: one IL replacement carried
+    taken = {p for ps in lg.rosters.values() for p in ps}
+    fa = next(p for p in ctx.values.sort_values("value", ascending=False).index if p not in taken)
+    sim = _sim_with(ctx, df, n_sims=100, il_replacement=True)
+    before, after = sim.run(lg), sim.run(lg.with_change(1, [fa], []))
+    ti = before.tindex(1)
+    assert after.il_games[:, :, ti].sum() < before.il_games[:, :, ti].sum()
+
+
 def test_roster_notes_release_and_il_replacement(ctx):
     from fantasy.sim.report import compare_notes, roster_notes
 
@@ -811,11 +822,11 @@ def test_roster_notes_release_and_il_replacement(ctx):
     sim = _sim_with(ctx, df14, n_sims=100, il_replacement=True)
     notes = roster_notes(sim.run(lg14), lg14, 1, sim, names)
     assert any(n.startswith("assumes the roster cap releases ") and "% of sims" in n for n in notes)
-    assert not any("open spot" in n for n in notes)  # 14 - 1 Out = 13: no open spot
+    assert not any("replacement(s) carried" in n for n in notes)  # 14 - 1 Out = 13: no open spot
     lg13, df13, _ = _capped_league(ctx, extra=False)  # 13 with one Out: no release, IL replacement fills his spot
     sim = _sim_with(ctx, df13, n_sims=100, il_replacement=True)
     notes = roster_notes(sim.run(lg13), lg13, 1, sim, names)
-    assert notes == [n for n in notes if "1 open spot(s) filled by IL replacement" in n] and len(notes) == 1
+    assert notes == [n for n in notes if "1 replacement(s) carried from day 0" in n] and len(notes) == 1
     lg, df = _open_spot_league(ctx)  # 12, nobody Out: neither assumption
     sim = _sim_with(ctx, df, n_sims=60, il_replacement=True)
     assert roster_notes(sim.run(lg), lg, 1, sim, names) == []

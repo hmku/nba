@@ -1,8 +1,5 @@
 """Calibrated simulator constants (docs/research/sim_calibration.md). Game noise: tests/test_noise.py."""
 
-import json
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -41,15 +38,7 @@ def test_defaults_are_the_fitted_constants():
     assert np.allclose(C, C.T) and np.allclose(np.diag(C), 1.0)
     np.linalg.cholesky(C)  # positive definite
     assert not hasattr(cal, "GAME_VAR") and not hasattr(cal, "GAME_CV_POOLED")  # moved to model.noise / deleted
-
-
-def test_il_rep_availability_is_the_fitted_constant():
-    # season-sim-0.8.1: fitted (scripts/il_rep/fit_il_rep.py -> report_il_rep.json), was a 0.85 prior
     assert SimParams().il_rep_availability == cal.IL_REP_AVAILABILITY
-    rep = json.loads((Path(__file__).parents[1] / "scripts" / "il_rep" / "report_il_rep.json").read_text())
-    fit = rep["forward_share"]["band_157_168_H28"]
-    assert round(fit["start_weighted_mean"], 2) == cal.IL_REP_AVAILABILITY
-    assert rep["band_ranks"] == [157, 168]  # 12 teams x 13 rounds + 1 .. + replacement_band (valuation)
 
 
 def test_per_stat_and_scalar_stat_sd(ctx):

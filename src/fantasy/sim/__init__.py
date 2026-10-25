@@ -17,6 +17,5 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 # 0.8.0: roster cap - 13 non-IL players (settings starters + bench) + IL slots: a team's surplus (lowest value, not
 #        Out) is released from the day an IL player returns; IL replacement only fills below 13 healthy non-IL;
 #        league-file Yahoo Out players start in a spell (`--no-roster-cap` reproduces 0.7.0; il_replacement.md)
-# 0.8.1: il_rep_availability fitted 0.85 (prior) -> 0.84 (calibration.IL_REP_AVAILABILITY; il_replacement.md "Fit of
-#        il_rep_availability", scripts/il_rep/): replacement-band players' games share over a ~4-week hold from active
+# 0.8.1: il_rep_availability fitted 0.85 -> 0.84 (il_replacement.md)
 SIM_VERSION = "season-sim-0.8.1"

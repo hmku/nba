@@ -47,10 +47,7 @@ for experiments.
     (`settings.playoff_weeks`), so a player whose NBA team plays 4+4 games there can raise P(title) while lowering
     P(playoffs) (2026-10-25: Risacher for Bailey, +0.63 ± 0.22 pp title / −1.3 pp playoffs, simulated). That is a
     modelled schedule effect, not a bug; say so when quoting it.
-  - **What the baseline is:** with open active spots and players Out, the engine fills spots with replacement-level
-    players (IL replacement), so an add without a drop is "vs a replacement-level pickup", not vs an empty slot; and when
-    a roster exceeds 13 non-IL the cap releases the lowest-`value` player, so a compare can include a future cut of
-    someone else (e.g. Fears instead of the added Wiggins). Read the compare `notes` before quoting a delta.
+  - **What the baseline is:** read the compare `notes` (IL-replacement baseline, roster-cap releases) before quoting a delta.
 - `draft-check`: per candidate P(playoffs)/P(title) and `*_diff_vs_first` ± `*_diff_se` (paired).
   It is advisory: ~3-4 s at 800 sims plus ~2 s start-up, so only use it when there is time (not on a
   60 s clock unless already prepared before the pick comes up); the live pick loop stays
