@@ -146,6 +146,9 @@ is interested in X; details private"). A thread message
   - Candidates outside the capture's top 50 are "presumed FA": check their status on Yahoo before proposing.
   - `unprojected_risers` (no projection row) = look at them manually.
   - Never add without the user's yes.
+  - **Mid-week its week ΔP(win) ignores banked stats** (no `--accumulated`; learned 2026-10-25: `p_win_before` 0.16
+    while the lineup plan on the banked score said 0.98). It now warns "MID-WEEK"; quote its week numbers only on a
+    Monday (or cross-check with `fantasy inseason stream --accumulated`); the season chain/verdict is unaffected.
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
   this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from
   `teams[].totals`), else it warns "stats banked ... assumed 0" and its week numbers ignore the score (2026-10-22).

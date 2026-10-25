@@ -224,6 +224,9 @@ def build_week_fn(cands: list[dict], raw_df: pd.DataFrame, settings, lg, me_id: 
     if fw is None or opp_id is None or week_sims <= 0:
         warnings.append("week evaluation skipped (no league-schedule week/opponent for this date, or --week-sims 0)")
         return None
+    if d0 > fw.start:
+        warnings.append(f"MID-WEEK: week ΔP(win) ignores stats banked {fw.start}..{d0 - timedelta(days=1)} (assumed 0-0); "
+                        "p_win_before is not the week's odds - quote week effects from a Monday run only")
     targets, week_info = {}, {}
     for c in cands:
         pid = c["player_id"]
