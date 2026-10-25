@@ -607,7 +607,7 @@ def test_il_replacement_position_aware(ctx):
 def test_il_replacement_is_default_since_0_6_0():
     from fantasy.sim import SIM_VERSION
     assert SimParams().il_replacement is True
-    assert SIM_VERSION == "season-sim-0.8.0"
+    assert SIM_VERSION == "season-sim-0.8.1"
 
 
 # ---------------------------------------------------------------- roster cap (season-sim-0.8.0)

@@ -95,6 +95,75 @@ P(title) SE ≤ 0.6 pp, binomial over sims; "0.7.0" = `--no-roster-cap`, which r
 - Reproduce: `fantasy sim season --league-file <file> --sims 6000 --seed 0 --no-save --json [--no-roster-cap]`;
   decomposition script `decomp.py` (session scratchpad `rcap/`). Tests: `tests/test_sim.py::test_roster_cap_*`, `test_yahoo_out_only_*`, `test_noop_trade_*`, `tests/test_inseason.py::test_apply_trade_keeps_yahoo_out_*`.
 
+## Fit of il_rep_availability (season-sim-0.8.1, 2026-10-25)
+**Answer: 0.84 ± 0.02 (fitted), vs the 0.85 prior: no material change.** Constant `fantasy.sim.calibration.IL_REP_AVAILABILITY`;
+fit script `scripts/il_rep/fit_il_rep.py` → `scripts/il_rep/report_il_rep.json` (no network, `data/raw` only); test
+`tests/test_sim_calibration.py::test_il_rep_availability_is_the_fitted_constant`.
+
+**Estimand.** The engine gives each IL replacement `team_game_share × il_rep_availability` games per day for the
+length of an IL spell. In the league, a manager adds a replacement-level free agent who is *active at the time*, and
+holds him for about the spell (simulated IL spells: median 28 days; day-weighted mean ≈ 29 days from the spell model,
+one ~37-day spell or two split U(0.2, 0.8)). So the target is: **share of his team's games a replacement-band player
+plays over the ~4 weeks after a moment he is active.** It is not his full-season games share, which also counts
+absences before any pickup could happen (Lonzo Ball 2023-24: 0 games, Brandon Clarke 6, Ben Simmons 15), which a
+manager simply avoids.
+
+**Band (= the engine's replacement line).** `valuation.compute_values` averages players ranked num_teams × num_rounds
++ 1 … + `replacement_band` = **157-168** (9-cat G-score, availability-weighted lines). The script re-runs the same
+3-iteration ranking on each season's ESPN *preseason* projections (`data/raw/espn/projections_*.csv`; 2022-23 is an
+in-season update and is skipped). Wider band 145-192 as a robustness check.
+
+**Data / method.** ESPN box scores 2024-25 and 2025-26 (`data/raw/espn_boxscores`, all 1,230 regular-season games,
+incl. DNP rows). For every game a band player played, count his played games / his team's games in the next H days
+(after a trade: the new team's games; after a waiver: missed). Windows must end before the season does. Averaged
+start-weighted (each active moment equally likely to be the pickup moment); player-cluster bootstrap SE (4,000 reps).
+
+| estimate (H = 28 days unless noted) | value ± SE | n player-seasons |
+|---|---|---|
+| **band 157-168, start-weighted (adopted)** | **0.839 ± 0.023** | 24 |
+| band 157-168, each player equal | 0.812 ± 0.027 | 24 |
+| band 145-192, start-weighted / player-equal | 0.837 ± 0.013 / 0.810 ± 0.015 | 94 |
+| horizon 14 / 56 days (band 157-168, start-weighted) | 0.864 / 0.834 | 24 |
+| *full-season games / 82, band 157-168, 2021-22 + 2023-24..2025-26 (bbref)* | *0.696 ± 0.036* (median 0.744) | 48 (45 players) |
+| *same, ranks 145-192* | *0.694 ± 0.019* | 192 |
+
+- **Out of sample.** Fit on one season, check the other: 2024-25 0.840 vs 2025-26 0.834 (band 145-192, start-weighted;
+  difference 0.006, well within SEs of ~0.02 each); exact band 0.805 vs 0.868 (12 players each, SE ~0.03).
+  The full-season share is less stable (by season 0.69 / 0.58 / 0.68 / 0.84; leave-one-season-out z up to 5.6 for
+  2025-26), dominated by a few long pre-season or season-ending injuries.
+- **Where the missed games go (2024-25 + 2025-26, band 157-168).** The players played 75.7% of team games; 18.1% of
+  team games were missed inside absences of ≥ 7 days, about 1% were coach's-decision DNPs, the rest short absences.
+  If a manager also swapped out a replacement who got hurt for ≥ 7 days, he would get ~0.94 (upper bound; costs adds).
+- **Selection / survivorship.** (1) The band is chosen *ex ante* on preseason projections, not on realised value, so
+  injured or demoted players stay in it (no selection on having played). (2) Conditioning on "active now" is the
+  intended selection (that is how pickups happen), but the start weighting favours healthier players; the
+  player-equal mean (0.81) bounds that from below. (3) A real pickup is the best *available* free agent, often a
+  player whose role just grew; we cannot measure that, so the band average is used. (4) ESPN projected these players
+  for 0.855 × 82 games, but they played 0.696 on average: ESPN preseason gp is optimistic for this band (our own gp
+  model is fitted separately, `availability_model.md`).
+- **Not the earlier diagnosis.** A 2026-10-25 diagnosis compared 0.85 with the ~74% full-season games share of
+  near-replacement players (≈ 61 of 82) and estimated a −0.1 to −0.2 exp-cat-win bias in near-replacement add/drop
+  deltas. That compared the wrong estimand: a rostered player is held all season (his own projected gp already
+  carries his absences), an IL replacement is chosen while active and only for the spell. The fit does not support
+  lowering the parameter to ~0.74; the full-season share (0.70) is a pessimistic lower bound (sensitivity below).
+
+**Effect (simulated; 12,000 sims, seed 0, `--no-save`; league file `data/manual/league_rosters_2026-27.json`, compares
+on `data/processed/verdicts/league-moves_2026-10-25_premove_league.json`; SEs are paired MC SEs).**
+| quantity | 0.85 (0.8.0) | **0.84 (0.8.1)** | 0.70 (full-season share, sensitivity) |
+|---|---|---|---|
+| team 1 P(playoffs) | 0.868 ± 0.003 | **0.869** | 0.874 |
+| team 1 P(title) | 0.274 ± 0.004 | **0.276** | 0.279 |
+| team 1 + Wiggins (no drop): ΔP(po) / ΔP(title) / Δexp cat wins | −0.005 / −0.002 / −0.18 ± 0.02 | **−0.007 / −0.000 / −0.16 ± 0.02** | +0.004 / +0.003 / **+0.28** ± 0.02 |
+| team 9 + Clowney: ΔP(po) / ΔP(title) / Δexp cat wins | −0.032 / −0.003 / −1.26 ± 0.02 | **−0.033 / −0.004 / −1.23 ± 0.02** | −0.014 / −0.002 / −0.55 ± 0.02 |
+
+- 0.85 → 0.84 moves nothing beyond MC noise. But near-replacement add/drop deltas **are** sensitive to this parameter
+  (Wiggins flips from −0.16 to +0.28 exp cat wins at 0.70), so the estimand choice above is decision-relevant: re-check
+  it if IL pickups in this league turn out to be slow, partial or injury-prone.
+
+Reproduce: `python scripts/il_rep/fit_il_rep.py > scripts/il_rep/report_il_rep.json`; effect: `fantasy sim season
+--league-file data/manual/league_rosters_2026-27.json --sims 12000 --seed 0 --no-save --json` and `fantasy sim compare
+--league-file <premove file> --add aaron-wiggins` / `--team 9 --add noah-clowney` (same sims/seed).
+
 ## Method
 - **Trigger.** The engine already draws each player's injury spells (one or two per season, validated in
   `sim_calibration.md` §4). An IL replacement exists for every day inside a spell of at least `il_min_spell_days`
@@ -104,8 +173,9 @@ P(title) SE ≤ 0.6 pp, binomial over sims; "0.7.0" = `--no-roster-cap`, which r
   more long-injured players than slots, the extras simply miss games, as before.
 - **Replacement's games.** The replacement uses the existing replacement line (valuation's replacement level, the
   same line streamers use) and the same per-game noise model. On each fantasy day he plays the expected games
-  of a typical NBA team: the share of the 30 teams that play that day, times `il_rep_availability` (0.85, a prior
-  for the replacement's own rest days and minor injuries). These games fill open starting slots after the
+  of a typical NBA team: the share of the 30 teams that play that day, times `il_rep_availability` (the
+  replacement's own rests, minor injuries and DNPs; a 0.85 prior until season-sim-0.8.0, **fitted 0.84** since
+  0.8.1, see "Fit of il_rep_availability"). These games fill open starting slots after the
   roster's healthy players and before streamers. Streaming is unchanged and stays capped at
   `min(6, remaining open slot-days)`.
 - **Symmetry and pairing.** The model applies to every team. It draws no new random numbers: spell intervals come
@@ -115,11 +185,11 @@ P(title) SE ≤ 0.6 pp, binomial over sims; "0.7.0" = `--no-roster-cap`, which r
   either: managers who are slow to fill IL slots, a replacement who is better than replacement level, and
   replacements who must match a position.
 
-### Priors (all guesses, not fitted)
+### Priors (guesses, not fitted, except `il_rep_availability` since 0.8.1)
 | parameter | value | basis |
 |---|---|---|
 | `il_min_spell_days` | 7 | Assumed delay before "Out" + IL move. Sensitivity 3 / 14 below. |
-| `il_rep_availability` | 0.85 | The replacement also rests or gets hurt; he is roughly a 70-game player. Sensitivity 0.6 below. |
+| `il_rep_availability` | ~~0.85~~ **0.84** | **Fitted** (season-sim-0.8.1): 0.839 ± 0.023, see "Fit of il_rep_availability". The 0.85 below was the prior; results in this section used it. Sensitivity 0.6 below. |
 | `il_slots` | 3 | League setting (fact). Values 1 and 2 stand in for less diligent managers. |
 | replacement line | valuation replacement level | Same assumption as streaming. |
 

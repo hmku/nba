@@ -33,7 +33,8 @@ numbers for everyone else):
    an injury spell of at least `il_min_spell_days` days (proxy for Yahoo's "Out" status, which IL slots
    require), his team carries one replacement-level player in his place, up to `il_slots` at a time. Each
    replacement plays the expected games of a typical NBA team that day (share of the 30 teams playing) times
-   `il_rep_availability`, and fills open starting slots after the roster's players and before streamers. No
+   `il_rep_availability` (fitted 0.84 since season-sim-0.8.1, `calibration.IL_REP_AVAILABILITY`: games share of
+   replacement-band players over a ~4-week hold starting while they are active), and fills open starting slots after the roster's players and before streamers. No
    extra random numbers are drawn, so runs with and without it stay paired.
 4c. Roster cap (default on since season-sim-0.8.0, `roster_cap`; docs/research/il_replacement.md "Roster cap"): a team
    may hold `active_roster` (settings starters + bench = 13) non-IL players plus up to `il_slots` players who are
@@ -111,12 +112,14 @@ class SimParams:
     games_per_add: float = 2.0
     stream_usage: float = 0.5  # share of the weekly add budget actually used on streamers
     streaming: bool = True
-    # IL replacement (default on since 0.6.0; all PRIORS, docs/research/il_replacement.md): a player in an injury spell of at
+    # IL replacement (default on since 0.6.0; PRIORS except il_rep_availability, docs/research/il_replacement.md): a player in an injury spell of at
     # least il_min_spell_days days is replaced by a replacement-level player for the spell, up to il_slots per team
     il_replacement: bool = True  # default since season-sim-0.6.0 (user-approved 2026-10-20)
     il_slots: int | None = None  # default: settings.roster_slots["IL"] (league 44495: 3)
     il_min_spell_days: float = 7.0
-    il_rep_availability: float = 0.85  # share of his team's games the replacement plays (rest/minor injuries)
+    # share of his team's games the replacement plays (rest, minor injuries, DNPs); FITTED since season-sim-0.8.1
+    # (was a 0.85 prior): cal.IL_REP_AVAILABILITY, il_replacement.md "Fit of il_rep_availability"
+    il_rep_availability: float = cal.IL_REP_AVAILABILITY
     # roster cap (season-sim-0.8.0, step 4c): non-IL roster limited to active_roster; surplus released on return
     roster_cap: bool = True
     active_roster: int | None = None  # default: settings.num_rounds (starters + bench; league 44495: 13)

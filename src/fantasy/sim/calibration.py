@@ -56,3 +56,13 @@ NOISE_CORR = [
     [0.082, 0.015, 0.049, 0.001, 0.028, 0.116, 0.041, 0.030, 1.000, 0.034],
     [0.064, 0.041, 0.061, 0.006, 0.044, 0.118, 0.072, 0.065, 0.034, 1.000],
 ]
+
+# IL replacement availability (SimParams.il_rep_availability; docs/research/il_replacement.md "Fit of
+# il_rep_availability", scripts/il_rep/, 2026-10-25). Share of his team's games a replacement-level player plays over
+# a ~4-week hold that starts while he is active (a manager picks him up healthy): ESPN box scores 2024-25 and 2025-26,
+# players ranked 157-168 (the engine's replacement band) on that season's ESPN preseason projections, 28-day windows
+# after each game he played, start-weighted: 0.839 (player-cluster bootstrap SE 0.023, n = 24 player-seasons); ranks
+# 145-192: 0.837 (0.013, n = 94); by season 0.840 / 0.834 (out of sample each way). Horizon 14 / 56 days: 0.86 / 0.82.
+# Not the full-season games share of the same players (0.696 +- 0.036, 2021-22..2025-26): that includes absences that
+# precede a pickup (pre-existing injuries), which a manager avoids.
+IL_REP_AVAILABILITY = 0.84

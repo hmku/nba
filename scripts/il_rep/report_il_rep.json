@@ -1,0 +1,565 @@
+{
+ "band_ranks": [
+  157,
+  168
+ ],
+ "seasons": [
+  2022,
+  2024,
+  2025,
+  2026
+ ],
+ "long_days": 7,
+ "full_season_share": {
+  "mean_share": 0.6961,
+  "se_cluster_boot": 0.0358,
+  "n_player_seasons": 48,
+  "n_players": 45,
+  "n_no_nba_games": 1,
+  "median_share": 0.7439,
+  "mean_projected_gp_share": 0.8554
+ },
+ "by_season": {
+  "2022": {
+   "mean": 0.6941,
+   "sd": 0.1876,
+   "n": 12
+  },
+  "2024": {
+   "mean": 0.5752,
+   "sd": 0.3454,
+   "n": 12
+  },
+  "2025": {
+   "mean": 0.6778,
+   "sd": 0.2263,
+   "n": 12
+  },
+  "2026": {
+   "mean": 0.8374,
+   "sd": 0.1172,
+   "n": 12
+  }
+ },
+ "leave_one_season_out": {
+  "2022": {
+   "fit_other": 0.6968,
+   "held_out": 0.6941,
+   "held_out_se": 0.0542,
+   "z": -0.05
+  },
+  "2024": {
+   "fit_other": 0.7364,
+   "held_out": 0.5752,
+   "held_out_se": 0.0997,
+   "z": -1.62
+  },
+  "2025": {
+   "fit_other": 0.7022,
+   "held_out": 0.6778,
+   "held_out_se": 0.0653,
+   "z": -0.37
+  },
+  "2026": {
+   "fit_other": 0.6491,
+   "held_out": 0.8374,
+   "held_out_se": 0.0338,
+   "z": 5.57
+  }
+ },
+ "oos_fit_2022_2024_test_2025_2026": {
+  "fit": 0.6347,
+  "fit_se": 0.0569,
+  "test": 0.7576,
+  "test_se": 0.0396,
+  "mse_fitted": 0.0513,
+  "mse_prior_0.85": 0.0447
+ },
+ "rank_profile_share": {
+  "97-120": {
+   "mean": 0.7044,
+   "se": 0.0234,
+   "n": 96
+  },
+  "121-144": {
+   "mean": 0.6965,
+   "se": 0.0259,
+   "n": 96
+  },
+  "145-168": {
+   "mean": 0.7127,
+   "se": 0.0241,
+   "n": 96
+  },
+  "169-192": {
+   "mean": 0.6744,
+   "se": 0.028,
+   "n": 96
+  },
+  "193-216": {
+   "mean": 0.686,
+   "se": 0.0276,
+   "n": 96
+  },
+  "217-240": {
+   "mean": 0.6697,
+   "se": 0.027,
+   "n": 96
+  }
+ },
+ "wide_band_145_192": {
+  "mean_share": 0.6935,
+  "se": 0.0193,
+  "n": 192
+ },
+ "box_2025_2026": {
+  "n": 24,
+  "box_played_share": 0.7571,
+  "missed_in_long_absences_share": 0.1814,
+  "coach_decision_dnp_share": 0.0091,
+  "share_if_long_absences_swapped": 0.9385,
+  "se": 0.009
+ },
+ "wide_band_by_season": {
+  "2022": 0.6606,
+  "2024": 0.6644,
+  "2025": 0.7099,
+  "2026": 0.7393
+ },
+ "forward_share": {
+  "band_157_168_H14": {
+   "mean": 0.8448,
+   "se_cluster_boot": 0.0211,
+   "start_weighted_mean": 0.8642,
+   "start_weighted_se": 0.0183,
+   "start_weighted_by_season": {
+    "2025": 0.8377,
+    "2026": 0.8861
+   },
+   "n": 24,
+   "n_never_active": 0,
+   "by_season": {
+    "2025": 0.8109,
+    "2026": 0.8786
+   }
+  },
+  "band_157_168_H28": {
+   "mean": 0.8118,
+   "se_cluster_boot": 0.0273,
+   "start_weighted_mean": 0.8392,
+   "start_weighted_se": 0.0225,
+   "start_weighted_by_season": {
+    "2025": 0.8045,
+    "2026": 0.8678
+   },
+   "n": 24,
+   "n_never_active": 0,
+   "by_season": {
+    "2025": 0.7633,
+    "2026": 0.8603
+   }
+  },
+  "band_157_168_H56": {
+   "mean": 0.7963,
+   "se_cluster_boot": 0.036,
+   "start_weighted_mean": 0.8341,
+   "start_weighted_se": 0.0246,
+   "start_weighted_by_season": {
+    "2025": 0.7966,
+    "2026": 0.8636
+   },
+   "n": 24,
+   "n_never_active": 0,
+   "by_season": {
+    "2025": 0.7364,
+    "2026": 0.8561
+   }
+  },
+  "wide_145_192_H14": {
+   "mean": 0.8371,
+   "se_cluster_boot": 0.0139,
+   "start_weighted_mean": 0.8605,
+   "start_weighted_se": 0.0112,
+   "start_weighted_by_season": {
+    "2025": 0.8648,
+    "2026": 0.8563
+   },
+   "n": 94,
+   "n_never_active": 2,
+   "by_season": {
+    "2025": 0.8396,
+    "2026": 0.8347
+   }
+  },
+  "wide_145_192_H28": {
+   "mean": 0.8098,
+   "se_cluster_boot": 0.0153,
+   "start_weighted_mean": 0.8369,
+   "start_weighted_se": 0.013,
+   "start_weighted_by_season": {
+    "2025": 0.8399,
+    "2026": 0.8341
+   },
+   "n": 94,
+   "n_never_active": 2,
+   "by_season": {
+    "2025": 0.8106,
+    "2026": 0.809
+   }
+  },
+  "wide_145_192_H56": {
+   "mean": 0.7783,
+   "se_cluster_boot": 0.0197,
+   "start_weighted_mean": 0.8194,
+   "start_weighted_se": 0.0145,
+   "start_weighted_by_season": {
+    "2025": 0.8279,
+    "2026": 0.8113
+   },
+   "n": 92,
+   "n_never_active": 4,
+   "by_season": {
+    "2025": 0.7841,
+    "2026": 0.7728
+   }
+  }
+ },
+ "band_players": [
+  {
+   "season": 2022,
+   "rank": 157,
+   "player_id": "marvin-bagley-iii",
+   "proj_gp": 68.0,
+   "g": 48.0
+  },
+  {
+   "season": 2022,
+   "rank": 158,
+   "player_id": "jeremy-lamb",
+   "proj_gp": 71.0,
+   "g": 56.0
+  },
+  {
+   "season": 2022,
+   "rank": 159,
+   "player_id": "doug-mcdermott",
+   "proj_gp": 76.0,
+   "g": 51.0
+  },
+  {
+   "season": 2022,
+   "rank": 160,
+   "player_id": "isaac-okoro",
+   "proj_gp": 77.0,
+   "g": 67.0
+  },
+  {
+   "season": 2022,
+   "rank": 161,
+   "player_id": "josh-hart",
+   "proj_gp": 73.0,
+   "g": 54.0
+  },
+  {
+   "season": 2022,
+   "rank": 162,
+   "player_id": "terrence-ross",
+   "proj_gp": 71.0,
+   "g": 63.0
+  },
+  {
+   "season": 2022,
+   "rank": 163,
+   "player_id": "alec-burks",
+   "proj_gp": 74.0,
+   "g": 81.0
+  },
+  {
+   "season": 2022,
+   "rank": 164,
+   "player_id": "daniel-gafford",
+   "proj_gp": 72.0,
+   "g": 72.0
+  },
+  {
+   "season": 2022,
+   "rank": 165,
+   "player_id": "royce-oneale",
+   "proj_gp": 78.0,
+   "g": 77.0
+  },
+  {
+   "season": 2022,
+   "rank": 166,
+   "player_id": "dillon-brooks",
+   "proj_gp": 69.0,
+   "g": 32.0
+  },
+  {
+   "season": 2022,
+   "rank": 167,
+   "player_id": "moses-brown",
+   "proj_gp": 73.0,
+   "g": 40.0
+  },
+  {
+   "season": 2022,
+   "rank": 168,
+   "player_id": "rui-hachimura",
+   "proj_gp": 72.0,
+   "g": 42.0
+  },
+  {
+   "season": 2024,
+   "rank": 157,
+   "player_id": "malik-monk",
+   "proj_gp": 72.0,
+   "g": 72.0
+  },
+  {
+   "season": 2024,
+   "rank": 158,
+   "player_id": "john-konchar",
+   "proj_gp": 68.0,
+   "g": 55.0
+  },
+  {
+   "season": 2024,
+   "rank": 159,
+   "player_id": "collin-sexton",
+   "proj_gp": 63.0,
+   "g": 78.0
+  },
+  {
+   "season": 2024,
+   "rank": 160,
+   "player_id": "ben-simmons",
+   "proj_gp": 55.0,
+   "g": 15.0
+  },
+  {
+   "season": 2024,
+   "rank": 161,
+   "player_id": "josh-richardson",
+   "proj_gp": 65.0,
+   "g": 43.0
+  },
+  {
+   "season": 2024,
+   "rank": 162,
+   "player_id": "bruce-brown",
+   "proj_gp": 75.0,
+   "g": 67.0
+  },
+  {
+   "season": 2024,
+   "rank": 163,
+   "player_id": "lonzo-ball",
+   "proj_gp": 35.0,
+   "g": 0.0
+  },
+  {
+   "season": 2024,
+   "rank": 164,
+   "player_id": "brandon-clarke",
+   "proj_gp": 68.0,
+   "g": 6.0
+  },
+  {
+   "season": 2024,
+   "rank": 165,
+   "player_id": "kyle-lowry",
+   "proj_gp": 58.0,
+   "g": 60.0
+  },
+  {
+   "season": 2024,
+   "rank": 166,
+   "player_id": "amen-thompson",
+   "proj_gp": 70.0,
+   "g": 62.0
+  },
+  {
+   "season": 2024,
+   "rank": 167,
+   "player_id": "aleksej-pokusevski",
+   "proj_gp": 66.0,
+   "g": 28.0
+  },
+  {
+   "season": 2024,
+   "rank": 168,
+   "player_id": "dennis-schroder",
+   "proj_gp": 66.0,
+   "g": 80.0
+  },
+  {
+   "season": 2025,
+   "rank": 157,
+   "player_id": "luguentz-dort",
+   "proj_gp": 75.0,
+   "g": 71.0
+  },
+  {
+   "season": 2025,
+   "rank": 158,
+   "player_id": "duncan-robinson",
+   "proj_gp": 70.0,
+   "g": 74.0
+  },
+  {
+   "season": 2025,
+   "rank": 159,
+   "player_id": "marcus-smart",
+   "proj_gp": 63.0,
+   "g": 34.0
+  },
+  {
+   "season": 2025,
+   "rank": 160,
+   "player_id": "russell-westbrook",
+   "proj_gp": 73.0,
+   "g": 75.0
+  },
+  {
+   "season": 2025,
+   "rank": 161,
+   "player_id": "nick-richards",
+   "proj_gp": 70.0,
+   "g": 57.0
+  },
+  {
+   "season": 2025,
+   "rank": 162,
+   "player_id": "jeremy-sochan",
+   "proj_gp": 71.0,
+   "g": 54.0
+  },
+  {
+   "season": 2025,
+   "rank": 163,
+   "player_id": "rui-hachimura",
+   "proj_gp": 70.0,
+   "g": 59.0
+  },
+  {
+   "season": 2025,
+   "rank": 164,
+   "player_id": "kevin-huerter",
+   "proj_gp": 70.0,
+   "g": 69.0
+  },
+  {
+   "season": 2025,
+   "rank": 165,
+   "player_id": "grant-williams",
+   "proj_gp": 77.0,
+   "g": 16.0
+  },
+  {
+   "season": 2025,
+   "rank": 166,
+   "player_id": "andre-drummond",
+   "proj_gp": 76.0,
+   "g": 40.0
+  },
+  {
+   "season": 2025,
+   "rank": 167,
+   "player_id": "tre-jones",
+   "proj_gp": 76.0,
+   "g": 46.0
+  },
+  {
+   "season": 2025,
+   "rank": 168,
+   "player_id": "shaedon-sharpe",
+   "proj_gp": 69.0,
+   "g": 72.0
+  },
+  {
+   "season": 2026,
+   "rank": 157,
+   "player_id": "ayo-dosunmu",
+   "proj_gp": 66.0,
+   "g": 69.0
+  },
+  {
+   "season": 2026,
+   "rank": 158,
+   "player_id": "keyonte-george",
+   "proj_gp": 72.0,
+   "g": 54.0
+  },
+  {
+   "season": 2026,
+   "rank": 159,
+   "player_id": "caris-levert",
+   "proj_gp": 70.0,
+   "g": 60.0
+  },
+  {
+   "season": 2026,
+   "rank": 160,
+   "player_id": "kevin-huerter",
+   "proj_gp": 69.0,
+   "g": 69.0
+  },
+  {
+   "season": 2026,
+   "rank": 161,
+   "player_id": "kon-knueppel",
+   "proj_gp": 71.0,
+   "g": 81.0
+  },
+  {
+   "season": 2026,
+   "rank": 162,
+   "player_id": "egor-demin",
+   "proj_gp": 72.0,
+   "g": 52.0
+  },
+  {
+   "season": 2026,
+   "rank": 163,
+   "player_id": "dennis-schroder",
+   "proj_gp": 75.0,
+   "g": 70.0
+  },
+  {
+   "season": 2026,
+   "rank": 164,
+   "player_id": "dylan-harper",
+   "proj_gp": 70.0,
+   "g": 69.0
+  },
+  {
+   "season": 2026,
+   "rank": 165,
+   "player_id": "harrison-barnes",
+   "proj_gp": 82.0,
+   "g": 77.0
+  },
+  {
+   "season": 2026,
+   "rank": 166,
+   "player_id": "yves-missi",
+   "proj_gp": 75.0,
+   "g": 66.0
+  },
+  {
+   "season": 2026,
+   "rank": 167,
+   "player_id": "brice-sensabaugh",
+   "proj_gp": 72.0,
+   "g": 75.0
+  },
+  {
+   "season": 2026,
+   "rank": 168,
+   "player_id": "carlton-carrington",
+   "proj_gp": 78.0,
+   "g": 82.0
+  }
+ ]
+}
