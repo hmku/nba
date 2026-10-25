@@ -45,7 +45,7 @@ snapshots really are. A cloud scheduled task is created with the `create_trigger
 | Rest-of-season player values | `fantasy values build --json`, `fantasy data top` | BUILT (season-long, not schedule-aware) |
 | Muse snapshot -> `rosters.json` converter (cloud path without a browser) | `fantasy intel export-league` | PLANNED (Yahoo's real schedule is already in `data/manual/league_schedule.json`) |
 | Daily lineup optimizer | `fantasy lineup plan --date D [--week] --json` | BUILT (`lineup-0.2.0`, T-005; needs a same-day roster capture) |
-| Streaming ranker | `fantasy inseason stream --start D1 --end D2 [--free-agents capture] --json` | BUILT (MVP, `inseason-0.1.0`); matchup-weighted streaming T-006 PLANNED |
+| Streaming ranker | `fantasy inseason stream [--date D] [--free-agents capture] --json` | BUILT (`inseason-0.3.x`, matchup-weighted vs the real opponent; legacy window ranker `--window-only D1..D2`) |
 | Trade evaluation (both sides, paired) | `fantasy inseason trade --partner N --give .. --get .. --json` | BUILT (`inseason-0.1.0`); league-wide trade scan T-008 PLANNED |
 | Conservative run (market projections) | `fantasy data alt-projections --blend market --out var/projections_alt/market.csv` + `sim ... --projections` | BUILT (`docs/research/conservative_sim.md`) |
 | Action queue for executors | `GET /api/agent/actions`, `POST /api/agent/actions/{txn_id}/claim|result` | PLANNED |

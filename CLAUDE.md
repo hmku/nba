@@ -30,6 +30,7 @@ dashboard `web/` (Next.js → Vercel); DB schema `src/fantasy/db/schema.py` → 
 Research notes: `docs/research/`. Runbooks: `docs/runbooks/`.
 Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval, season-sim,
 agent-run, handoff, in-season-ops (Phase 2 placeholder),
+context-review (weekly consistency sweep of this agentic context vs code; scheduled task `fantasy-context-review`),
 league-loop (in-season Muse READ -> Claude THINK -> user APPROVE -> EXECUTE -> VERIFY loop; design in `docs/research/league_loop.md`). Subagents (`.claude/agents/`): quant-reviewer,
 data-auditor, draft-shadow (all read-only).
 

@@ -170,7 +170,7 @@ Cloud sessions run the ledger directly against Supabase, one row per request, no
 export FANTASY_RUN_ID=$(fantasy run start --agent league-loop --task "..." --mode dry_run --rest)
 fantasy run event|decision|heartbeat|end|list|show ... --rest
 fantasy lock acquire|renew|release|show ... --rest        # no --force over REST
-fantasy approval request|list|show [--wait N] ... --rest   # no `decide` over REST (human-only)
+fantasy approval request|list|show ... --rest   # show also takes --wait N; no `decide` over REST (human-only)
 fantasy txn plan|mark|check|list|show|reconcile ... --rest
 fantasy task add|list|show|claim|update|done ... --rest
 ```

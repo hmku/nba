@@ -164,6 +164,39 @@ is interested in X; details private"). A thread message
 - **Yahoo ids in payloads** (approvals, txns) are copied from today's capture or the player's `href` on Yahoo, never typed
   from memory (2026-10-24: a Champagnie approval got Jalen Williams's id 6702; had to file a corrected one).
 - Streams/trades: `fantasy inseason stream|trade|trade-scan` (inseason-0.3.0, quant-reviewed): realistic chain (stream stint then k-th FA), base includes the best free move, realistic refill, schedule-neutral delta, three projection sets (blend/market/stress), seed-averaged. Present only `helps` verdicts as recommendations; `speculative` = mention as an idea.
+- **Persist today's verdicts** (input to tomorrow's league-moves review): save the JSON of every candidate evaluation
+  you ran to `data/processed/verdicts/<tool>_$D.json` (`opportunity`, `stream`, `trade-scan`, `compare-<player>`;
+  e.g. `fantasy inseason opportunity ... --json | tee data/processed/verdicts/opportunity_$D.json`) and commit them.
+  Without them "what did we think before he was picked up?" rests on log prose only (added 2026-10-25).
+- **League moves review** (other teams' adds, claims, drops and trades since the last run). Goal: learn whether we
+  misjudged or were too slow — judged by **expected value at decision time, never by how the player did since** (one
+  week of box scores is mostly noise). Procedure (first run 2026-10-25; example files `data/processed/verdicts/league-moves_2026-10-25*.json`):
+  - **Find the moves from the capture diff, not by hand** (the 10-24 log missed one): `fantasy league sync --capture
+    <newest capture> --state <(git show <commit of the previous run>:data/manual/league_rosters_2026-27.json) --json`
+    (after today's `--write` the plain dry diff is empty); read `teams.*.adds/drops/moved_in/moved_out` (the `moves`
+    list can be empty when they aren't). Pair adds with drops via Yahoo's `W (date)` on the dropped player (waivers end
+    drop date + 3 days); say when a pairing is inferred.
+  - **Availability:** a player on no roster in any roster capture since date d was available to us from d (the FA
+    captures hold only the top 50 and have gaps). On waivers (`W`) = claimable, but **a claim from our waiver priority
+    (check it; we were last on 2026-10-25) would have lost: not a miss.** Our prior verdict: `data/processed/verdicts/`
+    (our own candidate files only) and older daily logs; "not evaluated" if he never appeared.
+  - **Value for us** (`--no-save`, ≤ 8 sims/day, `--sims 4000`): `sim compare` refuses a player who is already
+    rostered, so first rebuild the **pre-move league** (today's `data/manual/league_rosters_2026-27.json` with the moves
+    undone) → `data/processed/verdicts/league-moves_${D}_premove_league.json`; then `fantasy sim compare --league-file
+    <premove> --add X --drop <baseline> --sims 4000 --no-save --json` (`delta` ± `delta_se`, paired season sims). Baseline:
+    an open active roster spot → add with no drop; else our planned next drop (say which). Other team's own effect:
+    `--team <id>` (league-state id = draft slot, NOT the Yahoo team id). Trades: each side with `--team`, and our
+    P(playoffs) before/after (`fantasy sim season --no-save --league-file <premove|current>`, same seed; unpaired, quote
+    both SEs). Hindsight: if the news that makes X valuable is newer than our last chance to act, say so.
+  - **Classify:** `not_available` (on a roster until the move) · `noise` (|delta for us| < 2·SE) · `neutral` (would not
+    have helped us; record the other team's own effect in `note`) · `decision_miss` (our tools said `helps` and we
+    didn't act — note whether the user declined) · `model_gap` (delta ≥ 2·SE for us but our tools said noise/hurts or
+    never ranked him while available; one case proves nothing, a repeated signal is a model-eval task) · `hindsight`.
+  - **Record:** one row per move in `data/processed/league_moves_2026_27.csv` (`date,team_id,team,type,player_in,
+    player_out,available_since,our_prior_verdict,delta,delta_se,metric,class,note`; `team_id` = **Yahoo team id**);
+    sim outputs + commands in `data/processed/verdicts/league-moves_$D.json` (separate prefix so tomorrow's review
+    doesn't read them as our own verdicts); ≤ 3 lines in the daily log. `decision_miss` and repeated `model_gap` go to
+    the user (Inbox, justification + why-now) and the handoff/backlog. Skip pure drops of players nobody added.
 - Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
 
 ## 3. EXECUTE (lineup + IL only)
@@ -224,9 +257,10 @@ the txn's approval too (one extra click). Plan the txn as early as possible so b
 - Log `docs/daily/$D.md` (≤ 25 lines): sync diff, injuries, lineup set (verified?), IL moves, recommendations awaiting
   approval with numbers, problems. `fantasy run end --status succeeded --summary "..."`.
 - `python -m pytest -q` only if code changed. Commit only your paths (`data/raw/yahoo/*_$D*.json`, `web/src/content/league_state.json`,
-  `data/manual/league_rosters_2026-27.json`, `docs/daily/$D.md`), `git pull --rebase --autostash origin main && git push origin main`.
+  `data/manual/league_rosters_2026-27.json`, `docs/daily/$D.md`, `data/processed/verdicts/*_$D.json`,
+  `data/processed/league_moves_2026_27.csv`), `git pull --rebase --autostash origin main && git push origin main`.
 - Final message to the user: ≤ 10 lines — lineup set (verified or not), IL moves, roster/injury changes in the league,
-  decide-at-tip-off players with deadlines (ET), recommendations awaiting their "yes" with numbers, anything odd or that
+  decide-at-tip-off players with deadlines (ET), league-moves verdicts that matter (`decision_miss`, rival gains), recommendations awaiting their "yes" with numbers, anything odd or that
   only they can do.
 
 ## 6. TIP-OFF CHECK (lineup + IL only; same authorisation as the morning run)

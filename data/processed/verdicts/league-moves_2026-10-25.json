@@ -1,0 +1,315 @@
+{
+ "kind": "league_moves_review",
+ "date": "2026-10-25",
+ "window": "2026-10-24T14:37Z (10-24 morning sync) -> 2026-10-25T11:13Z",
+ "league_file": "data/processed/verdicts/league-moves_2026-10-25_premove_league.json = data/manual/league_rosters_2026-27.json (10-25 sync) with the 4 moves undone; --team ids are league-state ids (draft slots): 3=Shalom Jerome (Yahoo 1), 9=Jeffrey (Yahoo 3), 11=SCOTTIER BARNEY (Yahoo 8), 1=us (Yahoo 11)",
+ "projections": "data/processed/projections_2026_27.csv as of 2026-10-25 (ros-proj-0.5.0+minutes-0.2.0)",
+ "evaluations": {
+  "us_add_brook-lopez": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "brook-lopez",
+     "name": "Brook Lopez"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "ace-bailey",
+     "name": "Ace Bailey"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8692,
+    "after": 0.8655,
+    "delta": -0.0037,
+    "delta_se": 0.0036
+   },
+   "p_title": {
+    "before": 0.2918,
+    "after": 0.2993,
+    "delta": 0.0075,
+    "delta_se": 0.0058
+   },
+   "exp_cat_wins": {
+    "before": 90.7659,
+    "after": 90.8547,
+    "delta": 0.0889,
+    "delta_se": 0.0602
+   },
+   "compute_seconds": 10.17,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --add brook-lopez --drop ace-bailey"
+  },
+  "us_add_aaron-wiggins": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "aaron-wiggins",
+     "name": "Aaron Wiggins"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "ace-bailey",
+     "name": "Ace Bailey"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8692,
+    "after": 0.8532,
+    "delta": -0.016,
+    "delta_se": 0.0037
+   },
+   "p_title": {
+    "before": 0.2918,
+    "after": 0.2988,
+    "delta": 0.007,
+    "delta_se": 0.0056
+   },
+   "exp_cat_wins": {
+    "before": 90.7659,
+    "after": 90.1255,
+    "delta": -0.6404,
+    "delta_se": 0.0582
+   },
+   "compute_seconds": 17.17,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --add aaron-wiggins --drop ace-bailey"
+  },
+  "us_add_zaccharie-risacher": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "zaccharie-risacher",
+     "name": "Zaccharie Risacher"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "ace-bailey",
+     "name": "Ace Bailey"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8692,
+    "after": 0.8578,
+    "delta": -0.0115,
+    "delta_se": 0.0035
+   },
+   "p_title": {
+    "before": 0.2918,
+    "after": 0.3003,
+    "delta": 0.0085,
+    "delta_se": 0.0055
+   },
+   "exp_cat_wins": {
+    "before": 90.7659,
+    "after": 90.1548,
+    "delta": -0.6111,
+    "delta_se": 0.0562
+   },
+   "compute_seconds": 16.88,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --add zaccharie-risacher --drop ace-bailey"
+  },
+  "us_add_noah-clowney": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "noah-clowney",
+     "name": "Noah Clowney"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "ace-bailey",
+     "name": "Ace Bailey"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8692,
+    "after": 0.8367,
+    "delta": -0.0325,
+    "delta_se": 0.0037
+   },
+   "p_title": {
+    "before": 0.2918,
+    "after": 0.2893,
+    "delta": -0.0025,
+    "delta_se": 0.0056
+   },
+   "exp_cat_wins": {
+    "before": 90.7659,
+    "after": 89.0876,
+    "delta": -1.6783,
+    "delta_se": 0.0569
+   },
+   "compute_seconds": 17.1,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --add noah-clowney --drop ace-bailey"
+  },
+  "shalom_own_effect": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 3,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "brook-lopez",
+     "name": "Brook Lopez"
+    },
+    {
+     "player_id": "aaron-wiggins",
+     "name": "Aaron Wiggins"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "sandro-mamukelashvili",
+     "name": "Sandro Mamukelashvili"
+    },
+    {
+     "player_id": "cason-wallace",
+     "name": "Cason Wallace"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.5583,
+    "after": 0.5683,
+    "delta": 0.01,
+    "delta_se": 0.006
+   },
+   "p_title": {
+    "before": 0.0732,
+    "after": 0.0808,
+    "delta": 0.0075,
+    "delta_se": 0.0041
+   },
+   "exp_cat_wins": {
+    "before": 78.1806,
+    "after": 78.3705,
+    "delta": 0.1899,
+    "delta_se": 0.0835
+   },
+   "compute_seconds": 17.11,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --team 3 --add brook-lopez,aaron-wiggins --drop sandro-mamukelashvili,cason-wallace"
+  },
+  "scottier_own_effect": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 11,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "zaccharie-risacher",
+     "name": "Zaccharie Risacher"
+    }
+   ],
+   "drop": [],
+   "p_playoffs": {
+    "before": 0.2605,
+    "after": 0.2645,
+    "delta": 0.004,
+    "delta_se": 0.0041
+   },
+   "p_title": {
+    "before": 0.042,
+    "after": 0.0413,
+    "delta": -0.0008,
+    "delta_se": 0.0028
+   },
+   "exp_cat_wins": {
+    "before": 68.2218,
+    "after": 68.3701,
+    "delta": 0.1484,
+    "delta_se": 0.0502
+   },
+   "compute_seconds": 17.29,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --team 11 --add zaccharie-risacher"
+  },
+  "jeffrey_own_effect": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.0",
+   "team": 9,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "noah-clowney",
+     "name": "Noah Clowney"
+    }
+   ],
+   "drop": [],
+   "p_playoffs": {
+    "before": 0.282,
+    "after": 0.25,
+    "delta": -0.032,
+    "delta_se": 0.0036
+   },
+   "p_title": {
+    "before": 0.0352,
+    "after": 0.0352,
+    "delta": 0.0,
+    "delta_se": 0.0019
+   },
+   "exp_cat_wins": {
+    "before": 69.1672,
+    "after": 67.8618,
+    "delta": -1.3055,
+    "delta_se": 0.0395
+   },
+   "compute_seconds": 16.81,
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 6, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null,
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-25_premove_league.json --sims 4000 --seed 0 --no-save --json --team 9 --add noah-clowney"
+  }
+ }
+}
