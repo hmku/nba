@@ -12,8 +12,8 @@
   league-loop), `approval ... --wait` (agent_ops runbook); `intel export-league` allowlisted (PLANNED).
 
 ## Problems / outstanding
-- Creating the scheduled task `fantasy-context-review` (Mondays 05:30 ET, prompt "run the context-review skill") was
-  blocked by the auto-mode permission check: the user must create it (or allow the tool).
+- Scheduled task `fantasy-context-review` created (Mondays 05:30 ET cron, dispatches ~05:43; prompt "run the
+  context-review skill"; first attempt was blocked by the auto-mode check, a retry at the user's request worked).
 - Possible model issue (not investigated): for Wiggins/Risacher adds, our P(title) rises (+0.7/+0.85 ± 0.55 pp) while
   P(playoffs) clearly falls. Worth a model-eval look.
 - A helper `fantasy league undo-moves` (rebuild the pre-move league) would make the review cheaper; build it if the
