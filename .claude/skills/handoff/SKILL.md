@@ -21,7 +21,7 @@ Markdown holds knowledge (docs, handoffs); the DB holds state (runs, tasks, txns
    `--rest`; Yahoo *account* work needs a local session with browser tools (`yahoo-browser` skill).
 
 ## Session end (mandatory, also when stopping early)
-1. **Tests**: `pytest` and `ruff check src tests` (plus `cd web && npm run build` if `web/` changed).
+1. **Tests** (= CI, `.github/workflows/ci.yml`): `pytest`, `ruff check src tests` and `mypy src/fantasy/ops src/fantasy/db src/fantasy/data src/fantasy/league src/fantasy/cli.py src/fantasy/cli_common.py` (plus `cd web && npm run build` if `web/` changed). After pushing, `gh run list --limit 3`: a red CI on main is yours to fix or report.
    Record results honestly in the note (what ran, pass/fail counts, failures that are not yours).
 2. **Ops state**: release locks you hold, `fantasy run end --summary ...` for open runs (agent-run skill).
 3. **Tasks**: `fantasy task done T-00N` (exit 3 if another owner holds it), or

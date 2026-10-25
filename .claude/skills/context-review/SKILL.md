@@ -45,7 +45,7 @@ agent did differently from what a skill says (a deviation is either a doc bug or
 - Keep edits concise (CLAUDE.md "Be concise"); don't add boilerplate.
 
 ## 4. Finish
-`python -m pytest -q` and `ruff check src tests` green; handoff `docs/handoffs/YYYY-MM-DD-context-review.md` (what was
+CI checks green (`python -m pytest -q`, `ruff check src tests`, the `mypy` line in `.github/workflows/ci.yml`); handoff `docs/handoffs/YYYY-MM-DD-context-review.md` (what was
 fixed with file list, what is proposed, what was checked and found fine); commit only the files you changed;
 `git pull --rebase --autostash origin main && git push origin main`. Final message ≤ 6 lines: fixes made, proposals
 awaiting the user, scheduled-task mismatches.

@@ -410,7 +410,7 @@ def fetch_season(
     _check_team_vs_player(tdf, pdf, anom)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = {"season": season, "range": [start.isoformat(), end.isoformat()], "requests": n_requests,
+    out: dict[str, Any] = {"season": season, "range": [start.isoformat(), end.isoformat()], "requests": n_requests,
            "new_games": len(games), "skipped_events": dict(skipped), "anomalies": dict(anom),
            "files": []}
     common = {"games": int(tdf["game_id"].nunique()) if len(tdf) else 0,

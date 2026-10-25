@@ -19,7 +19,7 @@ start/end of each session and the `agent-run` skill for any run/lock/txn work.
 4. For agent *operations* (anything touching Yahoo), start a run: `export FANTASY_RUN_ID=$(fantasy run start --agent <name> --task "..." --mode dry_run|live)`.
 
 ## End of every session (mandatory)
-- Tests green: `pytest` and `ruff check src tests` (and `cd web && npm run build` if web changed).
+- Tests green = what CI runs (`.github/workflows/ci.yml`): `pytest`, `ruff check src tests` and `mypy src/fantasy/ops src/fantasy/db src/fantasy/data src/fantasy/league src/fantasy/cli.py src/fantasy/cli_common.py` (and `cd web && npm run build` if web changed). CI on main was red 2026-10-21..25 on a mypy error nobody ran locally; check `gh run list --limit 3` after pushing.
 - Write a handoff: `docs/handoffs/YYYY-MM-DD-<topic>.md` (template in `.claude/skills/handoff/SKILL.md`).
 - Update `docs/STATUS.md` if priorities/state changed; `fantasy task done|update`.
 - **Always commit and push** (user requirement): commit only your paths, `git pull --rebase --autostash origin main && git push origin main`.
