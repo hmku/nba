@@ -115,7 +115,7 @@ def test_batching_order_headers_and_serialisation():
     assert first["model_runs"] < first["player_values"] and first["model_runs"] < first["projections"]
     assert first["drafts"] < first["draft_picks"]
     assert "locks" not in order and "locks" not in res["rows"]
-    assert res["order"] == [t.name for t in metadata.sorted_tables if t.name != "locks"]
+    assert res["order"] == [t.name for t in metadata.sorted_tables if t.name not in rest.PUBLISH_SKIP]
     # headers
     req = rec.posts("players")[0]
     assert req.headers["apikey"] == SECRET and "authorization" not in req.headers

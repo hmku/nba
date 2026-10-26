@@ -41,8 +41,9 @@ CONNECT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
 # Gateway answers after the request was forwarded: the write may or may not have been applied.
 AMBIGUOUS_STATUSES = frozenset({502, 504})
 
-# Ephemeral state that must not be copied (an offline lease means nothing online).
-PUBLISH_SKIP = frozenset({"locks"})
+# Never copied: ephemeral state (an offline lease means nothing online) and server-owned dashboard
+# tables (Web Push subscriptions + sent log: written only by the dashboard's server routes).
+PUBLISH_SKIP = frozenset({"locks", "push_subscriptions", "push_sent"})
 # Per-table publish policy (docs/runbooks/agent_ops.md section 5b):
 #   merge  -> upsert, `resolution=merge-duplicates`: the publishing copy owns these rows (reference
 #             data, model outputs, the draft board), so republishing refreshes them.

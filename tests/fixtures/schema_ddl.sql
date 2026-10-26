@@ -102,6 +102,25 @@ CREATE TABLE IF NOT EXISTS players (
 	PRIMARY KEY (player_id)
 );
 
+CREATE TABLE IF NOT EXISTS push_sent (
+	approval_id VARCHAR NOT NULL, 
+	sent_at TIMESTAMP WITH TIME ZONE, 
+	recipients INTEGER, 
+	failures INTEGER, 
+	PRIMARY KEY (approval_id)
+);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+	endpoint TEXT NOT NULL, 
+	p256dh TEXT NOT NULL, 
+	auth TEXT NOT NULL, 
+	user_agent TEXT, 
+	created_at TIMESTAMP WITH TIME ZONE, 
+	last_ok_at TIMESTAMP WITH TIME ZONE, 
+	last_error TEXT, 
+	PRIMARY KEY (endpoint)
+);
+
 CREATE TABLE IF NOT EXISTS tasks (
 	task_id VARCHAR NOT NULL, 
 	title VARCHAR NOT NULL, 

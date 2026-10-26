@@ -28,6 +28,10 @@ The public Supabase URL/publishable key are also hardcoded as fallbacks in `src/
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only**, user must add in Vercel | enables writes (manual picks, approvals) |
 | `DASHBOARD_PASSPHRASE` | **server-only**, user must add in Vercel | passphrase to unlock writes (httpOnly cookie, 30 days) |
 | `AGENT_API_TOKEN` | **server-only**, user must add in Vercel | bearer token for the external-agent API `/api/agent/*` (Meta Muse); unset → those routes return 503 |
+| `VAPID_PUBLIC_KEY` | server env (sent to browsers by `GET /api/push`; not secret) | Web Push application server key ("Notifications" below) |
+| `VAPID_PRIVATE_KEY` | **server-only, Sensitive** | signs Web Push requests; never commit/log; rotating it means every device re-enables |
+| `VAPID_SUBJECT` | server env | contact for push services: `https://fantasy.harrisonku.com` or `mailto:<you>` |
+| `PUSH_NOTIFY_SECRET` | **server-only, Sensitive** | bearer token the Supabase webhook sends to `POST /api/push/notify`; unset → 503 |
 
 Without the two server-only vars the UI shows "Writes disabled (read-only)" and all write
 buttons are disabled; reads keep working. After adding them in Vercel, **redeploy** (env vars
@@ -265,6 +269,9 @@ note with one simulated roster for me.
 - `POST /api/draft/pick {draft_id, overall_pick, player_id?, player_name, overwrite?}`;
   `DELETE /api/draft/pick?draft_id=&overall_pick=` (manual rows only).
 - `POST /api/approvals {approval_id, decision: approved|rejected, note?}` (only pending rows).
+- Push ("Notifications" below): `GET /api/push` → `{configured, publicKey}`; `POST /api/push {subscription}` /
+  `DELETE /api/push {endpoint}` and `POST /api/push/test {endpoint}` (passphrase cookie); `POST /api/push/notify`
+  (`Authorization: Bearer $PUSH_NOTIFY_SECRET`, called by the Supabase webhook).
 
 ## External-agent API (`/api/agent/*`, bearer token)
 For the user's outside assistant **Meta Muse** (reads the league's Messenger group chat). Instructions for Muse:
@@ -355,6 +362,40 @@ manifest scope and iOS treated tab navigations as leaving the app. Rules (enforc
 - manifest `id`/`scope` stay `/`, `start_url` is a 200 page (not `/` or a legacy redirect); nav links are relative,
   same-origin, no `target`/`rel=external`, and point at final paths (never a redirect source).
 After changing any of this, the phone needs the home-screen app removed and re-added (iOS snapshots it at install).
+
+## Notifications (Web Push for new approvals)
+A phone notification for every new **pending** row in `approvals` (= a new "Needs your yes" card); tap → `/inbox#<approval_id>`
+(every approval has that anchor, also inside an advice card).
+
+**Enable on iPhone (iOS ≥ 16.4; push works only in the Home Screen app, not in Safari):** Safari →
+https://fantasy.harrisonku.com → Share → *Add to Home Screen* → open the app **from the icon** → unlock (passphrase) →
+Inbox → **🔔 Enable notifications** → Allow → **Test**. Repeat per device (each install is its own subscription).
+Turn off: Inbox → *Turn off* (or iOS Settings → Notifications → Fantasy). Android/desktop Chrome: same button, no install needed.
+
+How it works:
+1. **Subscribe**: `src/components/PushToggle.tsx` (Inbox header, only after unlock) asks permission, subscribes with
+   `VAPID_PUBLIC_KEY` and `POST /api/push` stores it in `push_subscriptions` (service key; RLS on, no anon policy, privileges
+   revoked — migration `20261026120000_push_notifications.sql`).
+2. **Trigger**: a Supabase **Database Webhook** on `approvals` INSERT → `POST /api/push/notify` with the bearer secret. Chosen
+   because it fires for every way an approval is created (`fantasy approval request`, `fantasy txn plan`, `--rest`, `fantasy publish`,
+   SQL), whichever agent/machine made it, within seconds. Rejected: Vercel Cron (Hobby plan allows only daily crons; a
+   `*/5` cron fails the deploy), CLI-side calls (each creation path and environment would need the secret and could
+   miss approvals created elsewhere).
+3. **Send** (`src/lib/push.ts`, pure parts `src/lib/pushPure.ts`, tested in `tests/push.test.mjs`): the request body is
+   ignored; the route reads pending, unexpired approvals requested in the **last 24 h** without a `push_sent` row (≤ 10 per
+   call), **claims** each by inserting `push_sent` (on conflict do nothing → at most one notification per approval, even with
+   concurrent calls), then sends via `web-push` (TTL 6 h, urgency high). Body = approval summary ≤ 100 chars, title =
+   "Add/drop: needs your yes" etc. Subscriptions answering 404/410 are deleted; other errors go to `last_error`.
+   Approvals found while nobody is subscribed are still claimed (no backlog flood later). An approval created offline
+   (SQLite) and published > 24 h later is not notified.
+4. **Show**: `public/sw.js` `push` → `showNotification` (tag per approval); `notificationclick` focuses the open app and
+   navigates to the card, else opens it (same-origin paths only).
+
+Missed webhook (timeout, deploy in progress): the next approval's call catches up anything from the last 24 h, or run by hand:
+`curl -X POST -H "Authorization: Bearer $PUSH_NOTIFY_SECRET" https://fantasy.harrisonku.com/api/push/notify` → JSON
+`{notified:[{approval_id, recipients, failures, removed}], subscriptions}`. Debug: `select * from push_sent order by sent_at desc`,
+`select endpoint, last_ok_at, last_error from push_subscriptions` (SQL editor). No notifications on iPhone: the app must
+be opened from the Home Screen icon, Focus modes may hide them, and a removed/reinstalled app needs *Enable* again.
 
 ## Troubleshooting
 - Red "sync error" dot on /draft: Supabase unreachable or RLS error; message shown as one red line at the top.

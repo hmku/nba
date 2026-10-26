@@ -8,7 +8,7 @@
  *
  * Bump VERSION to drop old caches.
  */
-const VERSION = "v2"; // v2: new basketball icon
+const VERSION = "v3"; // v2: new basketball icon; v3: push notifications
 const STATIC_CACHE = `fdesk-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png"];
@@ -59,4 +59,49 @@ self.addEventListener("fetch", (event) => {
     );
   }
   // anything else: default browser handling (network, no SW cache)
+});
+
+/* ---- Web Push: new pending approvals (POST /api/push/notify -> web-push -> here). See docs/runbooks/dashboard.md. */
+
+/** Only same-origin paths are opened on tap (the payload comes from our server, but never trust a URL blindly). */
+function safePath(u) {
+  try {
+    const url = new URL(u || "/inbox", self.location.origin);
+    return url.origin === self.location.origin ? url.pathname + url.search + url.hash : "/inbox";
+  } catch {
+    return "/inbox";
+  }
+}
+
+self.addEventListener("push", (event) => {
+  let d = {};
+  try {
+    d = event.data ? event.data.json() : {};
+  } catch {
+    d = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(d.title || "Fantasy Desk", {
+      body: d.body || "A decision needs your yes.",
+      tag: d.tag || undefined,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: safePath(d.url) },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const path = safePath(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (wins) => {
+      const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+      if (win) {
+        await win.focus();
+        if (win.navigate) return win.navigate(path);
+      }
+      return self.clients.openWindow(path);
+    }),
+  );
 });

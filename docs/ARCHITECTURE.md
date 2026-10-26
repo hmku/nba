@@ -79,6 +79,9 @@ All runtime state goes through `fantasy.db` tables (see `schema.py`). Markdown i
 - **Dashboard RLS is read-only** for the public key. Fantasy data is low-sensitivity; anything that
   writes (approvals, manual draft picks) goes through Next.js server routes holding the service key,
   gated by a dashboard passphrase.
+- **Phone notifications = Web Push** from the dashboard (PWA service worker), triggered by a Supabase Database Webhook
+  on `approvals` INSERT → `/api/push/notify`, so they fire whichever agent/path created the approval
+  (`docs/runbooks/dashboard.md` "Notifications"; tables `push_subscriptions`/`push_sent` are server-only, never published).
 - **No custom browser bot.** Claude drives Yahoo in the user's logged-in browser (the desktop app's
   built-in browser or Claude in Chrome). Python never touches Yahoo's UI.
 - **Draft picks are recomputed deterministically** after every observed pick (`fantasy draft recommend`);

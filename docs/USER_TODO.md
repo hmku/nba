@@ -113,6 +113,25 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
          bottom of https://fantasy.harrisonku.com/advisor) into the ChatGPT agent, with `<ADVISOR_TOKEN>` replaced.
       Its suggestions appear on Activity ("Suggestions from the advisor") and in `fantasy intel latest`
       (`advisor_suggestions`). They are public like other agent logs. To revoke: change/delete the env var + rebuild.
+- [ ] **Phone notifications for new approvals (≈10 min, at your computer; after the push branch is merged)** — details:
+      `docs/runbooks/dashboard.md` → "Notifications". In this order:
+      1. **Migration**: Supabase → fantasy-nba → SQL Editor → New query → paste
+         `supabase/migrations/20261026120000_push_notifications.sql` → Run (or tell Claude "apply the push migration";
+         it needs your yes). Creates `push_subscriptions` + `push_sent` (private: RLS on, no anon access).
+      2. **Keys** (terminal, any folder): `npx web-push generate-vapid-keys` → prints a Public Key and a Private Key.
+         And a webhook secret: `openssl rand -hex 32`. Don't paste any of these into chat or commit them.
+      3. **Vercel** → fantasy-nba → Settings → Environment Variables, environment **Production**:
+         `VAPID_PUBLIC_KEY` = Public Key; `VAPID_PRIVATE_KEY` = Private Key (**Sensitive**);
+         `VAPID_SUBJECT` = `https://fantasy.harrisonku.com`; `PUSH_NOTIFY_SECRET` = the openssl value (**Sensitive**) → Save.
+         Then redeploy (Deployments → newest → ⋯ → Redeploy, or ask Claude to trigger a `web/` build).
+      4. **Webhook**: Supabase → fantasy-nba → Integrations → Database Webhooks (enable it if asked) → Create a new hook:
+         name `push_new_approval`, table `public.approvals`, events **Insert** only, type HTTP Request, method POST,
+         URL `https://fantasy.harrisonku.com/api/push/notify`, timeout **5000** ms, HTTP header
+         `Authorization` = `Bearer <PUSH_NOTIFY_SECRET>` → Create.
+      5. **iPhone**: Safari → https://fantasy.harrisonku.com → Share → *Add to Home Screen* → open from the icon →
+         unlock → Inbox → **🔔 Enable notifications** → Allow → **Test** (a notification should arrive).
+      6. End-to-end check: tell Claude "check push" — it files a harmless test approval (`fantasy approval request
+         --rest`, action `other`); the notification should arrive within seconds; tap it, then **Reject** the card.
 
 ## Done
 - [x] Network allowlist with wildcard domains (2026-10-18).

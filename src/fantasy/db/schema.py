@@ -301,3 +301,27 @@ tasks = Table(
     ts("updated_at"),
     UniqueConstraint("title", name="uq_tasks_title"),
 )
+
+# --- Web Push (dashboard notifications for new pending approvals; docs/runbooks/dashboard.md "Notifications").
+# Written ONLY by the dashboard's server routes with the service key (RLS on, no anon policy); never published
+# from a local SQLite copy (fantasy.db.rest.PUBLISH_SKIP). Present here so the DDL snapshot / migrations agree.
+push_subscriptions = Table(
+    "push_subscriptions",
+    metadata,
+    Column("endpoint", Text, primary_key=True),  # push service URL (unique per browser/device install)
+    Column("p256dh", Text, nullable=False),  # subscription public key (base64url)
+    Column("auth", Text, nullable=False),  # subscription auth secret (base64url)
+    Column("user_agent", Text),
+    ts("created_at"),
+    ts("last_ok_at"),  # last successful delivery
+    Column("last_error", Text),  # last non-fatal send error (status code + short text)
+)
+
+push_sent = Table(  # one row per approval notified (claimed before sending: at-most-once, idempotent)
+    "push_sent",
+    metadata,
+    Column("approval_id", String, primary_key=True),
+    ts("sent_at"),
+    Column("recipients", Integer),  # subscriptions delivered to
+    Column("failures", Integer),
+)

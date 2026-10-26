@@ -11,6 +11,7 @@ import { todayET } from "@/lib/sim";
 import { latestAdvice, type AdviceRow } from "@/lib/moves";
 import { groupInbox, joinDecisions, linkRowsOr, linkThreads, NOT_LINKABLE_IN, withoutLinked } from "@/lib/inbox";
 import { AutoRefresh } from "@/components/client";
+import { PushToggle } from "@/components/PushToggle";
 import { ageSeconds } from "@/lib/format";
 import { isPrivateEvent, latestPerKind } from "@/lib/agentPure";
 import { buildFeed, decisionIdOf, feedFacets, type FeedItem, filterFeed, isReply, NOTABLE_EVENT_KINDS, threadRootOf } from "@/lib/feed";
@@ -305,6 +306,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         <h1 className="text-xl font-semibold tracking-tight">Inbox</h1>
         {page.isFirst && cards.length > 0 && <EvidenceLegend />}
       </div>
+      <PushToggle />
       {errors.map((e, i) => (
         <ErrorNote key={i} error={e} />
       ))}
