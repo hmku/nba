@@ -1,0 +1,86 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "When Leonard leaves IL, drop Fears (not Bailey)",
+  "status": "awaiting_yes",
+  "headline": "Leonard (O, IL) is expected back ~Oct 28; then 14 healthy players for 13 spots: drop Fears, keep Bailey.",
+  "week": 2,
+  "verdict": "The season sim now rates Bailey well above Fears: dropping Bailey costs about 2 pp of playoff odds versus dropping Fears. Nothing to do until Leonard's tag clears.",
+  "requires_user_yes": true,
+  "metrics": [
+   {
+    "label": "ΔP(playoffs), drop Bailey",
+    "value": -1.7,
+    "se": 0.14,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs), drop Fears",
+    "value": 0.45,
+    "se": 0.12,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(title), either drop",
+    "value": 0.1,
+    "se": 0.2,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": false
+   }
+  ],
+  "risks": [
+   "Fears is a young guard whose role could grow; in-season projections have seen only a week of games.",
+   "Deltas are vs a replacement-level pickup (sim IL-replacement baseline); P(title) differences are noise.",
+   "Executed only after Leonard's O tag clears on Yahoo, and only before the players' games that day (Yahoo #174)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-10-26.md"
+   },
+   {
+    "label": "Sim outputs",
+    "path": "data/processed/verdicts/compare-drop-bailey-vs-fears_2026-10-26.json"
+   }
+  ],
+  "rationale": [
+   "- Fears has the lowest season value on the roster (-0.57 per game, opportunity detector's drop rule).",
+   "- Paired season sims, 3 seeds x 8000 each, season-sim-0.8.1, ros-proj-0.5.0 in-season projections.",
+   "- The sim's roster cap already cuts Fears in ~65% of runs when Leonard returns: the model agrees."
+  ],
+  "why_now": {
+   "before": "Bailey has been the planned drop since 10-22/10-24 (Champagnie for Bailey, approved by you). That compared Bailey with Champagnie, never with Fears.",
+   "changed": [
+    {
+     "text": "Champagnie was added without a drop (open IL spot), so the question is now Bailey vs Fears, which we had not simulated.",
+     "kind": "league"
+    },
+    {
+     "text": "In-season projections (ros-proj-0.5.0, a week of box scores) and season-sim-0.8.1 replace the draft-time numbers.",
+     "kind": "model"
+    }
+   ],
+   "evidence": [
+    "ΔP(playoffs), drop Bailey",
+    "ΔP(playoffs), drop Fears"
+   ]
+  }
+ },
+ "params": {
+  "add": null,
+  "drop": "jeremiah-fears",
+  "drop_yahoo_player_id": 10440,
+  "trigger": "kawhi-leonard (Yahoo 4896) no longer tagged O and must leave IL",
+  "tool": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --drop <player> --sims 8000 --seed 0|1|2 (season-sim-0.8.1)",
+  "supersedes_plan": "drop ace-bailey on the next IL return (daily logs 2026-10-24/25)"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "roster_capture": "data/raw/yahoo/league_rosters_2026-10-26.json"
+ }
+}

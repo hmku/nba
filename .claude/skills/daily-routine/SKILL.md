@@ -137,7 +137,7 @@ is interested in X; details private"). A thread message
   visited plan, `fixed_point.picked`; 0.4.0 could return the cycle's other plan and start him).
 - Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
-  (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, `fantasy inseason stream`
+  (`fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise; without `--league-file` it uses draft-time rosters and refuses FAs a team drafted then dropped, e.g. Hartenstein 2026-10-26) and, `fantasy inseason stream`
   (below).
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
 - **Minutes opportunities** (after `update-projections` (1.6) and the news triage (1.4b), so injuries, news and

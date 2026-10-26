@@ -1,0 +1,85 @@
+{
+ "date": "2026-10-26",
+ "premove_league": "data/processed/verdicts/league-moves_2026-10-26_premove_league.json",
+ "baseline_drop": "jeremiah-fears (lowest season value; sim roster cap already releases him on Leonard's return)",
+ "sims": 4000,
+ "seed": 0,
+ "results": {
+  "jay-huff": {
+   "command": "fantasy sim compare --league-file <premove> --add jay-huff --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8725,
+    "after": 0.8682,
+    "delta": -0.0043,
+    "delta_se": 0.0034
+   },
+   "p_title": {
+    "before": 0.2873,
+    "after": 0.2797,
+    "delta": -0.0075,
+    "delta_se": 0.0047
+   },
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-09 (in 64% of sims)",
+    "after: assumes the roster cap releases Jay Huff from ~2027-01-11 (in 61% of sims)"
+   ]
+  },
+  "kris-dunn": {
+   "command": "fantasy sim compare --league-file <premove> --add kris-dunn --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8725,
+    "after": 0.882,
+    "delta": 0.0095,
+    "delta_se": 0.0034
+   },
+   "p_title": {
+    "before": 0.2873,
+    "after": 0.2923,
+    "delta": 0.005,
+    "delta_se": 0.0044
+   },
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-09 (in 64% of sims)",
+    "after: assumes the roster cap releases Kris Dunn from ~2027-01-09 (in 64% of sims)"
+   ]
+  },
+  "derrick-jones-jr": {
+   "command": "fantasy sim compare --league-file <premove> --add derrick-jones-jr --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8725,
+    "after": 0.865,
+    "delta": -0.0075,
+    "delta_se": 0.0032
+   },
+   "p_title": {
+    "before": 0.2873,
+    "after": 0.2843,
+    "delta": -0.003,
+    "delta_se": 0.0044
+   },
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-09 (in 64% of sims)",
+    "after: assumes the roster cap releases Derrick Jones Jr. from ~2027-01-10 (in 61% of sims)"
+   ]
+  },
+  "paul-reed": {
+   "command": "fantasy sim compare --league-file <premove> --add paul-reed --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8725,
+    "after": 0.8725,
+    "delta": 0.0,
+    "delta_se": 0.0034
+   },
+   "p_title": {
+    "before": 0.2873,
+    "after": 0.2875,
+    "delta": 0.0003,
+    "delta_se": 0.0046
+   },
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-09 (in 64% of sims)",
+    "after: assumes the roster cap releases Paul Reed from ~2027-01-11 (in 60% of sims)"
+   ]
+  }
+ }
+}
