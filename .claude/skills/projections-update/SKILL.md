@@ -62,7 +62,7 @@ fantasy data fetch-external --source espn      # refresh ESPN's 2026-27 numbers 
 ```
 JSON: `base` (`model_version`, `rows` ~450 = `Params.max_rows`, `sha256`, `source_counts`:
 `bbref_baseline`, `bbref_baseline+manual`, `manual_rookie_prior`), `inputs[]` (path, sha256, url,
-fetched_at), `default` (`projections_version`, `model_version` e.g. `baseline-0.2.1+blend-0.2.0`,
+fetched_at), `default` (`projections_version`, `model_version` e.g. `baseline-0.3.0+blend-0.2.0`,
 `sha256`, `weights`, `inputs` = base + ESPN shas, `ignored_external` = ESPN players we do not project).
 Same inputs -> same sha256 (`git diff data/processed` empty). Manual overrides act on the base and so
 flow into the blend; blended players have `source` ending in `+blend`. Note an override's per-game

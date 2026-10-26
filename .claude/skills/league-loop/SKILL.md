@@ -25,7 +25,7 @@ the migration that makes intel private, `20261019120000_private_league_intel.sql
 ## 0. Cadence (suggestions, not verified requirements)
 | When (ET) | Why | Who |
 |---|---|---|
-| Daily ~10:00 | after overnight injury news and Yahoo's stat close, before most tip-offs (7 PM) | **built as the local scheduled task `fantasy-daily` running the `daily-routine` skill** (reads Yahoo itself; lineup + IL moves; asks before add/drops). A cloud THINK job on Muse intel is optional on top. |
+| Daily 07:00 | after overnight injury news and Yahoo's stat close, before most tip-offs (7 PM) | **built as the local scheduled task `fantasy-daily` running the `daily-routine` skill** (reads Yahoo itself; lineup + IL moves; asks before add/drops). A cloud THINK job on Muse intel is optional on top. |
 | Sunday ~18:00 | before the weekly matchup rollover (our league has **daily** lineups, `weekly_deadline: daily_today`, verified 2026-10-18 - lineups lock per game, not weekly) | THINK job, Sunday mode (next week's matchup) |
 | Ad hoc | user asks "check my team"; Muse posts urgent `injury_news` / `trade` | THINK in any session |
 | Every few hours (Muse's own schedule) | fresh snapshots | Muse |
@@ -40,13 +40,13 @@ snapshots really are. A cloud scheduled task is created with the `create_trigger
 | History / one item | `fantasy intel list --since 2d --rest --json`, `fantasy intel show <snap_id> --rest --json` | BUILT |
 | Ops state (open txns, approvals, stale runs) | `fantasy txn list --rest`, `txn reconcile --rest`, `approval list --status all --rest`, `run list --rest` (`fantasy status` itself is local-DB only) | BUILT |
 | League settings (max adds/week, IL slots, lock type) | `fantasy settings show --json` | BUILT |
-| Season / week odds | `fantasy sim season`, `fantasy sim matchup --week N`, `fantasy sim compare --add .. --drop ..` | BUILT (`season-sim-0.6.0`, IL replacement on by default; `--league-file data/manual/league_rosters_2026-27.json`) |
+| Season / week odds | `fantasy sim season`, `fantasy sim matchup --week N`, `fantasy sim compare --add .. --drop ..` | BUILT (`season-sim-0.8.1`, IL replacement + roster cap on by default; `--league-file data/manual/league_rosters_2026-27.json`) |
 | Rosters from Yahoo (local browser capture) | `scripts/yahoo/capture_rosters.js` -> `fantasy league import-capture --kind rosters` -> `fantasy league sync --capture .. [--write]` | BUILT (T-004; runbook `docs/runbooks/roster_sync.md`; run by the `daily-routine` skill) |
 | Rest-of-season player values | `fantasy values build --json`, `fantasy data top` | BUILT (season-long, not schedule-aware) |
 | Muse snapshot -> `rosters.json` converter (cloud path without a browser) | `fantasy intel export-league` | PLANNED (Yahoo's real schedule is already in `data/manual/league_schedule.json`) |
-| Daily lineup optimizer | `fantasy lineup plan --date D [--week] --json` | BUILT (`lineup-0.2.0`, T-005; needs a same-day roster capture) |
+| Daily lineup optimizer | `fantasy lineup plan --date D [--week] --json` | BUILT (`lineup-0.4.1`, T-005; needs a same-day roster capture) |
 | Streaming ranker | `fantasy inseason stream [--date D] [--free-agents capture] --json` | BUILT (`inseason-0.3.x`, matchup-weighted vs the real opponent; legacy window ranker `--window-only D1..D2`) |
-| Trade evaluation (both sides, paired) | `fantasy inseason trade --partner N --give .. --get .. --json` | BUILT (`inseason-0.1.0`); league-wide trade scan T-008 PLANNED |
+| Trade evaluation (both sides, paired) | `fantasy inseason trade --partner N --give .. --get .. --json` | BUILT (`inseason-0.3.x`; league-wide scan `fantasy inseason trade-scan`, T-008) |
 | Conservative run (market projections) | `fantasy data alt-projections --blend market --out var/projections_alt/market.csv` + `sim ... --projections` | BUILT (`docs/research/conservative_sim.md`) |
 | Action queue for executors | `GET /api/agent/actions`, `POST /api/agent/actions/{txn_id}/claim|result` | PLANNED |
 | Ledger writes from a cloud session straight to Supabase | `fantasy run|lock|approval|txn|task ... --rest` (single rows, CAS on state) | BUILT (section 6) |
@@ -89,7 +89,7 @@ fantasy intel latest --rest --json > intel.json
    `lineup` txns (lineup + IL moves) need no approval: the user pre-authorised them on 2026-10-20. They are set from
    `fantasy lineup plan` by the local `daily-routine` skill in a `live` run, never by the cloud THINK job.
 6. **Report** to the user (chat / dashboard): the recommendations in the format of section 3, the
-   approval links (`/approvals`), and anything stale/conflicting. Then `fantasy run end --status succeeded
+   approval links (`/inbox`), and anything stale/conflicting. Then `fantasy run end --status succeeded
    --summary "..." --rest` and the `handoff` skill if anything durable changed.
 
 **Bar for recommending a move (priors, revisit after a few weeks of results):** add/drop only if
@@ -142,7 +142,7 @@ Every recommendation is a planned txn whose payload is exact enough for a dumb e
   `--approval-expires-in` option that matches `expires_at` is PLANNED. Until then the executor and the
   PLANNED queue must refuse an action whose payload `expires_at` has passed, whatever the approval says.
 - Text to the user: one line per action ("Add Naz Reid / drop Saddiq Bey: +2.1 pp playoffs (fitted, SE
-  0.6); blocks 42% -> 61% this week; expires Mon 7 PM ET; approve at /approvals"), then the caveats.
+  0.6); blocks 42% -> 61% this week; expires Mon 7 PM ET; approve at /inbox"), then the caveats.
 
 ## 4. EXECUTE and VERIFY (who does what)
 - **Executor = Muse** (via the PLANNED action queue) **or a local session with browser tools** (BUILT

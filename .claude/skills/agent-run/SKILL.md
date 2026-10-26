@@ -106,7 +106,7 @@ fantasy approval show <apr_id> --wait 300 --json
   (`approved|rejected|expired`). Without `--wait` it always exits 0. Default expiry 6 h.
 - `fantasy txn plan` files the approval for you when policy requires it - don't request twice.
 - **Never run `fantasy approval decide` yourself** - that is the human's action (dashboard
-  `/approvals` or they type it). `.claude/settings.json` makes it prompt.
+  `/inbox` or they type it). `.claude/settings.json` makes it prompt.
 
 ## 6. Transactions (idempotent state machine)
 ```

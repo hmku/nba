@@ -61,7 +61,8 @@ is interested in X; details private"). A thread message
 ## 1. READ (sync)
 1. Rosters (MANDATORY before any lineup plan — `fantasy lineup plan` exits 2 `stale_capture` on slot data not read
    today ET): in the browser on `https://basketball.fantasysports.yahoo.com/nba/44495`, run the JS in
-   `scripts/yahoo/capture_rosters.js` with the browser JS tool; save the raw output to a scratch file, then
+   `scripts/yahoo/capture_rosters.js` with the browser JS tool; save the raw output to a scratch file (Yahoo's CSP blocks a POST to localhost: move it as a
+   compact text form and check player count + Yahoo-id sum, as on 2026-10-24/25), then
    `fantasy league import-capture --raw <raw.json> --kind rosters --out data/raw/yahoo/league_rosters_$D.json` (fills
    draft_slot, player_ids, capture_date), then `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --json`
    (dry diff) and, if it validates, `fantasy league sync --capture data/raw/yahoo/league_rosters_$D.json --write --record-lineup --json` (writes per-team lineup/status maps the lineup tool reads, and records today's actual Yahoo slots for the dashboard's Lineup tab; check `lineup_record.error` is null). Check its
@@ -71,7 +72,7 @@ is interested in X; details private"). A thread message
    `fantasy league score --capture <that file> --save --json` (check `summary.warnings`). The dashboard's This week page
    and `fantasy lineup plan` both read this row. Then refresh the dashboard's opponent lineups:
    `cd web && node scripts/league-state.mjs && cd ..` (commit `web/src/content/league_state.json`).
-2. Free agents: `scripts/yahoo/capture_free_agents.js` -> `data/raw/yahoo/free_agents_$D.json` (note waiver vs FA status).
+2. Free agents: `scripts/yahoo/capture_free_agents.js` (default `N = 150`; runs so far used the top 50) -> `data/raw/yahoo/free_agents_$D.json` (note waiver vs FA status).
 3. League transactions page `/nba/44495/transactions` (read the last 24 h; cross-check the sync diff).
 4. Injuries: `fantasy data fetch-injuries --json` (ESPN API + CBS) and Yahoo tags from the capture; disagreements
    (e.g. Yahoo Q vs ESPN healthy) go in the log.
@@ -136,8 +137,8 @@ is interested in X; details private"). A thread message
   visited plan, `fixed_point.picked`; 0.4.0 could return the cycle's other plan and start him).
 - Future days: the plan for tomorrow can be set today (Yahoo accepts future dates), but re-plan each morning.
 - Adds/drops/streams: candidates from the FA capture; evaluate each with paired simulations
-  (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, once
-  available, the streaming tool from `src/fantasy/inseason/` (week-1 analysis handoff `docs/handoffs/2026-10-20-week1-trades.md`).
+  (`fantasy sim compare --add <fa> --drop <mine> --json`: `delta` ± `delta_se`; |delta| < 2·SE = noise) and, `fantasy inseason stream`
+  (below).
   Respect the 6 adds/week limit and waiver timing (players marked `W (date)` are waiver claims, 2-day waivers).
 - **Minutes opportunities** (after `update-projections` (1.6) and the news triage (1.4b), so injuries, news and
   model A are fresh): `fantasy inseason opportunity --date $D --free-agents data/raw/yahoo/free_agents_$D.json --json`
@@ -251,7 +252,7 @@ dashboard); then follow agent-run §6 with that approval, re-reading Yahoo first
 **Timing (learned 2026-10-23):** Yahoo refuses an add/drop once either player's game has started that day — POST
 `/nba/44495/11/addplayer` returns error #174 "A player has already played and is no longer editable for today" (the
 page shows no error; read the network response). Execute add/drops in the morning run or before the earlier tip-off of
-the two players, else after Yahoo's day rolls over — NOT by 01:00 ET (#174 again at 01:00 ET 2026-10-24); the 07:00 run is expected to work (unverified). **Approval gap:** `fantasy txn plan` always files its OWN approval,
+the two players, else after Yahoo's day rolls over — NOT by 01:00 ET (#174 again at 01:00 ET 2026-10-24); a morning add worked 2026-10-24 11:18 ET (before the players' games). **Approval gap:** `fantasy txn plan` always files its OWN approval,
 so an advice approval (`fantasy approval request`) the user already approved can't satisfy the txn; the user must approve
 the txn's approval too (one extra click). Plan the txn as early as possible so both approvals land together.
 

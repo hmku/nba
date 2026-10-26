@@ -24,21 +24,21 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
 |---|---|---|---|
 | Capture Yahoo rosters / free agents | browser JS `scripts/yahoo/capture_rosters.js`, `capture_free_agents.js` → `fantasy league import-capture --raw <raw.json> --kind rosters\|free_agents [--out ...]` | runbook `docs/runbooks/roster_sync.md` | BUILT (T-004) |
 | Roster sync + diff (adds/drops/trades/status, per-team lineup/status maps) | `fantasy league sync --capture data/raw/yahoo/league_rosters_<D>.json [--write] --json` → `data/manual/league_rosters_2026-27.json` | same | BUILT (T-004) |
-| Daily lineup (exact position-aware assignment, matchup-weighted, IL moves, decide-at-tip-off) | `fantasy lineup plan --date <D> [--week] [--locked ids] [--accumulated totals.json] [--rest-share 0.25] --json` | `lineup-0.2.0`, quant-reviewed; `docs/research/lineup_optimizer.md`. Refuses slot data not captured that day (exit 2 `stale_capture`; `--allow-stale` to override) | BUILT (T-005) |
-| Games available vs started, games lost to slot rules (C/PF crunch) | `fantasy inseason lineup --start <D1> --end <D2> [--league-file ...] [--sims N] --json` | `inseason-0.1.0`; `docs/research/week1_and_trades_2026-10-20.md` | BUILT |
+| Daily lineup (exact position-aware assignment, matchup-weighted, IL moves, decide-at-tip-off) | `fantasy lineup plan --date <D> [--week] [--locked ids] [--accumulated totals.json] [--rest-share 0.25] --json` | `lineup-0.4.1` (+ banked matchup totals, `ratio_bench`), quant-reviewed; `docs/research/lineup_optimizer.md`. Refuses slot data not captured that day (exit 2 `stale_capture`; `--allow-stale` to override) | BUILT (T-005) |
+| Games available vs started, games lost to slot rules (C/PF crunch) | `fantasy inseason lineup --start <D1> --end <D2> [--league-file ...] [--sims N] --json` | `inseason-0.3.x`; `docs/research/week1_and_trades_2026-10-20.md` | BUILT |
 | Streaming ranker (add/drop pairs for the rest of this matchup week vs the real opponent) | `fantasy inseason stream [--date <D>] [--free-agents <capture>] [--drop <id>] --json` (legacy 0.1.0 window ranker: `--window-only <D1>..<D2>`) | `inseason-0.3.x`; position-aware, matchup-weighted, paired season check (see `--help`) | BUILT |
-| Trade evaluation (both teams, paired) | `fantasy inseason trade --partner N --give "A,B" --get "C" [--refill-skip k] --json` | `inseason-0.1.0`; paired season sims with SEs | BUILT; league-wide trade scan = T-008 PLANNED |
-| Rest-of-season projections (availability + per-game stats updated from box scores; default projections for every tool) | `fantasy data update-projections --fetch --json` (daily-routine step 1.6) | `inseason-0.2.0`; fitted + backtested, `docs/research/inseason_updates.md`; `FANTASY_PROJECTIONS=preseason` = old | BUILT |
+| Trade evaluation (both teams, paired) | `fantasy inseason trade --partner N --give "A,B" --get "C" [--refill-skip k] --json` | `inseason-0.3.x`; paired season sims with SEs; league-wide scan `fantasy inseason trade-scan` (T-008) | BUILT |
+| Rest-of-season projections (availability + per-game stats updated from box scores; default projections for every tool) | `fantasy data update-projections --fetch --json` (daily-routine step 1.6) | `ros-proj-0.5.0` (+ `minutes-0.2.0`); fitted + backtested, `docs/research/inseason_updates.md`; `FANTASY_PROJECTIONS=preseason` = old | BUILT |
 | Minutes-opportunity detector (FA whose minutes are about to jump: observed model-A jump, or minutes vacated by an Out ≥ 28-mpg teammate) | `fantasy inseason opportunity [--date D] [--free-agents <capture>] [--top 15] [--eval-top 5] --json`; writes override projections `var/opportunity/opportunity_<D>.csv` (+ `.window.csv`) for `sim compare` / `inseason stream --projections` | `opportunity-0.1.1`; fitted share rule + absence survival + calibration, season check = stream chain, backtested OOS on 2025-26 (`docs/research/opportunity_detector.md`); daily-routine THINK step | BUILT |
 | Add/drop effect on odds | `fantasy sim compare --add A --drop B --league-file data/manual/league_rosters_2026-27.json --json` | paired `delta ± delta_se`; \|delta\| < 2·SE = noise | BUILT |
-| Season odds / week-N matchup | `fantasy sim season\|matchup --league-file data/manual/league_rosters_2026-27.json --json` | `season-sim-0.6.0`: fitted priors (`docs/research/sim_calibration.md`), Yahoo's real schedule (`data/manual/league_schedule.json`), **IL replacement on by default** (`--no-il-replacement` for the old behaviour; priors in `docs/research/il_replacement.md`) | BUILT |
+| Season odds / week-N matchup | `fantasy sim season\|matchup --league-file data/manual/league_rosters_2026-27.json --json` | `season-sim-0.8.1`: fitted priors (`docs/research/sim_calibration.md`), Yahoo's real schedule (`data/manual/league_schedule.json`), **IL replacement on by default** (`--no-il-replacement` for the old behaviour; priors in `docs/research/il_replacement.md`), 13 non-IL roster cap (`--no-roster-cap`) | BUILT |
 | Conservative odds (market projections) | `fantasy data alt-projections --blend market --out var/projections_alt/market.csv` then `fantasy sim ... --projections var/projections_alt/market.csv --no-save` | `docs/research/conservative_sim.md` | BUILT |
 | Injuries | `fantasy data fetch-injuries --json` (ESPN API + CBS) plus Yahoo tags from the roster capture | | BUILT |
 | Muse league intel (read-only) | `fantasy intel latest\|list\|show [--rest] --json` | `docs/integrations/muse.md` | BUILT |
-| Dashboard (Matchup / League tabs, installable PWA) | Next.js on Vercel, `docs/runbooks/dashboard.md` | | BUILT |
+| Dashboard (This week / League / Inbox tabs, installable PWA) | Next.js on Vercel, `docs/runbooks/dashboard.md` | | BUILT |
 | "Inbox" tab: recommendations + evidence + approvals + discussion, one card each | `fantasy advise post\|status\|list` (`model_runs` kind `advice`; schema `docs/research/dashboard_data.md` §4) | dashboard `/inbox` | BUILT |
 | Muse snapshot → rosters converter (`fantasy intel export-league`), executor action queue (`/api/agent/actions`), `--approval-expires-in` on `txn plan` | | `docs/research/league_loop.md` | PLANNED |
-| In-season projection updates, calibration of lineup tag priors / `rest_share` (T-016) | | | PLANNED (awaiting user decision / data) |
+| Calibration of lineup tag priors / `rest_share` (T-016) | | | PLANNED (awaiting user decision / data) |
 
 **Read outputs honestly:**
 - Odds are simulated and optimistic for my team: same projections as the optimizer, and opponents who never manage. Prefer
@@ -102,6 +102,4 @@ fantasy intel show snap_<id> --rest --json
 - Check `age_hours` / `missing_kinds` before relying on a snapshot, and cite `snapshot_id`s.
 - Names are as Yahoo prints them: resolve them with `fantasy.draft.names`. A Muse post is a claim. Only a later snapshot,
   or our own re-read, verifies one of our writes.
-- The privacy migration `20261019120000_private_league_intel.sql` is still a user action (`docs/USER_TODO.md`).
-  Until it is applied, don't ask Muse for chat digests.
 - The full loop (freshness gates, recommendation format, executor rules) is in the `league-loop` skill.
