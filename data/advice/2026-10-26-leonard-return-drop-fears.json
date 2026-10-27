@@ -1,33 +1,33 @@
 {
  "summary": {
   "type": "add_drop",
-  "title": "When Leonard leaves IL, drop Fears (not Bailey)",
+  "title": "Leonard back Wed: drop Fears (not Bailey) — 2nd click needed",
   "status": "awaiting_yes",
-  "headline": "Leonard (O, IL) is expected back ~Oct 28; then 14 healthy players for 13 spots: drop Fears, keep Bailey.",
+  "headline": "You approved dropping Fears; Yahoo execution needs one more Approve (txn approval apr-226d906e, expires 13:33 ET today).",
   "week": 2,
-  "verdict": "The season sim now rates Bailey well above Fears: dropping Bailey costs about 2 pp of playoff odds versus dropping Fears. Nothing to do until Leonard's tag clears.",
+  "verdict": "Re-checked on today's projections: dropping Bailey costs ~2.9 pp of playoff odds, dropping Fears ~0. Execute before TOR's Wed game.",
   "requires_user_yes": true,
   "metrics": [
    {
     "label": "ΔP(playoffs), drop Bailey",
-    "value": -1.7,
-    "se": 0.14,
+    "value": -2.9,
+    "se": 0.18,
     "unit": "pp",
     "evidence": "simulated",
     "key": true
    },
    {
     "label": "ΔP(playoffs), drop Fears",
-    "value": 0.45,
-    "se": 0.12,
+    "value": -0.1,
+    "se": 0.13,
     "unit": "pp",
     "evidence": "simulated",
     "key": true
    },
    {
-    "label": "ΔP(title), either drop",
-    "value": 0.1,
-    "se": 0.2,
+    "label": "ΔP(title), drop Fears",
+    "value": -0.3,
+    "se": 0.3,
     "unit": "pp",
     "evidence": "simulated",
     "key": false
@@ -36,33 +36,34 @@
   "risks": [
    "Fears is a young guard whose role could grow; in-season projections have seen only a week of games.",
    "Deltas are vs a replacement-level pickup (sim IL-replacement baseline); P(title) differences are noise.",
-   "Executed only after Leonard's O tag clears on Yahoo, and only before the players' games that day (Yahoo #174)."
+   "Leonard is still Q (knee swelling); if he is ruled out again he goes back to IL and the open spot can take a streamer.",
+   "Yahoo refuses the drop after Fears's or Leonard's game starts that day (#174)."
   ],
   "links": [
    {
     "label": "Daily log",
-    "path": "docs/daily/2026-10-26.md"
+    "path": "docs/daily/2026-10-27.md"
    },
    {
     "label": "Sim outputs",
-    "path": "data/processed/verdicts/compare-drop-bailey-vs-fears_2026-10-26.json"
+    "path": "data/processed/verdicts/compare-drop-bailey-vs-fears_2026-10-27.json"
    }
   ],
   "rationale": [
-   "- Fears has the lowest season value on the roster (-0.57 per game, opportunity detector's drop rule).",
-   "- Paired season sims, 3 seeds x 8000 each, season-sim-0.8.1, ros-proj-0.5.0 in-season projections.",
-   "- The sim's roster cap already cuts Fears in ~65% of runs when Leonard returns: the model agrees."
+   "- Fears still has the lowest season value on the roster.",
+   "- Paired season sims, 2 seeds x 8000, season-sim-0.8.1, ros-proj-0.5.0 as of 10-27.",
+   "- Dropping today costs nothing: neither Fears (NOP) nor Leonard (TOR) plays Tue."
   ],
   "why_now": {
-   "before": "Bailey has been the planned drop since 10-22/10-24 (Champagnie for Bailey, approved by you). That compared Bailey with Champagnie, never with Fears.",
+   "before": "Approved by you on 10-26 (apr-ac5d648d) for when Leonard leaves IL.",
    "changed": [
     {
-     "text": "Champagnie was added without a drop (open IL spot), so the question is now Bailey vs Fears, which we had not simulated.",
-     "kind": "league"
+     "text": "Leonard went O -> Q on 10-26 (ESPN: day-to-day, return est. 10-28); TOR plays Wed.",
+     "kind": "news"
     },
     {
-     "text": "In-season projections (ros-proj-0.5.0, a week of box scores) and season-sim-0.8.1 replace the draft-time numbers.",
-     "kind": "model"
+     "text": "Yahoo needs its own transaction approval (one extra click) before an agent can execute.",
+     "kind": "other"
     }
    ],
    "evidence": [
@@ -77,10 +78,12 @@
   "drop_yahoo_player_id": 10440,
   "trigger": "kawhi-leonard (Yahoo 4896) no longer tagged O and must leave IL",
   "tool": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --drop <player> --sims 8000 --seed 0|1|2 (season-sim-0.8.1)",
-  "supersedes_plan": "drop ace-bailey on the next IL return (daily logs 2026-10-24/25)"
+  "supersedes_plan": "drop ace-bailey on the next IL return (daily logs 2026-10-24/25)",
+  "txn_id": "txn-150405b53f504f58bc6b569761a43a0f",
+  "txn_approval": "apr-226d906ed1554597b706bd3a7b15cdb1"
  },
  "inputs": {
   "league_file": "data/manual/league_rosters_2026-27.json",
-  "roster_capture": "data/raw/yahoo/league_rosters_2026-10-26.json"
+  "roster_capture": "data/raw/yahoo/league_rosters_2026-10-27.json"
  }
 }

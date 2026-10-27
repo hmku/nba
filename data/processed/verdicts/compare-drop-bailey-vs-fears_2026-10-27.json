@@ -1,0 +1,180 @@
+{
+ "question": "which player to drop when Kawhi Leonard leaves IL (re-check 2026-10-27, refreshed projections)",
+ "league_file": "data/manual/league_rosters_2026-27.json",
+ "sims": 8000,
+ "seeds": [
+  0,
+  1
+ ],
+ "command": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --drop <p> --sims 8000 --seed <s> --no-save --json",
+ "runs": {
+  "ace-bailey": [
+   {
+    "ok": true,
+    "sim_version": "season-sim-0.8.1",
+    "team": 1,
+    "n_sims": 8000,
+    "seed": 0,
+    "add": [],
+    "drop": [
+     {
+      "player_id": "ace-bailey",
+      "name": "Ace Bailey"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8759,
+     "after": 0.8478,
+     "delta": -0.0281,
+     "delta_se": 0.0026
+    },
+    "p_title": {
+     "before": 0.2276,
+     "after": 0.2241,
+     "delta": -0.0035,
+     "delta_se": 0.0037
+    },
+    "exp_cat_wins": {
+     "before": 90.8891,
+     "after": 89.3001,
+     "delta": -1.5889,
+     "delta_se": 0.0392
+    },
+    "compute_seconds": 35.89,
+    "notes": [
+     "before: assumes the roster cap releases Jeremiah Fears from ~2026-12-02 (in 73% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   },
+   {
+    "ok": true,
+    "sim_version": "season-sim-0.8.1",
+    "team": 1,
+    "n_sims": 8000,
+    "seed": 1,
+    "add": [],
+    "drop": [
+     {
+      "player_id": "ace-bailey",
+      "name": "Ace Bailey"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8734,
+     "after": 0.8438,
+     "delta": -0.0296,
+     "delta_se": 0.0025
+    },
+    "p_title": {
+     "before": 0.2427,
+     "after": 0.2329,
+     "delta": -0.0099,
+     "delta_se": 0.0038
+    },
+    "exp_cat_wins": {
+     "before": 90.8249,
+     "after": 89.1371,
+     "delta": -1.6878,
+     "delta_se": 0.0391
+    },
+    "compute_seconds": 36.51,
+    "notes": [
+     "before: assumes the roster cap releases Jeremiah Fears from ~2026-12-02 (in 73% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  ],
+  "jeremiah-fears": [
+   {
+    "ok": true,
+    "sim_version": "season-sim-0.8.1",
+    "team": 1,
+    "n_sims": 8000,
+    "seed": 0,
+    "add": [],
+    "drop": [
+     {
+      "player_id": "jeremiah-fears",
+      "name": "Jeremiah Fears"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8759,
+     "after": 0.8728,
+     "delta": -0.0031,
+     "delta_se": 0.0018
+    },
+    "p_title": {
+     "before": 0.2276,
+     "after": 0.2229,
+     "delta": -0.0047,
+     "delta_se": 0.0024
+    },
+    "exp_cat_wins": {
+     "before": 90.8891,
+     "after": 90.8474,
+     "delta": -0.0416,
+     "delta_se": 0.0233
+    },
+    "compute_seconds": 36.46,
+    "notes": [
+     "before: assumes the roster cap releases Jeremiah Fears from ~2026-12-02 (in 73% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   },
+   {
+    "ok": true,
+    "sim_version": "season-sim-0.8.1",
+    "team": 1,
+    "n_sims": 8000,
+    "seed": 1,
+    "add": [],
+    "drop": [
+     {
+      "player_id": "jeremiah-fears",
+      "name": "Jeremiah Fears"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8734,
+     "after": 0.8749,
+     "delta": 0.0015,
+     "delta_se": 0.0018
+    },
+    "p_title": {
+     "before": 0.2427,
+     "after": 0.242,
+     "delta": -0.0008,
+     "delta_se": 0.0024
+    },
+    "exp_cat_wins": {
+     "before": 90.8249,
+     "after": 90.758,
+     "delta": -0.0669,
+     "delta_se": 0.0238
+    },
+    "compute_seconds": 36.49,
+    "notes": [
+     "before: assumes the roster cap releases Jeremiah Fears from ~2026-12-02 (in 73% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [3, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  ]
+ }
+}
