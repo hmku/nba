@@ -118,8 +118,8 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       1. **Migration**: Supabase → fantasy-nba → SQL Editor → New query → paste
          `supabase/migrations/20261026120000_push_notifications.sql` → Run (or tell Claude "apply the push migration";
          it needs your yes). Creates `push_subscriptions` + `push_sent` (private: RLS on, no anon access).
-      2. **Keys** (terminal, any folder): `npx web-push generate-vapid-keys` → prints a Public Key and a Private Key.
-         And a webhook secret: `openssl rand -hex 32`. Don't paste any of these into chat or commit them.
+      2. **Keys**: done 2026-10-26 — generated into `~/.config/fantasy/push_secrets.env` (chmod 600, not in the repo).
+         Don't paste them into chat or commit them.
       3. **Vercel** → fantasy-nba → Settings → Environment Variables, environment **Production**:
          `VAPID_PUBLIC_KEY` = Public Key; `VAPID_PRIVATE_KEY` = Private Key (**Sensitive**);
          `VAPID_SUBJECT` = `https://fantasy.harrisonku.com`; `PUSH_NOTIFY_SECRET` = the openssl value (**Sensitive**) → Save.
