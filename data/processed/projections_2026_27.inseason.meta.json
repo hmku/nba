@@ -1,12 +1,12 @@
 {
   "model_version": "ros-proj-0.5.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0",
-  "as_of": "2026-10-27",
-  "git_sha": "b28c01a",
+  "as_of": "2026-10-28",
+  "git_sha": "3fc6441",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-  "prior_sha256": "19ae2ac4a253219700e48eddd6d0ee24ae052222bc4bbe8408974c2feb268212",
+  "prior_sha256": "ca21d320688daa1cf2dd3fe54853f8bc8def1b5552b4bc8339338b1b3d88c441",
   "rows": 454,
-  "players_with_box_scores": 343,
+  "players_with_box_scores": 347,
   "max_team_games": 4,
   "gp_semantics": "gp is a RATE, not a count: 82 x expected share of the remaining fantasy-season team games played (per-game play probability x 82; fantasy season ends 2027-03-21); ros_team_games / ros_games = remaining team games / expected games through that date; fantasy_gp_exp = games played + ros_games; season_gp_exp = 82-game season total (games played + the same share of every remaining NBA game)",
   "availability": {
@@ -100,42 +100,42 @@
       "use": "lineup / streaming: per-game counting stats x mpg_next5 / mpg"
     }
   },
-  "games_missed_overrides": 25,
+  "games_missed_overrides": 28,
   "gtd_window_prior": {
     "players": 48,
     "games": 1.0
   },
-  "status": "injury feed fetched 2026-10-27",
+  "status": "injury feed fetched 2026-10-28",
   "playoff_share": {
-    "remaining_schedule": 0.1346,
+    "remaining_schedule": 0.136,
     "season_schedule": 0.1283,
-    "remaining_used": 0.1573,
+    "remaining_used": 0.159,
     "season_used": 0.15
   },
-  "latest_box_score_date": "2026-10-26",
+  "latest_box_score_date": "2026-10-27",
   "warnings": [
-    "53 projected players never in a box score although their team played >= 3 games (injured, waived or an id mismatch?): aaron-holiday, adama-alpha-bal, amir-coffey, andersson-garcia, bez-mbeng, bruce-brown, caleb-martin, cam-thomas, cameron-payne, cody-martin, cole-anthony, cormac-ryan, dalen-terry, dangelo-russell, daquan-jeffries",
-    "65 players in box scores without a projection row (not projected): aday-mara, alex-karaban, alex-morales, alijah-martin, allen-graves, alpha-diallo, baba-miller, bennett-stirtz, bronny-james, brooks-barnhizer, bruce-thornton, bryce-hopkins, charles-bassey, chris-cenac-jr, chris-manon"
+    "54 projected players never in a box score although their team played >= 3 games (injured, waived or an id mismatch?): aaron-holiday, adama-alpha-bal, amir-coffey, andersson-garcia, bez-mbeng, bruce-brown, caleb-martin, cam-thomas, cameron-payne, cody-martin, cole-anthony, cormac-ryan, dalen-terry, dangelo-russell, daquan-jeffries",
+    "69 players in box scores without a projection row (not projected): aday-mara, alex-karaban, alex-morales, alijah-martin, allen-graves, alpha-diallo, baba-miller, bennett-stirtz, bronny-james, brooks-barnhizer, bruce-thornton, bryce-hopkins, charles-bassey, chaz-lanier, chris-cenac-jr"
   ],
   "inputs": [
     {
       "path": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-      "sha256": "19ae2ac4a253219700e48eddd6d0ee24ae052222bc4bbe8408974c2feb268212"
+      "sha256": "ca21d320688daa1cf2dd3fe54853f8bc8def1b5552b4bc8339338b1b3d88c441"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
-      "sha256": "6e2df1bda125ac37dbcc48170394f3cc1099b80fe3f11679be1bff0d8035f072"
+      "sha256": "11dfe25a9a34012b8d0c927f8dd1b10d957b4a54672f8a7ee5058c3884e5584e"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/team_games_2027.csv.gz",
-      "sha256": "322231c11407bce23dc3183e7dc6810b2823ea27af7ac20a7ae918406ab1e628"
+      "sha256": "579575542ea6122047f727941a70b854e3f7828aa1d4627224320d88cc22f122"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
-      "sha256": "6cb469a2e6d8e600232b99128a6e335d8acb865b238d4089f881a2d7e8c3b70c"
+      "sha256": "13a9ea7c75383cda2884d7b65744af7a6618b401451239f9b5cf0d825024144f"
     }
   ],
-  "sha256": "4ceb50693a58d77466c919c66e9e60127f79ec164184b535620db5cb3c85541f",
+  "sha256": "c5e4bb02c7f79da2148a3090f482bc8a519f31044338c7002348cb7d2294aab2",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": [
@@ -153,7 +153,9 @@
       "anfernee-simons",
       "anthony-black",
       "anthony-davis",
+      "anthony-edwards",
       "anthony-gill",
+      "baylor-scheierman",
       "ben-saraf",
       "ben-sheppard",
       "bez-mbeng",
@@ -182,8 +184,10 @@
       "daeqwon-plowden",
       "dalen-terry",
       "dalton-knecht",
+      "damian-lillard",
       "dangelo-russell",
       "daniel-gafford",
+      "daniss-jenkins",
       "danny-wolf",
       "daquan-jeffries",
       "dariq-whitehead",
@@ -200,6 +204,7 @@
       "drake-powell",
       "drew-eubanks",
       "dwight-powell",
+      "egor-demin",
       "elijah-harkless",
       "ethan-thompson",
       "franz-wagner",
@@ -215,14 +220,17 @@
       "guerschon-yabusele",
       "gui-santos",
       "haywood-highsmith",
+      "hugo-gonzalez",
       "isaac-okoro",
       "isaiah-hartenstein",
       "isaiah-jackson",
       "isaiah-stewart",
+      "ja-morant",
+      "jaden-hardy",
       "jaden-ivey",
       "jahmai-mashack",
-      "jake-laravia",
       "jakob-poeltl",
+      "jalen-duren",
       "jalen-green",
       "jalen-slawson",
       "jalen-smith",
@@ -232,8 +240,10 @@
       "jamison-battle",
       "jared-mccain",
       "jaren-jackson-jr",
+      "jarred-vanderbilt",
       "jase-richardson",
       "javon-small",
+      "javonte-green",
       "jaylin-williams",
       "jerami-grant",
       "jeremiah-robinson-earl",
@@ -243,27 +253,32 @@
       "jimmy-butler",
       "joan-beringer",
       "jock-landale",
+      "john-collins",
       "john-konchar",
       "john-poulakidas",
       "jonas-valanciunas",
       "jonathan-isaac",
       "jonathan-kuminga",
-      "jordan-clarkson",
       "jordan-hawkins",
       "jordan-miller",
       "jordan-poole",
       "jordan-walsh",
+      "jose-alvarado",
+      "jrue-holiday",
       "julian-phillips",
       "julian-reese",
       "justin-champagnie",
       "justin-edwards",
       "kam-jones",
       "kasparas-jakucionis",
+      "kawhi-leonard",
       "keaton-wallace",
+      "keegan-murray",
       "kelly-oubre-jr",
       "kennedy-chandler",
       "kenrich-williams",
       "kentavious-caldwell-pope",
+      "kevin-huerter",
       "kevin-porter-jr",
       "kevon-looney",
       "killian-hayes",
@@ -277,11 +292,11 @@
       "landry-shamet",
       "larry-nance-jr",
       "lauri-markkanen",
-      "leaky-black",
       "lj-cryer",
       "lonzo-ball",
       "lucas-williamson",
       "luka-garza",
+      "luke-kornet",
       "malachi-smith",
       "marcus-sasser",
       "marcus-smart",
@@ -289,6 +304,7 @@
       "marvin-bagley-iii",
       "matisse-thybulle",
       "micah-peavy",
+      "mike-conley",
       "miles-mcbride",
       "mitchell-robinson",
       "mohamed-diawara",
@@ -300,6 +316,8 @@
       "nick-smith-jr",
       "nicolas-batum",
       "nikola-topic",
+      "noah-clowney",
+      "nolan-traore",
       "norman-powell",
       "obi-toppin",
       "ochai-agbaji",
@@ -316,11 +334,14 @@
       "rayan-rupert",
       "reed-sheppard",
       "rob-dillingham",
+      "robert-williams",
       "ryan-kalkbrenner",
       "santi-aldama",
+      "scoot-henderson",
       "scotty-pippen-jr",
       "shaedon-sharpe",
       "sharife-cooper",
+      "sidy-cissoko",
       "spencer-jones",
       "steven-adams",
       "svi-mykhailiuk",
@@ -349,7 +370,8 @@
       "walter-clayton",
       "will-richard",
       "zach-collins",
-      "zach-lavine"
+      "zach-lavine",
+      "ziaire-williams"
     ]
   },
   "movers": [
@@ -368,9 +390,37 @@
       "team_games": 4
     },
     {
+      "player_id": "bruce-brown",
+      "gp_preseason": 59.1,
+      "gp": 36.7,
+      "played": 0,
+      "team_games": 4
+    },
+    {
+      "player_id": "anthony-edwards",
+      "gp_preseason": 43.1,
+      "gp": 64.6,
+      "played": 4,
+      "team_games": 4
+    },
+    {
+      "player_id": "jaren-jackson-jr",
+      "gp_preseason": 39.8,
+      "gp": 60.7,
+      "played": 4,
+      "team_games": 4
+    },
+    {
       "player_id": "rob-dillingham",
       "gp_preseason": 52.9,
       "gp": 32.4,
+      "played": 0,
+      "team_games": 4
+    },
+    {
+      "player_id": "ochai-agbaji",
+      "gp_preseason": 51.6,
+      "gp": 31.5,
       "played": 0,
       "team_games": 4
     },
@@ -382,44 +432,16 @@
       "team_games": 4
     },
     {
+      "player_id": "jalen-wilson",
+      "gp_preseason": 49.4,
+      "gp": 30.0,
+      "played": 0,
+      "team_games": 4
+    },
+    {
       "player_id": "javon-small",
       "gp_preseason": 48.8,
       "gp": 29.6,
-      "played": 0,
-      "team_games": 4
-    },
-    {
-      "player_id": "tyrese-martin",
-      "gp_preseason": 48.4,
-      "gp": 29.3,
-      "played": 0,
-      "team_games": 4
-    },
-    {
-      "player_id": "aaron-holiday",
-      "gp_preseason": 47.1,
-      "gp": 28.4,
-      "played": 0,
-      "team_games": 4
-    },
-    {
-      "player_id": "sharife-cooper",
-      "gp_preseason": 47.0,
-      "gp": 28.4,
-      "played": 0,
-      "team_games": 4
-    },
-    {
-      "player_id": "ethan-thompson",
-      "gp_preseason": 46.4,
-      "gp": 28.0,
-      "played": 0,
-      "team_games": 4
-    },
-    {
-      "player_id": "dwight-powell",
-      "gp_preseason": 45.9,
-      "gp": 27.6,
       "played": 0,
       "team_games": 4
     }
