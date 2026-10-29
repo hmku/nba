@@ -1,0 +1,61 @@
+{
+ "date": "2026-10-29",
+ "premove_league": "data/processed/verdicts/league-moves_2026-10-29_premove_league.json",
+ "baseline_drop": "jeremiah-fears",
+ "commands": [
+  "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-29_premove_league.json --add pelle-larsson --drop jeremiah-fears --sims 4000 --no-save --json"
+ ],
+ "results": {
+  "pelle-larsson": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.1",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "pelle-larsson",
+     "name": "Pelle Larsson"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "jeremiah-fears",
+     "name": "Jeremiah Fears"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8742,
+    "after": 0.8665,
+    "delta": -0.0077,
+    "delta_se": 0.0032
+   },
+   "p_title": {
+    "before": 0.2645,
+    "after": 0.2532,
+    "delta": -0.0112,
+    "delta_se": 0.0044
+   },
+   "exp_cat_wins": {
+    "before": 90.2925,
+    "after": 90.1393,
+    "delta": -0.1532,
+    "delta_se": 0.0472
+   },
+   "compute_seconds": 12.52,
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-16 (in 66% of sims)",
+    "after: assumes the roster cap releases Pelle Larsson from ~2027-01-16 (in 65% of sims)"
+   ],
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 3, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 3, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null
+  }
+ },
+ "skipped": {
+  "jay-huff": "pure drop by Shalom (yahoo 1), nobody added",
+  "keegan-murray": "dropped by jesse in the Larsson move; on waivers (W Nov 1), O"
+ }
+}

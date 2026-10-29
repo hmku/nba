@@ -1,0 +1,45 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Week-2 idea: add Draymond Green, drop Fears (+4 pp this week)",
+  "status": "idea",
+  "headline": "Optional week-only boost; season effect is noise. Needs your yes before NOP tips at 20:00 ET today.",
+  "week": 2,
+  "verdict": "Raises this week's win odds by ~4 pp (we trail 3-6); no measurable season effect either way.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(win week 2)", "value": 4.0, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs)", "value": -0.2, "se": 0.5, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title)", "value": 0.7, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": false}
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds; Fears (19, rookie) could grow into a bigger role.",
+   "Season numbers assume we later swap Draymond for the ~6th-best FA (Derrick Jones Jr. today): a prior.",
+   "Yahoo refuses the move once Fears's game starts (20:00 ET); after that the gain shrinks."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-10-29.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-10-29.json"}
+  ],
+  "rationale": [
+   "- Draymond (GSW, F/C) adds REB/AST/STL/BLK for the 2 games left in our window; Fears loses 2 games.",
+   "- Stream tool inseason-0.3.1 on this morning's banked score: week MC 4000 paired sims.",
+   "- Not a 'helps' verdict: season delta within 2 SE, so it's your call on this week only."
+  ],
+  "why_now": {
+   "before": "Fears was already the agreed drop for Leonard's return (you approved on 10-26; Leonard then went out for weeks).",
+   "changed": [
+    {"text": "We now trail Andrew 3-6 with 15 vs 20 games left (Yahoo, 07:15 ET), so week odds are ~45-47%.", "kind": "other"},
+    {"text": "Draymond is a free agent today; this pair did not clear noise in yesterday's scan.", "kind": "model"}
+   ],
+   "evidence": ["ΔP(win week 2)", "ΔP(playoffs)"]
+  }
+ },
+ "params": {
+  "add": "draymond-green", "add_yahoo_player_id": 5069,
+  "drop": "jeremiah-fears", "drop_yahoo_player_id": 10440,
+  "deadline": "before NOP tip-off 2026-10-29 20:00 ET (Yahoo #174)",
+  "tool": "fantasy inseason stream --date 2026-10-29 --league-file data/manual/league_rosters_2026-27.json --free-agents data/raw/yahoo/free_agents_2026-10-29.json --accumulated <morning totals> --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-10-29.json", "matchup": "data/raw/yahoo/matchup_2026-10-29T1115Z.json"}
+}
