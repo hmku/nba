@@ -1,0 +1,48 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Collin Sexton into the open spot today (no drop): +16 pp week",
+  "status": "awaiting_yes",
+  "headline": "Add Sexton (LAL, FA) now, no drop; drop him when Sheppard leaves IL (separate yes). Yes needed by 22:00 ET.",
+  "week": 2,
+  "verdict": "Sheppard's IL move left our PG slot empty; Sexton fills it for 2 games and lifts this week's win odds from ~37% to ~52%. No season cost: he is a 3-day stream.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(win week 2)", "value": 15.5, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔE[cats won] week 2", "value": 0.43, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(win week 2) now", "value": 38.0, "se": 0.3, "unit": "%", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds (0 used so far this week).",
+   "When Sheppard is healthy (out Fri; maybe back Sat) a drop is needed: Sexton is the planned one (separate yes).",
+   "Draymond Green is a tie (+15.6 ± 0.6 pp, fewer cats: +0.40); Sexton fills PG directly.",
+   "Yahoo refuses the add once LAL@GS tips (22:00 ET, error #174)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-10-30.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-10-30.json"}
+  ],
+  "rationale": [
+   "- 4 of our 10 slots are idle tonight; PG is empty and no bench guard plays.",
+   "- Sexton (PG/SG) adds 2 games (Fri at GSW + 1 more by Sun) for PTS/AST, where we trail.",
+   "- inseason-0.3.1 stream on this morning's banked score (4-5 vs Andrew), 4000 paired sims."
+  ],
+  "why_now": {
+   "before": "Yesterday's idea was Draymond for Fears (+4 pp, needed a drop); it expired unanswered.",
+   "changed": [
+    {"text": "Sheppard was ruled out and moved to IL last night (18:30 check): a roster spot is open, so no drop is needed today.", "kind": "league"},
+    {"text": "Andrew's Thu games moved the score; we trail 4-5 with 12 vs 17 games left (Yahoo, 07:15 ET).", "kind": "other"}
+   ],
+   "evidence": ["ΔP(win week 2)"]
+  }
+ },
+ "params": {
+  "add": "collin-sexton", "add_yahoo_player_id": 6019,
+  "drop": null,
+  "follow_up": "drop collin-sexton when reed-sheppard returns from IL (separate approval)",
+  "deadline": "before LAL@GS tip-off 2026-10-30 22:00 ET (Yahoo #174)",
+  "alternative": {"add": "draymond-green", "add_yahoo_player_id": 5069},
+  "tool": "fantasy inseason stream --date 2026-10-30 --league-file data/manual/league_rosters_2026-27.json --free-agents data/raw/yahoo/free_agents_2026-10-30.json --accumulated <morning totals> --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-10-30.json", "matchup": "data/raw/yahoo/matchup_2026-10-30T1115Z.json"}
+}

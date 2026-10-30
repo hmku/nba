@@ -1,0 +1,56 @@
+{
+ "date": "2026-10-30",
+ "premove_league": "data/processed/verdicts/league-moves_2026-10-30_premove_league.json",
+ "baseline_drop": "jeremiah-fears",
+ "results": {
+  "isaiah-hartenstein": {
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-30_premove_league.json --add isaiah-hartenstein --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8728,
+    "after": 0.8672,
+    "delta": -0.0055,
+    "delta_se": 0.0037
+   },
+   "p_title": {
+    "before": 0.2895,
+    "after": 0.2792,
+    "delta": -0.0103,
+    "delta_se": 0.0062
+   },
+   "seed": 0,
+   "sim_version": "season-sim-0.8.1",
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-23 (in 68% of sims)",
+    "before: Δ vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~75 IL-replacement games/season in total",
+    "after: assumes the roster cap releases Brandin Podziemski from ~2027-01-24 (in 66% of sims)",
+    "after: Δ vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~77 IL-replacement games/season in total"
+   ]
+  },
+  "jakobe-walter": {
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-30_premove_league.json --add jakobe-walter --drop jeremiah-fears --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8728,
+    "after": 0.8572,
+    "delta": -0.0155,
+    "delta_se": 0.0034
+   },
+   "p_title": {
+    "before": 0.2895,
+    "after": 0.282,
+    "delta": -0.0075,
+    "delta_se": 0.0048
+   },
+   "seed": 0,
+   "sim_version": "season-sim-0.8.1",
+   "notes": [
+    "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-23 (in 68% of sims)",
+    "before: Δ vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~75 IL-replacement games/season in total",
+    "after: assumes the roster cap releases Ja'Kobe Walter from ~2027-01-23 (in 66% of sims)",
+    "after: Δ vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~76 IL-replacement games/season in total"
+   ]
+  },
+  "trevon-brazile": {
+   "note": "no projection row (unknown player); not evaluated"
+  }
+ }
+}
