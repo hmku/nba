@@ -255,6 +255,11 @@ page shows no error; read the network response). Execute add/drops in the mornin
 the two players, else after Yahoo's day rolls over — NOT by 01:00 ET (#174 again at 01:00 ET 2026-10-24); a morning add worked 2026-10-24 11:18 ET (before the players' games). **Approval gap:** `fantasy txn plan` always files its OWN approval,
 so an advice approval (`fantasy approval request`) the user already approved can't satisfy the txn; the user must approve
 the txn's approval too (one extra click). Plan the txn as early as possible so both approvals land together.
+**After an add (learned 2026-10-30):** Yahoo puts the added player on **BN**, even into an empty starting slot. When the
+add was meant to fill a slot today, plan a `lineup` txn and move him (§3 procedure) in the same run, then verify by a
+no-store re-read (the first fetch right after the click can still show the old slot; re-fetch with a cache-buster).
+**Ids:** logs, advice and chat must cite FULL approval/txn ids. `fantasy approval show|txn show` do not resolve the
+8-hex short form (`apr-254c02ee` -> not_found).
 
 ## 5. PUBLISH + LOG
 - If rosters changed: `fantasy sim season --league-file data/manual/league_rosters_2026-27.json --sims 12000
