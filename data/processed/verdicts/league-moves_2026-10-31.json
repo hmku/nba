@@ -1,0 +1,64 @@
+{
+ "date": "2026-10-31",
+ "moves": [
+  {
+   "team": "Shalom Jerome",
+   "yahoo_team_id": 1,
+   "add": "zaccharie-risacher",
+   "drop": [
+    "naji-marshall",
+    "trevon-brazile"
+   ],
+   "compare_cmd": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-10-31_premove_league.json --add zaccharie-risacher --drop jeremiah-fears --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.8.1",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "zaccharie-risacher",
+      "name": "Zaccharie Risacher"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "jeremiah-fears",
+      "name": "Jeremiah Fears"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.879,
+     "after": 0.8732,
+     "delta": -0.0057,
+     "delta_se": 0.0034
+    },
+    "p_title": {
+     "before": 0.269,
+     "after": 0.2655,
+     "delta": -0.0035,
+     "delta_se": 0.0048
+    },
+    "exp_cat_wins": {
+     "before": 90.5376,
+     "after": 90.1241,
+     "delta": -0.4135,
+     "delta_se": 0.0527
+    },
+    "compute_seconds": 10.56,
+    "notes": [
+     "before: assumes the roster cap releases Jeremiah Fears from ~2027-01-24 (in 61% of sims)",
+     "before: assumes the roster cap releases Collin Sexton from ~2026-11-28 (in 95% of sims)",
+     "after: assumes the roster cap releases Zaccharie Risacher from ~2027-01-24 (in 59% of sims)",
+     "after: assumes the roster cap releases Collin Sexton from ~2026-11-29 (in 95% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  }
+ ]
+}
