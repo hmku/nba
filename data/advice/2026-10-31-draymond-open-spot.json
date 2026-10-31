@@ -1,0 +1,47 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Draymond Green into VanVleet's open spot (no drop): +15 pp week",
+  "status": "awaiting_yes",
+  "headline": "Add Draymond (GSW, FA) now, no drop; drop him when VanVleet leaves IL (separate yes). Yes needed by Sun 20:30 ET.",
+  "week": 2,
+  "verdict": "VanVleet was ruled out at 13:31 ET and moved to IL, opening a roster spot. Draymond's Sunday game lifts week-2 win odds from ~44% to ~60%; season effect is noise.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(win week 2)", "value": 15.4, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔE[cats won] week 2", "value": 0.33, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) season", "value": -0.45, "se": 0.45, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds (1 used this week: Sexton).",
+   "When VanVleet returns (ESPN: ~Mon 11-02) a drop is needed: Draymond is the planned one (separate yes).",
+   "Isaiah Collier is a near-tie (+14.4 pp).",
+   "Yahoo refuses the add once LAC@GS tips (Sun 20:30 ET, error #174)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-10-31.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-10-31_tipoff.json"}
+  ],
+  "rationale": [
+   "- VanVleet (O, knee) moved G->IL at the 14:30 check; no bench guard plays today, so a spot is open.",
+   "- Draymond (PF/C) adds 1 game Sun vs LAC for REB/AST/STL/BLK; AST is a close category (0.14 now).",
+   "- inseason-0.3.1 stream on this morning's banked score (tied 4-4-1), 4000 paired sims; listed as week_only (season effect within 2 SE)."
+  ],
+  "why_now": {
+   "before": "10-29: Draymond for Fears (+4 pp, needed a drop) expired unanswered; 10-30: Sexton took the open spot (Draymond a tie).",
+   "changed": [
+    {"text": "VanVleet ruled out for Sat (ESPN 2026-10-31 17:31Z) and moved to IL: a roster spot is open, so no drop is needed now.", "kind": "league"}
+   ],
+   "evidence": ["ΔP(win week 2)"]
+  }
+ },
+ "params": {
+  "add": "draymond-green", "add_yahoo_player_id": 5069,
+  "drop": null,
+  "follow_up": "drop draymond-green when fred-vanvleet returns from IL (separate approval)",
+  "deadline": "before LAC@GS tip-off 2026-11-01 20:30 ET (Yahoo #174)",
+  "alternative": {"add": "isaiah-collier", "add_yahoo_player_id": 10282},
+  "tool": "fantasy inseason stream --date 2026-10-31 --free-agents <morning FA capture minus 18:33Z rostered> --accumulated <morning totals> --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-10-31.json", "matchup": "data/raw/yahoo/matchup_2026-10-31T1115Z.json"}
+}
