@@ -175,7 +175,8 @@ def test_cli_reply_thread_post_latest():
     assert res.exit_code == 0 and "disagree" in res.stdout and "advisor" in res.stdout
     res = runner.invoke(app, ["intel", "post", "--kind", "update", "--text", "Lineup set", "--json"])
     assert res.exit_code == 0 and json.loads(res.stdout)["event_id"].startswith("claude-ev-")
-    res = runner.invoke(app, ["intel", "latest"])
+    # pin the window: the default (last 7 days from now) drops the 2026-10-20 seed once that date is old
+    res = runner.invoke(app, ["intel", "latest", "--since", "2026-10-19"])
     assert res.exit_code == 0 and "open threads" in res.stdout and "muse-ev-injury" in res.stdout
     res = runner.invoke(app, ["intel", "reply", "muse-ev-digest", "--stance", "agree", "--text", "x", "--json"])
     assert res.exit_code == 4 and json.loads(res.stdout)["error"] == "not_allowed"
