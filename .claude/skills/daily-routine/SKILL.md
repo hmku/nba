@@ -307,5 +307,8 @@ Injury news for Q/GTD players often lands 30-90 min before tip-off, after the mo
    was newly ruled Out today (the opportunity detector's only fitted signal). Then capture free agents (§1.2) and run
    `fantasy inseason opportunity --date $D ...` / `fantasy inseason stream --accumulated <morning totals>`; a `helps`
    verdict goes to the user as a §4 recommendation with the deadline = the earlier tip-off of the two players (Yahoo
-   #174) and both approvals filed at once. Never execute without the user's yes. Expected value is small (one day of
+   #174) and both approvals filed at once. Never execute without the user's yes.
+   **The stream tool counts an add's games on `--date` even if they already tipped or are Final** (2026-10-31 18:30:
+   Collier +14 pp from UTA's game that was Final at 15:00): before asking, check the candidate's team still has a
+   not-yet-started game this week (ESPN scoreboard); task filed to fix the tool. Expected value is small (one day of
    games; a guess, not fitted), so keep it to these triggers.

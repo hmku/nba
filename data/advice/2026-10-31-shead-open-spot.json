@@ -1,0 +1,48 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Add Jamal Shead into VanVleet's open spot (no drop): +13 pp week",
+  "status": "awaiting_yes",
+  "headline": "Add Shead (TOR, FA) now, no drop; drop him when VanVleet leaves IL (separate yes). Yes needed by Sun 21:00 ET.",
+  "week": 2,
+  "verdict": "Replaces the Draymond ask: Draymond is now out Sunday. Shead's Sunday game lifts week-2 win odds ~37% -> ~51%; season effect is noise.",
+  "requires_user_yes": true,
+  "metrics": [
+   {"label": "ΔP(win week 2)", "value": 13.3, "se": 0.5, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔE[cats won] week 2", "value": 0.29, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) season", "value": -0.7, "se": 0.42, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Uses 1 of 6 weekly adds (1 used this week: Sexton).",
+   "When VanVleet returns a drop is needed: Shead is the planned one (separate yes).",
+   "Season P(title) -0.7 ± 0.4 pp is within 2 SE (noise) but leans negative.",
+   "Yahoo refuses the add once TOR@LAL tips (Sun 21:00 ET, error #174)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-10-31.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-10-31_tipoff1830.json"}
+  ],
+  "rationale": [
+   "- VanVleet (O) is in IL, so a roster spot is open; no drop needed now.",
+   "- Shead (PG) adds 1 game Sun at LAL; AST is a close category (P win 0.10).",
+   "- inseason-0.3.1 stream on this morning's banked score (4-4-1), 4000 paired sims; week_only (season effect within 2 SE)."
+  ],
+  "why_now": {
+   "before": "14:30 today: asked Draymond into the same spot (+15 pp); Collier and Shead were near-ties.",
+   "changed": [
+    {"text": "ESPN 2026-10-31: Draymond Green (back) out for Sunday vs LAC, so he adds no games this week.", "kind": "news"},
+    {"text": "Collier (+14 pp in the tool) is not an option: Utah's only game this weekend was today (final); the tool still counted it.", "kind": "schedule"}
+   ],
+   "evidence": ["ΔP(win week 2)"]
+  }
+ },
+ "params": {
+  "add": "jamal-shead", "add_yahoo_player_id": 10333,
+  "drop": null,
+  "follow_up": "drop jamal-shead when fred-vanvleet returns from IL (separate approval)",
+  "deadline": "before TOR@LAL tip-off 2026-11-01 21:00 ET (Yahoo #174)",
+  "supersedes": "2026-10-31-draymond-open-spot",
+  "tool": "fantasy inseason stream --date 2026-10-31 --league-file data/manual/league_rosters_2026-27.json --free-agents data/raw/yahoo/free_agents_2026-10-31T2235Z.json --accumulated <morning totals> --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-10-31T2235Z.json", "matchup": "data/raw/yahoo/matchup_2026-10-31T1115Z.json"}
+}
