@@ -1,0 +1,41 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sun 11-01: VanVleet IL->G; Melton add blocked by Yahoo IL rule",
+  "status": "done",
+  "headline": "Lineup verified 15/15. No add today: any add now needs a drop, and none the tool checked helps.",
+  "week": 2,
+  "verdict": "Down 4-5 with 2 games vs 3; P(win week 2) about 0.15. Melton (GSW) into the empty G was +21 pp, but Yahoo refused it (#845: VanVleet, now Q, can't stay in IL).",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 2)", "value": 0.15, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "ΔP(win wk2) Melton, open spot", "value": 21.0, "se": 0.7, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) Melton for Fears", "value": -3.8, "se": 0.8, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "VanVleet and Sheppard (Q) now count as active players: 14 for 13 spots, so a drop is due when either is cleared.",
+   "Yahoo's edit form still offers IL for Q players, but transactions are refused (#845)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-01.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-01.json"}
+  ],
+  "rationale": [
+   "- VanVleet IL->G: HOU is idle today and G was empty, so nothing is lost; it clears Yahoo's block for transactions.",
+   "- Only Sexton and Podziemski play today; both already start.",
+   "- Melton with a drop: Fears hurts, Sheppard frees no active spot, and Sexton plays tonight."
+  ],
+  "why_now": {
+   "before": "10-31: you approved Shead into the open spot; Shalom added Shead at 02:09 ET, before any run could execute it.",
+   "changed": [
+    {"text": "VanVleet and Sheppard went O -> Q overnight; Yahoo now blocks adds while a Q player is in IL (#845).", "kind": "league"}
+   ],
+   "evidence": ["ΔP(win wk2) Melton, open spot"]
+  }
+ },
+ "params": {
+  "txns": ["txn-eb369eff89854f34b1bb38f4bfb62442 (add Melton, failed #845)", "txn-cb7123e25c7b4cb090ccae284eded782 (VanVleet IL->G, verified)"],
+  "lineup_record": "la-2026-11-01-2e3391c60da7"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-01.json", "matchup": "data/raw/yahoo/matchup_2026-11-01T1214Z.json"}
+}

@@ -165,6 +165,13 @@ is interested in X; details private"). A thread message
   pairs with `drop: (none: open spot)` show huge season deltas (+13-15 pp P(playoffs)) because the season sim keeps the
   extra player all season after the IL player returns. Never quote that number: use `fantasy sim compare --add X --drop
   <who you'd drop on his return>` for the season effect and the stream tool's `week_d_p_win` for the extra games now.
+- **A Q/P player in IL blocks every add (learned 2026-11-01):** once an IL player's tag softens from O to Q, Yahoo refuses
+  any add/drop with error #845 ("no longer qualifies for that position") even though the edit form still offers IL. The
+  "open spot" is then gone: he counts as an active player, so an add needs a drop of an ACTIVE player (dropping
+  another IL player frees no active spot). Before planning an open-spot add, check the IL tags in today's capture; with
+  a Q in IL, evaluate drop pairs only. Moving him out of IL (into an empty or idle slot) is a lineup move within the
+  standing authorisation. Also: an approved add sits unexecuted until the next run (Shead, approved 20:53 ET 10-31, was
+  taken at 02:09 ET), so since autonomy a tip-off run executes a `helps` add itself instead of asking.
 - **Yahoo ids in payloads** (approvals, txns) are copied from today's capture or the player's `href` on Yahoo, never typed
   from memory (2026-10-24: a Champagnie approval got Jalen Williams's id 6702; had to file a corrected one).
 - Streams/trades: `fantasy inseason stream|trade|trade-scan` (inseason-0.3.0, quant-reviewed): realistic chain (stream stint then k-th FA), base includes the best free move, realistic refill, schedule-neutral delta, three projection sets (blend/market/stress), seed-averaged. Present only `helps` verdicts as recommendations; `speculative` = mention as an idea.
