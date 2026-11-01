@@ -94,8 +94,9 @@ Never put cookies, tokens, passwords, emails or the DB URL in events.
 
 ## 5. Approvals & policy
 Policy (`src/fantasy/ops/policy.py`): `dry_run` never executes; `lineup`, `draft_pick` allowed in a
-live run (lock still required); `drop`, `add`, `add_drop`, `trade`, unknown kinds always need an
-**approved** human approval.
+live run (lock still required); since 2026-10-31 so are `drop`, `add`, `add_drop`, `trade` while
+`AUTONOMY_ON` (user decision: act, then report in the Inbox); unknown kinds (and those four when
+`AUTONOMY_ON = False`) need an **approved** human approval.
 ```bash
 fantasy approval request <drop|add_drop|trade|other> "summary" --payload '{...}' [--expires-in 3600]
 fantasy approval list [--status pending|approved|rejected|expired|all] --json

@@ -28,3 +28,11 @@ def _no_repo_league_schedule(monkeypatch, tmp_path) -> None:
     import fantasy.sim.cli as sim_cli
 
     monkeypatch.setattr(sim_cli, "LEAGUE_SCHEDULE_PATH", tmp_path / "no_league_schedule.json")
+
+
+@pytest.fixture()
+def approval_gated(monkeypatch) -> None:
+    """The pre-2026-10-31 policy: adds/drops/trades need an approved approval (`policy.AUTONOMY_ON = False`)."""
+    from fantasy.ops import policy
+
+    monkeypatch.setattr(policy, "AUTONOMY_ON", False)

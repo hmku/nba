@@ -42,13 +42,27 @@ def _db(tmp_path, monkeypatch):
         ("mystery", "live", "approved", True),
     ],
 )
+@pytest.mark.usefixtures("approval_gated")
 def test_policy_matrix(kind, mode, approval, allowed):
     ok, reason = policy.check_action_allowed(kind, mode, approval)
     assert ok is allowed
     assert isinstance(reason, str) and reason
 
 
-def test_requires_approval():
+@pytest.mark.parametrize("kind", ["drop", "add_drop", "trade", "add", "lineup", "draft_pick"])
+@pytest.mark.parametrize("approval", [None, "pending", "rejected"])
+def test_autonomous_policy_needs_no_approval(kind, approval):
+    # user decision 2026-10-31: live runs execute adds/drops/trades without approval, then report in the Inbox
+    assert policy.AUTONOMY_ON
+    assert not policy.requires_approval(kind)
+    assert policy.check_action_allowed(kind, "live", approval)[0]
+    assert not policy.check_action_allowed(kind, "dry_run", None)[0]
+    assert policy.requires_approval("mystery")
+    assert not policy.check_action_allowed("mystery", "live", None)[0]
+
+
+@pytest.mark.usefixtures("approval_gated")
+def test_requires_approval_when_gated():
     assert policy.requires_approval("drop")
     assert policy.requires_approval("add_drop")
     assert policy.requires_approval("trade")

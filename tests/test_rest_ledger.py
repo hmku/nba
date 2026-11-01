@@ -141,6 +141,7 @@ def test_txn_plan_lost_race_returns_duplicate(remote):
     assert ei.value.details["existing"]["txn_id"] == "txn-other"
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_add_drop_approval_flow_and_submit_gates(remote):
     rid = start()
     code, out = cli("txn", "plan", "add_drop", "--payload", '{"add":"a","drop":"b"}',
@@ -442,6 +443,7 @@ def test_lost_patch_response_when_not_applied_reissues(tmp_path, monkeypatch):
     assert b.transactions.cancel(t["txn_id"], "nope")["status"] == "cancelled"
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_lost_insert_response_plan_add_drop_gets_its_approval(tmp_path, monkeypatch):
     b, armed, fake = lossy(tmp_path, monkeypatch)
     rid = b.ledger.start_run("a", mode="live")

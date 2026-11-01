@@ -70,6 +70,7 @@ def test_dry_run_never_submits():
         transactions.mark_submitted(t["txn_id"], run)
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_drop_needs_approval(live_run):
     t = transactions.plan("drop", {"player_id": "x"}, live_run)
     assert t["status"] == "awaiting_approval" and t["approval_id"]
@@ -81,6 +82,7 @@ def test_drop_needs_approval(live_run):
     assert transactions.mark_submitted(t["txn_id"], live_run)["status"] == "submitted"
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_rejected_approval_blocks(live_run):
     t = transactions.plan("trade", {"give": ["a"], "get": ["b"]}, live_run)
     approvals.decide(t["approval_id"], False, "harry", "no")

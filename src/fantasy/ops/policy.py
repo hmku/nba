@@ -2,20 +2,29 @@
 
 Rules (most restrictive wins):
 - run mode `dry_run` never executes anything.
-- drop, add_drop, trade (and `add`, plus any unknown kind) require an *approved* human approval.
-- lineup changes and draft picks are allowed for a `live` run without approval
-  (a live draft run is the authorisation; it must still hold the relevant lock).
+- lineup changes, draft picks, adds, drops, add/drops and trades are allowed for a `live` run without
+  approval (it must still hold the relevant lock, plan the txn, verify on Yahoo, and tell the user in the
+  dashboard Inbox afterwards). User decision 2026-10-31: "you dont need approvals to do any actions ...
+  just let me know in the inbox but dont wait for me to give permission".
+- with `AUTONOMY_ON = False` adds/drops/trades require an approved approval again (the pre-2026-10-31 rule).
+- any unknown kind still requires an *approved* human approval (conservative default).
 """
 
 from __future__ import annotations
 
-APPROVAL_REQUIRED = frozenset({"drop", "add_drop", "trade", "add"})
 LIVE_ALLOWED = frozenset({"lineup", "draft_pick"})
-KNOWN_KINDS = APPROVAL_REQUIRED | LIVE_ALLOWED
+# Needed the user's approval before 2026-10-31; executed without one (then reported) while AUTONOMY_ON.
+AUTONOMOUS = frozenset({"drop", "add_drop", "trade", "add"})
+KNOWN_KINDS = LIVE_ALLOWED | AUTONOMOUS
+AUTONOMY_ON = True  # set False to go back to approval-gated adds/drops/trades
+
+
+def _no_approval_needed(kind: str) -> bool:
+    return kind in LIVE_ALLOWED or (AUTONOMY_ON and kind in AUTONOMOUS)
 
 
 def requires_approval(kind: str) -> bool:
-    return kind not in LIVE_ALLOWED  # unknown kinds are treated conservatively
+    return not _no_approval_needed(kind)  # unknown kinds are treated conservatively
 
 
 def check_action_allowed(
@@ -25,7 +34,7 @@ def check_action_allowed(
     (pending | approved | rejected | expired | None)."""
     if run_mode != "live":
         return False, f"run mode is {run_mode or 'unknown'!r}; only live runs may execute actions"
-    if kind in LIVE_ALLOWED:
+    if _no_approval_needed(kind):
         return True, f"{kind} is allowed for a live run"
     label = kind if kind in KNOWN_KINDS else f"unknown action kind {kind!r}"
     if approval_status == "approved":

@@ -66,15 +66,19 @@ PAYLOADS = {
 LOCK_FOR = {"draft_pick": "draft:mock-pol"}  # everything else: yahoo:roster
 
 
+@pytest.mark.parametrize("autonomy", [True, False])
 @pytest.mark.parametrize("mode", ["dry_run", "live"])
 @pytest.mark.parametrize("kind", list(PAYLOADS))
-def test_policy_matrix(kind, mode):
+def test_policy_matrix(kind, mode, autonomy, monkeypatch):
+    from fantasy.ops import policy
+
+    monkeypatch.setattr(policy, "AUTONOMY_ON", autonomy)
     rid = start(mode)
     assert cli("lock", "acquire", LOCK_FOR.get(kind, "yahoo:roster"), "--run-id", rid, "--json")[0] == 0
     code, out = cli("txn", "plan", kind, "--payload", json.dumps(PAYLOADS[kind]), "--run-id", rid, "--json")
     assert code == 0, out
     txn = out["txn"]
-    needs_approval = kind in ("drop", "add_drop", "trade")
+    needs_approval = not autonomy and kind in ("drop", "add_drop", "trade")
     assert (txn["status"] == "awaiting_approval") is needs_approval
     assert bool(txn["approval_id"]) is needs_approval
     # idempotent: planning the same thing again is a duplicate with the existing record
@@ -95,6 +99,7 @@ def test_policy_matrix(kind, mode):
         assert cli("approval", "decide", txn["approval_id"], "--reject", "--by", "x", "--json")[0] == 7
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_rejected_approval_blocks_live_add_drop():
     rid = start("live")
     cli("lock", "acquire", "yahoo:roster", "--run-id", rid, "--json")

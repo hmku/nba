@@ -385,6 +385,6 @@ def scan_streams(
                           f"{params.sig:g} paired SE and neither < -{params.sig:g} SE under every projection set, and "
                           f"the stream is not < -{params.sig:g} SE vs the direct move (the season sim includes this "
                           "week); otherwise recommend nothing. Pairs whose only significant gain is this week's ΔP(win) are listed in week_only "
-                          "with the season ΔP(title) lower bound, for the user to weigh. Every add/drop needs approval."),
+                          "with the season ΔP(title) lower bound, for the user to weigh. A live run executes, then reports."),
         "params": params.to_dict(),
     }

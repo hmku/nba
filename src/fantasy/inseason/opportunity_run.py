@@ -528,7 +528,7 @@ def run(d0: date, free_agents: Path | None = None, top: int = 15, eval_top: int 
                    "injuries_fetched": inj_date, "league_file": str(lf),
                    "news": (news or {}).get("news_file"), "box_scores": str(box_path), "sha256": hashes},
         "warnings": warnings,
-        "note": "Analysis only: never touches Yahoo. Every add/drop needs the user's approval.",
+        "note": "Analysis only: never touches Yahoo. A live run executes `helps` moves, then reports them.",
     }
 
 

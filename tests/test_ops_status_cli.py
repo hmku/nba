@@ -27,6 +27,7 @@ def cli(*args, env=None):
     return res.exit_code, out
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_status_json_shape():
     with engine().begin() as conn:
         conn.execute(model_runs.insert().values(
@@ -61,6 +62,7 @@ def test_status_json_shape():
     assert code == 0 and "pending approvals: 1" in text
 
 
+@pytest.mark.usefixtures("approval_gated")
 def test_cli_exit_codes():
     _, a = cli("run", "start", "--agent", "a", "--mode", "live", "--json")
     _, b = cli("run", "start", "--agent", "b", "--json")

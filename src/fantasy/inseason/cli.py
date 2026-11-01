@@ -206,7 +206,7 @@ def stream_cmd(
 ) -> None:
     """Add/drop pairs for THIS matchup week: Δ expected cats and ΔP(win) vs the real opponent (position-aware,
     matchup weights), the drop's season cost (paired season sim ΔP(playoffs)/ΔP(title) ± SE), waiver timing, adds
-    budget. Recommends nothing unless a pair beats 2 SE. Analysis only; every add/drop needs the user's approval."""
+    budget. Recommends nothing unless a pair beats 2 SE. Analysis only; a live run executes the recommendation, then reports it."""
     from fantasy.data.provenance import sha256_file
     from fantasy.inseason.freeagents import load_free_agents, realistic_refills
     from fantasy.inseason.streamscan import StreamParams, scan_streams
@@ -308,7 +308,7 @@ def stream_cmd(
                    "free_agents_sha256": sha256_file(Path(fa_path)), "schedule": str(sched),
                    "projections": proj.path, "projections_sha256": proj.sha256},
         "warnings": warnings + ctx.warnings,
-        "note": "Analysis only: never touches Yahoo. Every add/drop needs the user's approval (txn ledger).",
+        "note": "Analysis only: never touches Yahoo. A live run executes recommended moves (txn ledger), then reports them.",
     }
     emit(out, as_json, _stream_text(out))
 
@@ -346,7 +346,7 @@ def _stream_text(out: dict) -> str:
     if out.get("blocked"):
         lines.append(f"BLOCKED: {out['blocked']}")
     rec = out.get("recommendation")
-    lines.append("Recommendation: " + (f"add {rec['add_name']} / drop {rec['drop_name']} ({rec['why']}); needs approval"
+    lines.append("Recommendation: " + (f"add {rec['add_name']} / drop {rec['drop_name']} ({rec['why']}); execute in a live run, then report"
                                        if rec else "none (no pair's season effect beats 2 SE)"))
     for w in out.get("week_only", []):
         lines.append(f"  week-only gain: {w['add_name']} / {w['drop_name']}: ΔP(win) {w['week_mc']['d_p_win']:+.3f} ± "
@@ -550,7 +550,7 @@ def trade_cmd(
         "inputs": {"league_file": str(inp["lf"]), "free_agents": str(inp["fa_path"]) if inp["fa_path"] else None,
                    "projection_sets": inp["sets_info"]},
         "warnings": inp["warnings"],
-        "note": "Analysis only. Trades always need the user's approval; never propose on Yahoo from here."}
+        "note": "Analysis only. Never proposes on Yahoo from here; a live run executes a recommended trade, then reports it."}
     lines = [f"{out['trade']}  (base: {move_info['move'] or 'no free move'}; {pre_note}; refill {res['refill']}; "
              f"{len(params.seeds)} seeds x {sims} sims)", *_resim_lines(res)]
     lines += [f"warning: {w}" for w in inp["warnings"]]
@@ -663,7 +663,7 @@ def trade_scan_cmd(
                    "free_agents": str(inp["fa_path"]) if inp["fa_path"] else None,
                    "free_agents_sha256": sha256_file(Path(inp["fa_path"])) if inp["fa_path"] else None},
         "warnings": warnings,
-        "note": "Analysis only. Trades always need the user's approval; never propose on Yahoo from here.",
+        "note": "Analysis only. Never proposes on Yahoo from here; a live run executes a recommended trade, then reports it.",
     }
     refill_txt = "replacement level" if refill_replacement else f"realistic FA #{refill_skip + 1}"
     lines = [f"{n_enum} trades enumerated, {len(rows)} simulated ({', '.join(set_names)}; {sims} paired sims each). "
