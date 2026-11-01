@@ -57,16 +57,16 @@ Every recommendation you put to the user (and every Inbox card) must include a *
 not before"**: the earlier belief/decision (draft-time score, previous sim, earlier recommendation) and what changed
 (new info, model version, precision, roster/schedule facts), plus costs the model ignores (waiver priority, adds budget,
 upside). If the earlier decision was a statistical tie, say so with the numbers.
-Enforced by `src/fantasy/ops/policy.py` (`LIVE_ALLOWED = {lineup, draft_pick}`, plus `AUTONOMOUS = {add, drop, add_drop,
-trade}` while `AUTONOMY_ON`) and the user's standing authorisations (2026-10-20 lineup/IL, 2026-10-31 everything else):
+Enforced by `src/fantasy/ops/policy.py` (`LIVE_ALLOWED = {lineup, draft_pick}`, plus `AUTONOMOUS = {add, drop, add_drop}`
+while `AUTONOMY_ON`) and the user's standing authorisations (2026-10-20 lineup/IL, 2026-10-31 adds/drops; trades stay gated):
 - **Lineup changes and IL moves**: allowed **without asking**, but only inside a `live` run holding `yahoo:roster` (and
   `yahoo:browser` for the page). Plan a `lineup` txn whose payload lists the exact moves, then verify every slot by an
   independent server re-read before `txn mark ... verified`. Standing authorisation from the user, 2026-10-20;
   procedure in `daily-routine` §3. Never move a player whose game has started (locked). Never use Yahoo's
   "Start Active Players".
-- **Add, drop, add/drop, waiver claim, trade**: since 2026-10-31 **no approval** — execute what the tools recommend
-  (`helps` / beats 2 SE) in a `live` run, verify, then report in the Inbox (daily-routine §4). Unknown kinds, and all of
-  these if `AUTONOMY_ON = False`, still need an approved approval (the old flow below):
+- **Add, drop, add/drop, waiver claim**: since 2026-10-31 **no approval** — execute what the tools recommend
+  (`helps` / beats 2 SE) in a `live` run, verify, then report in the Inbox (daily-routine §4). **Trades** and unknown kinds
+  (and adds/drops if `AUTONOMY_ON = False`) still need the user's yes + an approved approval (flow below):
   ```bash
   export FANTASY_RUN_ID=$(fantasy run start --agent season-ops --task "..." --mode live)   # only if the user authorised live
   fantasy lock acquire yahoo:roster --ttl 300 --purpose "add X drop Y" --json

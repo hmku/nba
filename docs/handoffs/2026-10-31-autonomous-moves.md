@@ -1,7 +1,7 @@
 # Handoff 2026-10-31 - autonomous adds/drops/trades (main session, local)
 
 ## What was accomplished
-- User decision: no approvals for any roster action; act, then report in the dashboard Inbox.
+- User decision: no approvals for adds/drops/claims; act, then report in the dashboard Inbox. Follow-up the same day: **trades stay behind approval** (`AUTONOMOUS = {add, drop, add_drop}`).
 - `src/fantasy/ops/policy.py`: `AUTONOMOUS = {add, drop, add_drop, trade}` allowed in live runs while `AUTONOMY_ON = True`
   (set False to restore approval gating). Unknown kinds still need approval; `dry_run` still never executes.
 - Tests: new `approval_gated` fixture (tests/conftest.py) keeps the old approval path covered; new autonomy tests.

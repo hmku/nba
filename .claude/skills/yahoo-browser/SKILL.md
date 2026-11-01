@@ -28,8 +28,7 @@ Background: `docs/research/browser_integration.md`, `docs/research/draft_order.m
 3. **Writes only inside policy**: a write (draft pick, lineup, add/drop, trade, pre-draft rankings)
    needs a run whose mode and approvals allow it (`agent-run` skill). Reading is always fine in a
    `dry_run` run. Never click buttons unrelated to the task (no chat, no messages to other managers,
-   no settings edits, no league joins). Trade offers/accepts only for a trade the tools recommended (policy 2026-10-31),
-   with no note text.
+   no settings edits, no league joins). Trade offers/accepts only for a trade the user approved, with no note text.
 4. **Verify after every write by an independent re-read**: reload / open the page that shows the
    result (draft log, roster page, league transactions) and confirm the exact player/slot. A success
    toast is not verification. Then `fantasy run event verification "..."` and mark the txn.

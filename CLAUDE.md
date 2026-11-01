@@ -63,11 +63,11 @@ data-auditor, draft-shadow (all read-only).
 - Before any Yahoo write (draft pick, add/drop, lineup, trade): hold the right lock
   (`yahoo:roster` / `yahoo:browser` / `draft:<id>`), plan it in the txn ledger (idempotent), then verify the result
   independently on Yahoo and `fantasy txn mark <id> verified`.
-- **Autonomy (user decision 2026-10-31):** adds, drops, add/drops, waiver claims and trades need NO approval — don't ask
-  or wait. Execute only what our tools recommend (a `helps` verdict / beats 2 SE; never ideas or speculative), in a
+- **Autonomy (user decision 2026-10-31):** adds, drops, add/drops and waiver claims need NO approval — don't ask or
+  wait. **Trades still need the user's approval** (their chat "yes" or dashboard Approve click). Execute only what our tools recommend (a `helps` verdict / beats 2 SE; never ideas or speculative), in a
   `live` run, then tell the user in the dashboard **Inbox**: post the advice card as `done` (`requires_user_yes: false`,
   with `rationale`, `why_now`, numbers ± SE, verification) and a `fantasy intel post`. Still never: league chat/messages,
-  Yahoo settings, money. Switch back to approval-gated with `AUTONOMY_ON = False` in `src/fantasy/ops/policy.py`.
+  Yahoo settings, money. Switch adds/drops back to approval-gated with `AUTONOMY_ON = False` in `src/fantasy/ops/policy.py`.
 - A txn stuck in `submitted` is never retried blindly: re-read Yahoo state, then mark verified/failed.
 - Never substitute a different player than the one decided on, and never take unrelated actions. If
   information changes (injury news), re-run the optimizer and record the new decision + rationale.

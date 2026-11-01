@@ -49,14 +49,17 @@ def test_policy_matrix(kind, mode, approval, allowed):
     assert isinstance(reason, str) and reason
 
 
-@pytest.mark.parametrize("kind", ["drop", "add_drop", "trade", "add", "lineup", "draft_pick"])
+@pytest.mark.parametrize("kind", ["drop", "add_drop", "add", "lineup", "draft_pick"])
 @pytest.mark.parametrize("approval", [None, "pending", "rejected"])
 def test_autonomous_policy_needs_no_approval(kind, approval):
-    # user decision 2026-10-31: live runs execute adds/drops/trades without approval, then report in the Inbox
+    # user decision 2026-10-31: live runs execute adds/drops without approval, then report in the Inbox (trades stay gated)
     assert policy.AUTONOMY_ON
     assert not policy.requires_approval(kind)
     assert policy.check_action_allowed(kind, "live", approval)[0]
     assert not policy.check_action_allowed(kind, "dry_run", None)[0]
+    assert policy.requires_approval("trade")
+    assert not policy.check_action_allowed("trade", "live", approval)[0]
+    assert policy.check_action_allowed("trade", "live", "approved")[0]
     assert policy.requires_approval("mystery")
     assert not policy.check_action_allowed("mystery", "live", None)[0]
 

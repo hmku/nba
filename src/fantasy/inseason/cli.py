@@ -550,7 +550,7 @@ def trade_cmd(
         "inputs": {"league_file": str(inp["lf"]), "free_agents": str(inp["fa_path"]) if inp["fa_path"] else None,
                    "projection_sets": inp["sets_info"]},
         "warnings": inp["warnings"],
-        "note": "Analysis only. Never proposes on Yahoo from here; a live run executes a recommended trade, then reports it."}
+        "note": "Analysis only. Trades always need the user's approval; never propose on Yahoo from here."}
     lines = [f"{out['trade']}  (base: {move_info['move'] or 'no free move'}; {pre_note}; refill {res['refill']}; "
              f"{len(params.seeds)} seeds x {sims} sims)", *_resim_lines(res)]
     lines += [f"warning: {w}" for w in inp["warnings"]]
@@ -663,7 +663,7 @@ def trade_scan_cmd(
                    "free_agents": str(inp["fa_path"]) if inp["fa_path"] else None,
                    "free_agents_sha256": sha256_file(Path(inp["fa_path"])) if inp["fa_path"] else None},
         "warnings": warnings,
-        "note": "Analysis only. Never proposes on Yahoo from here; a live run executes a recommended trade, then reports it.",
+        "note": "Analysis only. Trades always need the user's approval; never propose on Yahoo from here.",
     }
     refill_txt = "replacement level" if refill_replacement else f"realistic FA #{refill_skip + 1}"
     lines = [f"{n_enum} trades enumerated, {len(rows)} simulated ({', '.join(set_names)}; {sims} paired sims each). "

@@ -83,7 +83,7 @@ fantasy intel latest --rest --json > intel.json
 5. **Decide** which recommendations clear the bar (below), then for each one:
    ```bash
    fantasy txn plan add_drop --payload @move.json --summary "<one-line recommendation>" --rest --json
-   #  -> files the approval automatically for add/drop/add_drop/trade (policy.py); exit 5 = already planned
+   #  -> files the approval automatically for trades (and add/drop/add_drop if AUTONOMY_ON is False; policy.py); exit 5 = already planned
    fantasy run decision add_drop --model @model.json --choice @move.json --rationale "<why>" --rest
    ```
    `lineup` txns (lineup + IL moves) need no approval: the user pre-authorised them on 2026-10-20. They are set from
@@ -184,8 +184,8 @@ conflict, 5 duplicate plan) and nothing is overwritten. Re-read (`txn show --res
   `approval list --status all --rest`, `run list --rest`, `lock show --rest` instead.
 
 ## 7. Safety rules (non-negotiable; CLAUDE.md wins on any conflict)
-- Approval gates: since 2026-10-31 add, drop, add_drop, trade need **no** approval (`policy.AUTONOMY_ON`): THINK
-  executes what the tools recommend in a live local run and reports in the Inbox; unknown kinds still do. Agents never
+- Approval gates: since 2026-10-31 add, drop, add_drop need **no** approval (`policy.AUTONOMY_ON`): THINK
+  executes what the tools recommend in a live local run and reports in the Inbox; trades and unknown kinds still do. Agents never
   run `fantasy approval decide` or `fantasy lock release --force`.
 - No substitution: an executor performs exactly the approved player/slot/team or fails. If information
   changes, THINK re-runs the tools and plans a **new** txn with a new approval.

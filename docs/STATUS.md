@@ -27,7 +27,7 @@ and verifies lineups (pre-authorised), and asks before any add/drop/trade. First
 | DB | Supabase `fantasy-nba` (ref `bdzpkdkhlzjzddkptjex`), schema from `src/fantasy/db/schema.py`. Local agents need `FANTASY_DB_URL` (user supplies). |
 
 ## Next priorities (see `fantasy task list` for the full backlog)
-0. **Autonomy (2026-10-31, user decision):** adds/drops/claims/trades need no approval any more — agents execute tool-recommended moves in a live run and report them in the Inbox (`policy.AUTONOMY_ON`, CLAUDE.md safety rules, daily-routine §4).
+0. **Autonomy (2026-10-31, user decision):** adds/drops/claims need no approval any more (trades still do) — agents execute tool-recommended moves in a live run and report them in the Inbox (`policy.AUTONOMY_ON`, CLAUDE.md safety rules, daily-routine §4).
 1. Daily: scheduled task `fantasy-daily` (07:00 ET; first unattended run 2026-10-20) + tip-off checks (daily-routine §6). Watch its logs (`docs/daily/`) and fix friction.
 2. **Roster (2026-10-25):** Champagnie added 10-24 (no drop). Leonard O -> IL; once his tag clears, one drop is needed
    (Bailey is the candidate); since 2026-10-31 the agent makes it without asking and reports it in the Inbox (`docs/daily/2026-10-25.md`). Murray trades: speculative, not now.

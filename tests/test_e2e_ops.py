@@ -78,7 +78,7 @@ def test_policy_matrix(kind, mode, autonomy, monkeypatch):
     code, out = cli("txn", "plan", kind, "--payload", json.dumps(PAYLOADS[kind]), "--run-id", rid, "--json")
     assert code == 0, out
     txn = out["txn"]
-    needs_approval = not autonomy and kind in ("drop", "add_drop", "trade")
+    needs_approval = kind == "trade" or (not autonomy and kind in ("drop", "add_drop"))
     assert (txn["status"] == "awaiting_approval") is needs_approval
     assert bool(txn["approval_id"]) is needs_approval
     # idempotent: planning the same thing again is a duplicate with the existing record

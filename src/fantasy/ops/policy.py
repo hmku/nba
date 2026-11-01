@@ -2,11 +2,12 @@
 
 Rules (most restrictive wins):
 - run mode `dry_run` never executes anything.
-- lineup changes, draft picks, adds, drops, add/drops and trades are allowed for a `live` run without
-  approval (it must still hold the relevant lock, plan the txn, verify on Yahoo, and tell the user in the
-  dashboard Inbox afterwards). User decision 2026-10-31: "you dont need approvals to do any actions ...
-  just let me know in the inbox but dont wait for me to give permission".
-- with `AUTONOMY_ON = False` adds/drops/trades require an approved approval again (the pre-2026-10-31 rule).
+- lineup changes, draft picks, adds, drops and add/drops are allowed for a `live` run without approval (it
+  must still hold the relevant lock, plan the txn, verify on Yahoo, and tell the user in the dashboard Inbox
+  afterwards). User decision 2026-10-31: "you dont need approvals to do any actions ... just let me know in
+  the inbox but dont wait for me to give permission"; same day: "keep trades behind approval for now".
+- trades always require an *approved* human approval.
+- with `AUTONOMY_ON = False` adds/drops require an approved approval again (the pre-2026-10-31 rule).
 - any unknown kind still requires an *approved* human approval (conservative default).
 """
 
@@ -14,9 +15,9 @@ from __future__ import annotations
 
 LIVE_ALLOWED = frozenset({"lineup", "draft_pick"})
 # Needed the user's approval before 2026-10-31; executed without one (then reported) while AUTONOMY_ON.
-AUTONOMOUS = frozenset({"drop", "add_drop", "trade", "add"})
-KNOWN_KINDS = LIVE_ALLOWED | AUTONOMOUS
-AUTONOMY_ON = True  # set False to go back to approval-gated adds/drops/trades
+AUTONOMOUS = frozenset({"drop", "add_drop", "add"})  # trades stay gated (user, 2026-10-31)
+KNOWN_KINDS = LIVE_ALLOWED | AUTONOMOUS | {"trade"}
+AUTONOMY_ON = True  # set False to go back to approval-gated adds/drops
 
 
 def _no_approval_needed(kind: str) -> bool:
