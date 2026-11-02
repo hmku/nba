@@ -287,6 +287,13 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
         yahooUrl={yahooMatchupUrl(w.week, meYahoo, oppYahoo)}
       />
       <CategoryStrip score={score} odds={odds} />
+      {(weekOver || w.week > 1) && (
+        <p className="px-1 text-[12.5px]">
+          <Link href={`/week/review?week=${weekOver ? w.week : w.week - 1}`} className="text-accent">
+            {weekOver ? `Week ${w.week} review: why we won or lost →` : `Last week (${w.week - 1}) review →`}
+          </Link>
+        </p>
+      )}
       {ratioBench && <RatioBenchFlag rb={ratioBench} />}
 
       <WeekLineups

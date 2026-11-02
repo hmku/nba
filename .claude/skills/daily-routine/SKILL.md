@@ -101,6 +101,20 @@ is interested in X; details private"). A thread message
    `season_gp_exp` (82-game total). Run it after the night's games are final; a fetch during live games is safe
    (unfinished scoreboards are never cached) but simply misses those games until the next run.
    Model/evidence: `docs/research/inseason_updates.md`. Commit the box-score files (`data/raw/espn_boxscores/`).
+7. **Mondays only — last week's review** (after step 6, so Sunday's box scores are in): first read last week's FINAL
+   Yahoo score (step 1b's default page already shows the new week): run `scripts/yahoo/capture_matchup.js` with
+   `WEEK = <last week>` and save it as `data/raw/yahoo/matchup_${D}T$(date -u +%H%M)Z_w<N>.json` (its `week` field keeps
+   it out of this week's score; `games_remaining` 0 = final). Then
+   `fantasy review week --save --json` (default = the most recently completed week; local session with
+   `FANTASY_DB_URL` = production writes the `week_review` row straight to the dashboard, no `fantasy publish`; cloud:
+   add `--rest`). Check `review.final.complete` (false = box scores or the final read missing: say "provisional"),
+   `review.reconciliation` (our slot-filtered totals vs Yahoo; a PTS gap > 2% is warned) and `review.warnings`
+   (`projection_source.kind` should be `git`; `current_file` = not as of week start). Dashboard: `/week/review`.
+   In the daily log add a **"Week N review"** section (3-5 lines): `summary.headline`, the bullets, and the missed/failed
+   moves (`decisions.missed`) with one line on what we learn. Post it: `fantasy intel post --kind update --text "<headline;
+   bullets>"` and `--details '{"week_review_run_id": "<run_id>"}'` so it shows in the Inbox feed. Evidence
+   labels: scores/stats observed; over/under z = model (fitted noise, under-states weekly variance ~15-45% for PTS/FGA/REB);
+   expected games = prior-based estimate. Schema: `docs/research/dashboard_data.md` §8.
 
 ## 2. THINK
 - Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted

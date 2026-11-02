@@ -25,6 +25,7 @@ _SUBAPPS: list[tuple[str, str, str]] = [
     ("fantasy.sim.cli", "app", "sim"),
     ("fantasy.ops.intel_cli", "app", "intel"),
     ("fantasy.inseason.cli", "app", "inseason"),
+    ("fantasy.inseason.review_cli", "app", "review"),
     ("fantasy.league.sync_cli", "app", "league"),
     ("fantasy.lineup.cli", "app", "lineup"),
     ("fantasy.ops.advice_cli", "app", "advise"),

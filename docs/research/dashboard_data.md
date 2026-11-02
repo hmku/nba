@@ -1,4 +1,4 @@
-# Dashboard data: simulation, advice, lineup and matchup-score rows in `model_runs`
+# Dashboard data: simulation, advice, lineup, matchup-score and week-review rows in `model_runs`
 
 _Status: 2026-10-18. Written for the web agent (dashboard in `web/`). Producer: `fantasy draft simulate`
 (kind `draft_sim`) and `fantasy sim preseason` (kind `season_sim`, `params.command = "preseason"`)._
@@ -578,3 +578,105 @@ for "now", the newest overall. PostgREST: `kind=eq.matchup_score&order=created_a
 Display notes: show `observed_at` ("as of 10:00 ET") — Yahoo updates during games, the row does not. Format % to 3
 decimals like Yahoo. Evidence label: **observed** (read from Yahoo, not modelled); the per-category chance by Sunday is
 **simulated** (`lineup_plan.expected.cat_win_prob`, availability priors apply).
+
+---
+
+## 8. `kind = 'week_review'` — weekly matchup retrospective ("what happened last week, why", no migration)
+
+_Added 2026-11-01 (week-review-0.1.0). Producer: `fantasy review week [--week N] [--team <yahoo id>] --save [--rest]`
+(`src/fantasy/inseason/weekreview.py`, CLI `review_cli.py`), run by the daily routine on Mondays. Reader:
+`web/src/app/week/review/page.tsx` (linked from `/week`)._
+
+Deterministic from local files: Yahoo matchup captures (`data/raw/yahoo/matchup_*.json`; score + trajectory), roster
+captures (`league_rosters_*.json` + league state; which players were in an active slot each day: the newest read on
+or before that ET day, carried forward; no read on/before a day -> the next read's roster with every game counted and a
+warning), ESPN box scores (`player_games_2027.csv.gz`), and per-game projections **as of week start** (the in-season
+file as committed in git before the week's Monday 00:00 ET, else the preseason file the same way, else the current file
+labelled `current_file`). Ledger (`transactions`, `decisions`, `approvals`, `agent_events` errors) and `lineup_plan`
+rows are read only. `run_id = wr-w<week>-<sha12>` (sha256 of the review minus `generated_for`/`summary`): re-saving
+identical content is a no-op; a Monday re-run after Sunday box scores land is a new row (show the newest).
+`model_version = week-review-0.1.0`, `params = {command, week, team, start_slots, ledger, rest}`, `inputs` = box-score /
+schedule / capture files with sha256, projection source, `content_sha256`.
+**Which row to show:** newest `created_at` with `kind = week_review` (optionally `summary->>week`).
+
+Method (evidence labels): per team and category, `actual - expected_week_start = over_under (per-game
+performance: actual - projection for the games that counted) + volume_effect (projection for the games that counted
+- expected at week start)`. `z = over_under / sd`, sd from the **fitted** game-noise model (`model/noise.py`,
+var = a·m + b·m² per player-game, independent; it under-states weekly variance ~14-46% for FGA/PTS/FGM/REB at
+24-30 mpg, so |z| is somewhat too large there). FG%/FT%: makes above expected **on the actual attempts**
+(Σ p_proj·attempts), binomial sd. `expected_week_start` is a **model estimate with priors**: week-start roster (non-IL)
+× NBA games × P(plays) = 1 − rest_share·(1 − gp/82) (O/INJ → 0), capped at 10 starts/day, positions ignored.
+`games_planned_lineup_plan` = Monday's `lineup_plan.week_totals` (planned starts; assumes everyone plays).
+
+### `summary` (schema `week_review/1`)
+```jsonc
+{
+  "schema": "week_review/1", "week": 2, "week_start": "2026-10-26", "week_end": "2026-11-01",
+  "generated_for": "2026-11-02",                       // ET date of the run (not hashed)
+  "me": {"yahoo_team_id": 11, "slot": 1, "name": "…"}, "opponent": {"yahoo_team_id": 6, "slot": 7, "name": "…"},
+  "summary": {"headline": "Lost 4-5 vs Andrew's Awesome Team; P(win) 0.81 Mon -> 0.39 last plan",
+              "bullets": ["Opponent +11.9 3PTM vs projection for the games played (+1.5σ)", "…"]},   // <= 4
+  "final": {"score": {"me": 4, "opp": 5, "ties": 0}, "result": "L",        // W | L | T
+            "complete": true,                          // false = provisional (box scores / captures end early)
+            "basis": "yahoo+box_scores",               // yahoo_final | yahoo_latest | yahoo+box_scores | box_scores
+            "through": "2026-11-01",
+            "categories": [{"cat": "pts", "me": 612, "opp": 670, "winner": "opp", "margin": -58}],   // 9, Yahoo order
+            "totals": {"me": {"fgm": …, "tov": …}, "opp": {…}}},   // Yahoo's latest read + our counted games after it
+  "trajectory": [{"observed_at": "…", "date_et": "2026-10-27", "score": {"me": 5, "opp": 4, "ties": 0},
+                  "games_played": {"me": 8, "opp": 7}, "totals": {"me": {"pts": …, "fg3m": …, "reb": …, "ast": …},
+                  "opp": {…}}}],                       // one per matchup capture of the week, oldest first
+  "reconciliation": {"yahoo_observed_at": "…", "banked_through": "2026-10-31",
+                     "me": {"yahoo": {"games": 38, "pts": 571, …}, "ours": {"games": 38, "pts": 571, …},
+                            "added_after_read": {"games": 0, "pts": 0}}, "opp": {…}},   // >2% PTS gap = warning
+  "analysis_days": {"from": "2026-10-26", "to": "2026-10-31", "complete": false},   // box-score coverage
+  "projection_source": {"kind": "git", "path": "data/processed/projections_2026_27.inseason.csv",
+                        "commit": "572adf5eb22b", "committed_at": "…", "data_as_of": "2026-10-25",
+                        "as_of_week_start": true, "sha256": "…"},   // kind: git | file (--projections) | current_file
+  "noise_model": "noise-var-1.0",
+  "categories": [{"cat": "pts", "label": "PTS", "winner": "opp", "final_me": 571, "final_opp": 660,
+                  "me_actual": 571, "me_proj_given_games": 593.4, "me_over_under": -22.4, "me_z": -0.54,
+                  "me_volume_effect": 20.1, "me_makes_above_expected": null, "opp_…": "…"}],   // flat table for the UI
+  "teams": {"me": {
+      "yahoo_team_id": 11, "slot": 1, "name": "…", "games_counted": 38, "games_benched": 1,
+      "benched": [{"date": "2026-10-28", "player_id": "…", "slot": "BN", "pts": 12}],
+      "games_expected_week_start": 36.5, "games_expected_covered_days": 32.2, "games_planned_lineup_plan": 41,
+      "expected_method": "…", "expected_roster_source": "data/raw/yahoo/league_rosters_2026-10-26T2232Z.json",
+      "totals": {"fgm": …},                              // our counted box-score games (analysis days)
+      "categories": {
+        "pts": {"actual": 571, "proj_given_games": 593.4, "over_under": -22.4, "sd": 41.3, "z": -0.54,
+                "expected_week_start": 573.3, "volume_effect": 20.1, "total_vs_week_start": -2.3,
+                "helps": false},                         // helps = the deviation is good for this team (TO: fewer)
+        "fg_pct": {"actual": 0.4485, "makes": 209, "attempts": 466, "proj_given_games": 0.4703,
+                   "proj_makes": …, "proj_attempts": …, "expected_pct_on_actual_attempts": 0.4665,
+                   "makes_above_expected": -8.4, "sd_makes": 10.6, "z": -0.79, "over_under": -0.018,
+                   "attempts_vs_proj": …, "expected_week_start": …, "volume_effect": …, "total_vs_week_start": …,
+                   "helps": false}},
+      "top_over": [{"player_id": "…", "name": "…", "games": 4, "score": 2.38,
+                    "top": [{"cat": "pts", "contrib_z": 0.9, "delta": 22.0}]}],   // <= 3, score > 0
+      "top_under": [ /* same, score < 0, worst first */ ],
+      "players": [{"player_id": "…", "name": "…", "games": 4, "projected": true, "actual": {…}, "proj": {…},
+                   "contrib_z": {"pts": 0.4, "tov": -0.2}, "score": 1.1}],   // contrib_z sums to the team z (signed:
+                                                                            // + helps); score = Σ over 9 cats
+      "lineup_sources": [{"date": "2026-10-26", "source": "…", "observed_at": "…", "carried_forward": false,
+                          "slots_known": true}]},
+    "opp": { /* same */ }},
+  "decisions": {"available": true,                       // false + "error" when the ledger could not be read
+                "transactions": [{"at": "…", "txn_id": "…", "kind": "lineup", "status": "verified", "what": "…",
+                                  "error": null}],
+                "decisions": [{"at": "…", "kind": "add_drop", "agrees_with_model": true, "choice": "…",
+                               "rationale": "…"}],
+                "missed": [{"at": "…", "type": "txn_failed", "kind": "add", "what": "add deanthony-melton",
+                            "detail": "Yahoo error #845 …", "id": "txn-…"}],   // txn_failed|cancelled|awaiting_approval|
+                                                                           // planned|submitted, approval_expired (rejected = user's call, not listed),
+                                                                           // error_event
+                "counts": {"transactions": 15, "decisions": 14, "missed": 7}},
+  "p_win_trajectory": [{"date": "2026-10-26", "created_at": "…", "run_id": "lp-…", "p_win": 0.805, "se": 0.003,
+                        "method": "monte_carlo"}],       // every lineup_plan of the week (MC if run, else analytic)
+  "warnings": ["box scores end 2026-10-31: 1 day(s) of the week not in the per-player analysis"],
+  "model_version": "week-review-0.1.0"
+}
+```
+Display notes: lead with `summary.headline` (+ "provisional" when `final.complete` is false); category table us vs
+them (final, actual vs projection, over/under, z); top over/under-performers; missed moves; P(win) trajectory.
+Evidence labels: scores **observed** (Yahoo), stats **observed** (ESPN), projections and z **model** (fitted noise),
+expected games **prior-based estimate**.
