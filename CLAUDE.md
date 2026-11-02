@@ -29,7 +29,7 @@ See `docs/ARCHITECTURE.md`. Python package `src/fantasy/` (league, data, model, 
 dashboard `web/` (Next.js → Vercel); DB schema `src/fantasy/db/schema.py` → `supabase/migrations/`.
 Research notes: `docs/research/`. Runbooks: `docs/runbooks/`.
 Skills (`.claude/skills/`): draft-prep, live-draft, yahoo-browser, projections-update, model-eval, season-sim,
-agent-run, handoff, in-season-ops (Phase 2 placeholder),
+agent-run, handoff, in-season-ops (capability map + approval policy),
 context-review (weekly consistency sweep of this agentic context vs code; scheduled task `fantasy-context-review`),
 league-loop (in-season Muse READ -> Claude THINK -> user APPROVE -> EXECUTE -> VERIFY loop; design in `docs/research/league_loop.md`). Subagents (`.claude/agents/`): quant-reviewer,
 data-auditor, draft-shadow (all read-only).
@@ -92,7 +92,7 @@ data-auditor, draft-shadow (all read-only).
   plain-language **justification** and a **"why now, not before"**: what we believed or decided earlier (e.g. at the
   draft) and why, and what changed since (new information, a model change with versions, more precise evidence,
   other teams' moves, schedule). If nothing changed, say so and explain why the earlier decision was a near-tie or
-  wrong. Include costs the model doesn't capture (e.g. losing waiver priority). On the Moves tab these are the advice
+  wrong. Include costs the model doesn't capture (e.g. losing waiver priority). On the Inbox tab these are the advice
   fields `rationale` and `why_now`.
 
 ## Learn from mistakes (user requirement)

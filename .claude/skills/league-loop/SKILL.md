@@ -25,7 +25,7 @@ the migration that makes intel private, `20261019120000_private_league_intel.sql
 ## 0. Cadence (suggestions, not verified requirements)
 | When (ET) | Why | Who |
 |---|---|---|
-| Daily 07:00 | after overnight injury news and Yahoo's stat close, before most tip-offs (7 PM) | **built as the local scheduled task `fantasy-daily` running the `daily-routine` skill** (reads Yahoo itself; lineup + IL moves; asks before add/drops). A cloud THINK job on Muse intel is optional on top. |
+| Daily 07:00 | after overnight injury news and Yahoo's stat close, before most tip-offs (7 PM) | **built as the local scheduled task `fantasy-daily` running the `daily-routine` skill** (reads Yahoo itself; lineup + IL moves; recommended add/drops autonomous since 2026-10-31, trades asked). A cloud THINK job on Muse intel is optional on top. |
 | Sunday ~18:00 | before the weekly matchup rollover (our league has **daily** lineups, `weekly_deadline: daily_today`, verified 2026-10-18 - lineups lock per game, not weekly) | THINK job, Sunday mode (next week's matchup) |
 | Ad hoc | user asks "check my team"; Muse posts urgent `injury_news` / `trade` | THINK in any session |
 | Every few hours (Muse's own schedule) | fresh snapshots | Muse |

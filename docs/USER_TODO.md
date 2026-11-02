@@ -69,6 +69,7 @@ Read and follow https://fantasy.harrisonku.com/agent (instructions + API). Your 
 6. To revoke later: change/delete `AGENT_API_TOKEN` in Vercel and ask Claude to trigger a build.
 
 ## At your computer (before the draft — ideally Monday afternoon)
+_Done: draft completed and verified 2026-10-19; kept for reference._
 _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the mock-draft rehearsal (step 7) **after 6pm ET** so you test the final code._
 1. [ ] Install/update Claude Code and sign in (`/login`, not an API key).
 2. [ ] `git clone https://github.com/hmku/nba && cd nba && pip install -e ".[dev]"` (Python ≥ 3.11).
@@ -85,6 +86,7 @@ _Draft-path code freezes Mon 6pm ET (tech-debt fixes land before then): do the m
       then once in live mode in a mock to test clicking.
 
 ## Draft night
+_Done 2026-10-19._
 - [ ] 9:30 PM ET: laptop plugged in, sleep off, Claude running in the repo with its browser (desktop app's built-in browser, or `claude --chrome`) on the draft room.
 - [ ] Say: **"Run the live-draft skill for the real draft nba.l.44495-2026 in live mode. You are authorised to make my picks."**
 - [ ] Optional: `fantasy draft watch` in a second terminal (recomputes recs when picks are entered on the dashboard);
