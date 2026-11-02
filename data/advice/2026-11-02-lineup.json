@@ -1,0 +1,42 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Mon 11-02: Jokić, Brunson, Bridges back in; no add (none helps)",
+  "status": "done",
+  "headline": "Lineup verified 15/15. Week 3 vs Justin: P(win) about 0.63; no add/drop beats noise.",
+  "week": 3,
+  "verdict": "Jokić, Brunson and Bridges sat on the bench from Sunday though all play today; swapped in for Clingan, Sexton and Queen. No tool-recommended add today.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 3)", "value": 0.63, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(win wk3) with old lineup kept", "value": 0.29, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "ΔP(win wk3) Melton for Sexton", "value": 1.5, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Sheppard (Q, back) is still in IL: Yahoo blocks add/drops while he is there (#845); 14 healthy for 13 spots.",
+   "P(win) uses availability priors (rest_share 0.25) and treats Sheppard as out (stand-in, analysis only)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-02.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-02.json"}
+  ],
+  "rationale": [
+   "- All 13 active players have a game today; only 10 can start, so the optimizer benches Sexton, Clingan and Queen (lowest value today).",
+   "- Stream tool: no pair helps the season; Melton for Sexton is week-only (+1.5 pp) with a season effect inside noise.",
+   "- Dropping Sheppard costs about 1 pp P(playoffs) (he returns soon), so he stays."
+  ],
+  "why_now": {
+   "before": "Sunday's lineup benched Jokić, Brunson and Bridges because their teams were idle.",
+   "changed": [
+    {"text": "New day: all three play Monday; week 3 started 0-0 vs Justin (37 vs 31 games).", "kind": "schedule"}
+   ],
+   "evidence": ["P(win week 3)"]
+  }
+ },
+ "params": {
+  "txns": ["txn-bf0816336e2b49e3ac68f0391bc3cf4e (3 swaps, verified)"],
+  "lineup_plan": "lp-2026-11-02-829c77f0f122",
+  "lineup_record": "la-2026-11-02-7418603af9c7"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-02.json", "matchup": "data/raw/yahoo/matchup_2026-11-02T1214Z.json"}
+}

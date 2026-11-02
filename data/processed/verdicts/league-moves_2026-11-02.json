@@ -1,0 +1,53 @@
+{
+ "date": "2026-11-02",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-02_premove_league.json",
+ "baseline_drop": "collin-sexton (lowest season value, our planned next drop)",
+ "results": {
+  "anfernee-simons": {
+   "p_playoffs": {
+    "before": 0.8555,
+    "after": 0.858,
+    "delta": 0.0025,
+    "delta_se": 0.0031
+   },
+   "p_title": {
+    "before": 0.2655,
+    "after": 0.2705,
+    "delta": 0.005,
+    "delta_se": 0.0035
+   },
+   "exp_cat_wins": {
+    "before": 89.9324,
+    "after": 89.9959,
+    "delta": 0.0635,
+    "delta_se": 0.0416
+   },
+   "n_sims": 4000,
+   "sim_version": "season-sim-0.8.1",
+   "command": "fantasy sim compare --league-file <premove> --add anfernee-simons --drop collin-sexton --sims 4000 --no-save --json"
+  },
+  "keegan-murray": {
+   "p_playoffs": {
+    "before": 0.8555,
+    "after": 0.8197,
+    "delta": -0.0357,
+    "delta_se": 0.0036
+   },
+   "p_title": {
+    "before": 0.2655,
+    "after": 0.2632,
+    "delta": -0.0022,
+    "delta_se": 0.0042
+   },
+   "exp_cat_wins": {
+    "before": 89.9324,
+    "after": 88.2766,
+    "delta": -1.6558,
+    "delta_se": 0.0466
+   },
+   "n_sims": 4000,
+   "sim_version": "season-sim-0.8.1",
+   "command": "fantasy sim compare --league-file <premove> --add keegan-murray --drop collin-sexton --sims 4000 --no-save --json"
+  }
+ }
+}
