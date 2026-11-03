@@ -1,0 +1,47 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Dropped Sexton so Sheppard (healthy) leaves IL; Wed lineup set",
+  "status": "done",
+  "headline": "Done and verified on Yahoo 07:19 ET: Sexton dropped, Sheppard IL -> BN; Wed: Sheppard starts SG for idle Podziemski.",
+  "week": 3,
+  "verdict": "Sheppard's back tag cleared, so he could not stay in IL legally and blocked every add. Of the possible drops, Sexton costs least: +0.85 ± 0.24 pp P(playoffs) vs ~-0.8 pp for dropping Sheppard.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "ΔP(playoffs) drop Sexton", "value": 0.85, "se": 0.24, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs) drop Sheppard instead", "value": -0.75, "se": 0.33, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "P(win week 3) after", "value": 0.64, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Sexton (LAL) has 3 games left this week vs Sheppard's 2 (HOU); he was mostly benched anyway.",
+   "Season deltas assume the sim's roster-cap rule (it planned to cut Sexton ~11-25 when Leonard returns anyway).",
+   "Sexton goes to waivers; a rival could claim him (10% rostered)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-03.md"},
+   {"label": "Compare: drop Sexton", "path": "data/processed/verdicts/compare-drop-collin-sexton_2026-11-03.json"},
+   {"label": "Compare: drop Sheppard", "path": "data/processed/verdicts/compare-drop-reed-sheppard_2026-11-03.json"}
+  ],
+  "rationale": [
+   "- 14 healthy players for 13 active+bench spots once Sheppard's Q cleared; lineup tool could not plan and Yahoo blocks adds (#845).",
+   "- Paired season sims (season-sim-0.8.1, 4000 sims, same seed): drop Sexton +0.85 ± 0.24 pp, Sheppard -0.75 ± 0.33, Champagnie -2.3 ± 0.34.",
+   "- No NBA games today (Election Day), so no lock/#174 risk.",
+   "- After the drop, no free agent helps (stream + opportunity: all 'hurts')."
+  ],
+  "why_now": {
+   "before": "11-02: kept everyone; Sheppard (Q) sat in IL and dropping him was rated -1 pp (hurts). The roster cap was going to force a cut when Leonard returns (~11-23).",
+   "changed": [
+    {"text": "Yahoo cleared Sheppard's Q tag on 11-02 evening, so he is healthy in IL: roster over the 13-spot limit and adds blocked.", "kind": "news"},
+    {"text": "No games today: the cheapest moment to make the forced drop.", "kind": "schedule"}
+   ],
+   "evidence": ["ΔP(playoffs) drop Sexton", "ΔP(playoffs) drop Sheppard instead"]
+  }
+ },
+ "params": {
+  "drop": "collin-sexton", "drop_yahoo_player_id": 6019,
+  "then": "reed-sheppard IL->BN (txn-e3f942b7fcaa405883ad273b28227280); 2026-11-04 lineup Sheppard SG, Podziemski BN (txn-de83c563825144c78ba70b78a2e08a51)",
+  "txn_id": "txn-5163c1dfc97b4869a10d8bffb4aa3b14",
+  "tool": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --drop <x> --sims 4000 --no-save --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-03.json", "matchup": "data/raw/yahoo/matchup_2026-11-03T1214Z.json"}
+}

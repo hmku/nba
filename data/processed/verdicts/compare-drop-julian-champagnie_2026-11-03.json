@@ -1,0 +1,43 @@
+{
+  "ok": true,
+  "sim_version": "season-sim-0.8.1",
+  "team": 1,
+  "n_sims": 4000,
+  "seed": 0,
+  "add": [],
+  "drop": [
+    {
+      "player_id": "julian-champagnie",
+      "name": "Julian Champagnie"
+    }
+  ],
+  "p_playoffs": {
+    "before": 0.8778,
+    "after": 0.8548,
+    "delta": -0.023,
+    "delta_se": 0.0034
+  },
+  "p_title": {
+    "before": 0.2858,
+    "after": 0.272,
+    "delta": -0.0138,
+    "delta_se": 0.0056
+  },
+  "exp_cat_wins": {
+    "before": 90.916,
+    "after": 89.8383,
+    "delta": -1.0777,
+    "delta_se": 0.0571
+  },
+  "compute_seconds": 14.88,
+  "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-02 (in 57% of sims)",
+    "before: assumes the roster cap releases Collin Sexton from ~2026-11-25 (in 94% of sims)",
+    "after: assumes the roster cap releases Collin Sexton from ~2027-02-02 (in 56% of sims)"
+  ],
+  "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+}

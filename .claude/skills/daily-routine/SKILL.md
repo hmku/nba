@@ -123,7 +123,10 @@ is interested in X; details private"). A thread message
   automatically (lineup-0.3.0): check `accumulated_source.kind == "matchup_score"` and that its `observed_at` is this
   morning; a MID-WEEK or BANKED STATS warning means re-capture (1b). `expected.cat_win_prob` = chance to win each
   category by Sunday (simulated; availability priors). Exit 2 `infeasible_roster`: check `side`. `side: "mine"` = too
-  many healthy players (e.g. IL return): report to the user, an add/drop decision is theirs. It also fires when my IL
+  many healthy players (e.g. IL return). Since autonomy (2026-10-31) resolve it yourself once the IL player is
+  untagged (healthy): `fantasy sim compare --league-file ... --drop <x> --sims 4000 --no-save` for each of the 2-3
+  weakest healthy players (same seed = paired), drop the best one (beats the others by > 2 SE), move the IL player
+  out, then run stream/opportunity (2026-11-03: Sexton dropped for Sheppard, +0.85 ± 0.24 pp). It also fires when my IL
   players' tags soften to P/Q before Yahoo forces a move (2026-10-25 14:30: VanVleet P, Podziemski Q in IL; Yahoo showed
   no illegal-roster warning and still offered IL in the edit form) and then blocks `lineup plan` and `inseason
   opportunity`. Check the form; if the IL pair has no game that day, a scratch league file with their status set to O
