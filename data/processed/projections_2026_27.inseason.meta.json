@@ -1,10 +1,10 @@
 {
   "model_version": "ros-proj-0.5.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0",
-  "as_of": "2026-11-03",
-  "git_sha": "7328b25",
+  "as_of": "2026-11-04",
+  "git_sha": "3781e33",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-  "prior_sha256": "d8fab93b59689ccaa93d8352feeba97218aa574066966ea32fd18bbc9489fc56",
+  "prior_sha256": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66",
   "rows": 454,
   "players_with_box_scores": 365,
   "max_team_games": 8,
@@ -105,11 +105,11 @@
     "players": 47,
     "games": 1.0
   },
-  "status": "injury feed fetched 2026-11-03",
+  "status": "injury feed fetched 2026-11-04",
   "playoff_share": {
-    "remaining_schedule": 0.1409,
+    "remaining_schedule": 0.1427,
     "season_schedule": 0.1283,
-    "remaining_used": 0.1647,
+    "remaining_used": 0.1668,
     "season_used": 0.15
   },
   "latest_box_score_date": "2026-11-02",
@@ -120,7 +120,7 @@
   "inputs": [
     {
       "path": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-      "sha256": "d8fab93b59689ccaa93d8352feeba97218aa574066966ea32fd18bbc9489fc56"
+      "sha256": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
@@ -132,10 +132,10 @@
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
-      "sha256": "f95b48d6588082a9afd24d1acf9f64be9b72f85dd0ae5abd7362bf84fc303fc7"
+      "sha256": "b5ccc49e72a4a248ee6459384005dad14d53ec08a3b9aa5b858ab4b8c2905f96"
     }
   ],
-  "sha256": "1a69e140d34a738e0895fb4b8ffd0dfa6ada2812812336924241735b8b550e3a",
+  "sha256": "2ec76c0b63e636919246730a036891468eb7188b6edaea0e0b8a48058117054c",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": [
@@ -192,14 +192,14 @@
       "team_games": 7
     },
     {
-      "player_id": "rob-dillingham",
+      "player_id": "nicolas-batum",
       "gp_preseason": 52.9,
       "gp": 24.4,
       "played": 0,
       "team_games": 7
     },
     {
-      "player_id": "nicolas-batum",
+      "player_id": "rob-dillingham",
       "gp_preseason": 52.9,
       "gp": 24.4,
       "played": 0,
