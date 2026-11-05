@@ -1,0 +1,37 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Thu 11-05: lineup verified, no add helps",
+  "status": "done",
+  "headline": "Lineup verified 14/14, no changes. Week 3 vs Justin 4-5, but P(win) about 0.83.",
+  "week": 3,
+  "verdict": "Both of our players with a game today start; Justin has none. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 3)", "value": 0.83, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.874, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "Stream pairs that help", "value": 0, "unit": "count", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "P(win) uses availability priors (rest_share 0.25); Justin's DeRozan/Hart/Knueppel now Out raises our odds.",
+   "FG% (0.08) and AST (0.31) are the weak categories this week."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-05.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-05.json"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-05-5841211e99b7: no slot changes (Muse's overnight Podziemski BN->Util swap matches it).",
+   "- Stream: 18 pairs, none helps; opportunity top 5: hurts/noise, Herbert Jones speculative only."
+  ],
+  "why_now": {
+   "before": "Yesterday we led 5-4 with P(win) about 0.65.",
+   "changed": [
+    {"text": "Wednesday's games flipped the score to 4-5, but Justin lost DeRozan (O) on top of Hart and Knueppel; we have 2 games today vs 0.", "kind": "news"}
+   ],
+   "evidence": ["P(win week 3)"]
+  }
+ },
+ "params": {"lineup_plan": "lp-2026-11-05-5841211e99b7", "lineup_record": "la-2026-11-05-516537cfe6fd", "season_sim": "sim-20261105122904-e256c1"},
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-05.json", "matchup": "data/raw/yahoo/matchup_2026-11-05T1214Z.json"}
+}
