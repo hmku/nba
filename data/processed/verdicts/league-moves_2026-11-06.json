@@ -1,0 +1,249 @@
+{
+ "date": "2026-11-06",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-06_premove_league.json",
+ "moves": [
+  {
+   "player": "draymond-green",
+   "command": "fantasy sim compare --league-file <premove> --add draymond-green --drop reed-sheppard --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8695,
+    "after": 0.852,
+    "delta": -0.0175,
+    "delta_se": 0.0037
+   },
+   "p_title": {
+    "before": 0.2755,
+    "after": 0.2607,
+    "delta": -0.0147,
+    "delta_se": 0.0049
+   },
+   "exp_cat_wins": {
+    "before": 90.491,
+    "after": 89.0032,
+    "delta": -1.4877,
+    "delta_se": 0.0591
+   }
+  },
+  {
+   "player": "kenrich-williams",
+   "command": "fantasy sim compare --league-file <premove> --add kenrich-williams --drop reed-sheppard --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.8695,
+    "after": 0.8283,
+    "delta": -0.0413,
+    "delta_se": 0.0039
+   },
+   "p_title": {
+    "before": 0.2755,
+    "after": 0.2487,
+    "delta": -0.0267,
+    "delta_se": 0.0048
+   },
+   "exp_cat_wins": {
+    "before": 90.491,
+    "after": 88.281,
+    "delta": -2.21,
+    "delta_se": 0.057
+   }
+  }
+ ],
+ "trade_and_all_moves": {
+  "command": "fantasy sim season --league-file <premove|current> --sims 4000 --no-save --json (seed 0, unpaired)",
+  "premove": [
+   {
+    "team": 1,
+    "name": "Harrison's Best Team",
+    "p_playoffs": 0.8695,
+    "p_playoffs_se": 0.0053,
+    "p_title": 0.2755,
+    "p_title_se": 0.0071
+   },
+   {
+    "team": 3,
+    "name": "Waiver Warrior",
+    "p_playoffs": 0.5693,
+    "p_playoffs_se": 0.0078,
+    "p_title": 0.147,
+    "p_title_se": 0.0056
+   },
+   {
+    "team": 6,
+    "name": "Yeet",
+    "p_playoffs": 0.642,
+    "p_playoffs_se": 0.0076,
+    "p_title": 0.1133,
+    "p_title_se": 0.005
+   },
+   {
+    "team": 8,
+    "name": "Ed's Extraordinary Team",
+    "p_playoffs": 0.7935,
+    "p_playoffs_se": 0.0064,
+    "p_title": 0.1103,
+    "p_title_se": 0.005
+   },
+   {
+    "team": 4,
+    "name": "Haagen Daz Center",
+    "p_playoffs": 0.762,
+    "p_playoffs_se": 0.0067,
+    "p_title": 0.082,
+    "p_title_se": 0.0043
+   },
+   {
+    "team": 11,
+    "name": "Pledge Allegiance to the FLAGG",
+    "p_playoffs": 0.5258,
+    "p_playoffs_se": 0.0079,
+    "p_title": 0.0617,
+    "p_title_se": 0.0038
+   },
+   {
+    "team": 5,
+    "name": "Yes it’s a mess",
+    "p_playoffs": 0.387,
+    "p_playoffs_se": 0.0077,
+    "p_title": 0.0505,
+    "p_title_se": 0.0035
+   },
+   {
+    "team": 10,
+    "name": "Christian's Bad Team",
+    "p_playoffs": 0.371,
+    "p_playoffs_se": 0.0076,
+    "p_title": 0.05,
+    "p_title_se": 0.0034
+   },
+   {
+    "team": 2,
+    "name": "Justin's Groovy Team",
+    "p_playoffs": 0.4402,
+    "p_playoffs_se": 0.0078,
+    "p_title": 0.0462,
+    "p_title_se": 0.0033
+   },
+   {
+    "team": 7,
+    "name": "Andrew's Awesome Team",
+    "p_playoffs": 0.321,
+    "p_playoffs_se": 0.0074,
+    "p_title": 0.04,
+    "p_title_se": 0.0031
+   },
+   {
+    "team": 9,
+    "name": "Jeffrey's Great Team",
+    "p_playoffs": 0.1373,
+    "p_playoffs_se": 0.0054,
+    "p_title": 0.0138,
+    "p_title_se": 0.0018
+   },
+   {
+    "team": 12,
+    "name": "Joshua's Excellent Team",
+    "p_playoffs": 0.1815,
+    "p_playoffs_se": 0.0061,
+    "p_title": 0.0097,
+    "p_title_se": 0.0016
+   }
+  ],
+  "current": [
+   {
+    "team": 1,
+    "name": "Harrison's Best Team",
+    "p_playoffs": 0.8725,
+    "p_playoffs_se": 0.0053,
+    "p_title": 0.2908,
+    "p_title_se": 0.0072
+   },
+   {
+    "team": 6,
+    "name": "Yeet",
+    "p_playoffs": 0.656,
+    "p_playoffs_se": 0.0075,
+    "p_title": 0.1245,
+    "p_title_se": 0.0052
+   },
+   {
+    "team": 8,
+    "name": "Ed's Extraordinary Team",
+    "p_playoffs": 0.8063,
+    "p_playoffs_se": 0.0062,
+    "p_title": 0.1113,
+    "p_title_se": 0.005
+   },
+   {
+    "team": 3,
+    "name": "Waiver Warrior",
+    "p_playoffs": 0.4208,
+    "p_playoffs_se": 0.0078,
+    "p_title": 0.105,
+    "p_title_se": 0.0048
+   },
+   {
+    "team": 4,
+    "name": "Haagen Daz Center",
+    "p_playoffs": 0.771,
+    "p_playoffs_se": 0.0066,
+    "p_title": 0.0813,
+    "p_title_se": 0.0043
+   },
+   {
+    "team": 11,
+    "name": "Pledge Allegiance to the FLAGG",
+    "p_playoffs": 0.5373,
+    "p_playoffs_se": 0.0079,
+    "p_title": 0.0665,
+    "p_title_se": 0.0039
+   },
+   {
+    "team": 10,
+    "name": "Christian's Bad Team",
+    "p_playoffs": 0.3867,
+    "p_playoffs_se": 0.0077,
+    "p_title": 0.0535,
+    "p_title_se": 0.0036
+   },
+   {
+    "team": 5,
+    "name": "Yes it’s a mess",
+    "p_playoffs": 0.3775,
+    "p_playoffs_se": 0.0077,
+    "p_title": 0.0485,
+    "p_title_se": 0.0034
+   },
+   {
+    "team": 7,
+    "name": "Andrew's Awesome Team",
+    "p_playoffs": 0.3935,
+    "p_playoffs_se": 0.0077,
+    "p_title": 0.0478,
+    "p_title_se": 0.0034
+   },
+   {
+    "team": 2,
+    "name": "Justin's Groovy Team",
+    "p_playoffs": 0.4427,
+    "p_playoffs_se": 0.0079,
+    "p_title": 0.047,
+    "p_title_se": 0.0033
+   },
+   {
+    "team": 9,
+    "name": "Jeffrey's Great Team",
+    "p_playoffs": 0.135,
+    "p_playoffs_se": 0.0054,
+    "p_title": 0.0138,
+    "p_title_se": 0.0018
+   },
+   {
+    "team": 12,
+    "name": "Joshua's Excellent Team",
+    "p_playoffs": 0.2008,
+    "p_playoffs_se": 0.0063,
+    "p_title": 0.0103,
+    "p_title_se": 0.0016
+   }
+  ]
+ }
+}

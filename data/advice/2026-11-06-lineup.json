@@ -1,0 +1,37 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Fri 11-06: lineup verified, no add helps",
+  "status": "done",
+  "headline": "Lineup verified 14/14, no changes. Week 3 vs Justin: we lead 6-3, P(win) about 0.82.",
+  "week": 3,
+  "verdict": "Muse's overnight swaps (Fears, Clingan, Queen in for idle players) match today's plan. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 3)", "value": 0.824, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.881, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "Stream pairs that help", "value": 0, "unit": "count", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "P(win) uses availability priors (rest_share 0.25).",
+   "FG% (0.09), AST (0.26) and PTS (0.42) are the weak categories this week."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-06.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-06.json"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-06-33c8becee3f8: no slot changes; 7 of 7 players with a game today start.",
+   "- Stream: 18 pairs, none helps; opportunity top 5 all hurt; Vassell (waivers to 11-08) for Sheppard +0.18 +- 0.36 pp = noise."
+  ],
+  "why_now": {
+   "before": "Yesterday we trailed 4-5 with P(win) about 0.83.",
+   "changed": [
+    {"text": "Thursday's 2-vs-0 games flipped the score to 6-3; Andrew dropped Vassell, which we checked: no gain over Sheppard.", "kind": "news"}
+   ],
+   "evidence": ["P(win week 3)"]
+  }
+ },
+ "params": {"lineup_plan": "lp-2026-11-06-33c8becee3f8", "lineup_record": "la-2026-11-06-fe7a16c65048", "season_sim": "sim-20261106122547-fa9de8"},
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-06.json", "matchup": "data/raw/yahoo/matchup_2026-11-06T1215Z.json"}
+}
