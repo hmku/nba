@@ -61,8 +61,10 @@ fantasy league sync --capture data/raw/yahoo/league_rosters_<date>.json --write 
 ## 3. Matchup score (banked totals this week)
 
 Same session and lock as section 1. On `https://basketball.fantasysports.yahoo.com/nba/44495`, run
-`scripts/yahoo/capture_matchup.js` in the browser JS tool (one GET of `/nba/44495/matchup?mid1=11`; set `WEEK` in
-the script for a past week). It returns `{source, captured_at, url, week, teams: [{yahoo_team_id, name, totals:
+`scripts/yahoo/capture_matchup.js` in the browser JS tool (GET `/nba/44495/matchup?mid1=11`; since ~2026-11-06 that
+view renders its score table client-side, so the script follows the page's **Totals** link
+`?date=totals&week=N&mid1=11&mid2=<opp>`, whose HTML still has the full table with FGM/A + games strip; `url` in the
+output names the page read; set `WEEK` in the script for a past week). It returns `{source, captured_at, url, week, teams: [{yahoo_team_id, name, totals:
 {fgm, fga, fg_pct, ftm, fta, ft_pct, fg3m, pts, reb, ast, stl, blk, tov}, cats_won, games_played, games_remaining}],
 problems, diagnostics}`. Save the returned string as `data/raw/yahoo/matchup_<YYYY-MM-DD>T<HHMM>Z.json` (several
 reads a day are normal), then:
@@ -86,7 +88,9 @@ fantasy league score --capture data/raw/yahoo/matchup_<stamp>.json --save --json
 - **`problems` non-empty** after a Yahoo layout change: check `diagnostics.score_table_headers` (the header labels
   the script saw) and extend `COLS` in the script and `HEADER_ALIASES` in `src/fantasy/league/matchup.py` together
   (the Python twin is the tested one: `tests/test_matchup.py`, fixture `tests/fixtures/yahoo/matchup_week1.html`).
-  Real layout (verified 2026-10-20; fixtures `matchup_real_pregame.html` / `matchup_real_midweek.html`): before
+  Totals-view layout re-verified 2026-11-08 (fixture `matchup_real_totals_2026-11-07.html`; the default view without
+  the table = `matchup_real_live_nototals_2026-11-07.html`; the problem "client-rendered ... read the Totals view"
+  means the fallback did not run). Real layout (verified 2026-10-20; fixtures `matchup_real_pregame.html` / `matchup_real_midweek.html`): before
   any game every cell is "-" / "-/-" = 0 (FG%/FT% null, no problem); the blank-header last column is the categories
   won; games played / remaining come from the strip above the table ("30 Remaining | 0/30 Games Played 0/26 |
   Remaining 26", left = my team = first row; `diagnostics.games_strip` shows the matched text, a remaining that

@@ -135,5 +135,12 @@ _Done 2026-10-19._
       6. End-to-end check: tell Claude "check push" — it files a harmless test approval (`fantasy approval request
          --rest`, action `other`); the notification should arrive within seconds; tap it, then **Reject** the card.
 
+- [ ] **Keep the Mac awake for the scheduled runs (2026-11-08)**: on Sat 11-07 the 07:11 daily, 14:30 and 18:30
+      checks never started (the daily ran at 21:33 ET instead), consistent with the Mac asleep / lid closed. The app's
+      "keep awake while working" only holds *during* a session; it can't wake the Mac. Best fix: keep it plugged in,
+      lid open, with System Settings → Battery → Options → *Prevent automatic sleeping on power adapter when the
+      display is off* on. (A `sudo pmset repeat wakeorpoweron MTWRFSU 06:55:00` wake only covers the morning run, not
+      the 14:30 / 18:30 / 20:45 checks.)
+
 ## Done
 - [x] Network allowlist with wildcard domains (2026-10-18).

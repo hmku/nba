@@ -1,7 +1,8 @@
 """Live H2H matchup score: Yahoo matchup-page capture -> validated, normalised `matchup_score` model_runs row.
 
 Input: the JSON returned by `scripts/yahoo/capture_matchup.js` (read-only browser fetch of
-`/nba/44495/matchup?week=N&mid1=11`), or the saved page HTML (`parse_matchup_html`, the same table logic in
+`/nba/44495/matchup?week=N&mid1=11`, falling back to its Totals view `?date=totals&week=N&mid1=11&mid2=<opp>`, the only
+view whose score table is still in the server HTML since ~2026-11-06), or the saved page HTML (`parse_matchup_html`, the same table logic in
 Python; it is what the tests exercise). Output: summary schema `matchup_score/1` (docs/research/dashboard_data.md
 section 7): both teams' raw totals so far this week, FG%/FT% recomputed from makes/attempts (Yahoo's displayed % is
 only cross-checked), the current leader per category, and the category score. Yahoo team ids are mapped to our team
@@ -135,7 +136,7 @@ class _Cell:
 
 class _Tables(HTMLParser):
     """Every <table> as rows of cells (text, title, hrefs); nested tables are kept separate. Also the selected
-    week option and the page title."""
+    week option, the page title and the first Totals-view link (`?date=totals...`)."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -149,9 +150,12 @@ class _Tables(HTMLParser):
         self._in_selected_option = False
         self.text_chunks: list[str] = []
         self._in_link = False
+        self.totals_href: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = dict(attrs)
+        if tag == "a" and self.totals_href is None and "date=totals" in str(a.get("href") or ""):
+            self.totals_href = str(a["href"])
         if tag == "table":
             self._stack.append([])
             self._cell.append(None)
@@ -225,6 +229,8 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
     if best is None:
         problems.append("no score table found (header with >= 6 category columns and >= 2 team rows): "
                         "logged out or layout change?")
+        if p.totals_href:  # 2026-11-06 layout: the default view renders the table client-side
+            problems.append(f"score table is client-rendered on this view; read the Totals view {p.totals_href}")
     else:
         labels, team_rows = best
         fields = [header_field(x) for x in labels]
@@ -272,6 +278,8 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
     if week is None:
         m = re.search(r"(\d+)", p.week_option or "") or re.search(r"Week\s+(\d+)", p.title + " " + " ".join(p.text_chunks),
                                                                   re.I)
+        if m is None and p.totals_href:  # the Totals link carries the week
+            m = re.search(r"[?&]week=(\d+)", p.totals_href)
         week = int(m.group(1)) if m else None
         if week is None:
             problems.append("week not found on the page (pass --week)")
@@ -283,7 +291,7 @@ def parse_matchup_html(html: str, *, my_team: int = 11, week: int | None = None,
                 t["games_played"], t["games_remaining"] = played, remaining
     return {"source": source or "saved Yahoo matchup page HTML (fantasy.league.matchup.parse_matchup_html)",
             "captured_at": captured_at, "url": None, "week": week, "teams": teams, "problems": problems,
-            "diagnostics": {"score_table_headers": headers_seen[:4]}}
+            "diagnostics": {"score_table_headers": headers_seen[:4], "totals_href": p.totals_href}}
 
 
 # ------------------------------------------------------------------ validation / normalisation

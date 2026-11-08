@@ -16,7 +16,10 @@
 // non-empty team-link text (the logo link comes first). Games played / remaining come from the strip above the
 // table ("30 Remaining | 0/30 Games Played 0/26 | Remaining 26", left = first table row). A field that cannot be
 // found stays null and is listed in `problems`. Layout verified on the real page 2026-10-20 (fixtures
-// tests/fixtures/yahoo/matchup_real_{pregame,midweek}.html).
+// tests/fixtures/yahoo/matchup_real_{pregame,midweek}.html). Since ~2026-11-06 the default view renders the score
+// table client-side (server HTML has no FGM/A): the script then follows the page's "Totals" link
+// (?date=totals&week=N&mid1=11&mid2=<opp>), whose HTML still has the old table + games strip (verified 2026-11-08,
+// fixtures matchup_real_totals_2026-11-07.html / matchup_real_live_nototals_2026-11-07.html).
 await (async () => {
   const LEAGUE = 44495, MY_TEAM = 11;
   const WEEK = null;  // e.g. 3 for week 3
@@ -73,19 +76,27 @@ await (async () => {
   const teamRe = new RegExp(`/nba/${LEAGUE}/(\\d+)(?:[/?#]|$)`);
   const cellText = (el) => (el.getAttribute("title") && !el.textContent.trim() ? el.getAttribute("title") : el.textContent).replace(/\s+/g, " ").trim();
 
-  const url = `/nba/${LEAGUE}/matchup?${WEEK ? `week=${WEEK}&` : ""}mid1=${MY_TEAM}`;
-  const html = await get(url);
-  const d = new DOMParser().parseFromString(html, "text/html");
   const problems = [], seenHeaders = [];
-  let best = null;
-  for (const table of d.querySelectorAll("table")) {
-    const rows = [...table.querySelectorAll("tr")];
-    const hdr = rows.find((tr) => tr.querySelector("th") && [...tr.children].filter((c) => CATS.has(field(cellText(c)))).length >= 6);
-    if (!hdr) continue;
-    const labels = [...hdr.children].map(cellText);
-    seenHeaders.push(labels);
-    const teamRows = rows.filter((tr) => tr !== hdr && [...tr.querySelectorAll("a[href]")].some((a) => teamRe.test(a.getAttribute("href"))));
-    if (teamRows.length >= 2) { best = { labels, teamRows }; break; }
+  const scoreTable = (doc) => {
+    for (const table of doc.querySelectorAll("table")) {
+      const rows = [...table.querySelectorAll("tr")];
+      const hdr = rows.find((tr) => tr.querySelector("th") && [...tr.children].filter((c) => CATS.has(field(cellText(c)))).length >= 6);
+      if (!hdr) continue;
+      const labels = [...hdr.children].map(cellText);
+      seenHeaders.push(labels);
+      const teamRows = rows.filter((tr) => tr !== hdr && [...tr.querySelectorAll("a[href]")].some((a) => teamRe.test(a.getAttribute("href"))));
+      if (teamRows.length >= 2) return { labels, teamRows };
+    }
+    return null;
+  };
+  let url = `/nba/${LEAGUE}/matchup?${WEEK ? `week=${WEEK}&` : ""}mid1=${MY_TEAM}`;
+  let d = new DOMParser().parseFromString(await get(url), "text/html");
+  let best = scoreTable(d);
+  const totalsLink = d.querySelector("a[href*='date=totals']");
+  if (!best && totalsLink) {  // 2026-11-06 layout: only the Totals view still serves the table in its HTML
+    url = totalsLink.getAttribute("href");
+    d = new DOMParser().parseFromString(await get(url), "text/html");
+    best = scoreTable(d);
   }
   const teams = [];
   if (!best) {
@@ -129,7 +140,8 @@ await (async () => {
     const opt = d.querySelector("select[name='week'] option[selected], select#week option[selected]");
     const m = ((opt && opt.textContent) || "").match(/(\d+)/) || (d.title + " " + [...d.querySelectorAll("h1,h2,h3,h4,span,div.Fw-b")]
       .slice(0, 400).map((e) => e.childElementCount ? "" : e.textContent).join(" ")).match(/Week\s+(\d+)/i);
-    week = m ? Number(m[1]) : null;
+    const mu = url.match(/[?&]week=(\d+)/);  // the Totals link carries the week
+    week = m ? Number(m[1]) : (mu ? Number(mu[1]) : null);
     if (!week) problems.push("week not found on the page (pass --week to fantasy league score)");
   }
   // games played / remaining are not in the score table on every layout: keep short text hints for the next fix

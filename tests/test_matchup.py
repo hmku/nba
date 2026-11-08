@@ -332,3 +332,26 @@ def test_banked_pct_enters_as_makes_and_attempts():
     s = matchup.build_summary(_capture(), my_slot=1, slot_map={11: 1, 2: 5}, calendar=WEEK1)
     acc_json = matchup.accumulated(s)
     assert acc_json["me"]["fgm"] == 120 and acc_json["me"]["fga"] == 250 and "fg_pct" not in acc_json["me"]
+
+
+REAL_TOTALS = FIXTURE.parent / "matchup_real_totals_2026-11-07.html"  # real Totals view, week 3 Sat night
+REAL_LIVE_NO_TABLE = FIXTURE.parent / "matchup_real_live_nototals_2026-11-07.html"  # default view, table client-side
+
+
+def test_parse_real_totals_view_2026_11_layout():
+    cap = matchup.parse_matchup_html(REAL_TOTALS.read_text(), my_team=11, captured_at="2026-11-08T03:40:00Z")
+    assert cap["problems"] == [] and cap["week"] == 3
+    me, opp = cap["teams"]
+    assert me["yahoo_team_id"] == 11 and opp["yahoo_team_id"] == 9 and opp["name"] == "Justin's Groovy Team"
+    assert (me["totals"]["fgm"], me["totals"]["fga"], me["totals"]["ftm"], me["totals"]["fta"]) == (187, 422, 77, 98)
+    assert (opp["totals"]["ast"], opp["totals"]["tov"], me["cats_won"], opp["cats_won"]) == (130, 53, 7, 2)
+    assert (me["games_played"], me["games_remaining"], opp["games_played"], opp["games_remaining"]) == (31, 4, 29, 5)
+    s = matchup.build_summary(cap, my_slot=1, slot_map={11: 1, 9: 9})
+    assert s["me"]["fg_pct"] == pytest.approx(187 / 422, abs=1e-4)
+
+
+def test_default_view_without_table_points_to_totals_view():
+    cap = matchup.parse_matchup_html(REAL_LIVE_NO_TABLE.read_text(), my_team=11)
+    assert cap["teams"] == []
+    assert cap["diagnostics"]["totals_href"] == "/nba/44495/matchup?date=totals&week=3&mid1=11&mid2=9"
+    assert any("client-rendered" in p and "date=totals" in p for p in cap["problems"])
