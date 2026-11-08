@@ -1,0 +1,47 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sun 11-08: lineup = plan; Mon set (Reid in at C); no add helps",
+  "status": "done",
+  "headline": "Today's lineup already matched the plan. Week 3 vs Justin: 7-2, P(win) 0.98.",
+  "week": 3,
+  "verdict": "Monday's lineup is set early: Reid starts at C, Ware to bench. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 3)", "value": 0.98, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.868, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.259, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Monday's plan uses today's tags; Monday's morning run re-plans.",
+   "P(win) uses availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-08.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-08.json"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-08-3ce9a556192e: 0 changes; all 4 players with games start.",
+   "- Mon plan lp-2026-11-09-0c7155fe90cd: Reid C, Ware BN; verified on Yahoo (txn-dd46948982fd48d8bc3f1dc3b8e63dfd).",
+   "- Stream: 0 helps. Vassell for Sheppard −1.8 ± 0.5 pp P(playoffs); Raynaud stash −2.1 ± 0.4 pp."
+  ],
+  "why_now": {
+   "before": "Saturday night we led 7-2 and found no helpful add.",
+   "changed": [
+    {"text": "Vassell cleared waivers and is a free agent, so we checked him: he still hurts. Monday is set early in case the next morning run fires late.", "kind": "news"}
+   ],
+   "evidence": ["P(playoffs)"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-08-3ce9a556192e",
+  "lineup_plan_next": "lp-2026-11-09-0c7155fe90cd",
+  "lineup_record": "la-2026-11-08-9dffb1153411",
+  "matchup_score": "ms-w3-2026-11-08-e48fce75665b",
+  "season_sim": "sim-20261108122946-92a66e"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-08.json"
+ }
+}

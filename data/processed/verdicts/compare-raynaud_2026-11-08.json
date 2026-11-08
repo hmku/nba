@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "sim_version": "season-sim-0.8.1",
+  "team": 1,
+  "n_sims": 4000,
+  "seed": 0,
+  "add": [
+    {
+      "player_id": "maxime-raynaud",
+      "name": "Maxime Raynaud"
+    }
+  ],
+  "drop": [
+    {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+    }
+  ],
+  "p_playoffs": {
+    "before": 0.8555,
+    "after": 0.835,
+    "delta": -0.0205,
+    "delta_se": 0.004
+  },
+  "p_title": {
+    "before": 0.2625,
+    "after": 0.2637,
+    "delta": 0.0013,
+    "delta_se": 0.005
+  },
+  "exp_cat_wins": {
+    "before": 89.6637,
+    "after": 88.5966,
+    "delta": -1.0671,
+    "delta_se": 0.0571
+  },
+  "compute_seconds": 12.03,
+  "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-06 (in 56% of sims)",
+    "after: assumes the roster cap releases Maxime Raynaud from ~2027-02-14 (in 56% of sims)",
+    "after: \u0394 vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~77 IL-replacement games/season in total"
+  ],
+  "warnings": [
+    "team 9: 1 player(s) not in projections, simulated at replacement level: unknown:mario-hezonja",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "team 9: 1 player(s) not in projections, simulated at replacement level: unknown:mario-hezonja",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+}

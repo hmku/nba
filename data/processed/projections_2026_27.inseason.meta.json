@@ -1,13 +1,13 @@
 {
   "model_version": "ros-proj-0.5.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0",
-  "as_of": "2026-11-07",
-  "git_sha": "f606631",
+  "as_of": "2026-11-08",
+  "git_sha": "e97edbb",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
   "prior_sha256": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66",
   "rows": 454,
   "players_with_box_scores": 373,
-  "max_team_games": 10,
+  "max_team_games": 11,
   "gp_semantics": "gp is a RATE, not a count: 82 x expected share of the remaining fantasy-season team games played (per-game play probability x 82; fantasy season ends 2027-03-21); ros_team_games / ros_games = remaining team games / expected games through that date; fantasy_gp_exp = games played + ros_games; season_gp_exp = 82-game season total (games played + the same share of every remaining NBA game)",
   "availability": {
     "version": "ros-avail-0.4",
@@ -105,11 +105,11 @@
     "players": 47,
     "games": 1.0
   },
-  "status": "injury feed fetched 2026-11-07",
+  "status": "injury feed fetched 2026-11-08",
   "playoff_share": {
-    "remaining_schedule": 0.1451,
+    "remaining_schedule": 0.1461,
     "season_schedule": 0.1283,
-    "remaining_used": 0.1697,
+    "remaining_used": 0.1708,
     "season_used": 0.15
   },
   "latest_box_score_date": "2026-11-07",
@@ -124,18 +124,18 @@
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
-      "sha256": "1e0eb4ed223e586f3ca297a49808d7294520a37e96a6afc9e1d1b93102a220f5"
+      "sha256": "a34f184f03179545361109932da42d2def6fff42217977a9f1f7b6da234274af"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/team_games_2027.csv.gz",
-      "sha256": "169d55070379872480f4dc769d54163faba85a57c829c3a82aacfe453051abd6"
+      "sha256": "401836d4d3d67ce4752d167f15594fa0c3beba2e31d02fb9d2deb97c8275f076"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
       "sha256": "b5ccc49e72a4a248ee6459384005dad14d53ec08a3b9aa5b858ab4b8c2905f96"
     }
   ],
-  "sha256": "57427d54e5be19ce131b0e759ac778ae2cca5b0f78239ca04f7d0683f1248b35",
+  "sha256": "11436de5d1f529c6b8195cfcb13acfa667ca90db68f6af42d455feab7b9f8cd7",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": []
@@ -144,9 +144,16 @@
     {
       "player_id": "bruce-brown",
       "gp_preseason": 59.1,
-      "gp": 26.9,
+      "gp": 25.8,
       "played": 0,
-      "team_games": 8
+      "team_games": 9
+    },
+    {
+      "player_id": "tobias-harris",
+      "gp_preseason": 55.3,
+      "gp": 23.8,
+      "played": 0,
+      "team_games": 10
     },
     {
       "player_id": "dominick-barlow",
@@ -170,18 +177,18 @@
       "team_games": 9
     },
     {
-      "player_id": "tobias-harris",
-      "gp_preseason": 55.3,
-      "gp": 24.8,
-      "played": 0,
-      "team_games": 9
-    },
-    {
       "player_id": "mouhamed-gueye",
       "gp_preseason": 50.8,
-      "gp": 21.4,
+      "gp": 20.4,
       "played": 0,
-      "team_games": 10
+      "team_games": 11
+    },
+    {
+      "player_id": "ochai-agbaji",
+      "gp_preseason": 51.6,
+      "gp": 21.8,
+      "played": 0,
+      "team_games": 9
     },
     {
       "player_id": "rob-dillingham",
@@ -203,13 +210,6 @@
       "gp": 19.2,
       "played": 0,
       "team_games": 10
-    },
-    {
-      "player_id": "ochai-agbaji",
-      "gp_preseason": 51.6,
-      "gp": 22.8,
-      "played": 0,
-      "team_games": 8
     }
   ]
 }
