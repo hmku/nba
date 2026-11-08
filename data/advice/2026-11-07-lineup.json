@@ -1,0 +1,74 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sat 11-07: lineup = plan (today + Sun), no add helps",
+  "status": "done",
+  "headline": "Lineup already matched the plan for Sat and Sun; no changes. Week 3 vs Justin: 7-2 live on Yahoo.",
+  "week": 3,
+  "verdict": "Daily run fired late (21:34 ET); only SA@POR was still to tip and both our players there start. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(playoffs)",
+    "value": 0.867,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.244,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "Stream pairs that help",
+    "value": 0,
+    "unit": "count",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "No P(win week): Yahoo's matchup page changed layout, score capture failed; banked stats are from Fri AM.",
+   "The morning and afternoon runs did not happen on 11-07."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-07.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-07.json"
+   }
+  ],
+  "rationale": [
+   "- Plans lp-2026-11-07-740e496d0820 (6 started players locked) and lp-2026-11-08-2bd3159646d0: no slot changes vs Yahoo.",
+   "- Stream (dated 11-08): 18 pairs, 0 helps (DJJ/Marshall for Sheppard: P(title) up but fails the every-projection-set rule); opportunity: none."
+  ],
+  "why_now": {
+   "before": "Friday we led 6-3 with P(win) about 0.82.",
+   "changed": [
+    {
+     "text": "Friday/Saturday games pushed the live score to 7-2; WW added M. Brown + da Silva, FLAGG Shead, mess Traore: none were adds that helped us.",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "P(playoffs)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-07-740e496d0820",
+  "lineup_plan_next": "lp-2026-11-08-2bd3159646d0",
+  "lineup_record": "la-2026-11-07-b47344891a4a",
+  "season_sim": "sim-20261108024634-dcec3e"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-07.json"
+ }
+}
