@@ -96,7 +96,7 @@ def test_cli_source_advisor_and_show():
     res = runner.invoke(app, ["intel", "show", "advisor-ev-1", "--json"])
     shown = json.loads(res.stdout)
     assert shown["report"]["source"] == "advisor" and shown["note"] == intel.ADVISOR_NOTE
-    res = runner.invoke(app, ["intel", "latest"])
+    res = runner.invoke(app, ["intel", "latest", "--since", "2026-11-01"])
     assert res.exit_code == 0
     assert "advisor suggestions" in res.stdout and "[advisor] [add_drop] Stream a C" in res.stdout
 
