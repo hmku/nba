@@ -117,6 +117,65 @@ the parameters), starter share (0.00) and teammate absence (−0.002 ± 0.005).
   are unchanged. Not wired into the lineup or stream tools yet.
 - The meta `minutes` block holds both parameter sets.
 
+## Team minute budget (`team-min-0.1`, T-022, 2026-11-09)
+**Answer:** adopted on the **preseason** file only, with a small step (α = 0.25, proportional, trim only). Claimed
+gain is in minutes only:
+- −0.038 ± 0.007 mpg RMSE at in-season checkpoints.
+- −0.111 ± 0.025 before game 1.
+
+The 9-cat effect is negligible (2024-25 z +0.0005 ± 0.0014). An in-season budget on top adds nothing.
+
+**Caveats:**
+- **In-sample selection:** α, β and trim were SELECTED on the same two evaluation seasons (only u was held out).
+- **Deployed u not backtested:** u = 0.09 is an estimate from current-season (weeks 1-3) data. Expected effect is
+  between 0 and the backtested gain.
+- **Why:** team totals Σ (gp/82 × mpg) in the 2026-27 draft file ran from 137 (OKC) to 312 (MEM) min per team game (sd 38).
+  A team plays 241.35 (fitted: ESPN 2024-25 241.39, 2025-26 241.31). The bias audit found each +10 above 240 cost
+  that team's players −0.25 MIN (t −3.5). The in-season file already sums much tighter (2026-11-08: mean 217, sd 19,
+  179-251), because games played pull minutes toward reality.
+- **Method** (`fantasy.model.team_minutes`): per team, gap = α × (241.35 × (1 − u) − Σ share × mpg). Each player's
+  mpg moves by gap × a_i / Σ share × a, with a_i = mpg × ((48 − mpg)/48)^β. Per-minute rates are unchanged, so
+  counting stats scale with mpg. Teams with < 8 rows are untouched. Applied by `fantasy data build-projections` to the
+  blended default file (`--no-team-minutes` skips it). Deployed `PRESEASON_PARAMS`: α 0.25, β 0, trim, u 0.09.
+  2026-27 effect: 256 rows change, mpg −0.47 on average (largest −2.3: MEM, WAS, MIL rows). Team sums: before
+  mean 226.5 (sd 37.3, max 312), after mean 222.1 (sd 32.0, max 289). Versions: `projections-2026-27-0.5.0`, model `…+team-min-0.1`.
+- **Backtest:** `scripts/inseason_model/team_budget/`, rolling origin on 2024-25 and 2025-26.
+  - Prior: production-like (project_core on T−3..T−1, 450 rows, 50/50 ESPN blend, ESPN's preseason team).
+  - Production `update_projections` at 5 checkpoints: before game 1, then +13 / 27 / 55 / 97 days.
+  - Target: mean minutes and per-game stats over each player's remaining games played.
+  - u is leave-one-season-out: the other season's share of minutes to players outside the prior, 0.134 / 0.156.
+  - SE: cluster bootstrap by player-season, paired vs base.
+
+| variant (budget on the prior) | in-season checkpoints (3,994 rows): Δ mpg RMSE | Δ 9-cat z RMS | before game 1 (786): Δ mpg RMSE | Δ z9 |
+|---|---|---|---|---|
+| base (no budget): RMSE 4.276 / z 1.552; before game 1 4.962 / 1.610 | — | — | — | — |
+| **α 0.25, β 0, trim (deployed)** | **−0.038 ± 0.007** | **−0.0029 ± 0.0010** | **−0.111 ± 0.025** | −0.008 ± 0.005 |
+| α 0.25, β 0, both directions | −0.038 ± 0.007 | −0.0031 ± 0.0010 | −0.109 ± 0.026 | −0.008 ± 0.005 |
+| α 0.5, β 0 | −0.056 ± 0.014 | −0.0039 ± 0.0020 | −0.074 ± 0.053 | +0.003 ± 0.010 |
+| α 0.75, β 0 | −0.055 ± 0.021 | −0.0023 ± 0.0032 | +0.103 ± 0.083 | +0.032 ± 0.016 |
+| α 0.5, β 2 (bench tilt) | −0.050 ± 0.017 | −0.0032 ± 0.0021 | −0.024 ± 0.058 | +0.004 ± 0.009 |
+| league-wide (not per team), α 0.5 | −0.036 ± 0.009 | −0.0025 ± 0.0013 | −0.049 ± 0.033 | 0.000 ± 0.006 |
+| α 0.5 prior budget + in-season budget (α 0.25) | −0.056 ± 0.015 | −0.0036 ± 0.0021 | −0.012 ± 0.067 | +0.014 ± 0.013 |
+| in-season budget only (α 0.5, trim) | −0.008 ± 0.005 | +0.0007 ± 0.0007 | | |
+
+- **By season (in-season checkpoints, α 0.25):** 2024-25 −0.023 ± 0.010 mpg, z +0.0005 ± 0.0014. 2025-26
+  −0.051 ± 0.011, z −0.0064 ± 0.0015.
+  - α 0.5 is better on 2025-26 but worsens z in 2024-25 (+0.0036 ± 0.003).
+  - α 0.25 is the only step that helps minutes in both seasons and hurts z in neither, so it is deployed.
+- **Trim only.** "trim" (cut over-budget teams, never raise) ties "both" out of sample. It avoids inflating starters when
+  a team's shortfall belongs to players outside the file. Example: 2026-27 OKC is projected at 137 min per game, and
+  22% of its minutes go to unprojected players. "both" would have raised Gilgeous-Alexander from 33.7 to 38.8 mpg.
+- **Per team beats league-wide.** A single league-wide scale gains less, so the team-specific part carries information.
+- **No bench tilt.** β > 0 is worse at every α. Conditional on playing, low-projected players are *under*-projected:
+  before game 1, prior < 15 mpg errs −3.7 (predicted − actual), ≥ 25 mpg errs +1.5. The proportional cut mostly
+  trims the over-projected starters (≥ 25 mpg: +1.51 → +0.89).
+- **Production u = 0.09 is an ESTIMATE, not fitted.**
+  - The history prior has no rookie rows, so its u (0.13-0.16) is too high for production.
+  - 2026-27 weeks 1-3: 5.8% of minutes went to players outside the preseason file. In history, the full-season share
+    is 1.45-1.8× the first-20-days share, which gives ~0.09.
+- **Not done:** next-5 minutes; refit after this season; the 2026-27 population (rookie priors, trade overrides)
+  differs from the backtest prior.
+
 ## Fitted vs prior
 - Fitted: half-lives (CV), all coefficients and SEs, and the intercept decision and fallback decision (pre-stated
   rules applied to OOS numbers).

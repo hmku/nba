@@ -22,6 +22,9 @@ scores to date (`fantasy data fetch-boxscores`, data/raw/espn_boxscores/) are th
    percentages are the same). `minutes_model="shrink"` restores the old equal-weight shrink (n0 = STAT_N0['mpg']
    games) and the ros-proj-0.4.0 version string; there mpg_next5 = mpg.
 
+4. Players who play without a prior row (pop-prior-*, default since ros-proj-0.6.0): a population per-minute prior
+   shrunk toward their games with STAT_N0 x POP_N0_MULT, flagged `prior_source = population` (low confidence).
+
 Output keeps the projections schema so every consumer works unchanged; `gp` becomes a RATE, not a count: 82 x the
 expected share of remaining (fantasy-season) team games played, i.e. consumers use gp / 82 as the per-game
 probability of playing; `gp_sd` is its sd on the same scale. Counts are separate columns: `ros_team_games` /
@@ -40,6 +43,8 @@ import numpy as np
 import pandas as pd
 
 from fantasy.model.minutes import MINUTES_MODEL_VERSION, default_params, model_meta, project_mpg
+from fantasy.model.team_minutes import TEAM_MINUTES_VERSION, TeamMinutesParams
+from fantasy.model.team_minutes import constrain as constrain_team_minutes
 
 ROS_AVAIL_VERSION = "ros-avail-0.4"
 STAT_SHRINK_VERSION = "stat-shrink-0.1"
@@ -47,17 +52,26 @@ STAT_SHRINK_VERSION = "stat-shrink-0.1"
 MINUTES_MODELS = ("ewma", "shrink")
 
 
-def inseason_model_version(minutes_model: str = "ewma") -> str:
-    """Version of the rest-of-season projections for a minutes model. 0.5.0: mpg from the recency-weighted minutes
-    models (minutes-*) + the mpg_next5 column; "shrink" reproduces 0.4.0 (equal-weight mpg shrink)."""
+def inseason_model_version(minutes_model: str = "ewma", population_prior: bool = True,
+                           team_minutes: bool = False) -> str:
+    """Version of the rest-of-season projections. 0.5.0: mpg from the recency-weighted minutes models (minutes-*) +
+    the mpg_next5 column; "shrink" reproduces 0.4.0 (equal-weight mpg shrink). 0.6.0: rows for every player who
+    played without a projection row (pop-prior-*, T-023); `+team-min-*` when the team minute budget (T-022) is on.
+    population_prior=False (ewma) reproduces the 0.5.0 string."""
     if minutes_model == "shrink":
-        return f"ros-proj-0.4.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}"
-    if minutes_model == "ewma":
-        return f"ros-proj-0.5.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}+{MINUTES_MODEL_VERSION}"
-    raise ValueError(f"unknown minutes_model {minutes_model!r}; choose from {MINUTES_MODELS}")
+        v = f"ros-proj-0.4.0+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}"
+    elif minutes_model == "ewma":
+        head = "ros-proj-0.6.0" if population_prior else "ros-proj-0.5.0"
+        v = f"{head}+{ROS_AVAIL_VERSION}+{STAT_SHRINK_VERSION}+{MINUTES_MODEL_VERSION}"
+    else:
+        raise ValueError(f"unknown minutes_model {minutes_model!r}; choose from {MINUTES_MODELS}")
+    if population_prior:
+        v += f"+{POP_PRIOR_VERSION}"
+    if team_minutes:
+        v += f"+{TEAM_MINUTES_VERSION}"
+    return v
 
 
-INSEASON_MODEL_VERSION = inseason_model_version("ewma")  # the default
 SEASON_GAMES = 82
 FANTASY_END_DAYS = 21  # the fantasy season (playoffs end Mar 21, 2027) ends 21 days before the NBA's last day (Apr 11)
 FANTASY_TEAM_GAMES = 70  # team games through the fantasy end when no schedule is given (2026-27: 68-71 per team)
@@ -129,6 +143,78 @@ STAT_N0_UNITS = {"mpg": "games", "fg_pct": "fga", "ft_pct": "fta"}  # every othe
 RATE_STATS = ["fga", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov"]
 COUNT_COLS = ["min", "pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "reb", "ast", "stl", "blk", "tov"]
 STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "pts", "reb", "ast", "stl", "blk", "tov"]
+
+# --- population prior (pop-prior-*) for players who play without a projection row (call-ups, signings, fringe
+# players outside the 450-row preseason file). FITTED on ESPN 2024-25 + 2025-26 box scores: players who played and
+# were neither in the production-like prior (project_core + ESPN blend, 450 rows) nor in ESPN's preseason projections
+# (2024-25: 137 players, 7.3% of minutes; 2025-26: 152, 9.9%). Pooled per-minute rates and percentages, mpg in games
+# played and the sd across players of the share of games played after the first appearance. Rolling-origin backtest
+# (inseason_updates.md "Players without a projection row", leave-one-season-out priors, 926 player-checkpoints):
+# POP_N0_MULT = 0.25 (observed stats shrunk toward this prior with STAT_N0 x 0.25: the prior is a population mean,
+# not a player projection) is best in both seasons (9-cat z RMS 1.72 vs 1.83 at x1, -0.11 +- 0.01; x0.1 1.73,
+# x0.05 1.79, observed only 2.18). "share" = 0.50 is CALIBRATED in-sample on both seasons (mean residual of
+# remaining games +0.04 +- 0.6; the raw share after the first appearance, 0.36 / 0.43, under-predicted by 2.1 games).
+POP_PRIOR_VERSION = "pop-prior-0.1"
+POP_PRIOR: dict[str, float] = {
+    "mpg": 14.9, "fga": 0.3047, "fta": 0.0640, "fg3m": 0.0453, "reb": 0.1732, "ast": 0.0918, "stl": 0.0340,
+    "blk": 0.0212, "tov": 0.0496, "fg_pct": 0.447, "ft_pct": 0.746, "share": 0.50, "share_sd": 0.28,
+}  # fmt: skip
+POP_N0_MULT = 0.25
+POP_SOURCE = "inseason_population_prior"
+INSEASON_MODEL_VERSION = inseason_model_version("ewma")  # the default (no team budget: see DEFAULT_TEAM_MINUTES)
+POP_N0: dict[str, float] = {k: v * POP_N0_MULT if k != "mpg" else v for k, v in STAT_N0.items()}
+
+
+_SUFFIX = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
+def _name_key(name: str) -> tuple[str, str]:
+    """(normalised full name without suffixes, last name) for id-mismatch checks."""
+    from fantasy.data.ids import slugify
+
+    parts = [w for w in slugify(str(name)).split("-") if w and w not in _SUFFIX]
+    return "-".join(parts), (parts[-1] if parts else "")
+
+
+def possible_id_mismatches(pop: pd.DataFrame, unlisted: pd.DataFrame) -> list[str]:
+    """Warnings for population rows that may be a projected-but-never-listed player under another id: same
+    normalised name (suffixes dropped), or same last name and team. Such a pair means the box-score id and the
+    projection id disagree (fix with an alias in fantasy.data.ids.ALIASES)."""
+    if pop.empty or unlisted.empty:
+        return []
+    keys = {r.player_id: (_name_key(r.name), str(r.team)) for r in unlisted.itertuples()}
+    out = []
+    for r in pop.itertuples():
+        (full, last), team = _name_key(r.name), str(r.team)
+        for pid, ((f2, l2), t2) in keys.items():
+            if full == f2 or (last and last == l2 and team == t2):
+                out.append(f"possible id mismatch: population row {r.player_id} ({r.name}, {team}) vs unlisted "
+                           f"projected {pid} ({t2}); add an alias in fantasy.data.ids.ALIASES if same player")
+    return out
+
+
+def population_rows(pg: pd.DataFrame, known: set[str], positions: dict[str, str] | None = None) -> pd.DataFrame:
+    """Prior rows (projections schema) for players who played in `pg` (cleaned box-score rows, `played` set) but are
+    not in `known`: POP_PRIOR per-game line (rates x mpg), team / name from his latest box-score row."""
+    played = pg[pg["played"] & ~pg["player_id"].astype(str).isin(known)]
+    if played.empty:
+        return pd.DataFrame()
+    last = played.sort_values(["game_date", "game_id"]).groupby("player_id").tail(1).set_index("player_id")
+    m = POP_PRIOR["mpg"]
+    line = {s: POP_PRIOR[s] * m for s in RATE_STATS}
+    line["fgm"] = POP_PRIOR["fg_pct"] * line["fga"]
+    line["ftm"] = POP_PRIOR["ft_pct"] * line["fta"]
+    line["pts"] = 2 * line["fgm"] + line["fg3m"] + line["ftm"]
+    name = last["player_name"] if "player_name" in last else pd.Series(last.index, index=last.index)
+    rows = pd.DataFrame({
+        "player_id": last.index.astype(str), "name": name.astype(str).to_numpy(),
+        "team": last["team"].astype(str).to_numpy(),
+        "positions": [(positions or {}).get(p, "") for p in last.index],
+        "gp": round(POP_PRIOR["share"] * SEASON_GAMES, 1), "gp_sd": round(POP_PRIOR["share_sd"] * SEASON_GAMES, 1),
+        "mpg": m, **{s: round(v, 3) for s, v in line.items()},
+        "status": "healthy", "source": POP_SOURCE, "playoff_mult": 1.0, "prior_source": "population",
+    })
+    return rows.sort_values("player_id").reset_index(drop=True)
 
 
 # ----------------------------------------------------------------------------------------------- availability
@@ -241,13 +327,14 @@ def timeline_features(tl: pd.DataFrame) -> tuple[int, int, int, int]:
 
 
 # ----------------------------------------------------------------------------------------------------- stats
-def shrink_line(prior: pd.Series, tot: pd.Series, g: float, mpg: float | None = None) -> dict[str, float]:
+def shrink_line(prior: pd.Series, tot: pd.Series, g: float, mpg: float | None = None,
+                n0: dict[str, float] | None = None) -> dict[str, float]:
     """Posterior per-game line from the prior per-game line (`prior`: mpg + STATS) and season-to-date totals
     (`tot`: COUNT_COLS) over `g` games played. Makes come from shrunk percentages x shrunk attempts; PTS is the
     prior's points-per-scoring identity applied to the shrunk makes (2 FGM + 3PM + FTM, rescaled like the sim).
     mpg: projected minutes per game (the minutes model); None = the equal-weight shrink with n0 = STAT_N0['mpg'].
-    Per-minute rates are shrunk the same way either way."""
-    n0 = STAT_N0
+    Per-minute rates are shrunk the same way either way. n0: stabilisation constants (default STAT_N0)."""
+    n0 = n0 or STAT_N0
     mpg_p = float(prior.get("mpg", 0.0) or 0.0)
     M = float(tot.get("min", 0.0))
     if mpg is None:
@@ -262,7 +349,7 @@ def shrink_line(prior: pd.Series, tot: pd.Series, g: float, mpg: float | None = 
         p_p = float(prior[make]) / float(prior[att]) if float(prior[att]) > 0 else 0.0
         a_o = float(tot.get(att, 0.0))
         p_o = float(tot.get(make, 0.0)) / a_o if a_o > 0 else p_p
-        p = (n0[pct] * p_p + a_o * p_o) / (n0[pct] + a_o)
+        p = (n0[pct] * p_p + a_o * p_o) / (n0[pct] + a_o) if n0[pct] + a_o > 0 else p_p
         out[make] = p * out[att]
     raw_prior = 2 * float(prior["fgm"]) + float(prior["fg3m"]) + float(prior["ftm"])
     ratio = float(prior["pts"]) / raw_prior if raw_prior > 0 else 1.0
@@ -280,6 +367,8 @@ class UpdateSummary:
     warnings: list[str] = field(default_factory=list)
     unlisted: list[str] = field(default_factory=list)  # projected, team played >= 3 games, never in a box score
     unmatched: list[str] = field(default_factory=list)  # played in a box score, no projection row
+    team_minutes: dict = field(default_factory=dict)  # team budget report (team_minutes.constrain), if applied
+    population_summary: str = ""  # "population rows: N (top by mpg: ...)"
 
 
 def playoff_mult_remaining(m: np.ndarray, s_rem: float, s_season: float) -> np.ndarray:
@@ -298,7 +387,9 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
                        injuries: pd.DataFrame | None = None, playoff_share_remaining: float | None = None,
                        playoff_share_season: float | None = None,
                        fantasy_games: dict[str, int] | None = None,
-                       minutes_model: str = "ewma") -> tuple[pd.DataFrame, UpdateSummary]:
+                       minutes_model: str = "ewma", population_prior: bool = True,
+                       positions: dict[str, str] | None = None,
+                       team_minutes: TeamMinutesParams | None = None) -> tuple[pd.DataFrame, UpdateSummary]:
     """Rest-of-season projections as of `as_of` (ISO date, games on that date included).
 
     minutes_model: "ewma" (default, fantasy.model.minutes: recency-weighted, from his minutes in games played in date
@@ -324,6 +415,14 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
     played); without it a preseason out/gtd is cleared once the player has played and is not in a missed streak.
     playoff_share_remaining / _season: fantasy-playoff share of the remaining / full calendar -> `playoff_mult`
     renormalised to the remaining-season average (playoff_mult_remaining).
+
+    population_prior (T-023, pop-prior-*): every player who played in the box scores without a prior row gets one,
+    from POP_PRIOR (per-minute rates, percentages, mpg, availability share), shrunk toward his observed games with
+    STAT_N0 x POP_N0_MULT; his timeline starts at his first listing (or game 1 if listed within ENTRY_GRACE games).
+    Such rows have `source` = POP_SOURCE and `prior_source` = "population" (every other row: "projection"): low
+    confidence. positions: player_id -> positions for those rows (e.g. data/manual/positions_overrides.csv).
+    team_minutes (T-022, team-min-*): rescale each team's rest-of-season mpg so sum(ros_share x mpg) meets the team
+    budget (fantasy.model.team_minutes); per-minute rates unchanged, counting stats and mpg_next5 scale with mpg.
     """
     if minutes_model not in MINUTES_MODELS:
         raise ValueError(f"unknown minutes_model {minutes_model!r}; choose from {MINUTES_MODELS}")
@@ -353,10 +452,21 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
     if "status" not in df:
         df["status"] = ""
+    df["prior_source"] = "projection"
+    new_ids: set[str] = set()
+    if population_prior:
+        pop = population_rows(pg, set(df["player_id"].astype(str)), positions)
+        if len(pop):
+            new_ids = set(pop["player_id"])
+            for c in pop.columns.difference(df.columns):
+                df[c] = "" if pop[c].dtype == object else np.nan
+            df = pd.concat([df, pop.reindex(columns=df.columns)], ignore_index=True)
+            for c in ("gp", "gp_sd", "mpg", *STATS):
+                df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
     rows = []
     for r in df.itertuples(index=False):
         mine = by_player.get(r.player_id)
-        tl = player_timeline(mine, schedules, str(r.team))
+        tl = player_timeline(mine, schedules, None if r.player_id in new_ids else str(r.team))
         k_all, x_all, streak_all, dnp_all = timeline_features(tl)
         m_gm = float(games_missed.get(r.player_id, 0.0) or 0.0)
         m = m_gm or float(skip_window.get(r.player_id, 0.0) or 0.0)
@@ -431,23 +541,38 @@ def update_projections(prior: pd.DataFrame, player_games: pd.DataFrame, team_gam
         played = mine[mine["played"]].sort_values(["game_date", "game_id"])
         mins = played["min"].to_numpy(float)
         mpg = project_mpg(mins, float(r["mpg"]), default_params("ros")) if minutes_model == "ewma" else None
-        line = shrink_line(r, played[COUNT_COLS].sum(), float(len(played)), mpg=mpg)
+        n0 = POP_N0 if r["player_id"] in new_ids else None
+        line = shrink_line(r, played[COUNT_COLS].sum(), float(len(played)), mpg=mpg, n0=n0)
         line["mpg_next5"] = (project_mpg(mins, float(r["mpg"]), default_params("next5")) if minutes_model == "ewma"
                              else line["mpg"])
         line["fg3m"] = min(line["fg3m"], line["fgm"])
         for c, v in line.items():
             out.at[i, c] = round(v, 3)
         updated += 1
+    if team_minutes is not None:
+        out, tm_report = constrain_team_minutes(out, mu, team_minutes, extra_mpg_cols=("mpg_next5",))
+        for c in ("mpg", "mpg_next5", *STATS):
+            out[c] = out[c].astype(float).round(3)
+        warnings += [] if tm_report["teams"] else ["team minute budget: no team with enough projected players"]
+    else:
+        tm_report = {}
     out["inseason_as_of"] = as_of
-    out["inseason_version"] = inseason_model_version(minutes_model)
+    out["inseason_version"] = inseason_model_version(minutes_model, population_prior, team_minutes is not None)
     team_n = {t: len(s) for t, s in schedules.items()}
     unlisted = sorted(out.loc[~feat["listed_any"] & (feat["m"] == 0)
                               & (df["team"].map(team_n).fillna(0) >= 3), "player_id"])
-    known = set(df["player_id"])
-    unmatched = sorted({p for p in pg.loc[pg["played"], "player_id"] if p not in known})
+    unmatched = sorted(new_ids) if population_prior else sorted(
+        {p for p in pg.loc[pg["played"], "player_id"] if p not in set(df["player_id"])})
+    pop_summary = ""
+    if new_ids:
+        pr = out[out["player_id"].isin(new_ids)].sort_values("mpg", ascending=False)
+        pop_summary = (f"population rows: {len(pr)} (top by mpg: "
+                       + ", ".join(f"{r.player_id} {r.mpg:.1f}" for r in pr.head(5).itertuples()) + ")")
+        warnings += possible_id_mismatches(out[out["player_id"].isin(new_ids)], out[out["player_id"].isin(unlisted)])
     summary = UpdateSummary(as_of=as_of, players=len(out), updated=updated,
                             max_team_games=int(max(team_n.values(), default=0)), warnings=warnings,
-                            unlisted=unlisted, unmatched=unmatched)
+                            unlisted=unlisted, unmatched=unmatched, team_minutes=tm_report,
+                            population_summary=pop_summary)
     return out, summary
 
 
@@ -526,7 +651,8 @@ def fantasy_season_games(end: str | None = None) -> dict[str, int]:
 
 
 def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=None,
-                   minutes_model: str = "ewma") -> dict:
+                   minutes_model: str = "ewma", population_prior: bool = True,
+                   team_minutes: TeamMinutesParams | None = None) -> dict:
     """Read the preseason projections and the season's ESPN box scores, write the rest-of-season projections
     (default data/processed/projections_2026_27.inseason.csv, the default `load_projections()` file from then on)
     and a .meta.json next to them. Returns the meta dict (+ the biggest availability movers)."""
@@ -568,15 +694,19 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
     # rescale relative to the full-season share that consumers decode playoff_mult with (lines.PLAYOFF_CALENDAR_SHARE)
     s_rem_cal = s_rem * PLAYOFF_CALENDAR_SHARE / s_sched if s_sched > 0 else s_rem
     fantasy_end = load_settings().playoff_end_date
+    pov = load_manual("positions_overrides.csv")
+    positions = dict(zip(pov["player_id"], pov["positions"], strict=True)) if not pov.empty else {}
     out, summ = update_projections(prior, pg, tg, as_of, games_missed=games_missed, skip_window=skip,
                                    injuries=injuries, playoff_share_remaining=min(s_rem_cal, 1.0),
                                    playoff_share_season=PLAYOFF_CALENDAR_SHARE,
-                                   fantasy_games=fantasy_season_games(fantasy_end), minutes_model=minutes_model)
+                                   fantasy_games=fantasy_season_games(fantasy_end), minutes_model=minutes_model,
+                                   population_prior=population_prior, positions=positions,
+                                   team_minutes=team_minutes)
     warnings += summ.warnings
     if summ.unlisted:
         warnings.append(f"{len(summ.unlisted)} projected players never in a box score although their team played "
                         f">= 3 games (injured, waived or an id mismatch?): {', '.join(summ.unlisted[:15])}")
-    if summ.unmatched:
+    if summ.unmatched and not population_prior:
         warnings.append(f"{len(summ.unmatched)} players in box scores without a projection row (not projected): "
                         f"{', '.join(summ.unmatched[:15])}")
     out.to_csv(out_path, index=False, lineterminator="\n")
@@ -588,7 +718,7 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
     seen = out[out["team_games"] > 0]
     movers = seen.reindex((seen["gp"] - seen["gp_preseason"]).abs().sort_values(ascending=False).index).head(10)
     meta = {
-        "model_version": inseason_model_version(minutes_model),
+        "model_version": inseason_model_version(minutes_model, population_prior, team_minutes is not None),
         "as_of": as_of,
         "git_sha": sha,
         "output": str(out_path),
@@ -613,6 +743,17 @@ def write_inseason(as_of: str, season: int = 2027, prior_path=None, out_path=Non
                     if minutes_model == "ewma" else
                     {"model": "shrink", "version": STAT_SHRINK_VERSION, "n0_games": STAT_N0["mpg"],
                      "mpg_next5": "= mpg"}),
+        "population_prior": ({"version": POP_PRIOR_VERSION, "summary": summ.population_summary,
+                              "prior": POP_PRIOR, "n0_mult": POP_N0_MULT,
+                              "fit_note": "constants pooled over 2024-25 + 2025-26 (the backtest used leave-one-"
+                                          "season-out versions); n0_mult and share selected on those seasons",
+                              "source": POP_SOURCE, "players": summ.unmatched,
+                              "rule": "players with box-score minutes but no prior row: population per-minute prior "
+                                      "shrunk toward observed (STAT_N0 x n0_mult), minutes model from the prior mpg, "
+                                      "availability from the ros model with the population share; LOW CONFIDENCE "
+                                      "(prior_source = population)"}
+                             if population_prior else "off"),
+        "team_minutes": ({**team_minutes.as_dict(), **summ.team_minutes} if team_minutes is not None else "off"),
         "games_missed_overrides": len(games_missed),
         "gtd_window_prior": {"players": len(skip), "games": GTD_EXPECTED_MISSED},
         "status": inj_note,

@@ -37,12 +37,17 @@ def build_projections(
         "--blend-output",
         help="write the blend to this path instead (the default projections file is then the unblended baseline)",
     ),
+    team_minutes: bool = typer.Option(
+        True, "--team-minutes/--no-team-minutes",
+        help="rescale the default file's minutes to each team's minute budget (team-min-*, T-022)",
+    ),
 ) -> None:
     """Regenerate the projections from cached raw + manual data (no network).
 
     Writes the unblended model to data/processed/projections_2026_27.base.csv and the default
     projections (what the draft uses) to data/processed/projections_2026_27.csv: the blend
-    configured in data/manual/projection_blend.json, or the baseline with --blend none."""
+    configured in data/manual/projection_blend.json, or the baseline with --blend none; then (default) each team's
+    minutes are rescaled toward its minute budget (fantasy.model.team_minutes, --no-team-minutes to skip)."""
     from pathlib import Path
 
     from fantasy.model.blend import (
@@ -74,6 +79,10 @@ def build_projections(
         summary["blend_output"] = {"output": bmeta["output"], "sha256": bmeta["sha256"]}
         spec = None
     dmeta = write_default(spec, meta, OUTPUT_PATH, BASE_OUTPUT)
+    if team_minutes:
+        from fantasy.model.team_minutes import apply_to_file
+
+        dmeta = apply_to_file(OUTPUT_PATH)
     summary["default"] = {
         k: dmeta.get(k)
         for k in ("output", "projections_version", "model_version", "rows", "sha256", "weights", "gp_weights")
@@ -254,6 +263,9 @@ def update_projections_cmd(
                              "market.inseason.csv (the stress set stays preseason: independent of our model)"),
     minutes_model: str = typer.Option("ewma", "--minutes-model",
                                       help="ewma (recency-weighted minutes-*, default) | shrink (pre-0.5.0 formula)"),
+    population_prior: bool = typer.Option(True, "--population-prior/--no-population-prior",
+                                          help="rows for box-score players without a projection row (pop-prior-*, "
+                                               "low confidence: prior_source=population)"),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Rest-of-season projections from the preseason projections + ESPN box scores to date (fantasy.model.inseason).
@@ -275,11 +287,12 @@ def update_projections_cmd(
     from fantasy.data.provenance import REPO_ROOT
 
     day = as_of or date.today().isoformat()
-    res = write_inseason(day, season=season, out_path=Path(out) if out else None, minutes_model=minutes_model)
+    res = write_inseason(day, season=season, out_path=Path(out) if out else None, minutes_model=minutes_model,
+                         population_prior=population_prior)
     market = REPO_ROOT / "var" / "projections_alt" / "market.csv"
     if alt and not out and market.exists():
         m = write_inseason(day, season=season, prior_path=market, out_path=market.with_name("market.inseason.csv"),
-                           minutes_model=minutes_model)
+                           minutes_model=minutes_model, population_prior=population_prior)
         res["market"] = {"output": m["output"], "rows": m["rows"]}
     _emit(res, as_json)
 

@@ -58,6 +58,8 @@ severity, the current override row and `override_stale`; the agent reads them an
 ```bash
 fantasy data build-projections --json          # base model -> .base.csv, then the configured blend -> default csv
 fantasy data build-projections --blend none    # default = unblended baseline (emergency fallback)
+# default file also gets the team minute budget (team-min-*, T-022: trims over-budget teams' mpg, counting stats
+# follow; meta `team_minutes` has before/after team sums); --no-team-minutes skips it
 fantasy data fetch-external --source espn      # refresh ESPN's 2026-27 numbers (cached; --refresh to re-download)
 ```
 JSON: `base` (`model_version`, `rows` ~450 = `Params.max_rows`, `sha256`, `source_counts`:

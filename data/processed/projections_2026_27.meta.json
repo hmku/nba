@@ -2,7 +2,7 @@
   "blend_version": "blend-0.2.0",
   "output": "data/processed/projections_2026_27.csv",
   "rows": 454,
-  "sha256": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66",
+  "sha256": "e7151b2fa53d1b93c9da939ad0324ac27cb9b877f8e2eeb7c48d0b1795615f23",
   "weights": {
     "ours": 0.5,
     "espn": 0.5
@@ -41,9 +41,181 @@
     ]
   },
   "blended_players": 333,
-  "model_version": "baseline-0.3.0+blend-0.2.0",
-  "projections_version": "projections-2026-27-0.4.0",
+  "model_version": "baseline-0.3.0+blend-0.2.0+team-min-0.1",
+  "projections_version": "projections-2026-27-0.5.0",
   "base_model_version": "baseline-0.3.0",
   "base_meta": "data/processed/projections_2026_27.base.meta.json",
-  "config": "data/manual/projection_blend.json"
+  "config": "data/manual/projection_blend.json",
+  "team_minutes": {
+    "version": "team-min-0.1",
+    "alpha": 0.25,
+    "beta": 0.0,
+    "unprojected_share": 0.09,
+    "direction": "trim",
+    "min_players": 8,
+    "minutes_per_game": 241.35,
+    "share": "gp / 82",
+    "target_per_team_game": 219.63,
+    "teams": {
+      "ATL": {
+        "before": 244.8,
+        "after": 238.5,
+        "players": 15
+      },
+      "BOS": {
+        "before": 200.9,
+        "after": 200.9,
+        "players": 12
+      },
+      "BRK": {
+        "before": 272.0,
+        "after": 258.9,
+        "players": 19
+      },
+      "CHI": {
+        "before": 212.8,
+        "after": 212.8,
+        "players": 13
+      },
+      "CHO": {
+        "before": 241.1,
+        "after": 235.7,
+        "players": 14
+      },
+      "CLE": {
+        "before": 197.6,
+        "after": 197.6,
+        "players": 13
+      },
+      "DAL": {
+        "before": 235.4,
+        "after": 231.4,
+        "players": 17
+      },
+      "DEN": {
+        "before": 202.3,
+        "after": 202.3,
+        "players": 14
+      },
+      "DET": {
+        "before": 204.9,
+        "after": 204.9,
+        "players": 13
+      },
+      "GSW": {
+        "before": 203.3,
+        "after": 203.3,
+        "players": 16
+      },
+      "HOU": {
+        "before": 213.4,
+        "after": 213.4,
+        "players": 12
+      },
+      "IND": {
+        "before": 259.9,
+        "after": 249.9,
+        "players": 20
+      },
+      "LAC": {
+        "before": 216.2,
+        "after": 216.2,
+        "players": 16
+      },
+      "LAL": {
+        "before": 192.9,
+        "after": 192.9,
+        "players": 12
+      },
+      "MEM": {
+        "before": 312.0,
+        "after": 288.9,
+        "players": 25
+      },
+      "MIA": {
+        "before": 198.6,
+        "after": 198.6,
+        "players": 12
+      },
+      "MIL": {
+        "before": 290.5,
+        "after": 272.8,
+        "players": 19
+      },
+      "MIN": {
+        "before": 182.2,
+        "after": 182.2,
+        "players": 13
+      },
+      "NOP": {
+        "before": 237.2,
+        "after": 232.8,
+        "players": 14
+      },
+      "NYK": {
+        "before": 233.3,
+        "after": 229.9,
+        "players": 14
+      },
+      "OKC": {
+        "before": 137.1,
+        "after": 137.1,
+        "players": 11
+      },
+      "ORL": {
+        "before": 230.2,
+        "after": 227.6,
+        "players": 16
+      },
+      "PHI": {
+        "before": 240.9,
+        "after": 235.6,
+        "players": 16
+      },
+      "PHO": {
+        "before": 221.9,
+        "after": 221.4,
+        "players": 15
+      },
+      "POR": {
+        "before": 218.2,
+        "after": 218.2,
+        "players": 15
+      },
+      "SAC": {
+        "before": 225.0,
+        "after": 223.7,
+        "players": 15
+      },
+      "SAS": {
+        "before": 213.7,
+        "after": 213.7,
+        "players": 11
+      },
+      "TOR": {
+        "before": 177.4,
+        "after": 177.4,
+        "players": 11
+      },
+      "UTA": {
+        "before": 284.0,
+        "after": 267.9,
+        "players": 20
+      },
+      "WAS": {
+        "before": 294.9,
+        "after": 276.1,
+        "players": 21
+      }
+    },
+    "sum_before": {
+      "mean": 226.5,
+      "sd": 37.3,
+      "min": 137.1,
+      "max": 312.0
+    },
+    "u_note": "unprojected_share 0.09 is an ESTIMATE from 2026-27 weeks 1-3 data (5.8% of minutes to players outside the file x history's full/early ratio); not backtested (backtest used the other season's realised u)",
+    "note": "docs/research/minutes_model.md (Team minute budget)"
+  },
+  "sha256_before_team_minutes": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66"
 }

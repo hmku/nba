@@ -131,6 +131,51 @@ n0 is "observed sample worth as much as our prior", not the literature's stabili
 population mean): it is large where the prior is already good (STL, BLK). FT% updating faster than FG% suggests the
 projection core over-regresses FT% (TODO, T-012).
 
+## 2b. Players without a projection row (`pop-prior-0.1`, T-023, `ros-proj-0.6.0`, 2026-11-09)
+**Answer:** every player with box-score minutes now gets a row. Before, ~90 players were dropped, including
+rostered Mario Hezonja (CLE). Such a row starts from a population prior and is shrunk toward his games. It is flagged
+`prior_source = population` (`source = inseason_population_prior`): treat it as low confidence. Rows that
+existed before keep `prior_source = projection`. `--no-population-prior` restores the 0.5.0 behaviour.
+- **In-sample selection.** The tested prior constants were leave-one-season-out. But N0 × 0.25 and p0 = 0.50 were SELECTED
+  on the same two evaluation seasons. The shipped constants pool both seasons.
+- **Output.** Each update reports `population rows: N (top by mpg: …)` (meta `population_prior.summary`). It warns
+  `possible id mismatch` when a population row's name (suffixes dropped), or last name + team, matches a projected
+  player never listed in a box score.
+- **Prior (fitted).** Population: players who played in 2024-25 / 2025-26 but were in neither the production-like prior
+  nor ESPN's preseason projections (137 / 152 players, 7.3% / 9.9% of minutes).
+  - Pooled per-minute rates, FG% .447, FT% .746 and 14.9 mpg (`inseason.POP_PRIOR`).
+  - Minutes come from the minutes model, starting at that prior.
+  - Availability comes from the ros model with p0 = 0.50 (sd 0.28). His timeline starts at his first listing, or at
+    game 1 if he was listed within his team's first 5 games.
+- **Backtest** (`scripts/inseason_model/team_budget/`, production update at +13/27/55/97 days, leave-one-season-out prior;
+  926 player-checkpoints, 270 player-seasons; 9-cat z RMS on remaining games, cluster-bootstrap SE):
+
+| shrink for population rows | 9-cat z RMS | vs STAT_N0 × 1 |
+|---|---|---|
+| observed line only | 2.18 | +0.35 ± 0.05 |
+| STAT_N0 × 1 (as for projected players) | 1.83 | — |
+| STAT_N0 × 0.5 | 1.77 | −0.065 ± 0.008 |
+| **STAT_N0 × 0.25 (deployed, best in both seasons)** | **1.72** | **−0.109 ± 0.014** |
+| STAT_N0 × 0.1 / × 0.05 / × 0.02 | 1.73 / 1.79 / 1.96 | −0.104 / −0.043 / +0.127 |
+
+  - Minutes for these rows: RMSE 5.61. Bias −0.94 ± 0.35 (under-predicted; 2025-26 −1.66). Observed-only mpg is far
+    worse: −4.6 bias, RMSE 7.67.
+  - The ×0.25 fits a population mean being a weaker prior than a player's own projection.
+- **Availability.** The raw share after the first appearance (0.36 / 0.43) under-predicted remaining games by 2.1 ± 0.6.
+  - p0 = 0.50 is **calibrated in-sample** on both seasons: bias +0.04 ± 0.6 games, RMSE 11.6 vs 11.9 (−0.28 ± 0.16),
+    mean z² 0.91.
+  - p0 = 0.6 overshoots (+2.1).
+- **2026-11-08 file:** 87 population rows; the largest are Meleek Thomas, Aday Mara, Bennett Stirtz, Hezonja and
+  Trey Lyles (~19-21 mpg).
+  - Hezonja: 20.2 mpg, 8.4 pts, 5.2 reb, gp rate 55.3, 40.5 remaining games. Positions SF|PF come from
+    `positions_overrides.csv` (Yahoo capture).
+  - The next `fantasy league sync` resolves his `unknown:mario-hezonja` to `mario-hezonja` by name (tested).
+- **Limits:** population rows have no positions unless listed in `positions_overrides.csv`, no age and no ADP.
+  The shrink factor is fitted, but the p0 calibration is in-sample. Production's population differs: 11 rookies have
+  priors, so the history population includes more rookies.
+- **Team minute budget (T-022):** applied to the preseason prior, not here. On top of the prior budget, an in-season
+  budget gained nothing (minutes_model.md, "Team minute budget").
+
 ## 3. Injury type (literature / prior, not fitted)
 Our box data cannot identify Achilles ruptures (long-injured players are not in box scores) and the case count is
 ~10 per decade, so no fitted term. Literature: ~70-80% of NBA players return after Achilles repair; games in the first

@@ -42,7 +42,8 @@ BLEND_VERSION = "blend-0.2.0"
 # Version of the default projections file (data/processed/projections_2026_27.csv) as a whole.
 # 0.3.1: games from gp-ols-0.2 (baseline-0.2.2; docs/research/availability_model.md §0)
 # 0.4.0: baseline-0.3.0 (TOV follows the age curve; tapered MPG_GROWTH; projection_quality.md §6)
-PROJECTIONS_VERSION = "projections-2026-27-0.4.0"
+# 0.5.0: team minute budget on the blended file (team-min-0.1, fantasy.model.team_minutes.PRESEASON_PARAMS; T-022)
+PROJECTIONS_VERSION = "projections-2026-27-0.5.0"
 BLEND_STATS = ["fgm", "fga", "ftm", "fta", "fg3m", "reb", "ast", "stl", "blk", "tov", "mpg"]
 BLEND_OUTPUT = PROCESSED_DIR / "projections_2026_27.blend.csv"
 BASE_OUTPUT = PROCESSED_DIR / "projections_2026_27.base.csv"

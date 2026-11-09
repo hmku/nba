@@ -131,7 +131,8 @@ def test_update_uses_minutes_model_and_keeps_rates():
     assert I.inseason_model_version("ewma") == I.INSEASON_MODEL_VERSION
     assert (new["inseason_version"] == I.INSEASON_MODEL_VERSION).all()
     assert (old["inseason_version"] == I.inseason_model_version("shrink")).all()
-    assert M.MINUTES_MODEL_VERSION in I.INSEASON_MODEL_VERSION and "ros-proj-0.5.0" in I.INSEASON_MODEL_VERSION
+    assert M.MINUTES_MODEL_VERSION in I.INSEASON_MODEL_VERSION and "ros-proj-0.6.0" in I.INSEASON_MODEL_VERSION
+    assert I.inseason_model_version("ewma", population_prior=False).startswith("ros-proj-0.5.0")  # 0.5.0 = no pop rows
     assert I.inseason_model_version("shrink").startswith("ros-proj-0.4.0") and "minutes" not in \
         I.inseason_model_version("shrink")
     with pytest.raises(ValueError):
