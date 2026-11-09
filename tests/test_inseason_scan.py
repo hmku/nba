@@ -153,6 +153,25 @@ def test_scan_streams_week_and_rule(ctx, proj_path):
     assert none["recommendation"] is None  # nothing beats noise -> recommend nothing
 
 
+def test_scan_streams_opponent_untagged_player_in_il(ctx, proj_path):
+    """2026-11-09: opponent with an untagged player in IL (Caruso) made stream/opportunity fail infeasible_roster."""
+    df = ctx.proj.df
+    ids = list(ctx.values.index)
+    me = _players(ids[1:27:2], df, "AAA")
+    opp = _players(ids[2:27:2], df, "BBB")
+    x = ids[28]
+    opp.append(RosterPlayer(x, str(df.loc[x, "name"]), parse_positions(df.loc[x, "positions"]), "BBB", None, "IL",
+                            float(df.loc[x, "gp"])))  # 14 non-IL-eligible players > 13 starting + bench slots
+    d0 = date(2026, 11, 2)
+    days = [d0 + timedelta(i) for i in range(7)]
+    nba = NBASchedule(games=[(d, "AAA", "BBB") for d in days], source="t")
+    fas = [FreeAgent(ids[0], "Good", "AAA", parse_positions(df.loc[ids[0], "positions"]), None, None, "player")]
+    generic = generic_per_game_values(load_projections(proj_path), ctx.settings)
+    rep = scan_streams(df, ctx.settings, nba, me, opp, fas, days, generic, ctx.values["value"],
+                       StreamParams(week_sims=0, season_top=0), season_eval=None)
+    assert rep["n_pairs_scanned"] >= 1
+
+
 # ---------------------------------------------------------------- trade scan
 def test_enumerate_and_fa_refill():
     lg = LeagueState(rosters={1: list("abc"), 2: list("def"), 3: list("ghi")}, my_team=1, source="t")

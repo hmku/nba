@@ -1,0 +1,77 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Mon 11-09: lineup = plan; Tue set (Brunson, Ware, Clingan in)",
+  "status": "done",
+  "headline": "Week 4 vs Christian starts 0-0; P(win week) 0.79 ± 0.003. Jokić Q tonight.",
+  "week": 4,
+  "verdict": "Today already matched the plan; Tuesday is set early with three bench players who have games. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(win week 4)",
+    "value": 0.795,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.865,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.246,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "Jokić Q (elbow) for DEN@HOU 20:30 ET; no bench player has a Monday game, so nothing to swap.",
+   "Christian has 43 games left vs our 37; P(win) uses availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-09.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-09.json"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-09-cd94bb4997aa: 0 changes; all 9 players with games start.",
+   "- Tue plan lp-2026-11-10-cb68b25ae252: Brunson G, Ware + Clingan Util; verified on Yahoo (txn-76384d273ab84545b59b2575e042936f).",
+   "- Stream/opportunity: 0 helps (best: Risacher for Sheppard −0.5 ± 0.5 pp P(playoffs))."
+  ],
+  "why_now": {
+   "before": "Sunday we won week 3 6-3 and found no helpful add.",
+   "changed": [
+    {
+     "text": "New week and new projections (ros-proj-0.6.0); still no add helps. Tuesday set early in case its run fires late.",
+     "kind": "model"
+    }
+   ],
+   "evidence": [
+    "P(win week)",
+    "P(playoffs)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-09-cd94bb4997aa",
+  "lineup_plan_next": "lp-2026-11-10-cb68b25ae252",
+  "lineup_record": "la-2026-11-09-6a2283287872",
+  "matchup_score": "ms-w4-2026-11-09-603ffff8c7c6",
+  "season_sim": "sim-20261109123358-6e7234"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-09.json"
+ }
+}

@@ -270,7 +270,8 @@ def scan_streams(
     me = team_side(me_players, df, nba, days, params.rest_share, acc_me)
     opp = team_side(opp_players, df, nba, days, params.rest_share, acc_opp)
     ogv = generic_values(opp.players, generic)
-    opp_X, _ = daily_plan(opp.players, ogv[:, None] * opp.P, opp.P, slots)
+    # il_sticky: an opponent's untagged player in IL stays there (as in lineup plan); else their roster is infeasible
+    opp_X, _ = daily_plan(opp.players, ogv[:, None] * opp.P, opp.P, slots, il_sticky=True)
     base, _, _ = optimize_week(me, opp_X, opp, cats, slots, generic, lp)
     e0, w0 = base.final_state.expected_cats, base.final_state.matchup_win_prob
     base_lin = float((base.X * base.values).sum())

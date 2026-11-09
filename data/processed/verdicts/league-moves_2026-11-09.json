@@ -1,0 +1,72 @@
+{
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-09_premove_league.json (= HEAD league file from the 11-08 run, statuses as of 11-08)",
+ "command": "fantasy sim compare --league-file <premove> --add X --drop reed-sheppard --sims 4000 --no-save --json",
+ "results": {
+  "devin-vassell": {
+   "p_playoffs": {
+    "before": 0.854,
+    "after": 0.8615,
+    "delta": 0.0075,
+    "delta_se": 0.0038
+   },
+   "p_title": {
+    "before": 0.2525,
+    "after": 0.2437,
+    "delta": -0.0088,
+    "delta_se": 0.0057
+   },
+   "exp_cat_wins": {
+    "before": 89.3605,
+    "after": 89.7053,
+    "delta": 0.3448,
+    "delta_se": 0.0642
+   },
+   "ok": true,
+   "message": null
+  },
+  "john-collins": {
+   "p_playoffs": {
+    "before": 0.854,
+    "after": 0.8512,
+    "delta": -0.0027,
+    "delta_se": 0.004
+   },
+   "p_title": {
+    "before": 0.2525,
+    "after": 0.2467,
+    "delta": -0.0057,
+    "delta_se": 0.006
+   },
+   "exp_cat_wins": {
+    "before": 89.3605,
+    "after": 89.283,
+    "delta": -0.0775,
+    "delta_se": 0.0642
+   },
+   "ok": true,
+   "message": null
+  },
+  "morez-johnson-jr": {
+   "p_playoffs": {
+    "before": 0.854,
+    "after": 0.7937,
+    "delta": -0.0602,
+    "delta_se": 0.0042
+   },
+   "p_title": {
+    "before": 0.2525,
+    "after": 0.214,
+    "delta": -0.0385,
+    "delta_se": 0.0048
+   },
+   "exp_cat_wins": {
+    "before": 89.3605,
+    "after": 86.6736,
+    "delta": -2.6869,
+    "delta_se": 0.0553
+   },
+   "ok": true,
+   "message": null
+  }
+ }
+}
