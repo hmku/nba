@@ -541,6 +541,11 @@ day inserts nothing and keeps the first `observed_at`. `model_version = matchup-
 **Which row to show:** the newest by `summary.observed_at` (then `created_at`) with `summary.week` = the week shown;
 for "now", the newest overall. PostgREST: `kind=eq.matchup_score&order=created_at.desc&limit=20`, then pick by
 `observed_at` (rows of an earlier date have earlier `observed_at`; a same-day re-read with changed totals is a new row).
+**Finished weeks (web `/week`, `weekResult` in `web/src/lib/week.ts`):** the result shown (week strip "W 6–3", header,
+per-category totals) is the newest row of that week with `me.games_remaining == 0` **and** `opp.games_remaining == 0`
+(a final Yahoo read, any `created_at`); else the newest `week_review` (section 8: `final.score/result`, provisional when
+`final.complete` is false); else the newest row of the week, shown as **provisional** ("4–5?", "last read … — final
+score not captured yet"). No P(win)/by-Sunday odds are shown for a finished week.
 
 ### `summary` (schema `matchup_score/1`)
 ```jsonc

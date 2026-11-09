@@ -141,3 +141,63 @@ export function latestByWeek(rows: Row[]): Map<number, WeekReview> {
   }
   return out;
 }
+
+/** PostgREST select for the light review rows the week page needs (week, headline, final score/totals). */
+export const REVIEW_BRIEF_COLS = "run_id,created_at,schema:summary->>schema,week:summary->week,headline:summary->summary->>headline,final:summary->final";
+
+export type ReviewBrief = {
+  runId: string;
+  createdAt: string | null;
+  week: number;
+  headline: string;
+  final: {
+    score: { me: number; opp: number; ties: number };
+    result: "W" | "L" | "T";
+    complete: boolean;
+    through: string | null;
+    categories: { cat: string; me: number | null; opp: number | null; winner: string | null }[];
+    totals: { me: Record<string, number>; opp: Record<string, number> } | null;
+  } | null;
+};
+
+/** A light row (REVIEW_BRIEF_COLS) or a full row (`summary`) -> ReviewBrief; null for another schema / no week. */
+export function parseReviewBrief(row: Loose): ReviewBrief | null {
+  const full = row.summary !== undefined;
+  const s = obj(row.summary);
+  const schema = full ? s.schema : row.schema;
+  const week = num(full ? s.week : row.week);
+  if (schema !== "week_review/1" || week == null) return null;
+  const f = obj(full ? s.final : row.final);
+  const sc = obj(f.score);
+  const me = num(sc.me);
+  const opp = num(sc.opp);
+  const result = f.result === "W" || f.result === "L" || f.result === "T" ? f.result : null;
+  const tot = obj(f.totals);
+  return {
+    runId: str(row.run_id) ?? "",
+    createdAt: str(row.created_at),
+    week,
+    headline: str(full ? obj(s.summary).headline : row.headline) ?? "",
+    final:
+      me != null && opp != null && result
+        ? {
+            score: { me, opp, ties: num(sc.ties) ?? 0 },
+            result,
+            complete: f.complete === true,
+            through: str(f.through),
+            categories: arr<Loose>(f.categories).map((c) => ({ cat: str(c.cat) ?? "", me: num(c.me), opp: num(c.opp), winner: str(c.winner) })),
+            totals: f.totals ? { me: obj(tot.me) as Record<string, number>, opp: obj(tot.opp) as Record<string, number> } : null,
+          }
+        : null,
+  };
+}
+
+/** Newest brief per week (rows newest first by created_at). */
+export function briefsByWeek(rows: Loose[]): Map<number, ReviewBrief> {
+  const out = new Map<number, ReviewBrief>();
+  for (const r of rows) {
+    const p = parseReviewBrief(r);
+    if (p && !out.has(p.week)) out.set(p.week, p);
+  }
+  return out;
+}

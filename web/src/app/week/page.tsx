@@ -31,20 +31,27 @@ import {
   gamesLeft,
   latestPlanInWeek,
   latestScore,
+  liteScoreRow,
   mergePlanGames,
+  OUTCOME_WORD,
+  resultTile,
+  SCORE_LITE_COLS,
   remainingDays,
   simWeekOdds,
   splitActuals,
   teamGames,
   teamLineup,
   weekOdds,
+  weekResult,
   yahooMatchupUrl,
   type LeagueState,
   type MatchupScore,
   type RosterEntry,
   type WeekCat,
   type WeekOdds,
+  type WeekResult,
 } from "@/lib/week";
+import { briefsByWeek, REVIEW_BRIEF_COLS } from "@/lib/weekReview";
 import { weekOpponents, type H2HWeek } from "@/lib/postDraft";
 import { CATS, CAT_LABEL, fmtCat, heatStyle } from "@/lib/categories";
 import leagueWeeks from "@/content/league_weeks.json";
@@ -112,8 +119,10 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
   const from = shift(w.start, -2);
   const to = shift(w.end, 2);
   const none = Promise.resolve({ data: [] as RunRow[], error: null });
+  // finished weeks (strip results): light score reads + review briefs; a final read lands after the week -> 5 min cache
+  const doneWeeks = WEEKS.filter((x) => x.end < today).map((x) => String(x.week));
   // one round: past days' rows (and a finished week's final score) are effectively immutable -> Data Cache (5 min)
-  const [simP, pastR, liveR, scoreR, txnR, apprR, advR, decR] = await Promise.all([
+  const [simP, pastR, liveR, scoreR, txnR, apprR, advR, decR, doneR, reviewR] = await Promise.all([
     // 60: what-if `compare` / `draft-check` runs share kind season_sim and must not crowd out the season run
     loadSimPicks(db, cachedClient(3600), "season_sim", 60, { season: true }),
     pastDays.length
@@ -142,13 +151,19 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
       .eq("kind", "matchup_score")
       .eq("summary->>week", String(w.week))
       .order("created_at", { ascending: false })
-      .limit(3),
+      .limit(20),
     db.from("transactions").select(TXN_COLS).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }).limit(200),
     db.from("approvals").select(APPROVAL_COLS).gte("requested_at", from).lte("requested_at", to).order("requested_at", { ascending: false }).limit(100),
     db.from("model_runs").select(RUN_COLS).eq("kind", "advice").gte("created_at", shift(w.start, -7)).lte("created_at", to).order("created_at", { ascending: false }).limit(300),
     db.from("decisions").select(DECISION_COLS).gte("created_at", from).lte("created_at", to).order("created_at", { ascending: false }).limit(200),
+    doneWeeks.length
+      ? cachedClient(300).from("model_runs").select(SCORE_LITE_COLS).eq("kind", "matchup_score").in("summary->>week", doneWeeks).order("created_at", { ascending: false }).limit(500)
+      : none,
+    doneWeeks.length
+      ? cachedClient(300).from("model_runs").select(REVIEW_BRIEF_COLS).eq("kind", "week_review").order("created_at", { ascending: false }).limit(60)
+      : none,
   ]);
-  const error = simP.error ?? [pastR, liveR, scoreR, txnR, apprR, advR, decR].map((r) => r.error?.message).find(Boolean) ?? null;
+  const error = simP.error ?? [pastR, liveR, scoreR, txnR, apprR, advR, decR, doneR, reviewR].map((r) => r.error?.message).find(Boolean) ?? null;
   const sim = parseSeasonSim(simP.season);
 
   // --- who plays whom (team ids = draft slots); ?opp=N is a what-if against another team
@@ -199,8 +214,17 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
   const oppRef = oppDays?.find((x) => x.date === refDay);
   const oppLeft = oppRef ? gamesLeft(oppRef.rows.filter((r) => r.playerId).map((r) => ({ id: r.playerId!, nbaTeam: r.nbaTeam, slot: r.slot, status: r.status })), left, {}, byTeam) : null;
 
+  // --- results of finished weeks (strip + this page when the week is over): final read > week review > last read
+  const reviews = briefsByWeek((reviewR.data as unknown as Record<string, unknown>[]) ?? []);
+  const doneRows = ((doneR.data as unknown as Record<string, unknown>[]) ?? []).map(liteScoreRow);
+  const results = new Map<number, WeekResult | null>();
+  for (const x of WEEKS) if (x.end < today) results.set(x.week, weekResult(doneRows, reviews.get(x.week) ?? null, x.week));
+  const review = weekOver ? (reviews.get(w.week) ?? null) : null;
+  const result = weekOver && whatIf == null ? weekResult((scoreR.data as RunRow[]) ?? [], review, w.week) : null;
+  if (weekOver && whatIf == null) results.set(w.week, result); // full rows for the shown week (same rule)
+
   // --- score + odds
-  const score = whatIf == null ? latestScore((scoreR.data as RunRow[]) ?? [], w.week) : null;
+  const score = whatIf == null ? (result?.shown ?? latestScore((scoreR.data as RunRow[]) ?? [], w.week)) : null;
   const simOdds = sim ? simWeekOdds(sim.weeks, sim.h2h, w.week, oppTeam) : null;
   const plan = whatIf == null ? latestPlanInWeek(plans, w.start, w.end, today) : null;
   const odds = weekOdds(plan, simOdds, sim?.run.run_id ?? null);
@@ -266,7 +290,7 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
 
   return (
     <div className="space-y-3">
-      <WeekStrip sim={sim} selected={w.week} current={currentWeek} />
+      <WeekStrip sim={sim} selected={w.week} current={currentWeek} results={results} />
       <ErrorNote error={error} />
       {whatIf != null && (
         <p className="rounded-lg bg-accent/10 px-3 py-2 text-[12.5px] leading-snug">
@@ -284,10 +308,18 @@ export default async function WeekPage({ searchParams }: { searchParams: Promise
         oppName={score?.opp.name ?? oppName ?? "Opponent"}
         score={score}
         odds={odds}
+        result={weekOver && whatIf == null ? (result ?? "none") : null}
         yahooUrl={yahooMatchupUrl(w.week, meYahoo, oppYahoo)}
       />
-      <CategoryStrip score={score} odds={odds} />
-      {(weekOver || w.week > 1) && (
+      <CategoryStrip score={score} odds={odds} result={weekOver && whatIf == null ? (result ?? "none") : null} />
+      {review?.headline && whatIf == null ? (
+        <p className="px-1 text-[12.5px] leading-snug">
+          <span className="text-muted">{review.headline}</span>{" "}
+          <Link href={`/week/review?week=${w.week}`} className="whitespace-nowrap text-accent">
+            Week {w.week} review →
+          </Link>
+        </p>
+      ) : (weekOver || w.week > 1) && (
         <p className="px-1 text-[12.5px]">
           <Link href={`/week/review?week=${weekOver ? w.week : w.week - 1}`} className="text-accent">
             {weekOver ? `Week ${w.week} review: why we won or lost →` : `Last week (${w.week - 1}) review →`}
@@ -350,22 +382,32 @@ function playerNames(plans: LineupPlan[], actuals: LineupActual[]): Record<strin
   return out;
 }
 
-function WeekStrip({ sim, selected, current }: { sim: SeasonSim | null; selected: number; current: number | null }) {
+const TONE_TEXT = { good: "text-good", bad: "text-bad", fg: "text-fg", muted: "text-muted" } as const;
+
+/** Week tiles: finished weeks show the result (final read > week review > last read, "?" = provisional); others P(win). */
+function WeekStrip({ sim, selected, current, results }: { sim: SeasonSim | null; selected: number; current: number | null; results: Map<number, WeekResult | null> }) {
   return (
     <div className="scroll-thin -mx-4 overflow-x-auto px-4">
       <div className="flex gap-1.5 pb-1">
         {WEEKS.map((x) => {
-          const p = sim ? (simWeekOdds(sim.weeks, sim.h2h, x.week, x.opponent)?.pWin ?? null) : null;
+          const head = `Week ${x.week}: ${fmtDate(x.start)} – ${fmtDate(x.end)}${x.opponent_name ? ` vs ${x.opponent_name}` : ""}`;
+          const done = results.has(x.week);
+          const tile = done ? resultTile(results.get(x.week) ?? null) : null;
+          const p = !done && sim ? (simWeekOdds(sim.weeks, sim.h2h, x.week, x.opponent)?.pWin ?? null) : null;
           return (
             <Link
               key={x.week}
               href={`/week?week=${x.week}`}
               scroll={false}
-              title={`Week ${x.week}: ${fmtDate(x.start)} – ${fmtDate(x.end)}${x.opponent_name ? ` vs ${x.opponent_name}` : ""}${p != null ? ` · P(win) ${pct(p)} (season sim, pre-week)` : ""}`}
-              className={`flex w-12 shrink-0 flex-col items-center rounded-lg border py-1 ${x.week === selected ? "border-accent bg-accent/10" : "border-line bg-panel"}`}
+              title={tile ? `${head} · ${tile.text} (${tile.note})` : `${head}${p != null ? ` · P(win) ${pct(p)} (season sim, pre-week)` : ""}`}
+              className={`flex min-w-12 shrink-0 flex-col items-center rounded-lg border px-1 py-1 ${x.week === selected ? "border-accent bg-accent/10" : "border-line bg-panel"}`}
             >
               <span className={`text-[10.5px] ${x.week === current ? "font-semibold text-accent" : "text-muted"}`}>W{x.week}</span>
-              <span className={`num text-[12px] ${p != null ? probText(p) : "text-muted"}`}>{p != null ? pct(p) : fmtDate(x.start).replace(/^\w+ /, "")}</span>
+              {tile ? (
+                <span className={`num text-[12px] whitespace-nowrap ${TONE_TEXT[tile.tone]} ${tile.tone !== "muted" ? "font-semibold" : ""}`}>{tile.text}</span>
+              ) : (
+                <span className={`num text-[12px] ${p != null ? probText(p) : "text-muted"}`}>{p != null ? pct(p) : fmtDate(x.start).replace(/^\w+ /, "")}</span>
+              )}
             </Link>
           );
         })}
@@ -388,6 +430,7 @@ function ScoreHeader({
   oppName,
   score,
   odds,
+  result,
   yahooUrl,
 }: {
   week: number;
@@ -397,15 +440,29 @@ function ScoreHeader({
   oppName: string;
   score: MatchupScore | null;
   odds: WeekOdds;
+  /** finished week: its result ("none" = nothing captured); null = current / future week */
+  result: WeekResult | "none" | null;
   yahooUrl: string;
 }) {
-  const s = score?.score;
+  const res = result && result !== "none" ? result : null;
+  const s = res?.score ?? score?.score;
   const tone = s ? (s.me > s.opp ? "text-good" : s.me < s.opp ? "text-bad" : "text-fg") : probText(odds.pWin);
+  const finalNote = !result
+    ? null
+    : !res
+      ? { text: "final score not captured yet", warn: true }
+      : res.basis === "final"
+        ? { text: `final · Yahoo read ${shortTime(res.asOf)} ET`, warn: false }
+        : res.basis === "review"
+          ? res.complete
+            ? { text: `final · from the week review (through ${res.asOf ?? "?"})`, warn: false }
+            : { text: `week review through ${res.asOf ?? "?"} — final score not captured yet`, warn: true }
+          : { text: `last read ${shortTime(res.asOf)} ET — final score not captured yet`, warn: true };
   return (
     <Panel className="px-4 pt-3 pb-3">
       <div className="flex items-baseline justify-between gap-2 text-xs text-muted">
         <span>
-          Week {week} · {dates} · {when}
+          Week {week} · {dates} · {result ? (res?.complete ? "final" : "over") : when}
         </span>
         <a href={yahooUrl} target="_blank" rel="noreferrer" className="shrink-0 text-accent">
           Yahoo live ↗
@@ -432,19 +489,31 @@ function ScoreHeader({
           <span className="num text-right">{gamesText(score.opp) ?? "—"}</span>
         </div>
       )}
-      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12px]">
-        <span className="text-muted">
-          {score
-            ? `categories won now${s && s.ties ? " (W–L–T)" : ""} · as of ${shortTime(score.observedAt ?? score.createdAt)} ET`
-            : "no score captured yet — projected odds only"}
-        </span>
-        <span>
-          P(win week){" "}
-          <span className={`num text-[15px] font-semibold ${probText(odds.pWin)}`}>{pct(odds.pWin)}</span>
-          {odds.pWinSe != null && <span className="num text-[11px] text-muted"> ±{(odds.pWinSe * 100).toFixed(1)}pp</span>}
-          <span className="ml-1 text-[11px] text-muted">{oddsLabel(odds)}</span>
-        </span>
-      </div>
+      {finalNote ? (
+        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12px]">
+          <span className={finalNote.warn ? "text-warn" : "text-muted"}>{finalNote.text}</span>
+          {res && (
+            <span className={`text-[15px] font-semibold ${res.complete ? tone : "text-muted"}`}>
+              {OUTCOME_WORD[res.outcome]}
+              {!res.complete && "?"}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[12px]">
+          <span className="text-muted">
+            {score
+              ? `categories won now${s && s.ties ? " (W–L–T)" : ""} · as of ${shortTime(score.observedAt ?? score.createdAt)} ET`
+              : "no score captured yet — projected odds only"}
+          </span>
+          <span>
+            P(win week){" "}
+            <span className={`num text-[15px] font-semibold ${probText(odds.pWin)}`}>{pct(odds.pWin)}</span>
+            {odds.pWinSe != null && <span className="num text-[11px] text-muted"> ±{(odds.pWinSe * 100).toFixed(1)}pp</span>}
+            <span className="ml-1 text-[11px] text-muted">{oddsLabel(odds)}</span>
+          </span>
+        </div>
+      )}
     </Panel>
   );
 }
@@ -484,7 +553,15 @@ function gamesText(t: { gamesPlayed: number | null; gamesRemaining: number | nul
   return `${t.gamesPlayed} / ${t.gamesPlayed + t.gamesRemaining} played`;
 }
 
-function CategoryStrip({ score, odds }: { score: MatchupScore | null; odds: WeekOdds }) {
+function CategoryStrip({ score, odds, result }: { score: MatchupScore | null; odds: WeekOdds; result: WeekResult | "none" | null }) {
+  // a finished week: its final (or last-read) totals, no by-Sunday odds
+  const finished = result != null;
+  if (finished && !score)
+    return (
+      <Panel>
+        <p className="px-4 py-3 text-[12.5px] text-muted">No score captured for this week (no Yahoo read, no week review).</p>
+      </Panel>
+    );
   const byCat = new Map((score?.categories ?? []).map((c) => [c.cat, c]));
   const swing = CATS.filter((c) => {
     const p = odds.catWin[c as WeekCat];
@@ -501,6 +578,17 @@ function CategoryStrip({ score, odds }: { score: MatchupScore | null; odds: Week
       ) : (
         "No category in the 30–70% swing range."
       )}
+    </div>
+  );
+  const res = result && result !== "none" ? result : null;
+  const doneLine = (
+    <div className="border-t border-line px-3 py-1.5 text-[11.5px] text-muted">
+      Leader shaded (TO: fewer wins).{" "}
+      {res?.basis === "final"
+        ? "Final totals from Yahoo."
+        : res?.basis === "review"
+          ? `Totals from the week review${res.complete ? "" : " (provisional)"}.`
+          : <span className="text-warn">Totals as of the last read before the week ended, not final.</span>}
     </div>
   );
   if (!has)
@@ -521,16 +609,18 @@ function CategoryStrip({ score, odds }: { score: MatchupScore | null; odds: Week
         {swingLine}
       </Panel>
     );
-  const cols = "grid-cols-[3.4rem_1fr_1fr_3.2rem]";
+  const cols = finished ? "grid-cols-[3.4rem_1fr_1fr]" : "grid-cols-[3.4rem_1fr_1fr_3.2rem]";
   return (
     <Panel>
       <div className={`grid ${cols} items-center gap-x-2 border-b border-line px-3 py-1.5 text-[10.5px] tracking-wider text-muted uppercase`}>
         <span />
         <span className="text-right">Me</span>
         <span className="text-right">Opp</span>
-        <span className="text-right" title={odds.source === "lineup_plan" ? "chance to win the category by Sunday, given the stats already banked" : "pre-week odds from the season sim"}>
-          {odds.source === "lineup_plan" ? "by Sun" : "odds"}
-        </span>
+        {!finished && (
+          <span className="text-right" title={odds.source === "lineup_plan" ? "chance to win the category by Sunday, given the stats already banked" : "pre-week odds from the season sim"}>
+            {odds.source === "lineup_plan" ? "by Sun" : "odds"}
+          </span>
+        )}
       </div>
       <ul className="divide-y divide-line">
         {CATS.map((c) => {
@@ -556,14 +646,16 @@ function CategoryStrip({ score, odds }: { score: MatchupScore | null; odds: Week
                   {fmtTotal(k, sc?.opp ?? null)}
                   {ma("opp") && <span className="block text-[10px] font-normal text-muted">{ma("opp")}</span>}
                 </span>
-              <span className={`num text-right ${probText(p)}`} title={`P(win ${CAT_LABEL[c]}) ${pct(p)} · ${oddsLabel(odds)}`}>
-                {pct(p)}
-              </span>
+              {!finished && (
+                <span className={`num text-right ${probText(p)}`} title={`P(win ${CAT_LABEL[c]}) ${pct(p)} · ${oddsLabel(odds)}`}>
+                  {pct(p)}
+                </span>
+              )}
             </li>
           );
         })}
       </ul>
-      {swingLine}
+      {finished ? doneLine : swingLine}
     </Panel>
   );
 }
@@ -731,9 +823,14 @@ function HowMade({
         <div>
           <dt className="font-semibold">Score</dt>
           <dd className="text-muted">
-            {score ? (
+            {score?.source === "week_review" ? (
               <>
-                Yahoo&apos;s category totals read at {shortTime(score.observedAt ?? score.createdAt)} ET ({score.source ?? "capture"}; run <code className="num">{score.runId}</code>).
+                Final totals from the week review <code className="num">{score.runId}</code> (Yahoo&apos;s last read plus box scores after it). No Yahoo read with
+                0 games left was saved for this week.
+              </>
+            ) : score ? (
+              <>
+                {score.me.gamesRemaining === 0 && score.opp.gamesRemaining === 0 ? "Final: " : ""}Yahoo&apos;s category totals read at {shortTime(score.observedAt ?? score.createdAt)} ET ({score.source ?? "capture"}; run <code className="num">{score.runId}</code>).
                 Captured once in the morning, so it lags games played since — Yahoo&apos;s matchup page is live. FG%/FT% are recomputed from makes/attempts.
               </>
             ) : (

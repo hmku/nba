@@ -101,11 +101,15 @@ is interested in X; details private"). A thread message
    `season_gp_exp` (82-game total). Run it after the night's games are final; a fetch during live games is safe
    (unfinished scoreboards are never cached) but simply misses those games until the next run.
    Model/evidence: `docs/research/inseason_updates.md`. Commit the box-score files (`data/raw/espn_boxscores/`).
-7. **Mondays only — last week's review** (after step 6, so Sunday's box scores are in): first read last week's FINAL
-   Yahoo score (step 1b's default page already shows the new week): run `scripts/yahoo/capture_matchup.js` with
-   `WEEK = <last week>` and save it as `data/raw/yahoo/matchup_${D}T$(date -u +%H%M)Z_w<N>.json` (its `week` field keeps
-   it out of this week's score; `games_remaining` 0 = final). Then
-   `fantasy review week --save --json` (default = the most recently completed week; local session with
+7. **Every run — finished weeks final on the dashboard** (after step 6, so Sunday's box scores are in; usually only
+   Mondays have work, but a missed Monday — Mac asleep — is caught up the next run): `fantasy review backlog --json`
+   lists completed weeks still missing a final score or a complete review (`[]` = nothing to do). For each entry:
+   - `needs_final_score`: read that week's FINAL Yahoo score (step 1b's default page already shows the new week): run
+     `scripts/yahoo/capture_matchup.js` with `WEEK = <N>`, save it as `data/raw/yahoo/matchup_${D}T$(date -u +%H%M)Z_w<N>.json`
+     (its `week` field keeps it out of this week's score; both `games_remaining` 0 = final), then
+     **`fantasy league score --capture <that file> --save --json`** — without this the `/week?week=N` page and the week
+     strip keep showing the last mid-week read (bug found 2026-11-09: W2 showed 4–5 for a week that ended 3–6).
+   - `needs_review` (or a new final score): `fantasy review week --week <N> --save --json` (local session with
    `FANTASY_DB_URL` = production writes the `week_review` row straight to the dashboard, no `fantasy publish`; cloud:
    add `--rest`). Check `review.final.complete` (false = box scores or the final read missing: say "provisional"),
    `review.reconciliation` (our slot-filtered totals vs Yahoo; a PTS gap > 2% is warned) and `review.warnings`
@@ -115,6 +119,7 @@ is interested in X; details private"). A thread message
    bullets>"` and `--details '{"week_review_run_id": "<run_id>"}'` so it shows in the Inbox feed. Evidence
    labels: scores/stats observed; over/under z = model (fitted noise, under-states weekly variance ~15-45% for PTS/FGA/REB);
    expected games = prior-based estimate. Schema: `docs/research/dashboard_data.md` §8.
+   Finish with `fantasy review backlog --json` = `[]`; if not (e.g. Yahoo read failed), say so in the log.
 
 ## 2. THINK
 - Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted

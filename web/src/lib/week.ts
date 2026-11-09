@@ -410,3 +410,127 @@ export function yahooMatchupUrl(week: number, meYahooId: number | null, oppYahoo
   if (meYahooId != null && oppYahooId != null) return `${YAHOO_LEAGUE}/matchup?week=${week}&mid1=${meYahooId}&mid2=${oppYahooId}`;
   return `${YAHOO_LEAGUE}/matchup?week=${week}`;
 }
+
+// ------------------------------------------------------------------ results of finished weeks
+
+/** A Yahoo read taken after both teams finished the week (games_remaining 0 on both sides) = the final score. */
+export function isFinalRead(s: MatchupScore): boolean {
+  return s.me.gamesRemaining === 0 && s.opp.gamesRemaining === 0;
+}
+
+const newestRead = (x: MatchupScore, y: MatchupScore) =>
+  (y.observedAt ?? "").localeCompare(x.observedAt ?? "") || (y.createdAt ?? "").localeCompare(x.createdAt ?? "");
+
+/** The final read of `week`: the newest matchup_score row of it with games_remaining 0 for both teams, else null. */
+export function finalScore(rows: RunRow[], week: number): MatchupScore | null {
+  return (
+    rows
+      .map(parseMatchupScore)
+      .filter((x): x is MatchupScore => x != null && x.week === week && isFinalRead(x))
+      .sort(newestRead)[0] ?? null
+  );
+}
+
+/**
+ * PostgREST select for light matchup_score rows (the week strip needs only week, score, observed_at and games left);
+ * `liteScoreRow` rebuilds a RunRow that `parseMatchupScore` reads (no categories -> the stated score is used).
+ */
+export const SCORE_LITE_COLS =
+  "run_id,kind,created_at,schema:summary->>schema,week:summary->week,observed_at:summary->>observed_at,score:summary->score,me_left:summary->me->games_remaining,opp_left:summary->opp->games_remaining";
+
+export function liteScoreRow(r: Obj): RunRow {
+  return {
+    run_id: s(r.run_id) ?? "",
+    kind: s(r.kind) ?? "matchup_score",
+    created_at: s(r.created_at),
+    summary: { schema: r.schema, week: r.week, observed_at: r.observed_at, score: r.score, me: { games_remaining: r.me_left }, opp: { games_remaining: r.opp_left } },
+  };
+}
+
+/** The week_review fields the week page uses (weekReview.ts `ReviewBrief`, structurally). */
+export interface ReviewFinalLike {
+  runId: string;
+  createdAt: string | null;
+  week: number;
+  headline: string;
+  final: {
+    score: { me: number; opp: number; ties: number };
+    result: "W" | "L" | "T";
+    complete: boolean;
+    through: string | null;
+    categories: { cat: string; me: number | null; opp: number | null; winner: string | null }[];
+    totals: { me: Record<string, number>; opp: Record<string, number> } | null;
+  } | null;
+}
+
+export type Outcome = "W" | "L" | "T";
+export const outcomeOf = (sc: { me: number; opp: number }): Outcome => (sc.me > sc.opp ? "W" : sc.me < sc.opp ? "L" : "T");
+export const OUTCOME_WORD: Record<Outcome, string> = { W: "Won", L: "Lost", T: "Tied" };
+
+/**
+ * How a finished week ended. `final` = a Yahoo read with no games left for either team; `review` = the week_review's
+ * final score (`complete` false = the review itself is provisional); `provisional` = the last Yahoo read before the
+ * week ended (final not captured).
+ */
+export interface WeekResult {
+  week: number;
+  outcome: Outcome;
+  score: { me: number; opp: number; ties: number };
+  basis: "final" | "review" | "provisional";
+  /** false for basis provisional and for an incomplete review */
+  complete: boolean;
+  /** the matchup_score read (final / provisional) or the review run */
+  runId: string;
+  /** when Yahoo was read (final / provisional), else the review's `through` date */
+  asOf: string | null;
+  /** the score the page shows per category: the read, or the review's final totals as a MatchupScore */
+  shown: MatchupScore;
+}
+
+/** The review's final totals as a MatchupScore (categories from its `final.categories`, % from makes/attempts). */
+export function reviewScore(r: ReviewFinalLike): MatchupScore | null {
+  const f = r.final;
+  if (!f) return null;
+  const parsed = parseMatchupScore({
+    run_id: r.runId,
+    kind: "matchup_score",
+    created_at: r.createdAt,
+    summary: {
+      schema: "matchup_score/1",
+      week: r.week,
+      date_et: f.through,
+      observed_at: null,
+      source: "week_review",
+      me: { totals: f.totals?.me ?? {} },
+      opp: { totals: f.totals?.opp ?? {} },
+      categories: f.categories.map((c) => ({ cat: c.cat, me: c.me, opp: c.opp, leader: c.winner })),
+      score: f.score,
+    },
+  });
+  // the review's own score/result are authoritative (Yahoo's final, or Yahoo + box scores)
+  return parsed ? { ...parsed, score: f.score } : null;
+}
+
+/**
+ * Result of a finished week: the newest final Yahoo read wins; else the newest week_review; else the newest read of the
+ * week, marked provisional. Null when there is none of these. Only call it for weeks that are over.
+ */
+export function weekResult(rows: RunRow[], review: ReviewFinalLike | null, week: number): WeekResult | null {
+  const fin = finalScore(rows, week);
+  if (fin) return { week, outcome: outcomeOf(fin.score), score: fin.score, basis: "final", complete: true, runId: fin.runId, asOf: fin.observedAt ?? fin.createdAt, shown: fin };
+  const rs = review && review.week === week ? reviewScore(review) : null;
+  if (review && rs && review.final)
+    return { week, outcome: review.final.result ?? outcomeOf(review.final.score), score: review.final.score, basis: "review", complete: review.final.complete, runId: review.runId, asOf: review.final.through, shown: rs };
+  const last = latestScore(rows, week);
+  if (last) return { week, outcome: outcomeOf(last.score), score: last.score, basis: "provisional", complete: false, runId: last.runId, asOf: last.observedAt ?? last.createdAt, shown: last };
+  return null;
+}
+
+/** Week-strip tile for a finished week: "W 6–3" (green/red/plain), provisional "4–5?" muted, none "—". */
+export function resultTile(r: WeekResult | null): { text: string; tone: "good" | "bad" | "fg" | "muted"; note: string } {
+  if (!r) return { text: "—", tone: "muted", note: "no score captured" };
+  const sc = `${r.score.me}–${r.score.opp}${r.score.ties ? `–${r.score.ties}` : ""}`;
+  if (!r.complete)
+    return { text: `${sc}?`, tone: "muted", note: r.basis === "review" ? `week review, provisional through ${r.asOf ?? "?"}; final not captured` : "last read before the week ended; final not captured" };
+  return { text: `${r.outcome} ${sc}`, tone: r.outcome === "W" ? "good" : r.outcome === "L" ? "bad" : "fg", note: r.basis === "final" ? "final (Yahoo)" : "final (week review)" };
+}

@@ -43,7 +43,7 @@ data-auditor, draft-shadow (all read-only).
 | Valuation | `fantasy values build [--punt ft_pct]` |
 | Draft | `fantasy draft init|board|pick|undo|recommend|watch|simulate|order|set-order|queue|prepare-pick|confirm-pick` (`recommend` default = value search + sim/mixed availability, recommend-0.2.0) |
 | Season sim | `fantasy sim season|matchup|compare|draft-check|preseason|schedule` |
-| Week retrospective | `fantasy review week [--week N] [--save]` (Mondays, daily-routine 1.7) |
+| Week retrospective | `fantasy review week [--week N] [--save]`, `fantasy review backlog` (every run, daily-routine 1.7) |
 | Muse intel (read-only) | `fantasy intel latest|list|show [--rest]` |
 | Ops ledger | `fantasy run ...`, `fantasy lock ...`, `fantasy approval ...`, `fantasy txn ...`, `fantasy task ...` (add `--rest` in cloud sessions) |
 

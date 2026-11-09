@@ -891,7 +891,30 @@ def default_week(calendar: list[Any], today: date) -> int | None:
     return max(done, key=lambda w: w.end).week if done else None
 
 
-__all__ = ["KIND", "SCHEMA", "MODEL_VERSION", "ReviewInputs", "Snapshot", "TeamLineup", "build_review",
+def _is_final_score(row: dict[str, Any]) -> bool:
+    s = row.get("summary") or {}
+    rem = [(s.get(side) or {}).get("games_remaining") for side in ("me", "opp")]
+    return all(r == 0 for r in rem)
+
+
+def backlog(calendar: list[Any], today: date, score_rows: list[dict[str, Any]],
+            review_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Completed weeks (end < today) whose dashboard rows are not final yet: no `matchup_score` row with both teams'
+    games_remaining == 0 (`needs_final_score`) and/or no `week_review` row with `final.complete` (`needs_review`).
+    The daily routine works this list every day, so a missed Monday is caught up the next run."""
+    out = []
+    for w in sorted((w for w in calendar if w.end < today), key=lambda w: w.week):
+        final = any((r.get("summary") or {}).get("week") == w.week and _is_final_score(r) for r in score_rows)
+        rev = [r for r in review_rows if (r.get("summary") or {}).get("schema") == SCHEMA
+               and r["summary"].get("week") == w.week]
+        complete = any(((r["summary"].get("final") or {}).get("complete")) for r in rev)
+        if not (final and complete):
+            out.append({"week": w.week, "start": w.start.isoformat(), "end": w.end.isoformat(),
+                        "needs_final_score": not final, "needs_review": not complete})
+    return out
+
+
+__all__ = ["KIND", "SCHEMA", "MODEL_VERSION", "ReviewInputs", "Snapshot", "TeamLineup", "backlog", "build_review",
            "counted_games", "default_week", "et_date", "latest_review", "ledger_window", "lineup_on",
            "load_box_scores", "load_matchup_captures", "load_snapshots", "parse_snapshot", "projections_as_of",
            "pwin_trajectory", "review_row", "save", "score_categories", "summarize", "team_breakdown"]

@@ -250,3 +250,23 @@ def test_cli_week_review_end_to_end(tmp_path, monkeypatch):
     # banked through 11-03 (morning read): Yahoo's zeros + our counted games from 11-04 on
     assert r["teams"]["me"]["games_counted"] == 14
     assert r["projection_source"]["kind"] == "file"
+
+
+def test_backlog_flags_weeks_without_final_score_or_complete_review() -> None:
+    from types import SimpleNamespace as NS
+
+    cal = [NS(week=1, start=date(2026, 10, 20), end=date(2026, 10, 25)),
+           NS(week=2, start=date(2026, 10, 26), end=date(2026, 11, 1)),
+           NS(week=3, start=date(2026, 11, 2), end=date(2026, 11, 8))]
+
+    def score(week: int, rem: int) -> dict:
+        return {"summary": {"week": week, "me": {"games_remaining": rem}, "opp": {"games_remaining": 0}}}
+
+    def review(week: int, complete: bool) -> dict:
+        return {"summary": {"schema": wr.SCHEMA, "week": week, "final": {"complete": complete}}}
+
+    scores = [score(1, 0), score(2, 2)]
+    reviews = [review(1, True), review(2, True), review(3, False)]
+    todo = wr.backlog(cal, date(2026, 11, 9), scores, reviews)
+    assert [(t["week"], t["needs_final_score"], t["needs_review"]) for t in todo] == [(2, True, False), (3, True, True)]
+    assert wr.backlog(cal, date(2026, 11, 8), scores, reviews)[-1]["week"] == 2  # week 3 not over yet

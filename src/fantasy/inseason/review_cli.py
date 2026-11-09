@@ -53,6 +53,35 @@ def _text(r: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+@app.command("backlog")
+def backlog_cmd(
+    schedule: Annotated[Path | None, typer.Option("--schedule", help="League schedule JSON")] = None,
+    use_rest: Annotated[bool, typer.Option("--rest", help="Read model_runs over Supabase HTTPS (cloud)")] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output")] = False,
+) -> None:
+    """Completed weeks still missing a final Yahoo score or a complete review on the dashboard (empty = up to date)."""
+    from fantasy.lineup import record
+    from fantasy.sim.schedule import LEAGUE_SCHEDULE_PATH, load_schedule_json
+
+    sp = schedule or LEAGUE_SCHEDULE_PATH
+    if not sp.exists():
+        fail(f"league schedule {sp} not found", as_json, EXIT_NOT_FOUND, code="not_found")
+    cal = load_schedule_json(sp).calendar or []
+    try:
+        st = record.store(use_rest)
+        try:
+            scores, reviews = st.rows("matchup_score", limit=1000), st.rows(wr.KIND, limit=500)
+        finally:
+            st.close()
+    except OpsError as e:
+        fail(e.message, as_json, e.exit_code, code=e.code)
+    todo = wr.backlog(cal, _today_et(), scores, reviews)
+    text = "all completed weeks final" if not todo else "\n".join(
+        f"week {t['week']} ({t['start']}..{t['end']}): "
+        + ", ".join(k for k in ("needs_final_score", "needs_review") if t[k]) for t in todo)
+    emit({"ok": True, "backlog": todo}, as_json, text)
+
+
 @app.command("week")
 def week_cmd(
     week: Annotated[int | None, typer.Option("--week", help="Fantasy week (default: the most recently completed)")]

@@ -7,8 +7,14 @@ import {
   catLeader,
   gamesLeft,
   latestPlanInWeek,
+  finalScore,
+  isFinalRead,
   latestScore,
+  liteScoreRow,
   mergePlanGames,
+  outcomeOf,
+  resultTile,
+  reviewScore,
   orderRows,
   parseMatchupScore,
   remainingDays,
@@ -18,8 +24,10 @@ import {
   teamGames,
   teamLineup,
   weekOdds,
+  weekResult,
   yahooMatchupUrl,
 } from "../src/lib/week.ts";
+import { briefsByWeek, parseReviewBrief } from "../src/lib/weekReview.ts";
 import { parseActual, parsePlan } from "../src/lib/lineup.ts";
 import { LEGACY_REDIRECTS, legacyTarget, WEEK_PATH } from "../src/lib/routes.ts";
 import { buildLeagueState, buildSchedule, capturedAt, parseCsv } from "../scripts/league-state.mjs";
@@ -126,6 +134,116 @@ test("latestScore: newest row of the requested week", () => {
   const other = scoreRow({ week: 2 }, "2026-10-23T12:00:00Z");
   assert.equal(latestScore([older, other, newer], 1).runId, newer.run_id);
   assert.equal(latestScore([older], 2), null);
+});
+
+// ------------------------------------------------------------------ finished weeks (final read > week review > last read)
+
+const finalRow = (created, observed, left = [0, 0]) => {
+  const r = scoreRow({ observed_at: observed }, created);
+  r.summary.me = { ...r.summary.me, games_remaining: left[0] };
+  r.summary.opp = { ...r.summary.opp, games_remaining: left[1] };
+  return r;
+};
+
+const reviewBrief = (over = {}) =>
+  parseReviewBrief({
+    run_id: "wr-w1-abc",
+    created_at: "2026-10-27T12:00:00Z",
+    schema: "week_review/1",
+    week: 1,
+    headline: "Won 6-3 vs Joshua's Excellent Team; P(win) 0.59 Mon -> 0.96 last plan",
+    final: {
+      score: { me: 6, opp: 3, ties: 0 },
+      result: "W",
+      complete: true,
+      basis: "yahoo+box_scores",
+      through: "2026-10-25",
+      categories: [
+        { cat: "fg_pct", me: 0.423, opp: 0.49, winner: "opp", margin: -0.067 },
+        { cat: "pts", me: 448.0, opp: 400.0, winner: "me", margin: 48 },
+      ],
+      totals: { me: { fgm: 150, fga: 355, ftm: 40, fta: 50, pts: 448 }, opp: { fgm: 170, fga: 347, ftm: 41, fta: 55, pts: 400 } },
+    },
+    ...over,
+  });
+
+test("isFinalRead / finalScore: only reads with 0 games left for both teams; newest such read wins", () => {
+  const mid = finalRow("2026-10-26T12:00:00Z", "2026-10-25T12:00:00Z", [4, 5]);
+  const oneSide = finalRow("2026-10-26T13:00:00Z", "2026-10-26T13:00:00Z", [0, 2]);
+  const f1 = finalRow("2026-10-26T14:00:00Z", "2026-10-26T05:00:00Z");
+  const f2 = finalRow("2026-10-27T05:00:00Z", "2026-10-27T05:00:00Z");
+  assert.equal(isFinalRead(parseMatchupScore(mid)), false);
+  assert.equal(isFinalRead(parseMatchupScore(oneSide)), false);
+  assert.equal(isFinalRead(parseMatchupScore(scoreRow())), false); // null = unknown, not final
+  assert.equal(finalScore([mid, f1, oneSide, f2], 1).runId, f2.run_id);
+  assert.equal(finalScore([mid, oneSide], 1), null);
+  assert.equal(finalScore([f1], 2), null);
+});
+
+test("weekResult: final read beats a review, which beats the last (provisional) read", () => {
+  const mid = finalRow("2026-10-28T12:00:00Z", "2026-10-25T12:00:00Z", [4, 5]); // newer created_at, still not final
+  const fin = finalRow("2026-10-26T12:00:00Z", "2026-10-26T05:00:00Z");
+  const rv = reviewBrief();
+  const a = weekResult([mid, fin], rv, 1);
+  assert.equal(a.basis, "final");
+  assert.equal(a.runId, fin.run_id);
+  assert.equal(a.complete, true);
+  assert.deepEqual(a.score, { me: 4, opp: 4, ties: 1 });
+  assert.equal(a.outcome, "T");
+  const b = weekResult([mid], rv, 1);
+  assert.equal(b.basis, "review");
+  assert.equal(b.outcome, "W");
+  assert.deepEqual(b.score, { me: 6, opp: 3, ties: 0 });
+  assert.equal(b.asOf, "2026-10-25");
+  assert.equal(b.shown.source, "week_review");
+  const c = weekResult([mid], null, 1);
+  assert.equal(c.basis, "provisional");
+  assert.equal(c.complete, false);
+  assert.equal(c.runId, mid.run_id);
+  assert.equal(weekResult([mid], rv, 2), null); // the review is for another week; no rows of week 2
+  const inc = weekResult([], reviewBrief({ final: { ...rv.final, complete: false, through: "2026-10-24" } }), 1);
+  assert.equal(inc.basis, "review");
+  assert.equal(inc.complete, false);
+});
+
+test("reviewScore: the review's final totals as a score, % from makes/attempts, the review's score kept", () => {
+  const rs = reviewScore(reviewBrief());
+  const fg = rs.categories.find((c) => c.cat === "fg_pct");
+  assert.equal(fg.me, 150 / 355);
+  assert.equal(fg.leader, "opp");
+  assert.equal(rs.categories.find((c) => c.cat === "pts").me, 448);
+  assert.deepEqual(rs.score, { me: 6, opp: 3, ties: 0 });
+  assert.equal(reviewScore({ ...reviewBrief(), final: null }), null);
+});
+
+test("resultTile: W/L/T with score for complete results, '?' muted for provisional, '—' for none", () => {
+  const mk = (score, basis = "final", complete = true) => ({ week: 1, outcome: outcomeOf(score), score, basis, complete, runId: "x", asOf: "2026-11-01", shown: null });
+  assert.deepEqual(resultTile(mk({ me: 6, opp: 3, ties: 0 })), { text: "W 6–3", tone: "good", note: "final (Yahoo)" });
+  assert.equal(resultTile(mk({ me: 3, opp: 6, ties: 0 }, "review")).text, "L 3–6");
+  assert.equal(resultTile(mk({ me: 3, opp: 6, ties: 0 }, "review")).tone, "bad");
+  assert.equal(resultTile(mk({ me: 4, opp: 4, ties: 1 })).text, "T 4–4–1");
+  const prov = resultTile(mk({ me: 4, opp: 5, ties: 0 }, "provisional", false));
+  assert.equal(prov.text, "4–5?");
+  assert.equal(prov.tone, "muted");
+  assert.match(prov.note, /final not captured/);
+  assert.equal(resultTile(null).text, "—");
+});
+
+test("light rows: liteScoreRow feeds parseMatchupScore; parseReviewBrief reads light and full rows, newest per week", () => {
+  const lite = liteScoreRow({ run_id: "ms-w2-x", kind: "matchup_score", created_at: "2026-11-09T05:15:59Z", schema: "matchup_score/1", week: 2, observed_at: "2026-11-02T12:14:51Z", score: { me: 3, opp: 6, ties: 0 }, me_left: 0, opp_left: 0 });
+  const r = weekResult([lite], null, 2);
+  assert.equal(r.basis, "final");
+  assert.deepEqual(r.score, { me: 3, opp: 6, ties: 0 });
+  assert.equal(r.outcome, "L");
+  const full = parseReviewBrief({ run_id: "wr-w2-a", created_at: "2026-11-02T12:16:43Z", summary: { schema: "week_review/1", week: 2, summary: { headline: "Lost 3-6" }, final: { score: { me: 3, opp: 6, ties: 0 }, result: "L", complete: true, through: "2026-11-01" } } });
+  assert.equal(full.headline, "Lost 3-6");
+  assert.equal(full.final.result, "L");
+  assert.equal(full.final.totals, null);
+  assert.equal(parseReviewBrief({ run_id: "x", schema: "other/1", week: 2 }), null);
+  const older = { run_id: "wr-w2-old", created_at: "2026-11-02T03:04:10Z", schema: "week_review/1", week: 2, headline: "Lost 4-5 (provisional)", final: { score: { me: 4, opp: 5 }, result: "L", complete: false } };
+  const m = briefsByWeek([{ run_id: "wr-w2-new", created_at: "2026-11-02T12:16:43Z", schema: "week_review/1", week: 2, headline: "Lost 3-6", final: { score: { me: 3, opp: 6, ties: 0 }, result: "L", complete: true } }, older]);
+  assert.equal(m.get(2).runId, "wr-w2-new");
+  assert.equal(m.get(2).final.complete, true);
 });
 
 // ------------------------------------------------------------------ odds
