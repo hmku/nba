@@ -1,0 +1,66 @@
+{
+ "date": "2026-11-10",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-10_premove_league.json",
+ "moves": [
+  {
+   "player": "aj-green",
+   "command": "fantasy sim compare --league-file <premove> --add aj-green --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "p_playoffs": {
+     "before": 0.8488,
+     "after": 0.8135,
+     "delta": -0.0352,
+     "delta_se": 0.0039
+    },
+    "p_title": {
+     "before": 0.2527,
+     "after": 0.236,
+     "delta": -0.0168,
+     "delta_se": 0.0046
+    },
+    "exp_cat_wins": {
+     "before": 89.2857,
+     "after": 87.666,
+     "delta": -1.6198,
+     "delta_se": 0.0563
+    },
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-03 (in 54% of sims)",
+     "after: assumes the roster cap releases A.J. Green from ~2027-02-03 (in 55% of sims)"
+    ],
+    "sim_version": "season-sim-0.8.1",
+    "seed": 0
+   }
+  },
+  {
+   "player": "derrick-jones-jr",
+   "command": "fantasy sim compare --league-file <premove> --add derrick-jones-jr --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "p_playoffs": {
+     "before": 0.8488,
+     "after": 0.842,
+     "delta": -0.0067,
+     "delta_se": 0.0036
+    },
+    "p_title": {
+     "before": 0.2527,
+     "after": 0.255,
+     "delta": 0.0022,
+     "delta_se": 0.0047
+    },
+    "exp_cat_wins": {
+     "before": 89.2857,
+     "after": 88.8732,
+     "delta": -0.4125,
+     "delta_se": 0.0562
+    },
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-03 (in 54% of sims)",
+     "after: assumes the roster cap releases Derrick Jones Jr. from ~2027-02-04 (in 54% of sims)"
+    ],
+    "sim_version": "season-sim-0.8.1",
+    "seed": 0
+   }
+  }
+ ]
+}

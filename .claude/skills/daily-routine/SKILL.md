@@ -254,6 +254,8 @@ move, never log its `crumb` field. **Verified procedure (2026-10-20, first live 
   click by `ref`.
 - After selecting a player, check the row classes: the selected row has `swapactive`, legal destinations `swaptarget`;
   click a target only if it is the planned one. Moving into an empty slot = click the empty row's label.
+  The first click right after the page loads can be ignored (no `swapactive`, server unchanged; 2026-11-10): if no row
+  is `swapactive`, click the same player again — never click a target without `swapactive`.
 - Plan the moves as swaps (e.g. C-only player out: swap with a C-eligible starter, then swap that one to BN).
 - After each click, re-read the SERVER state: `fetch('/nba/44495/11/team?&date=$D',{cache:'no-store'})` and parse rows
   (player:slot). Also re-read today's date if you edited a future date (it must be unchanged).

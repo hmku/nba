@@ -1,0 +1,78 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Tue 11-10: lineup = plan; Wed set (Podziemski, Queen, VanVleet in)",
+  "status": "done",
+  "headline": "Week 4 vs Christian 6-2-1 after Monday; P(win week) 0.83.",
+  "week": 4,
+  "verdict": "Today already matched the plan; Wednesday is set early (Sheppard, Bridges, Reid to bench). No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(win week 4)",
+    "value": 0.832,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.849,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.249,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "Christian has 35 games left vs our 31; we trail FG% (.431 vs .494) and STL (6-14).",
+   "P(win) uses availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-10.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-10.json"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-10-dced6b54ae7e: 0 changes (Yahoo = plan 14/14).",
+   "- Wed plan lp-2026-11-11-7e780e261417: Podziemski SG, Queen PF, Ware C, VanVleet Util; verified (txn-3fb8fc583c3e4e08b7b740803a05c633).",
+   "- Stream: 0 helps (best direct swaps for Sheppard = noise); opportunity: 0 helps."
+  ],
+  "why_now": {
+   "before": "Monday: lineup = plan, no helpful add.",
+   "changed": [
+    {
+     "text": "Monday banked 6-2-1; Jeffrey added AJ Green + D. Jones Jr. (both neutral/noise for us). Still no add helps.",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "P(win week)",
+    "P(playoffs)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-10-dced6b54ae7e",
+  "lineup_plan_next": "lp-2026-11-11-7e780e261417",
+  "lineup_record": "la-2026-11-10-33cc8d088aad",
+  "lineup_record_next": "la-2026-11-11-4b00e04c935d",
+  "matchup_score": "ms-w4-2026-11-10-f682fa0acffa",
+  "season_sim": "sim-20261110122958-bddfb5"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-10.json"
+ }
+}
