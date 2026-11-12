@@ -1,0 +1,49 @@
+{
+ "date": "2026-11-12",
+ "baseline_drop": "reed-sheppard",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-12_premove_league.json",
+ "results": {
+  "ziaire-williams": {
+   "command": "fantasy sim compare --league-file <premove> --add ziaire-williams --drop reed-sheppard --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.862,
+    "after": 0.8482,
+    "delta": -0.0138,
+    "delta_se": 0.0038
+   },
+   "p_title": {
+    "before": 0.2475,
+    "after": 0.2427,
+    "delta": -0.0047,
+    "delta_se": 0.0045
+   },
+   "exp_cat_wins": {
+    "before": 89.7883,
+    "after": 89.1846,
+    "delta": -0.6036,
+    "delta_se": 0.0573
+   }
+  },
+  "deanthony-melton": {
+   "command": "fantasy sim compare --league-file <premove> --add deanthony-melton --drop reed-sheppard --sims 4000 --no-save --json",
+   "p_playoffs": {
+    "before": 0.862,
+    "after": 0.8562,
+    "delta": -0.0057,
+    "delta_se": 0.0037
+   },
+   "p_title": {
+    "before": 0.2475,
+    "after": 0.25,
+    "delta": 0.0025,
+    "delta_se": 0.0046
+   },
+   "exp_cat_wins": {
+    "before": 89.7883,
+    "after": 89.4647,
+    "delta": -0.3235,
+    "delta_se": 0.0598
+   }
+  }
+ }
+}

@@ -1,0 +1,78 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Thu 11-12: lineup = plan; Fri set (Clingan, VanVleet, Sheppard in)",
+  "status": "done",
+  "headline": "Week 4 vs Christian 8-0-1 after Wednesday; P(win week) 0.96.",
+  "week": 4,
+  "verdict": "Today already matched the plan; Friday is set early with the three bench players who play Friday. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(win week 4)",
+    "value": 0.957,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.864,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.239,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "FG% is a near-tie (.4690 vs .4689) and STL +2; Christian has 26 games left vs our 18.",
+   "P(win) uses availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-12.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-12.json"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-12-820e8f994ab8: 0 changes (Yahoo = plan 14/14).",
+   "- Fri plan lp-2026-11-13-afa6b673fb7b: Clingan C, VanVleet + Sheppard Util (Jokic, Reid, Bridges no Fri game); verified (txn-3156f6e3611e4ab4b1db8b584044f18f).",
+   "- Stream: 0 helps (drop-Leonard pairs hurt season); opportunity: 0 helps (Kalkbrenner speculative)."
+  ],
+  "why_now": {
+   "before": "Wednesday: lineup = plan, Thursday set, no helpful add.",
+   "changed": [
+    {
+     "text": "Wednesday banked: now 8-0-1. Rival adds (Melton, Ziaire Williams) wouldn't help us. Markkanen out 1+ month (Bailey's team).",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "P(win week)",
+    "P(playoffs)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-12-820e8f994ab8",
+  "lineup_plan_next": "lp-2026-11-13-afa6b673fb7b",
+  "lineup_record": "la-2026-11-12-be89c8b3859b",
+  "lineup_record_next": "la-2026-11-13-c14bbd4427ab",
+  "matchup_score": "ms-w4-2026-11-12-d2b8655f578b",
+  "season_sim": "sim-20261112135615-af668e"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-12.json"
+ }
+}
