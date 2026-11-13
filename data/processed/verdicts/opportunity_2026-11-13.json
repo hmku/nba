@@ -1,0 +1,4130 @@
+{
+  "ok": true,
+  "version": "opportunity-0.1.1",
+  "sim_version": "season-sim-0.8.1",
+  "as_of": "2026-11-13",
+  "team": 1,
+  "drop": {
+    "player_id": "reed-sheppard",
+    "name": "Reed Sheppard",
+    "per_game_value": 0.319,
+    "rule": "my lowest season-value player not tagged Out/IL"
+  },
+  "absences": [
+    {
+      "player_id": "kon-knueppel",
+      "name": "Kon Knueppel",
+      "team": "CHO",
+      "mpg": 32.1,
+      "missed": 3,
+      "season_out": false,
+      "return_date": "2026-12-12",
+      "espn_games": 10,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-08",
+          "detail": "Left Hamstring: Knueppel (hamstring) was diagnosed with a left hamstring strain Sunday and will be re-evaluated in four weeks.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 6.39,
+        "source": "fitted survival given 3 missed (6.4 g; ESPN return estimate 2026-12-12 = 10 g): the shorter one (PRIOR rule)",
+        "fitted_games": 6.39,
+        "espn_games": 10,
+        "espn_return_date": "2026-12-12"
+      }
+    },
+    {
+      "player_id": "caleb-wilson",
+      "name": "Caleb Wilson",
+      "team": "CHI",
+      "mpg": 29.0,
+      "missed": 0,
+      "season_out": false,
+      "return_date": "2026-12-13",
+      "espn_games": 13,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Right Hand: Wilson (hand) is expected to miss four to six weeks, Shams Charania of ESPN reports.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "surgery,timeline",
+          "date": "2026-11-12",
+          "detail": "Wilson is undergoing surgery for a fractured right hand and will miss at least four to six weeks, Shams Charania of ESPN reports."
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Wilson won't return to Wednesday's game against the Spurs due to a right hand injury. He'll finish with 15 points (5-7 FG, 2-2 3Pt, 3-3 FT),"
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Wilson exited to the locker room in the third quarter of Wednesday's game against San Antonio due to an apparent hand injury, K.C. Johnson o"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 2.87,
+        "source": "fitted survival given 0 missed (2.9 g; ESPN return estimate 2026-12-13 = 13 g): the shorter one (PRIOR rule)",
+        "fitted_games": 2.87,
+        "espn_games": 13,
+        "espn_return_date": "2026-12-13"
+      }
+    },
+    {
+      "player_id": "evan-mobley",
+      "name": "Evan Mobley",
+      "team": "CLE",
+      "mpg": 32.3,
+      "missed": 0,
+      "season_out": false,
+      "return_date": "2026-11-14",
+      "espn_games": 1,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Toe: Mobley (toe) is out for Friday's game against the Heat.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 1.0,
+        "source": "ESPN return estimate 2026-11-14 (1 g; fitted survival 2.9 g): the shorter one (PRIOR rule)",
+        "fitted_games": 2.87,
+        "espn_games": 1,
+        "espn_return_date": "2026-11-14"
+      }
+    },
+    {
+      "player_id": "jalen-duren",
+      "name": "Jalen Duren",
+      "team": "DET",
+      "mpg": 29.7,
+      "missed": 9,
+      "season_out": false,
+      "return_date": "2026-11-24",
+      "espn_games": 5,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-08",
+          "detail": "Right Hamstring: Duren (hamstring) has begun on-court activity and will be re-evaluated in two weeks, Hunter Patterson of The Athletic re",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 5.0,
+        "source": "ESPN return estimate 2026-11-24 (5 g; fitted survival 8.2 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 5,
+        "espn_return_date": "2026-11-24"
+      }
+    },
+    {
+      "player_id": "stephen-curry",
+      "name": "Stephen Curry",
+      "team": "GSW",
+      "mpg": 30.2,
+      "missed": 0,
+      "season_out": false,
+      "return_date": "2026-12-12",
+      "espn_games": 11,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Right Abdomen: Curry has been diagnosed with an oblique abdominal tear and will be re-evaluated in two weeks, Shams Charania of ESPN re",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        },
+        {
+          "source": "news (Media)",
+          "status": "timeline",
+          "date": "2026-11-12",
+          "detail": "Shams: Steph Curry to be sidelined for 2-4 weeks"
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "timeline",
+          "date": "2026-11-12",
+          "detail": "Curry has been diagnosed with an oblique abdominal tear and will be re-evaluated in two weeks, Shams Charania of ESPN reports."
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Curry won't return to Wednesday's game against the Rockets due to right abdominal soreness, Anthony Slater of ESPN.com reports. He'll finish"
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Curry (hip/oblique) exited Wednesday's game against the Rockets, Anthony Slater of ESPN.com reports."
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 2.87,
+        "source": "fitted survival given 0 missed (2.9 g; ESPN return estimate 2026-12-12 = 11 g): the shorter one (PRIOR rule)",
+        "fitted_games": 2.87,
+        "espn_games": 11,
+        "espn_return_date": "2026-12-12"
+      }
+    },
+    {
+      "player_id": "jimmy-butler",
+      "name": "Jimmy Butler",
+      "team": "GSW",
+      "mpg": 30.8,
+      "missed": 12,
+      "season_out": false,
+      "return_date": "2027-01-02",
+      "espn_games": 22,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-16",
+          "detail": "Right Knee: Butler (knee) could return sometime between January and February as he continues recovering from a torn right ACL, Antho",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.43,
+        "source": "fitted survival given 12 missed (8.4 g; ESPN return estimate 2027-01-02 = 20 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.43,
+        "espn_games": 22,
+        "espn_return_date": "2027-01-02"
+      }
+    },
+    {
+      "player_id": "tyrese-haliburton",
+      "name": "Tyrese Haliburton",
+      "team": "IND",
+      "mpg": 31.768,
+      "missed": 8,
+      "season_out": false,
+      "return_date": "2026-11-22",
+      "espn_games": 4,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-11",
+          "detail": "Left Hamstring: Head coach Rick Carlisle said Wednesday that Haliburton (hamstring) will miss at least 10 more days, Alex Golden of SI.c",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 4.0,
+        "source": "ESPN return estimate 2026-11-22 (4 g; fitted survival 8.2 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 4,
+        "espn_return_date": "2026-11-22"
+      }
+    },
+    {
+      "player_id": "brandon-ingram",
+      "name": "Brandon Ingram",
+      "team": "LAC",
+      "mpg": 34.4,
+      "missed": 10,
+      "season_out": false,
+      "return_date": "2026-11-19",
+      "espn_games": 3,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Right Achilles: Ingram (Achilles) won't play in Friday's game against the Thunder, per Law Murray of The Athletic.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 3.0,
+        "source": "ESPN return estimate 2026-11-19 (3 g; fitted survival 8.9 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.87,
+        "espn_games": 3,
+        "espn_return_date": "2026-11-19"
+      }
+    },
+    {
+      "player_id": "bradley-beal",
+      "name": "Bradley Beal",
+      "team": "LAC",
+      "mpg": 28.6,
+      "missed": 10,
+      "season_out": false,
+      "return_date": "2026-11-29",
+      "espn_games": 8,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-15",
+          "detail": "Right Knee: Beal (knee) will not be ready for the start of the regular season, NBA writer Justin Russo reports.",
+          "fetched": "2026-11-13"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.0,
+        "source": "ESPN return estimate 2026-11-29 (8 g; fitted survival 8.9 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.87,
+        "espn_games": 8,
+        "espn_return_date": "2026-11-29"
+      }
+    },
+    {
+      "player_id": "anthony-edwards",
+      "name": "Anthony Edwards",
+      "team": "MIN",
+      "mpg": 35.6,
+      "missed": 8,
+      "season_out": false,
+      "return_date": "2026-12-21",
+      "espn_games": 17,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-29",
+          "detail": "Right Knee: Edwards underwent a successful arthroscopic procedure on his right knee Thursday, the Timberwolves announced.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.21,
+        "source": "fitted survival given 8 missed (8.2 g; ESPN return estimate 2026-12-21 = 17 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 17,
+        "espn_return_date": "2026-12-21"
+      }
+    },
+    {
+      "player_id": "chet-holmgren",
+      "name": "Chet Holmgren",
+      "team": "OKC",
+      "mpg": 29.088,
+      "missed": 9,
+      "season_out": false,
+      "return_date": "2027-01-02",
+      "espn_games": 22,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-31",
+          "detail": "Right Knee: Holmgren underwent a biological treatment Friday to address a small patellar tendon tear and will miss at least 8-10 wee",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.21,
+        "source": "fitted survival given 9 missed (8.2 g; ESPN return estimate 2027-01-02 = 20 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 22,
+        "espn_return_date": "2027-01-02"
+      }
+    },
+    {
+      "player_id": "jalen-williams",
+      "name": "Jalen Williams",
+      "team": "OKC",
+      "mpg": 31.4,
+      "missed": 9,
+      "season_out": false,
+      "return_date": "2027-03-02",
+      "espn_games": 49,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-28",
+          "detail": "Left Leg: Williams (leg) underwent successful surgery Wednesday to \"address a fractured left fibula and reconstruction of ankle li",
+          "fetched": "2026-11-13"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.21,
+        "source": "fitted survival given 9 missed (8.2 g; ESPN return estimate 2027-03-02 = 20 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 49,
+        "espn_return_date": "2027-03-02"
+      }
+    },
+    {
+      "player_id": "jalen-suggs",
+      "name": "Jalen Suggs",
+      "team": "ORL",
+      "mpg": 29.048,
+      "missed": 8,
+      "season_out": false,
+      "return_date": "2026-11-13",
+      "espn_games": null,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Right Knee: Suggs (knee) is questionable for Friday's game against Milwaukee.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.21,
+        "source": "fitted survival given 8 missed",
+        "fitted_games": 8.21,
+        "espn_games": null,
+        "espn_return_date": "2026-11-13"
+      }
+    },
+    {
+      "player_id": "paolo-banchero",
+      "name": "Paolo Banchero",
+      "team": "ORL",
+      "mpg": 34.6,
+      "missed": 9,
+      "season_out": false,
+      "return_date": "2026-11-22",
+      "espn_games": 4,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-24",
+          "detail": "Right Ankle: Banchero is expected to be sidelined for the next four-to-six weeks due to a right high-ankle sprain, Shams Charania of",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 4.0,
+        "source": "ESPN return estimate 2026-11-22 (4 g; fitted survival 8.2 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 4,
+        "espn_return_date": "2026-11-22"
+      }
+    },
+    {
+      "player_id": "ja-morant",
+      "name": "Ja Morant",
+      "team": "POR",
+      "mpg": 29.2,
+      "missed": 7,
+      "season_out": false,
+      "return_date": "2026-12-01",
+      "espn_games": 9,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-08",
+          "detail": "Left Hamstring: Head coach Micah Nori said Morant met with a doctor in Los Angeles, who gave him a positive outlook on his recovery from",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.02,
+        "source": "fitted survival given 7 missed (8.0 g; ESPN return estimate 2026-12-01 = 9 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.02,
+        "espn_games": 9,
+        "espn_return_date": "2026-12-01"
+      }
+    },
+    {
+      "player_id": "tobias-harris",
+      "name": "Tobias Harris",
+      "team": "SAS",
+      "mpg": 29.5,
+      "missed": 12,
+      "season_out": false,
+      "return_date": "2026-11-19",
+      "espn_games": 3,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-10",
+          "detail": "Left Calf: Harris (calf) is out for Wednesday's game against Chicago, Jared Weiss of The Athletic reports.",
+          "fetched": "2026-11-13"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 3.0,
+        "source": "ESPN return estimate 2026-11-19 (3 g; fitted survival 8.4 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.43,
+        "espn_games": 3,
+        "espn_return_date": "2026-11-19"
+      }
+    },
+    {
+      "player_id": "scottie-barnes",
+      "name": "Scottie Barnes",
+      "team": "TOR",
+      "mpg": 33.6,
+      "missed": 4,
+      "season_out": false,
+      "return_date": "2026-11-15",
+      "espn_games": 0,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-12",
+          "detail": "Left Groin: Barnes (groin) is out for Thursday's game against Philadelphia.",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 1.0,
+        "source": "ESPN return estimate 2026-11-15 (1 g; fitted survival 6.8 g): the shorter one (PRIOR rule)",
+        "fitted_games": 6.76,
+        "espn_games": 0,
+        "espn_return_date": "2026-11-15"
+      }
+    },
+    {
+      "player_id": "kawhi-leonard",
+      "name": "Kawhi Leonard",
+      "team": "TOR",
+      "mpg": 31.8,
+      "missed": 10,
+      "season_out": false,
+      "return_date": "2026-11-23",
+      "espn_games": 4,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-11",
+          "detail": "Left Knee: Head coach Darko Rajakovic said Wednesday that Leonard (knee) is doing individual on-court work and is progressing well,",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "timeline",
+          "date": "2026-11-10",
+          "detail": "Leonard (knee) is continuing the reconditioning process, and another update will be provided in one week, Blake Murphy of Sportsnet.ca repor"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 4.0,
+        "source": "ESPN return estimate 2026-11-23 (4 g; fitted survival 8.9 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.87,
+        "espn_games": 4,
+        "espn_return_date": "2026-11-23"
+      }
+    },
+    {
+      "player_id": "lauri-markkanen",
+      "name": "Lauri Markkanen",
+      "team": "UTA",
+      "mpg": 31.7,
+      "missed": 3,
+      "season_out": false,
+      "return_date": "2027-01-04",
+      "espn_games": 24,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-11-11",
+          "detail": "Right Hand: Markkanen has been diagnosed with a non-displaced fracture in his right hand and will be sidelined for at least one mont",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "timeline",
+          "date": "2026-11-11",
+          "detail": "Markkanen has been diagnosed with a non-displaced fracture in his right hand and will be sidelined for at least one month, Shams Charania of"
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 6.39,
+        "source": "fitted survival given 3 missed (6.4 g; ESPN return estimate 2027-01-04 = 20 g): the shorter one (PRIOR rule)",
+        "fitted_games": 6.39,
+        "espn_games": 24,
+        "espn_return_date": "2027-01-04"
+      }
+    },
+    {
+      "player_id": "jaren-jackson-jr",
+      "name": "Jaren Jackson Jr.",
+      "team": "UTA",
+      "mpg": 29.1,
+      "missed": 8,
+      "season_out": false,
+      "return_date": "2026-12-14",
+      "espn_games": 14,
+      "sources": [
+        {
+          "source": "ESPN injury report",
+          "status": "out",
+          "date": "2026-10-27",
+          "detail": "Right Knee: Jackson has been diagnosed with a torn MCL in his right knee and will be sidelined for 6-to-8 weeks, per Shams Charania",
+          "fetched": "2026-11-13"
+        },
+        {
+          "source": "Yahoo tag (league file)",
+          "status": "O",
+          "date": "2026-11-13",
+          "detail": ""
+        }
+      ],
+      "p_out": 1.0,
+      "window": {
+        "games": 8.21,
+        "source": "fitted survival given 8 missed (8.2 g; ESPN return estimate 2026-12-14 = 14 g): the shorter one (PRIOR rule)",
+        "fitted_games": 8.21,
+        "espn_games": 14,
+        "espn_return_date": "2026-12-14"
+      }
+    },
+    {
+      "player_id": "joel-embiid",
+      "name": "Joel Embiid",
+      "team": "PHI",
+      "mpg": 30.8,
+      "missed": 0,
+      "season_out": false,
+      "return_date": null,
+      "espn_games": null,
+      "sources": [
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-13",
+          "detail": "Embiid exited to the locker room during the first quarter of Thursday's game against the Raptors due to an apparent right knee injury, Ky Ca"
+        }
+      ],
+      "p_out": 0.5,
+      "window": {
+        "games": 2.87,
+        "source": "fitted survival given 0 missed",
+        "fitted_games": 2.87,
+        "espn_games": null,
+        "espn_return_date": null
+      }
+    },
+    {
+      "player_id": "luka-doncic",
+      "name": "Luka Don\u010di\u0107",
+      "team": "LAL",
+      "mpg": 36.2,
+      "missed": 0,
+      "season_out": false,
+      "return_date": null,
+      "espn_games": null,
+      "sources": [
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Doncic finished Wednesday's 123-112 win over the Bucks with 32 points (10-25 FG, 5-12 3Pt, 7-10 FT), five rebounds, five assists and three s"
+        }
+      ],
+      "p_out": 0.5,
+      "window": {
+        "games": 2.87,
+        "source": "fitted survival given 0 missed",
+        "fitted_games": 2.87,
+        "espn_games": null,
+        "espn_return_date": null
+      }
+    },
+    {
+      "player_id": "austin-reaves",
+      "name": "Austin Reaves",
+      "team": "LAL",
+      "mpg": 35.5,
+      "missed": 0,
+      "season_out": false,
+      "return_date": null,
+      "espn_games": null,
+      "sources": [
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Reaves will not return to Wednesday's game against the Bucks due to a left heel injury, Benjamin Royer of The Orange County Register reports"
+        },
+        {
+          "source": "news (Rotowire)",
+          "status": "injury_exit",
+          "date": "2026-11-12",
+          "detail": "Reaves exited Wednesday's game against the Bucks with an undisclosed injury, Khobi Price of The California Post reports."
+        }
+      ],
+      "p_out": 0.5,
+      "window": {
+        "games": 2.87,
+        "source": "fitted survival given 0 missed",
+        "fitted_games": 2.87,
+        "espn_games": null,
+        "espn_return_date": null
+      }
+    }
+  ],
+  "n_candidates": 16,
+  "candidates": [
+    {
+      "player_id": "naeqwan-tomlin",
+      "team": "CLE",
+      "positions": "SF|PF",
+      "signal": "vacated",
+      "mpg_pre": 15.7,
+      "mpg_ros": 15.7,
+      "mpg_next5": 15.7,
+      "d_next5_vs_pre": 0.0,
+      "jump": false,
+      "vacated_mpg": 2.93,
+      "vacated_unobserved_mpg": 2.93,
+      "opp_mpg": 18.63,
+      "window_games": 1.0,
+      "after_mpg": 15.7,
+      "drivers": [
+        {
+          "player_id": "evan-mobley",
+          "name": "Evan Mobley",
+          "mpg": 32.3,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-11-14",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Toe: Mobley (toe) is out for Friday's game against the Heat.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.93,
+          "window_games": 1.0,
+          "window_source": "ESPN return estimate 2026-11-14 (1 g; fitted survival 2.9 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Nae'Qwan Tomlin",
+      "p_play": 0.224,
+      "per_game_value_base": -2.631,
+      "per_game_value_opp": -1.913,
+      "window_value_gain_vs_drop_raw": -0.667,
+      "window_value_gain_vs_drop": -0.667,
+      "window_value_uplift": 0.161,
+      "last3_mpg": null,
+      "starts_last3": 0,
+      "games_played": 0,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "Evan Mobley (32 mpg) out ~1 g [ESPN injury report 2026-11-12]: +2.9 mpg expected -> 18.6 mpg (preseason 15.7, now 15.7)",
+      "evaluation": {
+        "week": {
+          "week": 4,
+          "window": [
+            "2026-11-13",
+            "2026-11-15"
+          ],
+          "opponent": 10,
+          "effective": "2026-11-13",
+          "week_games": 2,
+          "week_mpg": 17.16,
+          "add_games": 2,
+          "add_starts": 2,
+          "d_exp_cats_analytic": -0.2507,
+          "d_p_win_analytic": -0.0706,
+          "mc": {
+            "n_sims": 4000,
+            "p_win_before": 0.542,
+            "exp_cats_before": 4.823,
+            "d_exp_cats": -0.223,
+            "d_exp_cats_se": 0.013,
+            "d_p_win": -0.0522,
+            "d_p_win_se": 0.0057
+          }
+        },
+        "season": {
+          "p_playoffs": {
+            "before": 0.841,
+            "after": 0.834,
+            "delta": -0.007,
+            "delta_se": 0.0052
+          },
+          "p_title": {
+            "before": 0.2395,
+            "after": 0.2325,
+            "delta": -0.007,
+            "delta_se": 0.006
+          },
+          "exp_cat_wins": {
+            "before": 89.0078,
+            "after": 88.3572,
+            "delta": -0.6505,
+            "delta_se": 0.0733
+          },
+          "primary_chain": "fa5",
+          "display_set": "blend",
+          "stint": [
+            "2026-11-13",
+            "2026-11-14"
+          ],
+          "stint_days": 1,
+          "chains": {
+            "fa0": {
+              "player_id": "cameron-johnson",
+              "name": "Cameron Johnson"
+            },
+            "fa5": {
+              "player_id": "ryan-kalkbrenner",
+              "name": "Ryan Kalkbrenner"
+            },
+            "replacement": {
+              "player_id": "__replacement_level__chain",
+              "name": "__replacement_level__chain"
+            }
+          },
+          "by_set": {
+            "blend": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8445,
+                    "delta": 0.0035,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.9095,
+                    "delta": -0.0983,
+                    "delta_se": 0.0722
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8435,
+                    "delta": 0.0025,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8852,
+                    "delta": -0.1225,
+                    "delta_se": 0.0722
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8435,
+                    "after": 0.8445,
+                    "delta": 0.001,
+                    "delta_se": 0.0007
+                  },
+                  "p_title": {
+                    "before": 0.244,
+                    "after": 0.244,
+                    "delta": 0.0,
+                    "delta_se": 0.0
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.8852,
+                    "after": 88.9095,
+                    "delta": 0.0243,
+                    "delta_se": 0.0046
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.834,
+                    "delta": -0.007,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2325,
+                    "delta": -0.007,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3572,
+                    "delta": -0.6505,
+                    "delta_se": 0.0733
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8335,
+                    "delta": -0.0075,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.234,
+                    "delta": -0.0055,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.329,
+                    "delta": -0.6787,
+                    "delta_se": 0.0734
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8335,
+                    "after": 0.834,
+                    "delta": 0.0005,
+                    "delta_se": 0.0005
+                  },
+                  "p_title": {
+                    "before": 0.234,
+                    "after": 0.2325,
+                    "delta": -0.0015,
+                    "delta_se": 0.0011
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.329,
+                    "after": 88.3572,
+                    "delta": 0.0283,
+                    "delta_se": 0.0042
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8335,
+                    "delta": -0.0075,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2325,
+                    "delta": -0.007,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3932,
+                    "delta": -0.6145,
+                    "delta_se": 0.0655
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4472,
+                    "delta": -0.5605,
+                    "delta_se": 0.0659
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8355,
+                    "after": 0.8335,
+                    "delta": -0.002,
+                    "delta_se": 0.001
+                  },
+                  "p_title": {
+                    "before": 0.233,
+                    "after": 0.2325,
+                    "delta": -0.0005,
+                    "delta_se": 0.0015
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4472,
+                    "after": 88.3932,
+                    "delta": -0.054,
+                    "delta_se": 0.0067
+                  }
+                }
+              }
+            },
+            "market": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8415,
+                    "delta": -0.0055,
+                    "delta_se": 0.0046
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.239,
+                    "delta": 0.0075,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.3375,
+                    "delta": -0.0828,
+                    "delta_se": 0.0662
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.238,
+                    "delta": 0.0065,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.306,
+                    "delta": -0.1143,
+                    "delta_se": 0.0661
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8395,
+                    "after": 0.8415,
+                    "delta": 0.002,
+                    "delta_se": 0.0012
+                  },
+                  "p_title": {
+                    "before": 0.238,
+                    "after": 0.239,
+                    "delta": 0.001,
+                    "delta_se": 0.001
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.306,
+                    "after": 88.3375,
+                    "delta": 0.0315,
+                    "delta_se": 0.0053
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.834,
+                    "delta": -0.013,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2185,
+                    "delta": -0.013,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7993,
+                    "delta": -0.621,
+                    "delta_se": 0.0687
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8345,
+                    "delta": -0.0125,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7665,
+                    "delta": -0.6538,
+                    "delta_se": 0.0687
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8345,
+                    "after": 0.834,
+                    "delta": -0.0005,
+                    "delta_se": 0.0005
+                  },
+                  "p_title": {
+                    "before": 0.219,
+                    "after": 0.2185,
+                    "delta": -0.0005,
+                    "delta_se": 0.0009
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.7665,
+                    "after": 87.7993,
+                    "delta": 0.0328,
+                    "delta_se": 0.0048
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8355,
+                    "delta": -0.0115,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0059
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9273,
+                    "delta": -0.493,
+                    "delta_se": 0.0623
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2205,
+                    "delta": -0.011,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9723,
+                    "delta": -0.448,
+                    "delta_se": 0.0625
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.836,
+                    "after": 0.8355,
+                    "delta": -0.0005,
+                    "delta_se": 0.0013
+                  },
+                  "p_title": {
+                    "before": 0.2205,
+                    "after": 0.219,
+                    "delta": -0.0015,
+                    "delta_se": 0.0017
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.9723,
+                    "after": 87.9273,
+                    "delta": -0.045,
+                    "delta_se": 0.0068
+                  }
+                }
+              }
+            }
+          }
+        },
+        "verdict": "hurts",
+        "verdict_why": "stream chain: hurts"
+      }
+    },
+    {
+      "player_id": "thomas-bryant",
+      "team": "CLE",
+      "positions": "C",
+      "signal": "vacated",
+      "mpg_pre": 12.8,
+      "mpg_ros": 15.11,
+      "mpg_next5": 13.44,
+      "d_next5_vs_pre": 0.64,
+      "jump": false,
+      "vacated_mpg": 2.32,
+      "vacated_unobserved_mpg": 2.32,
+      "opp_mpg": 15.76,
+      "window_games": 1.0,
+      "after_mpg": 15.11,
+      "drivers": [
+        {
+          "player_id": "evan-mobley",
+          "name": "Evan Mobley",
+          "mpg": 32.3,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-11-14",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Toe: Mobley (toe) is out for Friday's game against the Heat.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.32,
+          "window_games": 1.0,
+          "window_source": "ESPN return estimate 2026-11-14 (1 g; fitted survival 2.9 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Thomas Bryant",
+      "p_play": 0.515,
+      "per_game_value_base": -1.743,
+      "per_game_value_opp": -1.547,
+      "window_value_gain_vs_drop_raw": -1.034,
+      "window_value_gain_vs_drop": -1.034,
+      "window_value_uplift": 0.101,
+      "last3_mpg": 15.3,
+      "starts_last3": 0,
+      "games_played": 6,
+      "available": true,
+      "ownership": "FA",
+      "why": "Evan Mobley (32 mpg) out ~1 g [ESPN injury report 2026-11-12]: +2.3 mpg expected -> 15.8 mpg (preseason 12.8, now 13.4)",
+      "evaluation": {
+        "week": {
+          "week": 4,
+          "window": [
+            "2026-11-13",
+            "2026-11-15"
+          ],
+          "opponent": 10,
+          "effective": "2026-11-13",
+          "week_games": 2,
+          "week_mpg": 15.43,
+          "add_games": 2,
+          "add_starts": 2,
+          "d_exp_cats_analytic": -0.1687,
+          "d_p_win_analytic": -0.0466,
+          "mc": {
+            "n_sims": 4000,
+            "p_win_before": 0.542,
+            "exp_cats_before": 4.823,
+            "d_exp_cats": -0.145,
+            "d_exp_cats_se": 0.013,
+            "d_p_win": -0.0352,
+            "d_p_win_se": 0.0056
+          }
+        },
+        "season": {
+          "p_playoffs": {
+            "before": 0.841,
+            "after": 0.836,
+            "delta": -0.005,
+            "delta_se": 0.0052
+          },
+          "p_title": {
+            "before": 0.2395,
+            "after": 0.233,
+            "delta": -0.0065,
+            "delta_se": 0.006
+          },
+          "exp_cat_wins": {
+            "before": 89.0078,
+            "after": 88.3875,
+            "delta": -0.6202,
+            "delta_se": 0.0734
+          },
+          "primary_chain": "fa5",
+          "display_set": "blend",
+          "stint": [
+            "2026-11-13",
+            "2026-11-14"
+          ],
+          "stint_days": 1,
+          "chains": {
+            "fa0": {
+              "player_id": "cameron-johnson",
+              "name": "Cameron Johnson"
+            },
+            "fa5": {
+              "player_id": "ryan-kalkbrenner",
+              "name": "Ryan Kalkbrenner"
+            },
+            "replacement": {
+              "player_id": "__replacement_level__chain",
+              "name": "__replacement_level__chain"
+            }
+          },
+          "by_set": {
+            "blend": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8455,
+                    "delta": 0.0045,
+                    "delta_se": 0.0049
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2435,
+                    "delta": 0.004,
+                    "delta_se": 0.0064
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.9417,
+                    "delta": -0.066,
+                    "delta_se": 0.072
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8435,
+                    "delta": 0.0025,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8852,
+                    "delta": -0.1225,
+                    "delta_se": 0.0722
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8435,
+                    "after": 0.8455,
+                    "delta": 0.002,
+                    "delta_se": 0.001
+                  },
+                  "p_title": {
+                    "before": 0.244,
+                    "after": 0.2435,
+                    "delta": -0.0005,
+                    "delta_se": 0.0009
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.8852,
+                    "after": 88.9417,
+                    "delta": 0.0565,
+                    "delta_se": 0.0054
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.836,
+                    "delta": -0.005,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3875,
+                    "delta": -0.6202,
+                    "delta_se": 0.0734
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8335,
+                    "delta": -0.0075,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.234,
+                    "delta": -0.0055,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.329,
+                    "delta": -0.6787,
+                    "delta_se": 0.0734
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8335,
+                    "after": 0.836,
+                    "delta": 0.0025,
+                    "delta_se": 0.0011
+                  },
+                  "p_title": {
+                    "before": 0.234,
+                    "after": 0.233,
+                    "delta": -0.001,
+                    "delta_se": 0.0012
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.329,
+                    "after": 88.3875,
+                    "delta": 0.0585,
+                    "delta_se": 0.0059
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8345,
+                    "delta": -0.0065,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4153,
+                    "delta": -0.5925,
+                    "delta_se": 0.0655
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4472,
+                    "delta": -0.5605,
+                    "delta_se": 0.0659
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8355,
+                    "after": 0.8345,
+                    "delta": -0.001,
+                    "delta_se": 0.0007
+                  },
+                  "p_title": {
+                    "before": 0.233,
+                    "after": 0.233,
+                    "delta": 0.0,
+                    "delta_se": 0.0014
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4472,
+                    "after": 88.4153,
+                    "delta": -0.032,
+                    "delta_se": 0.0064
+                  }
+                }
+              }
+            },
+            "market": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8405,
+                    "delta": -0.0065,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2385,
+                    "delta": 0.007,
+                    "delta_se": 0.0064
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.3533,
+                    "delta": -0.067,
+                    "delta_se": 0.0664
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.238,
+                    "delta": 0.0065,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.306,
+                    "delta": -0.1143,
+                    "delta_se": 0.0661
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8395,
+                    "after": 0.8405,
+                    "delta": 0.001,
+                    "delta_se": 0.0014
+                  },
+                  "p_title": {
+                    "before": 0.238,
+                    "after": 0.2385,
+                    "delta": 0.0005,
+                    "delta_se": 0.0011
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.306,
+                    "after": 88.3533,
+                    "delta": 0.0473,
+                    "delta_se": 0.0065
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8335,
+                    "delta": -0.0135,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0065
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.816,
+                    "delta": -0.6042,
+                    "delta_se": 0.0686
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8345,
+                    "delta": -0.0125,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7665,
+                    "delta": -0.6538,
+                    "delta_se": 0.0687
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8345,
+                    "after": 0.8335,
+                    "delta": -0.001,
+                    "delta_se": 0.0007
+                  },
+                  "p_title": {
+                    "before": 0.219,
+                    "after": 0.219,
+                    "delta": 0.0,
+                    "delta_se": 0.001
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.7665,
+                    "after": 87.816,
+                    "delta": 0.0495,
+                    "delta_se": 0.0058
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.837,
+                    "delta": -0.01,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.221,
+                    "delta": -0.0105,
+                    "delta_se": 0.0059
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9527,
+                    "delta": -0.4675,
+                    "delta_se": 0.0623
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2205,
+                    "delta": -0.011,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9723,
+                    "delta": -0.448,
+                    "delta_se": 0.0625
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.836,
+                    "after": 0.837,
+                    "delta": 0.001,
+                    "delta_se": 0.001
+                  },
+                  "p_title": {
+                    "before": 0.2205,
+                    "after": 0.221,
+                    "delta": 0.0005,
+                    "delta_se": 0.0015
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.9723,
+                    "after": 87.9527,
+                    "delta": -0.0195,
+                    "delta_se": 0.0066
+                  }
+                }
+              }
+            }
+          }
+        },
+        "verdict": "hurts",
+        "verdict_why": "stream chain: hurts"
+      }
+    },
+    {
+      "player_id": "guerschon-yabusele",
+      "team": "CHI",
+      "positions": "PF|C",
+      "signal": "vacated",
+      "mpg_pre": 19.0,
+      "mpg_ros": 19.0,
+      "mpg_next5": 19.0,
+      "d_next5_vs_pre": 0.0,
+      "jump": false,
+      "vacated_mpg": 2.52,
+      "vacated_unobserved_mpg": 2.52,
+      "opp_mpg": 21.52,
+      "window_games": 2.87,
+      "after_mpg": 19.0,
+      "drivers": [
+        {
+          "player_id": "caleb-wilson",
+          "name": "Caleb Wilson",
+          "mpg": 29.0,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-12-13",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Right Hand: Wilson (hand) is expected to miss four to six weeks, Shams Charania of ESPN reports.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "surgery,timeline",
+              "date": "2026-11-12",
+              "detail": "Wilson is undergoing surgery for a fractured right hand and will miss at least four to six weeks, Shams Charania of ESPN reports."
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Wilson won't return to Wednesday's game against the Spurs due to a right hand injury. He'll finish with 15 points (5-7 FG, 2-2 3Pt, 3-3 FT),"
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Wilson exited to the locker room in the third quarter of Wednesday's game against San Antonio due to an apparent hand injury, K.C. Johnson o"
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.52,
+          "window_games": 2.87,
+          "window_source": "fitted survival given 0 missed (2.9 g; ESPN return estimate 2026-12-13 = 13 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Guerschon Yabusele",
+      "p_play": 0.251,
+      "per_game_value_base": -2.254,
+      "per_game_value_opp": -1.696,
+      "window_value_gain_vs_drop_raw": -1.905,
+      "window_value_gain_vs_drop": -1.905,
+      "window_value_uplift": 0.402,
+      "last3_mpg": null,
+      "starts_last3": 0,
+      "games_played": 0,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "Caleb Wilson (29 mpg) out ~3 g [ESPN injury report 2026-11-12]: +2.5 mpg expected -> 21.5 mpg (preseason 19.0, now 19.0)",
+      "evaluation": {
+        "week": {
+          "week": 4,
+          "window": [
+            "2026-11-13",
+            "2026-11-15"
+          ],
+          "opponent": 10,
+          "effective": "2026-11-13",
+          "week_games": 2,
+          "week_mpg": 21.52,
+          "add_games": 2,
+          "add_starts": 2,
+          "d_exp_cats_analytic": -0.1977,
+          "d_p_win_analytic": -0.0554,
+          "mc": {
+            "n_sims": 4000,
+            "p_win_before": 0.542,
+            "exp_cats_before": 4.823,
+            "d_exp_cats": -0.188,
+            "d_exp_cats_se": 0.013,
+            "d_p_win": -0.0465,
+            "d_p_win_se": 0.0057
+          }
+        },
+        "season": {
+          "p_playoffs": {
+            "before": 0.841,
+            "after": 0.8345,
+            "delta": -0.0065,
+            "delta_se": 0.0053
+          },
+          "p_title": {
+            "before": 0.2395,
+            "after": 0.233,
+            "delta": -0.0065,
+            "delta_se": 0.006
+          },
+          "exp_cat_wins": {
+            "before": 89.0078,
+            "after": 88.3355,
+            "delta": -0.6723,
+            "delta_se": 0.0727
+          },
+          "primary_chain": "fa5",
+          "display_set": "blend",
+          "stint": [
+            "2026-11-13",
+            "2026-11-17"
+          ],
+          "stint_days": 4,
+          "chains": {
+            "fa0": {
+              "player_id": "cameron-johnson",
+              "name": "Cameron Johnson"
+            },
+            "fa5": {
+              "player_id": "ryan-kalkbrenner",
+              "name": "Ryan Kalkbrenner"
+            },
+            "replacement": {
+              "player_id": "__replacement_level__chain",
+              "name": "__replacement_level__chain"
+            }
+          },
+          "by_set": {
+            "blend": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8425,
+                    "delta": 0.0015,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2445,
+                    "delta": 0.005,
+                    "delta_se": 0.0064
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8085,
+                    "delta": -0.1993,
+                    "delta_se": 0.0714
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8435,
+                    "delta": 0.0025,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8852,
+                    "delta": -0.1225,
+                    "delta_se": 0.0722
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8435,
+                    "after": 0.8425,
+                    "delta": -0.001,
+                    "delta_se": 0.0016
+                  },
+                  "p_title": {
+                    "before": 0.244,
+                    "after": 0.2445,
+                    "delta": 0.0005,
+                    "delta_se": 0.0017
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.8852,
+                    "after": 88.8085,
+                    "delta": -0.0767,
+                    "delta_se": 0.01
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8345,
+                    "delta": -0.0065,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3355,
+                    "delta": -0.6723,
+                    "delta_se": 0.0727
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8335,
+                    "delta": -0.0075,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.234,
+                    "delta": -0.0055,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.329,
+                    "delta": -0.6787,
+                    "delta_se": 0.0734
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8335,
+                    "after": 0.8345,
+                    "delta": 0.001,
+                    "delta_se": 0.0014
+                  },
+                  "p_title": {
+                    "before": 0.234,
+                    "after": 0.233,
+                    "delta": -0.001,
+                    "delta_se": 0.0019
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.329,
+                    "after": 88.3355,
+                    "delta": 0.0065,
+                    "delta_se": 0.0092
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.831,
+                    "delta": -0.01,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2315,
+                    "delta": -0.008,
+                    "delta_se": 0.0056
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3692,
+                    "delta": -0.6385,
+                    "delta_se": 0.0652
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4472,
+                    "delta": -0.5605,
+                    "delta_se": 0.0659
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8355,
+                    "after": 0.831,
+                    "delta": -0.0045,
+                    "delta_se": 0.0017
+                  },
+                  "p_title": {
+                    "before": 0.233,
+                    "after": 0.2315,
+                    "delta": -0.0015,
+                    "delta_se": 0.0018
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4472,
+                    "after": 88.3692,
+                    "delta": -0.078,
+                    "delta_se": 0.0102
+                  }
+                }
+              }
+            },
+            "market": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0046
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.242,
+                    "delta": 0.0105,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.2485,
+                    "delta": -0.1718,
+                    "delta_se": 0.0657
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.238,
+                    "delta": 0.0065,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.306,
+                    "delta": -0.1143,
+                    "delta_se": 0.0661
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8395,
+                    "after": 0.8395,
+                    "delta": 0.0,
+                    "delta_se": 0.0014
+                  },
+                  "p_title": {
+                    "before": 0.238,
+                    "after": 0.242,
+                    "delta": 0.004,
+                    "delta_se": 0.0021
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.306,
+                    "after": 88.2485,
+                    "delta": -0.0575,
+                    "delta_se": 0.01
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.834,
+                    "delta": -0.013,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7777,
+                    "delta": -0.6425,
+                    "delta_se": 0.0681
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8345,
+                    "delta": -0.0125,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7665,
+                    "delta": -0.6538,
+                    "delta_se": 0.0687
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8345,
+                    "after": 0.834,
+                    "delta": -0.0005,
+                    "delta_se": 0.0015
+                  },
+                  "p_title": {
+                    "before": 0.219,
+                    "after": 0.219,
+                    "delta": 0.0,
+                    "delta_se": 0.0017
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.7665,
+                    "after": 87.7777,
+                    "delta": 0.0112,
+                    "delta_se": 0.0096
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2185,
+                    "delta": -0.013,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9165,
+                    "delta": -0.5038,
+                    "delta_se": 0.0619
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2205,
+                    "delta": -0.011,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9723,
+                    "delta": -0.448,
+                    "delta_se": 0.0625
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.836,
+                    "after": 0.836,
+                    "delta": 0.0,
+                    "delta_se": 0.0016
+                  },
+                  "p_title": {
+                    "before": 0.2205,
+                    "after": 0.2185,
+                    "delta": -0.002,
+                    "delta_se": 0.0017
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.9723,
+                    "after": 87.9165,
+                    "delta": -0.0558,
+                    "delta_se": 0.0104
+                  }
+                }
+              }
+            }
+          }
+        },
+        "verdict": "hurts",
+        "verdict_why": "stream chain: hurts"
+      }
+    },
+    {
+      "player_id": "nick-smith-jr",
+      "team": "LAL",
+      "positions": "PG|SG",
+      "signal": "vacated",
+      "mpg_pre": 17.8,
+      "mpg_ros": 17.8,
+      "mpg_next5": 17.8,
+      "d_next5_vs_pre": 0.0,
+      "jump": false,
+      "vacated_mpg": 3.09,
+      "vacated_unobserved_mpg": 3.09,
+      "opp_mpg": 20.89,
+      "window_games": 2.87,
+      "after_mpg": 17.8,
+      "drivers": [
+        {
+          "player_id": "luka-doncic",
+          "name": "Luka Don\u010di\u0107",
+          "mpg": 36.2,
+          "missed": 0,
+          "season_out": false,
+          "return_date": null,
+          "sources": [
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Doncic finished Wednesday's 123-112 win over the Bucks with 32 points (10-25 FG, 5-12 3Pt, 7-10 FT), five rebounds, five assists and three s"
+            }
+          ],
+          "p_out": 0.5,
+          "extra_mpg": 1.56,
+          "window_games": 2.87,
+          "window_source": "fitted survival given 0 missed",
+          "observed": false,
+          "played_during": 0
+        },
+        {
+          "player_id": "austin-reaves",
+          "name": "Austin Reaves",
+          "mpg": 35.5,
+          "missed": 0,
+          "season_out": false,
+          "return_date": null,
+          "sources": [
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Reaves will not return to Wednesday's game against the Bucks due to a left heel injury, Benjamin Royer of The Orange County Register reports"
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Reaves exited Wednesday's game against the Bucks with an undisclosed injury, Khobi Price of The California Post reports."
+            }
+          ],
+          "p_out": 0.5,
+          "extra_mpg": 1.53,
+          "window_games": 2.87,
+          "window_source": "fitted survival given 0 missed",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Nick Smith Jr.",
+      "p_play": 0.16,
+      "per_game_value_base": -3.416,
+      "per_game_value_opp": -2.881,
+      "window_value_gain_vs_drop_raw": -2.003,
+      "window_value_gain_vs_drop": -2.003,
+      "window_value_uplift": 0.245,
+      "last3_mpg": null,
+      "starts_last3": 0,
+      "games_played": 0,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "Luka Don\u010di\u0107 (36 mpg) out ~3 g [news (Rotowire) 2026-11-12]: +3.1 mpg expected -> 20.9 mpg (preseason 17.8, now 17.8)",
+      "evaluation": {
+        "week": {
+          "week": 4,
+          "window": [
+            "2026-11-13",
+            "2026-11-15"
+          ],
+          "opponent": 10,
+          "effective": "2026-11-13",
+          "week_games": 1,
+          "week_mpg": 20.89,
+          "add_games": 1,
+          "add_starts": 1,
+          "d_exp_cats_analytic": -0.4225,
+          "d_p_win_analytic": -0.1206,
+          "mc": {
+            "n_sims": 4000,
+            "p_win_before": 0.542,
+            "exp_cats_before": 4.823,
+            "d_exp_cats": -0.428,
+            "d_exp_cats_se": 0.013,
+            "d_p_win": -0.103,
+            "d_p_win_se": 0.0057
+          }
+        },
+        "season": {
+          "p_playoffs": {
+            "before": 0.841,
+            "after": 0.833,
+            "delta": -0.008,
+            "delta_se": 0.0051
+          },
+          "p_title": {
+            "before": 0.2395,
+            "after": 0.231,
+            "delta": -0.0085,
+            "delta_se": 0.0059
+          },
+          "exp_cat_wins": {
+            "before": 89.0078,
+            "after": 88.2782,
+            "delta": -0.7295,
+            "delta_se": 0.0726
+          },
+          "primary_chain": "fa5",
+          "display_set": "blend",
+          "stint": [
+            "2026-11-13",
+            "2026-11-19"
+          ],
+          "stint_days": 6,
+          "chains": {
+            "fa0": {
+              "player_id": "cameron-johnson",
+              "name": "Cameron Johnson"
+            },
+            "fa5": {
+              "player_id": "ryan-kalkbrenner",
+              "name": "Ryan Kalkbrenner"
+            },
+            "replacement": {
+              "player_id": "__replacement_level__chain",
+              "name": "__replacement_level__chain"
+            }
+          },
+          "by_set": {
+            "blend": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.84,
+                    "delta": -0.001,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2425,
+                    "delta": 0.003,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.7428,
+                    "delta": -0.265,
+                    "delta_se": 0.0713
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8435,
+                    "delta": 0.0025,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8852,
+                    "delta": -0.1225,
+                    "delta_se": 0.0722
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8435,
+                    "after": 0.84,
+                    "delta": -0.0035,
+                    "delta_se": 0.0017
+                  },
+                  "p_title": {
+                    "before": 0.244,
+                    "after": 0.2425,
+                    "delta": -0.0015,
+                    "delta_se": 0.0022
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.8852,
+                    "after": 88.7428,
+                    "delta": -0.1425,
+                    "delta_se": 0.0117
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.833,
+                    "delta": -0.008,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.231,
+                    "delta": -0.0085,
+                    "delta_se": 0.0059
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.2782,
+                    "delta": -0.7295,
+                    "delta_se": 0.0726
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8335,
+                    "delta": -0.0075,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.234,
+                    "delta": -0.0055,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.329,
+                    "delta": -0.6787,
+                    "delta_se": 0.0734
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8335,
+                    "after": 0.833,
+                    "delta": -0.0005,
+                    "delta_se": 0.0015
+                  },
+                  "p_title": {
+                    "before": 0.234,
+                    "after": 0.231,
+                    "delta": -0.003,
+                    "delta_se": 0.002
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.329,
+                    "after": 88.2782,
+                    "delta": -0.0508,
+                    "delta_se": 0.0112
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.832,
+                    "delta": -0.009,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0056
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.304,
+                    "delta": -0.7037,
+                    "delta_se": 0.0652
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4472,
+                    "delta": -0.5605,
+                    "delta_se": 0.0659
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8355,
+                    "after": 0.832,
+                    "delta": -0.0035,
+                    "delta_se": 0.0015
+                  },
+                  "p_title": {
+                    "before": 0.233,
+                    "after": 0.233,
+                    "delta": 0.0,
+                    "delta_se": 0.0021
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4472,
+                    "after": 88.304,
+                    "delta": -0.1432,
+                    "delta_se": 0.0119
+                  }
+                }
+              }
+            },
+            "market": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8365,
+                    "delta": -0.0105,
+                    "delta_se": 0.0044
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.237,
+                    "delta": 0.0055,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.165,
+                    "delta": -0.2552,
+                    "delta_se": 0.0653
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.238,
+                    "delta": 0.0065,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.306,
+                    "delta": -0.1143,
+                    "delta_se": 0.0661
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8395,
+                    "after": 0.8365,
+                    "delta": -0.003,
+                    "delta_se": 0.0019
+                  },
+                  "p_title": {
+                    "before": 0.238,
+                    "after": 0.237,
+                    "delta": -0.001,
+                    "delta_se": 0.0023
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.306,
+                    "after": 88.165,
+                    "delta": -0.141,
+                    "delta_se": 0.0115
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.835,
+                    "delta": -0.012,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2165,
+                    "delta": -0.015,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7202,
+                    "delta": -0.7,
+                    "delta_se": 0.0682
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8345,
+                    "delta": -0.0125,
+                    "delta_se": 0.0052
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.219,
+                    "delta": -0.0125,
+                    "delta_se": 0.0066
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7665,
+                    "delta": -0.6538,
+                    "delta_se": 0.0687
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8345,
+                    "after": 0.835,
+                    "delta": 0.0005,
+                    "delta_se": 0.0022
+                  },
+                  "p_title": {
+                    "before": 0.219,
+                    "after": 0.2165,
+                    "delta": -0.0025,
+                    "delta_se": 0.0021
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.7665,
+                    "after": 87.7202,
+                    "delta": -0.0462,
+                    "delta_se": 0.0117
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8345,
+                    "delta": -0.0125,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.218,
+                    "delta": -0.0135,
+                    "delta_se": 0.0059
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.842,
+                    "delta": -0.5783,
+                    "delta_se": 0.0619
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2205,
+                    "delta": -0.011,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9723,
+                    "delta": -0.448,
+                    "delta_se": 0.0625
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.836,
+                    "after": 0.8345,
+                    "delta": -0.0015,
+                    "delta_se": 0.0018
+                  },
+                  "p_title": {
+                    "before": 0.2205,
+                    "after": 0.218,
+                    "delta": -0.0025,
+                    "delta_se": 0.0021
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.9723,
+                    "after": 87.842,
+                    "delta": -0.1303,
+                    "delta_se": 0.0117
+                  }
+                }
+              }
+            }
+          }
+        },
+        "verdict": "hurts",
+        "verdict_why": "stream chain: hurts"
+      }
+    },
+    {
+      "player_id": "deandre-hunter",
+      "team": "SAC",
+      "positions": "SF|PF",
+      "signal": "jump",
+      "mpg_pre": 27.0,
+      "mpg_ros": 30.44,
+      "mpg_next5": 31.51,
+      "d_next5_vs_pre": 4.51,
+      "jump": true,
+      "vacated_mpg": 0,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 31.51,
+      "window_games": 5.0,
+      "after_mpg": 30.44,
+      "drivers": [],
+      "name": "De'Andre Hunter",
+      "p_play": 0.713,
+      "per_game_value_base": -0.485,
+      "per_game_value_opp": -0.272,
+      "window_value_gain_vs_drop_raw": -2.158,
+      "window_value_gain_vs_drop": -2.158,
+      "window_value_uplift": 0.758,
+      "last3_mpg": 34.3,
+      "starts_last3": 2,
+      "games_played": 10,
+      "available": true,
+      "ownership": "FA",
+      "why": "minutes up: model-A next-5 31.5 vs preseason 27.0 mpg (last 3: 34.3; starts 2/3)",
+      "evaluation": {
+        "week": {
+          "week": 4,
+          "window": [
+            "2026-11-13",
+            "2026-11-15"
+          ],
+          "opponent": 10,
+          "effective": "2026-11-13",
+          "week_games": 2,
+          "week_mpg": 31.51,
+          "add_games": 2,
+          "add_starts": 2,
+          "d_exp_cats_analytic": -0.026,
+          "d_p_win_analytic": -0.0065,
+          "mc": {
+            "n_sims": 4000,
+            "p_win_before": 0.542,
+            "exp_cats_before": 4.823,
+            "d_exp_cats": -0.012,
+            "d_exp_cats_se": 0.014,
+            "d_p_win": 0.0027,
+            "d_p_win_se": 0.0058
+          }
+        },
+        "season": {
+          "p_playoffs": {
+            "before": 0.841,
+            "after": 0.8355,
+            "delta": -0.0055,
+            "delta_se": 0.0053
+          },
+          "p_title": {
+            "before": 0.2395,
+            "after": 0.2365,
+            "delta": -0.003,
+            "delta_se": 0.0061
+          },
+          "exp_cat_wins": {
+            "before": 89.0078,
+            "after": 88.4022,
+            "delta": -0.6055,
+            "delta_se": 0.0682
+          },
+          "primary_chain": "fa5",
+          "display_set": "blend",
+          "stint": [
+            "2026-11-13",
+            "2026-11-22"
+          ],
+          "stint_days": 9,
+          "chains": {
+            "fa0": {
+              "player_id": "cameron-johnson",
+              "name": "Cameron Johnson"
+            },
+            "fa5": {
+              "player_id": "bobby-portis",
+              "name": "Bobby Portis"
+            },
+            "replacement": {
+              "player_id": "__replacement_level__chain",
+              "name": "__replacement_level__chain"
+            }
+          },
+          "by_set": {
+            "blend": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.847,
+                    "delta": 0.006,
+                    "delta_se": 0.0049
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.243,
+                    "delta": 0.0035,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.9195,
+                    "delta": -0.0882,
+                    "delta_se": 0.0715
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8435,
+                    "delta": 0.0025,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.244,
+                    "delta": 0.0045,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.8852,
+                    "delta": -0.1225,
+                    "delta_se": 0.0722
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8435,
+                    "after": 0.847,
+                    "delta": 0.0035,
+                    "delta_se": 0.0017
+                  },
+                  "p_title": {
+                    "before": 0.244,
+                    "after": 0.243,
+                    "delta": -0.001,
+                    "delta_se": 0.0028
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.8852,
+                    "after": 88.9195,
+                    "delta": 0.0343,
+                    "delta_se": 0.0144
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2365,
+                    "delta": -0.003,
+                    "delta_se": 0.0061
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4022,
+                    "delta": -0.6055,
+                    "delta_se": 0.0682
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.833,
+                    "delta": -0.008,
+                    "delta_se": 0.0053
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.2345,
+                    "delta": -0.005,
+                    "delta_se": 0.0062
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.3645,
+                    "delta": -0.6432,
+                    "delta_se": 0.069
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.833,
+                    "after": 0.8355,
+                    "delta": 0.0025,
+                    "delta_se": 0.0021
+                  },
+                  "p_title": {
+                    "before": 0.2345,
+                    "after": 0.2365,
+                    "delta": 0.002,
+                    "delta_se": 0.0019
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.3645,
+                    "after": 88.4022,
+                    "delta": 0.0377,
+                    "delta_se": 0.0144
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.836,
+                    "delta": -0.005,
+                    "delta_se": 0.005
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.231,
+                    "delta": -0.0085,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4213,
+                    "delta": -0.5865,
+                    "delta_se": 0.0651
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.841,
+                    "after": 0.8355,
+                    "delta": -0.0055,
+                    "delta_se": 0.0051
+                  },
+                  "p_title": {
+                    "before": 0.2395,
+                    "after": 0.233,
+                    "delta": -0.0065,
+                    "delta_se": 0.0057
+                  },
+                  "exp_cat_wins": {
+                    "before": 89.0078,
+                    "after": 88.4472,
+                    "delta": -0.5605,
+                    "delta_se": 0.0659
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8355,
+                    "after": 0.836,
+                    "delta": 0.0005,
+                    "delta_se": 0.0021
+                  },
+                  "p_title": {
+                    "before": 0.233,
+                    "after": 0.231,
+                    "delta": -0.002,
+                    "delta_se": 0.0026
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4472,
+                    "after": 88.4213,
+                    "delta": -0.026,
+                    "delta_se": 0.0153
+                  }
+                }
+              }
+            },
+            "market": {
+              "fa0": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.841,
+                    "delta": -0.006,
+                    "delta_se": 0.0046
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2365,
+                    "delta": 0.005,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.3335,
+                    "delta": -0.0867,
+                    "delta_se": 0.0653
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8395,
+                    "delta": -0.0075,
+                    "delta_se": 0.0047
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.238,
+                    "delta": 0.0065,
+                    "delta_se": 0.0063
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 88.306,
+                    "delta": -0.1143,
+                    "delta_se": 0.0661
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.8395,
+                    "after": 0.841,
+                    "delta": 0.0015,
+                    "delta_se": 0.0019
+                  },
+                  "p_title": {
+                    "before": 0.238,
+                    "after": 0.2365,
+                    "delta": -0.0015,
+                    "delta_se": 0.0026
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.306,
+                    "after": 88.3335,
+                    "delta": 0.0275,
+                    "delta_se": 0.015
+                  }
+                }
+              },
+              "fa5": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.832,
+                    "delta": -0.015,
+                    "delta_se": 0.0048
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2285,
+                    "delta": -0.003,
+                    "delta_se": 0.0061
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.856,
+                    "delta": -0.5643,
+                    "delta_se": 0.0642
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.834,
+                    "delta": -0.013,
+                    "delta_se": 0.0048
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.228,
+                    "delta": -0.0035,
+                    "delta_se": 0.0059
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.7897,
+                    "delta": -0.6305,
+                    "delta_se": 0.0649
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.834,
+                    "after": 0.832,
+                    "delta": -0.002,
+                    "delta_se": 0.0022
+                  },
+                  "p_title": {
+                    "before": 0.228,
+                    "after": 0.2285,
+                    "delta": 0.0005,
+                    "delta_se": 0.003
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.7897,
+                    "after": 87.856,
+                    "delta": 0.0663,
+                    "delta_se": 0.0142
+                  }
+                }
+              },
+              "replacement": {
+                "stream": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.8355,
+                    "delta": -0.0115,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.222,
+                    "delta": -0.0095,
+                    "delta_se": 0.0061
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9403,
+                    "delta": -0.48,
+                    "delta_se": 0.0618
+                  }
+                },
+                "direct": {
+                  "p_playoffs": {
+                    "before": 0.847,
+                    "after": 0.836,
+                    "delta": -0.011,
+                    "delta_se": 0.0045
+                  },
+                  "p_title": {
+                    "before": 0.2315,
+                    "after": 0.2205,
+                    "delta": -0.011,
+                    "delta_se": 0.006
+                  },
+                  "exp_cat_wins": {
+                    "before": 88.4202,
+                    "after": 87.9723,
+                    "delta": -0.448,
+                    "delta_se": 0.0625
+                  }
+                },
+                "stream_vs_direct": {
+                  "p_playoffs": {
+                    "before": 0.836,
+                    "after": 0.8355,
+                    "delta": -0.0005,
+                    "delta_se": 0.0022
+                  },
+                  "p_title": {
+                    "before": 0.2205,
+                    "after": 0.222,
+                    "delta": 0.0015,
+                    "delta_se": 0.0026
+                  },
+                  "exp_cat_wins": {
+                    "before": 87.9723,
+                    "after": 87.9403,
+                    "delta": -0.032,
+                    "delta_se": 0.0142
+                  }
+                }
+              }
+            }
+          }
+        },
+        "verdict": "hurts",
+        "verdict_why": "stream chain: hurts"
+      }
+    },
+    {
+      "player_id": "rob-dillingham",
+      "team": "CHI",
+      "positions": "PG|SG",
+      "signal": "vacated",
+      "mpg_pre": 18.0,
+      "mpg_ros": 18.0,
+      "mpg_next5": 18.0,
+      "d_next5_vs_pre": 0.0,
+      "jump": false,
+      "vacated_mpg": 2.04,
+      "vacated_unobserved_mpg": 2.04,
+      "opp_mpg": 20.04,
+      "window_games": 2.87,
+      "after_mpg": 18.0,
+      "drivers": [
+        {
+          "player_id": "caleb-wilson",
+          "name": "Caleb Wilson",
+          "mpg": 29.0,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-12-13",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Right Hand: Wilson (hand) is expected to miss four to six weeks, Shams Charania of ESPN reports.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "surgery,timeline",
+              "date": "2026-11-12",
+              "detail": "Wilson is undergoing surgery for a fractured right hand and will miss at least four to six weeks, Shams Charania of ESPN reports."
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Wilson won't return to Wednesday's game against the Spurs due to a right hand injury. He'll finish with 15 points (5-7 FG, 2-2 3Pt, 3-3 FT),"
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Wilson exited to the locker room in the third quarter of Wednesday's game against San Antonio due to an apparent hand injury, K.C. Johnson o"
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.04,
+          "window_games": 2.87,
+          "window_source": "fitted survival given 0 missed (2.9 g; ESPN return estimate 2026-12-13 = 13 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Rob Dillingham",
+      "p_play": 0.262,
+      "per_game_value_base": -3.508,
+      "per_game_value_opp": -3.176,
+      "window_value_gain_vs_drop_raw": -3.072,
+      "window_value_gain_vs_drop": -3.072,
+      "window_value_uplift": 0.25,
+      "last3_mpg": null,
+      "starts_last3": 0,
+      "games_played": 0,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "Caleb Wilson (29 mpg) out ~3 g [ESPN injury report 2026-11-12]: +2.0 mpg expected -> 20.0 mpg (preseason 18.0, now 18.0)"
+    },
+    {
+      "player_id": "gary-payton-ii",
+      "team": "GSW",
+      "positions": "PG|SG|SF",
+      "signal": "vacated",
+      "mpg_pre": 14.4,
+      "mpg_ros": 15.51,
+      "mpg_next5": 13.51,
+      "d_next5_vs_pre": -0.89,
+      "jump": false,
+      "vacated_mpg": 7.22,
+      "vacated_unobserved_mpg": 3.72,
+      "opp_mpg": 17.23,
+      "window_games": 2.87,
+      "after_mpg": 15.51,
+      "drivers": [
+        {
+          "player_id": "stephen-curry",
+          "name": "Stephen Curry",
+          "mpg": 30.2,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-12-12",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Right Abdomen: Curry has been diagnosed with an oblique abdominal tear and will be re-evaluated in two weeks, Shams Charania of ESPN re",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            },
+            {
+              "source": "news (Media)",
+              "status": "timeline",
+              "date": "2026-11-12",
+              "detail": "Shams: Steph Curry to be sidelined for 2-4 weeks"
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "timeline",
+              "date": "2026-11-12",
+              "detail": "Curry has been diagnosed with an oblique abdominal tear and will be re-evaluated in two weeks, Shams Charania of ESPN reports."
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Curry won't return to Wednesday's game against the Rockets due to right abdominal soreness, Anthony Slater of ESPN.com reports. He'll finish"
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "injury_exit",
+              "date": "2026-11-12",
+              "detail": "Curry (hip/oblique) exited Wednesday's game against the Rockets, Anthony Slater of ESPN.com reports."
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 3.72,
+          "window_games": 2.87,
+          "window_source": "fitted survival given 0 missed (2.9 g; ESPN return estimate 2026-12-12 = 11 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        },
+        {
+          "player_id": "jimmy-butler",
+          "name": "Jimmy Butler",
+          "mpg": 30.8,
+          "missed": 12,
+          "season_out": false,
+          "return_date": "2027-01-02",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-10-16",
+              "detail": "Right Knee: Butler (knee) could return sometime between January and February as he continues recovering from a torn right ACL, Antho",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 3.5,
+          "window_games": 8.43,
+          "window_source": "fitted survival given 12 missed (8.4 g; ESPN return estimate 2027-01-02 = 20 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 10
+        }
+      ],
+      "name": "Gary Payton II",
+      "p_play": 0.607,
+      "per_game_value_base": -2.407,
+      "per_game_value_opp": -1.962,
+      "window_value_gain_vs_drop_raw": -4.102,
+      "window_value_gain_vs_drop": -4.102,
+      "window_value_uplift": 0.776,
+      "last3_mpg": 14.3,
+      "starts_last3": 0,
+      "games_played": 10,
+      "available": true,
+      "ownership": "FA",
+      "why": "Stephen Curry (30 mpg) out ~3 g [ESPN injury report 2026-11-12]: +3.7 mpg expected -> 17.2 mpg (preseason 14.4, now 13.5)"
+    },
+    {
+      "player_id": "jaxson-hayes",
+      "team": "UTA",
+      "positions": "C",
+      "signal": "jump (absence)",
+      "mpg_pre": 16.5,
+      "mpg_ros": 23.0,
+      "mpg_next5": 23.02,
+      "d_next5_vs_pre": 6.52,
+      "jump": true,
+      "vacated_mpg": 2.03,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 23.02,
+      "window_games": 8.21,
+      "after_mpg": 23.0,
+      "drivers": [
+        {
+          "player_id": "lauri-markkanen",
+          "name": "Lauri Markkanen",
+          "mpg": 31.7,
+          "missed": 3,
+          "season_out": false,
+          "return_date": "2027-01-04",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-11",
+              "detail": "Right Hand: Markkanen has been diagnosed with a non-displaced fracture in his right hand and will be sidelined for at least one mont",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            },
+            {
+              "source": "news (Rotowire)",
+              "status": "timeline",
+              "date": "2026-11-11",
+              "detail": "Markkanen has been diagnosed with a non-displaced fracture in his right hand and will be sidelined for at least one month, Shams Charania of"
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 0.54,
+          "window_games": 6.39,
+          "window_source": "fitted survival given 3 missed (6.4 g; ESPN return estimate 2027-01-04 = 20 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 3
+        },
+        {
+          "player_id": "jaren-jackson-jr",
+          "name": "Jaren Jackson Jr.",
+          "mpg": 29.1,
+          "missed": 8,
+          "season_out": false,
+          "return_date": "2026-12-14",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-10-27",
+              "detail": "Right Knee: Jackson has been diagnosed with a torn MCL in his right knee and will be sidelined for 6-to-8 weeks, per Shams Charania",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 1.49,
+          "window_games": 8.21,
+          "window_source": "fitted survival given 8 missed (8.2 g; ESPN return estimate 2026-12-14 = 14 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 8
+        }
+      ],
+      "name": "Jaxson Hayes",
+      "p_play": 0.732,
+      "per_game_value_base": -0.436,
+      "per_game_value_opp": -0.441,
+      "window_value_gain_vs_drop_raw": -4.602,
+      "window_value_gain_vs_drop": -4.602,
+      "window_value_uplift": -0.031,
+      "last3_mpg": 25.3,
+      "starts_last3": 3,
+      "games_played": 11,
+      "available": true,
+      "ownership": "FA",
+      "why": "minutes up: model-A next-5 23.0 vs preseason 16.5 mpg (last 3: 25.3; starts 3/3; Jaren Jackson Jr. out)"
+    },
+    {
+      "player_id": "quenton-jackson",
+      "team": "IND",
+      "positions": "PG|SG",
+      "signal": "jump (absence)",
+      "mpg_pre": 16.1,
+      "mpg_ros": 21.25,
+      "mpg_next5": 20.71,
+      "d_next5_vs_pre": 4.61,
+      "jump": true,
+      "vacated_mpg": 1.6,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 20.71,
+      "window_games": 4.0,
+      "after_mpg": 21.25,
+      "drivers": [
+        {
+          "player_id": "tyrese-haliburton",
+          "name": "Tyrese Haliburton",
+          "mpg": 31.8,
+          "missed": 8,
+          "season_out": false,
+          "return_date": "2026-11-22",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-11",
+              "detail": "Left Hamstring: Head coach Rick Carlisle said Wednesday that Haliburton (hamstring) will miss at least 10 more days, Alex Golden of SI.c",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 1.6,
+          "window_games": 4.0,
+          "window_source": "ESPN return estimate 2026-11-22 (4 g; fitted survival 8.2 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 8
+        }
+      ],
+      "name": "Quenton Jackson",
+      "p_play": 0.699,
+      "per_game_value_base": -1.326,
+      "per_game_value_opp": -1.469,
+      "window_value_gain_vs_drop_raw": -5.055,
+      "window_value_gain_vs_drop": -5.055,
+      "window_value_uplift": -0.399,
+      "last3_mpg": 21.0,
+      "starts_last3": 0,
+      "games_played": 12,
+      "available": true,
+      "ownership": "FA",
+      "why": "minutes up: model-A next-5 20.7 vs preseason 16.1 mpg (last 3: 21.0; starts 0/3; Tyrese Haliburton out)"
+    },
+    {
+      "player_id": "tyrese-proctor",
+      "team": "CLE",
+      "positions": "PG|SG",
+      "signal": "jump",
+      "mpg_pre": 13.9,
+      "mpg_ros": 19.24,
+      "mpg_next5": 18.99,
+      "d_next5_vs_pre": 5.09,
+      "jump": true,
+      "vacated_mpg": 1.72,
+      "vacated_unobserved_mpg": 1.72,
+      "opp_mpg": 18.99,
+      "window_games": 5.0,
+      "after_mpg": 19.24,
+      "drivers": [
+        {
+          "player_id": "evan-mobley",
+          "name": "Evan Mobley",
+          "mpg": 32.3,
+          "missed": 0,
+          "season_out": false,
+          "return_date": "2026-11-14",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Toe: Mobley (toe) is out for Friday's game against the Heat.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 1.72,
+          "window_games": 1.0,
+          "window_source": "ESPN return estimate 2026-11-14 (1 g; fitted survival 2.9 g): the shorter one (PRIOR rule)",
+          "observed": false,
+          "played_during": 0
+        }
+      ],
+      "name": "Tyrese Proctor",
+      "p_play": 0.687,
+      "per_game_value_base": -1.674,
+      "per_game_value_opp": -1.748,
+      "window_value_gain_vs_drop_raw": -7.19,
+      "window_value_gain_vs_drop": -7.19,
+      "window_value_uplift": -0.256,
+      "last3_mpg": 23.0,
+      "starts_last3": 0,
+      "games_played": 11,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "minutes up: model-A next-5 19.0 vs preseason 13.9 mpg (last 3: 23.0; starts 0/3; Evan Mobley out)"
+    },
+    {
+      "player_id": "landry-shamet",
+      "team": "NYK",
+      "positions": "SG|SF",
+      "signal": "jump",
+      "mpg_pre": 20.1,
+      "mpg_ros": 25.11,
+      "mpg_next5": 25.45,
+      "d_next5_vs_pre": 5.35,
+      "jump": true,
+      "vacated_mpg": 0,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 25.45,
+      "window_games": 5.0,
+      "after_mpg": 25.11,
+      "drivers": [],
+      "name": "Landry Shamet",
+      "p_play": 0.73,
+      "per_game_value_base": -1.744,
+      "per_game_value_opp": -1.684,
+      "window_value_gain_vs_drop_raw": -7.339,
+      "window_value_gain_vs_drop": -7.339,
+      "window_value_uplift": 0.217,
+      "last3_mpg": 28.7,
+      "starts_last3": 2,
+      "games_played": 11,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "minutes up: model-A next-5 25.4 vs preseason 20.1 mpg (last 3: 28.7; starts 2/3)"
+    },
+    {
+      "player_id": "sion-james",
+      "team": "CHO",
+      "positions": "PG|SG|SF",
+      "signal": "jump (absence)",
+      "mpg_pre": 22.5,
+      "mpg_ros": 26.27,
+      "mpg_next5": 26.77,
+      "d_next5_vs_pre": 4.27,
+      "jump": true,
+      "vacated_mpg": 2.03,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 26.77,
+      "window_games": 6.39,
+      "after_mpg": 26.27,
+      "drivers": [
+        {
+          "player_id": "kon-knueppel",
+          "name": "Kon Knueppel",
+          "mpg": 32.1,
+          "missed": 3,
+          "season_out": false,
+          "return_date": "2026-12-12",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-08",
+              "detail": "Left Hamstring: Knueppel (hamstring) was diagnosed with a left hamstring strain Sunday and will be re-evaluated in four weeks.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.03,
+          "window_games": 6.39,
+          "window_source": "fitted survival given 3 missed (6.4 g; ESPN return estimate 2026-12-12 = 10 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 3
+        }
+      ],
+      "name": "Sion James",
+      "p_play": 0.837,
+      "per_game_value_base": -1.92,
+      "per_game_value_opp": -1.844,
+      "window_value_gain_vs_drop_raw": -11.378,
+      "window_value_gain_vs_drop": -11.378,
+      "window_value_uplift": 0.403,
+      "last3_mpg": 28.7,
+      "starts_last3": 2,
+      "games_played": 12,
+      "available": true,
+      "ownership": "FA",
+      "why": "minutes up: model-A next-5 26.8 vs preseason 22.5 mpg (last 3: 28.7; starts 2/3; Kon Knueppel out)"
+    },
+    {
+      "player_id": "kenrich-williams",
+      "team": "OKC",
+      "positions": "SF|PF|C",
+      "signal": "jump (absence)",
+      "mpg_pre": 15.5,
+      "mpg_ros": 20.72,
+      "mpg_next5": 20.53,
+      "d_next5_vs_pre": 5.03,
+      "jump": true,
+      "vacated_mpg": 4.05,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 20.53,
+      "window_games": 8.21,
+      "after_mpg": 20.72,
+      "drivers": [
+        {
+          "player_id": "chet-holmgren",
+          "name": "Chet Holmgren",
+          "mpg": 29.1,
+          "missed": 9,
+          "season_out": false,
+          "return_date": "2027-01-02",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-10-31",
+              "detail": "Right Knee: Holmgren underwent a biological treatment Friday to address a small patellar tendon tear and will miss at least 8-10 wee",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 1.62,
+          "window_games": 8.21,
+          "window_source": "fitted survival given 9 missed (8.2 g; ESPN return estimate 2027-01-02 = 20 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 9
+        },
+        {
+          "player_id": "jalen-williams",
+          "name": "Jalen Williams",
+          "mpg": 31.4,
+          "missed": 9,
+          "season_out": false,
+          "return_date": "2027-03-02",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-10-28",
+              "detail": "Left Leg: Williams (leg) underwent successful surgery Wednesday to \"address a fractured left fibula and reconstruction of ankle li",
+              "fetched": "2026-11-13"
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.44,
+          "window_games": 8.21,
+          "window_source": "fitted survival given 9 missed (8.2 g; ESPN return estimate 2027-03-02 = 20 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 9
+        }
+      ],
+      "name": "Kenrich Williams",
+      "p_play": 0.713,
+      "per_game_value_base": -1.809,
+      "per_game_value_opp": -1.865,
+      "window_value_gain_vs_drop_raw": -12.874,
+      "window_value_gain_vs_drop": -12.874,
+      "window_value_uplift": -0.325,
+      "last3_mpg": 22.7,
+      "starts_last3": 2,
+      "games_played": 12,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "minutes up: model-A next-5 20.5 vs preseason 15.5 mpg (last 3: 22.7; starts 2/3; Jalen Williams out)"
+    },
+    {
+      "player_id": "jamal-cain",
+      "team": "ORL",
+      "positions": "SG|SF",
+      "signal": "jump (absence)",
+      "mpg_pre": 15.6,
+      "mpg_ros": 20.97,
+      "mpg_next5": 21.09,
+      "d_next5_vs_pre": 5.49,
+      "jump": true,
+      "vacated_mpg": 4.77,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 21.09,
+      "window_games": 8.21,
+      "after_mpg": 20.97,
+      "drivers": [
+        {
+          "player_id": "jalen-suggs",
+          "name": "Jalen Suggs",
+          "mpg": 29.0,
+          "missed": 8,
+          "season_out": false,
+          "return_date": "2026-11-13",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-12",
+              "detail": "Right Knee: Suggs (knee) is questionable for Friday's game against Milwaukee.",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.51,
+          "window_games": 8.21,
+          "window_source": "fitted survival given 8 missed",
+          "observed": true,
+          "played_during": 7
+        },
+        {
+          "player_id": "paolo-banchero",
+          "name": "Paolo Banchero",
+          "mpg": 34.6,
+          "missed": 9,
+          "season_out": false,
+          "return_date": "2026-11-22",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-10-24",
+              "detail": "Right Ankle: Banchero is expected to be sidelined for the next four-to-six weeks due to a right high-ankle sprain, Shams Charania of",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.26,
+          "window_games": 4.0,
+          "window_source": "ESPN return estimate 2026-11-22 (4 g; fitted survival 8.2 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 8
+        }
+      ],
+      "name": "Jamal Cain",
+      "p_play": 0.599,
+      "per_game_value_base": -2.362,
+      "per_game_value_opp": -2.351,
+      "window_value_gain_vs_drop_raw": -13.507,
+      "window_value_gain_vs_drop": -13.507,
+      "window_value_uplift": 0.056,
+      "last3_mpg": 27.0,
+      "starts_last3": 1,
+      "games_played": 10,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "minutes up: model-A next-5 21.1 vs preseason 15.6 mpg (last 3: 27.0; starts 1/3; Jalen Suggs out)"
+    },
+    {
+      "player_id": "sidy-cissoko",
+      "team": "POR",
+      "positions": "PG|SG|SF|PF",
+      "signal": "jump (absence)",
+      "mpg_pre": 16.2,
+      "mpg_ros": 22.55,
+      "mpg_next5": 22.85,
+      "d_next5_vs_pre": 6.65,
+      "jump": true,
+      "vacated_mpg": 2.09,
+      "vacated_unobserved_mpg": 0,
+      "opp_mpg": 22.85,
+      "window_games": 8.02,
+      "after_mpg": 22.55,
+      "drivers": [
+        {
+          "player_id": "ja-morant",
+          "name": "Ja Morant",
+          "mpg": 29.2,
+          "missed": 7,
+          "season_out": false,
+          "return_date": "2026-12-01",
+          "sources": [
+            {
+              "source": "ESPN injury report",
+              "status": "out",
+              "date": "2026-11-08",
+              "detail": "Left Hamstring: Head coach Micah Nori said Morant met with a doctor in Los Angeles, who gave him a positive outlook on his recovery from",
+              "fetched": "2026-11-13"
+            },
+            {
+              "source": "Yahoo tag (league file)",
+              "status": "O",
+              "date": "2026-11-13",
+              "detail": ""
+            }
+          ],
+          "p_out": 1.0,
+          "extra_mpg": 2.09,
+          "window_games": 8.02,
+          "window_source": "fitted survival given 7 missed (8.0 g; ESPN return estimate 2026-12-01 = 9 g): the shorter one (PRIOR rule)",
+          "observed": true,
+          "played_during": 7
+        }
+      ],
+      "name": "Sidy Cissoko",
+      "p_play": 0.744,
+      "per_game_value_base": -2.596,
+      "per_game_value_opp": -2.555,
+      "window_value_gain_vs_drop_raw": -17.151,
+      "window_value_gain_vs_drop": -17.151,
+      "window_value_uplift": 0.242,
+      "last3_mpg": 26.0,
+      "starts_last3": 2,
+      "games_played": 11,
+      "available": true,
+      "ownership": "presumed FA (not in the capture's top list; not on any roster)",
+      "why": "minutes up: model-A next-5 22.9 vs preseason 16.2 mpg (last 3: 26.0; starts 2/3; Ja Morant out)"
+    }
+  ],
+  "unprojected_risers": [],
+  "override": {
+    "season_csv": "/Users/harrisonku/dev/nba/var/opportunity/opportunity_2026-11-13.csv",
+    "window_csv": "/Users/harrisonku/dev/nba/var/opportunity/opportunity_2026-11-13.window.csv",
+    "changed_rows": [
+      "naeqwan-tomlin",
+      "thomas-bryant",
+      "guerschon-yabusele",
+      "nick-smith-jr",
+      "deandre-hunter",
+      "rob-dillingham",
+      "gary-payton-ii",
+      "jaxson-hayes",
+      "quenton-jackson",
+      "tyrese-proctor",
+      "landry-shamet",
+      "sion-james",
+      "kenrich-williams",
+      "jamal-cain",
+      "sidy-cissoko"
+    ]
+  },
+  "labels": {
+    "vacated_mpg": "FITTED share rule (2024-25 + 2025-26 box scores, placebo-corrected): share 0.77 (SE 0.034) of the star's mpg, by depth bucket x primary-position match, x 0.95 calibration for free-agent-like players (FITTED, 2024-25 backtest); docs/research/opportunity_detector.md",
+    "window_games": "FITTED absence survival given games missed; with an ESPN return estimate the SHORTER of the two (PRIOR rule, both reported); capped at 20 games (PRIOR)",
+    "mpg_next5": "FITTED minutes model A (minutes-0.2.0)",
+    "thresholds": "PRIOR: jump >= 4.0 mpg over preseason, vacated >= 2.0 mpg, absence observed after 2 team games, cap 40.0 mpg",
+    "jump": "a jump candidate's minutes are model A's (minutes-0.2.0) with no extra adjustment: the detector only surfaces 'model A says his minutes rose' (backtest: no incremental minutes beyond model A)",
+    "per_minute_rates": "kept from the in-season projections (FITTED: ratio during absences ~1.00-1.04)",
+    "after_window": "minutes-model level (model B mpg); no retention credit (conservative)",
+    "per_game_value": "G-score per game above replacement (fantasy.inseason.stream.per_game_values)",
+    "window_value_gain_vs_drop": "window games x (p_play x (base per-game value + value_calib x opportunity uplift) - the drop's); value_calib 1.0 FITTED (2024-25 backtest, docs/research/opportunity_detector.md); *_raw = uncalibrated",
+    "evaluation": "week: stream tool's matchup model (lineup-0.2.0), paired MC, candidate on a week line (the opportunity minutes for his first window games this week only); season: the stream tool's position-aware STREAM CHAIN (make_stream_season_eval): drop -> candidate on his window line for the window (to the day after his ceil(window)-th game) -> the 6th-best realistic free agent (season-sim-0.8.1); blend and market sets; \u00b1 = Monte Carlo SE only",
+    "verdict": "streamscan.stream_verdict on the chain (helps = \u0394P(playoffs) or \u0394P(title) > 2 SE under every set, neither < -2 SE, stream not worse than direct); speculative = noise but week \u0394P(win) > 2 SE or the stint-vs-direct \u0394P(playoffs) > 1 SE (PRIOR); direct_helps = the chain helps only through the drop; unevaluated = no chain run"
+  },
+  "inputs": {
+    "projections": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
+    "projections_as_of": "2026-11-13",
+    "projections_version": "ros-proj-0.6.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0+pop-prior-0.1",
+    "free_agents": "data/raw/yahoo/free_agents_2026-11-13.json",
+    "free_agents_sha256": "6dc8a5600c4d1deeda3cbc54a795fc06ca5dc82912c46d9c1847013fba6a44bb",
+    "injuries_fetched": "2026-11-13",
+    "league_file": "/Users/harrisonku/dev/nba/data/manual/league_rosters_2026-27.json",
+    "news": "news_2026-11-13.json",
+    "box_scores": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
+    "sha256": {
+      "projections": "1ec6afcdfa7efa466156d34a3a6d27f09419df98b5e512c3b86b50169024a90b",
+      "injuries": "7ec039f10552faba91109a3a4fc2b506ed813a5741a2df260694d96ce267b0cc",
+      "news": "de91a0991828f8f8fc4822bc6f6295a739d901b3d16e291648b3bc01d1b59a64",
+      "box_scores": "c525af76ec089228b08f773cd2011fbb30d040a1b04385b20e5b27aa4a747d10",
+      "free_agents": "6dc8a5600c4d1deeda3cbc54a795fc06ca5dc82912c46d9c1847013fba6a44bb",
+      "league_file": "ad48a921acfdb37d660d9dfab7fb531b513ac95bf2776ed1f1da170ee4130f81",
+      "market": "a7b547f0dc34f8d2e5b87a21690dea1c86c719bbfbcb0e7d7bdece06ad7f4f01"
+    }
+  },
+  "warnings": [
+    "1 free agent(s) not in projections, skipped: Russell Westbrook",
+    "MID-WEEK: week \u0394P(win) ignores stats banked 2026-11-09..2026-11-12 (assumed 0-0); p_win_before is not the week's odds - quote week effects from a Monday run only"
+  ],
+  "note": "Analysis only: never touches Yahoo. A live run executes `helps` moves, then reports them."
+}

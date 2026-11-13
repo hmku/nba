@@ -1,0 +1,81 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Fri 11-13: lineup = plan; Sat + Sun set (Jokic Sat; Reid, Bridges Sun)",
+  "status": "done",
+  "headline": "Week 4 vs Christian now 6-3 (lost AST, STL, FG% Thu night); P(win week) 0.80.",
+  "week": 4,
+  "verdict": "Today already matched the plan; Saturday and Sunday are set early so every player with a game starts. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(win week 4)",
+    "value": 0.795,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.844,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.242,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "FG% (.457 vs .480), AST (80-82) and STL (24-28) trail; Christian has 20 games left vs our 18.",
+   "P(win) uses availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-13.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-13.json"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-13-422769ee0396: 0 changes (Yahoo = plan 14/14).",
+   "- Sat lp-2026-11-14-bcc27d9cdb20: Jokic Util for Sheppard (txn-0481bc9b53a548b09a41a6fd31796e61, verified).",
+   "- Sun lp-2026-11-15-fffcd4f54573: Sheppard PG, Reid C, Bridges Util (txn-4f735446ea5e4aa9aae6d653958b1acf, verified); 8 of 8 with games start.",
+   "- Stream: 0 helps (drop-Leonard pairs hurt season); opportunity: top 5 all hurts."
+  ],
+  "why_now": {
+   "before": "Thursday: lineup = plan, Friday set, 9-0, no helpful add.",
+   "changed": [
+    {
+     "text": "Thu late games flipped AST and STL (now 6-3); Muse flagged Sat/Sun unset. FLAGG's adds are neutral/noise for us.",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "P(win week)",
+    "P(playoffs)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-13-422769ee0396",
+  "lineup_plan_sat": "lp-2026-11-14-bcc27d9cdb20",
+  "lineup_plan_sun": "lp-2026-11-15-fffcd4f54573",
+  "lineup_record": "la-2026-11-13-791bceaec344",
+  "lineup_record_sat": "la-2026-11-14-af6051c6bc18",
+  "lineup_record_sun": "la-2026-11-15-383750577415",
+  "matchup_score": "ms-w4-2026-11-13-a041b409b56d",
+  "season_sim": "sim-20261113123013-4fdcaf"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-13.json"
+ }
+}
