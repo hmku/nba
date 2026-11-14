@@ -1,0 +1,151 @@
+{
+ "date": "2026-11-14",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-14_premove_league.json",
+ "baseline_drop": "reed-sheppard",
+ "commands": [
+  "fantasy sim compare --league-file <premove> --add <p> --drop reed-sheppard --sims 4000 --no-save --json"
+ ],
+ "results": {
+  "cameron-johnson": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.1",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "cameron-johnson",
+     "name": "Cameron Johnson"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "reed-sheppard",
+     "name": "Reed Sheppard"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8542,
+    "after": 0.8478,
+    "delta": -0.0065,
+    "delta_se": 0.0036
+   },
+   "p_title": {
+    "before": 0.2405,
+    "after": 0.2485,
+    "delta": 0.008,
+    "delta_se": 0.0046
+   },
+   "exp_cat_wins": {
+    "before": 89.4175,
+    "after": 89.2775,
+    "delta": -0.14,
+    "delta_se": 0.0571
+   },
+   "compute_seconds": 14.74,
+   "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-05 (in 53% of sims)",
+    "after: assumes the roster cap releases Cameron Johnson from ~2027-02-07 (in 51% of sims)"
+   ],
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null
+  },
+  "meleek-thomas": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.1",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "meleek-thomas",
+     "name": "Meleek Thomas"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "reed-sheppard",
+     "name": "Reed Sheppard"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8542,
+    "after": 0.8265,
+    "delta": -0.0278,
+    "delta_se": 0.0038
+   },
+   "p_title": {
+    "before": 0.2405,
+    "after": 0.23,
+    "delta": -0.0105,
+    "delta_se": 0.0044
+   },
+   "exp_cat_wins": {
+    "before": 89.4175,
+    "after": 88.3591,
+    "delta": -1.0584,
+    "delta_se": 0.0561
+   },
+   "compute_seconds": 14.93,
+   "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-05 (in 53% of sims)",
+    "after: assumes the roster cap releases Meleek Thomas from ~2027-02-05 (in 49% of sims)"
+   ],
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null
+  },
+  "aday-mara": {
+   "ok": true,
+   "sim_version": "season-sim-0.8.1",
+   "team": 1,
+   "n_sims": 4000,
+   "seed": 0,
+   "add": [
+    {
+     "player_id": "aday-mara",
+     "name": "Aday Mara"
+    }
+   ],
+   "drop": [
+    {
+     "player_id": "reed-sheppard",
+     "name": "Reed Sheppard"
+    }
+   ],
+   "p_playoffs": {
+    "before": 0.8542,
+    "after": 0.8257,
+    "delta": -0.0285,
+    "delta_se": 0.0039
+   },
+   "p_title": {
+    "before": 0.2405,
+    "after": 0.2273,
+    "delta": -0.0132,
+    "delta_se": 0.0047
+   },
+   "exp_cat_wins": {
+    "before": 89.4175,
+    "after": 87.8105,
+    "delta": -1.607,
+    "delta_se": 0.0574
+   },
+   "compute_seconds": 14.61,
+   "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-05 (in 53% of sims)",
+    "after: assumes the roster cap releases Aday Mara from ~2027-02-06 (in 52% of sims)"
+   ],
+   "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+   ],
+   "run_id": null
+  }
+ }
+}

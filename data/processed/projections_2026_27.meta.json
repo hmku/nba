@@ -2,7 +2,7 @@
   "blend_version": "blend-0.2.0",
   "output": "data/processed/projections_2026_27.csv",
   "rows": 454,
-  "sha256": "e7151b2fa53d1b93c9da939ad0324ac27cb9b877f8e2eeb7c48d0b1795615f23",
+  "sha256": "a0205014b07faa9a2ccbbbb7741b7e4fc382368baaf9ee2699589d30412d2bac",
   "weights": {
     "ours": 0.5,
     "espn": 0.5
@@ -11,7 +11,7 @@
   "inputs": [
     {
       "path": "data/processed/projections_2026_27.base.csv",
-      "sha256": "2a6e675fa614d753b5224da60939a34b92ddb7f835b3bc7c8014d42787c1b7d8"
+      "sha256": "bce01d048c14de98b6623d1d6017a1b19d3f17869707f341206e961342e913f8"
     },
     {
       "path": "data/raw/espn/projections_2026_27.csv",
@@ -148,8 +148,8 @@
         "players": 13
       },
       "NOP": {
-        "before": 237.2,
-        "after": 232.8,
+        "before": 236.0,
+        "after": 231.9,
         "players": 14
       },
       "NYK": {
@@ -209,7 +209,7 @@
       }
     },
     "sum_before": {
-      "mean": 226.5,
+      "mean": 226.4,
       "sd": 37.3,
       "min": 137.1,
       "max": 312.0
@@ -217,5 +217,5 @@
     "u_note": "unprojected_share 0.09 is an ESTIMATE from 2026-27 weeks 1-3 data (5.8% of minutes to players outside the file x history's full/early ratio); not backtested (backtest used the other season's realised u)",
     "note": "docs/research/minutes_model.md (Team minute budget)"
   },
-  "sha256_before_team_minutes": "44ef59518cd98f6d0555d7062439f0ec7e97b4f4aa7038742aaea1b537434f66"
+  "sha256_before_team_minutes": "e542215a4fddcef7f064739ee850ea2234a5620c4c726b099584ad69b45baa1d"
 }

@@ -1,0 +1,78 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sat 11-14: lineup = plan (set Fri); Sun re-checked = plan",
+  "status": "done",
+  "headline": "Week 4 vs Christian 6-3 but AST flipped and 3PTM is +1; P(win week) 0.62 (MC).",
+  "week": 4,
+  "verdict": "Today and Sunday already match the plan on Yahoo; no change. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "P(win week 4)",
+    "value": 0.619,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.848,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.225,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "3PTM 65-64 and PTS/REB ~55% each; Christian has 13 games left vs our 11.",
+   "P(win) uses availability priors (rest_share 0.25); analytic approximation says 0.71."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-14.md"
+   },
+   {
+    "label": "Stream output",
+    "path": "data/processed/verdicts/stream_2026-11-14.json"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-14-815581c5efb1: 0 changes (Yahoo = plan 14/14, no-store read).",
+   "- Sun lp-2026-11-15-4b0ca848bfb5: 0 changes vs Yahoo.",
+   "- Streams that drop Leonard: +16-18 pp week P(win) but -8.0 \u00b1 0.8 pp P(title): not worth it.",
+   "- Opportunity: Hunter (SAC) speculative only; rest hurt."
+  ],
+  "why_now": {
+   "before": "Friday: lineup = plan, Sat/Sun set early, 6-3, P(win) 0.80, no helpful add.",
+   "changed": [
+    {
+     "text": "Fri: AST flipped (113-117), 3PTM now 65-64, so P(win) 0.80 -> 0.62. Leonard still out; streaming his spot costs season value.",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "P(win week)",
+    "P(title)"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-14-815581c5efb1",
+  "lineup_plan_sun": "lp-2026-11-15-4b0ca848bfb5",
+  "lineup_record": "la-2026-11-14-633e9b75ca26",
+  "matchup_score": "ms-w4-2026-11-14-34a489ba2653",
+  "season_sim": "sim-20261114122635-2ca8ab"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-14.json"
+ }
+}
