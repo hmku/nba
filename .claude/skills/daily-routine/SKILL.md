@@ -289,6 +289,9 @@ the two players, else after Yahoo's day rolls over — NOT by 01:00 ET (#174 aga
 **After an add (learned 2026-10-30):** Yahoo puts the added player on **BN**, even into an empty starting slot. When the
 add was meant to fill a slot today, plan a `lineup` txn and move him (§3 procedure) in the same run, then verify by a
 no-store re-read (the first fetch right after the click can still show the old slot; re-fetch with a cache-buster).
+A lineup change made after an add can **overwrite future days already set** (2026-11-14 18:45: moving Marshall into
+today's Util copied Saturday's whole lineup onto Sunday): re-read every future date you set earlier, re-plan it
+(`--current-slots` from that read) and re-execute.
 **Ids:** logs, advice and chat must cite FULL approval/txn ids. `fantasy approval show` and `fantasy txn show` do not resolve the
 8-hex short form (`apr-254c02ee` -> not_found).
 

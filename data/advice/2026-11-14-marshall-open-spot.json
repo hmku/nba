@@ -1,0 +1,46 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Added Naji Marshall into VanVleet's IL spot; Sat+Sun lineups set",
+  "status": "done",
+  "headline": "Done and verified on Yahoo 18:45 ET: VanVleet (O) to IL, Marshall added (no drop), starts Util Sat + Sun.",
+  "week": 4,
+  "verdict": "VanVleet was ruled out for Sunday, opening a roster spot. Marshall's 2 games lift this week's win odds about +20 pp; season effect is noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "ΔP(win week 4)", "value": 20.2, "se": 0.6, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "P(win week 4) before add (VanVleet out)", "value": 0.48, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) season chain", "value": 0.05, "se": 0.4, "unit": "pp", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "When VanVleet returns (ESPN: out Sun; return a guess) a drop is needed; plan is to drop Marshall (stream chain).",
+   "Uses 1 of 6 adds this week; no waiver priority cost (Marshall was a free agent).",
+   "Tool's decision rule lists this as week-only (season within noise); executed per the 11-01 open-spot precedent."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-14.md"},
+   {"label": "Stream verdict", "path": "data/processed/verdicts/stream_2026-11-14T2333Z.json"}
+  ],
+  "rationale": [
+   "- VanVleet (HOU) ruled out for Sunday (ESPN 16:52 ET, right knee injury management); Yahoo tag O.",
+   "- Stream inseason tool with this morning's banked score: Marshall (DAL, games Sat @CLE + Sun) +20.2 ± 0.6 pp P(win), 4000 paired sims; Aldama +23.1 linear, tie.",
+   "- Season chain (Marshall to 11-16, then 6th-best FA): ΔP(playoffs) -0.05 ± 0.35, ΔP(title) +0.05 ± 0.4 pp = noise.",
+   "- Week 4 vs Christian is 6-3 but close in FG%, AST, PTS, REB; 2 extra games swing counting cats."
+  ],
+  "why_now": {
+   "before": "Morning (07:12): 0 helps; drop-Leonard streams rated -8 pp P(title), and every spot was full with VanVleet expected to play Sunday.",
+   "changed": [
+    {"text": "VanVleet ruled out for Sunday at 16:52 ET, so he can go to IL and free a spot at no roster cost.", "kind": "news"},
+    {"text": "Week 4 ends Sunday; without VanVleet our P(win) fell from 0.62 to ~0.48.", "kind": "schedule"}
+   ],
+   "evidence": ["ΔP(win week 4)", "P(win week 4) before add (VanVleet out)"]
+  }
+ },
+ "params": {
+  "add": "naji-marshall", "add_yahoo_player_id": 6499, "drop": null,
+  "txn_id": "txn-7b89bb07b548405797ff97367d2d4804",
+  "then": "IL txn-99c230d0d5b445138d60bdbc982471c2; Sat Util txn-8f2964f3153d4ddcb2e63d66e8522658; Sun lineup txn-fb2f8b6ef3684ef38028433731ada2fc",
+  "tool": "fantasy inseason stream --date 2026-11-14 --accumulated <morning banked> --league-file data/manual/league_rosters_2026-27.json --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-14.json", "matchup": "data/raw/yahoo/matchup_2026-11-14T1214Z.json"}
+}
