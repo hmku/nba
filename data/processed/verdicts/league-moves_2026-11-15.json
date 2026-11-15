@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "sim_version": "season-sim-0.8.1",
+  "team": 1,
+  "n_sims": 4000,
+  "seed": 0,
+  "add": [
+    {
+      "player_id": "yves-missi",
+      "name": "Yves Missi"
+    }
+  ],
+  "drop": [
+    {
+      "player_id": "naji-marshall",
+      "name": "Naji Marshall"
+    }
+  ],
+  "p_playoffs": {
+    "before": 0.8558,
+    "after": 0.8438,
+    "delta": -0.012,
+    "delta_se": 0.003
+  },
+  "p_title": {
+    "before": 0.2442,
+    "after": 0.241,
+    "delta": -0.0032,
+    "delta_se": 0.0035
+  },
+  "exp_cat_wins": {
+    "before": 89.5962,
+    "after": 88.9935,
+    "delta": -0.6028,
+    "delta_se": 0.0387
+  },
+  "compute_seconds": 13.73,
+  "notes": [
+    "before & after: assumes the roster cap releases Reed Sheppard from ~2027-02-10 (in 57% of sims)",
+    "before: assumes the roster cap releases Naji Marshall from ~2026-12-22 (in 93% of sims)",
+    "after: assumes the roster cap releases Yves Missi from ~2026-12-27 (in 90% of sims)"
+  ],
+  "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+}

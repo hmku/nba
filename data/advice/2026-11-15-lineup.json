@@ -1,0 +1,46 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sun 11-15: lineup = plan (set Sat); week 4 ends today at 6-3",
+  "status": "done",
+  "headline": "Week 4 vs Christian 6-3 going into the last day; P(win week) 0.91 (analytic).",
+  "week": 4,
+  "verdict": "Yahoo already matches today's plan; no change. No add/drop beats noise.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "P(win week 4)", "value": 0.907, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.859, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.232, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "FG% (.453 vs .462) and STL (40-44) likely lost; 3PTM 69-71 and AST 139-138 are coin flips.",
+   "P(win) is the analytic approximation with availability priors (rest_share 0.25)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-15.md"},
+   {"label": "Stream output", "path": "data/processed/verdicts/stream_2026-11-15.json"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-15-b8dda7ab710c: 0 changes (Yahoo = plan, roster read 07:13 ET).",
+   "- Streams that drop Leonard: +5-6 pp week P(win) but -8 ± 0.8 pp P(title): not worth it.",
+   "- Opportunity detector: no helps (Hunter noise; Spencer/Proctor have no game today)."
+  ],
+  "why_now": {
+   "before": "Saturday: lineup = plan, VanVleet to IL, Marshall added (+20 pp week P(win)); 6-3.",
+   "changed": [
+    {"text": "Late Saturday games: AST back to us 139-138, 3PTM lost 69-71; still 6-3. VanVleet is back Monday, so Monday's run picks a drop.", "kind": "news"}
+   ],
+   "evidence": ["P(win week)", "P(title)"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-15-b8dda7ab710c",
+  "lineup_record": "la-2026-11-15-b2dc58043822",
+  "matchup_score": "ms-w4-2026-11-15-0936802fb896",
+  "season_sim": "sim-20261115123114-3ca9c8"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-15.json"
+ }
+}
