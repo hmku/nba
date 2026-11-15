@@ -58,6 +58,8 @@ data-auditor, draft-shadow (all read-only).
   network secret); ledger commands take `--rest`. Yahoo *account* operations (league pages, draft room) require a
   **local** session with browser tools — whichever are available (the Claude desktop app's built-in browser, or
   Claude in Chrome via `claude --chrome`).
+- Local Bash shells do NOT inherit `FANTASY_DB_URL`: run `set -a; source .env; set +a` first, or `fantasy` silently reads
+  the empty local SQLite (2026-11-15: `review week` found 0 lineup plans and `review backlog` said every week needed review).
 - Research agents: don't leave main red — run `python -m pytest -q` and `ruff check src tests` before pushing.
 
 ## Safety rules (non-negotiable)
@@ -85,6 +87,8 @@ data-auditor, draft-shadow (all read-only).
   link the research note), **literature/source** (cite it), or **prior/guess** (say so explicitly).
 - Never present a prior as fact. New model parameters start as documented priors and get calibrated
   (`docs/research/`), with out-of-sample checks where possible.
+- **Week outlook = expected categories won** (of 9, ± SE), not P(win the week), in chat, dashboard cards, intel posts and
+  logs (user decision 2026-11-15). P(win)/P(playoffs)/P(title) for the season are unchanged.
 - **Be concise and readable** (user requirement): anything the user reads (chat, dashboard cards, posts, logs) leads
   with the answer in one line, then at most a few short bullets; details go behind a link/"Details", not up front. No
   repeated text, no walls of prose, no boilerplate. On the dashboard: title ≤ 70 chars, verdict ≤ 2 short sentences,

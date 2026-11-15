@@ -84,7 +84,7 @@ target season; manual overrides can't be replayed, so backtest the baseline only
   (3) re-simulate the rest of this week (`fantasy lineup plan --date <today ET> --week --save --json`, on today's
   roster/matchup capture — re-capture first if stale); (4) check the dashboard shows the new runs (League / This week /
   Lineup tabs; `cd web && node scripts/league-state.mjs` if league state changed), and report old → new P(playoffs),
-  P(title) and P(win week) with the model versions in the final message and the daily log.
+  P(title) and the week's expected cats won (± SE) with the model versions in the final message and the daily log.
 - **Tests**: add or update tests with synthetic data (`tests/synthetic.py`, `tests/test_scoring.py`,
   `tests/test_optimizer.py`, `tests/test_projections.py`); no network; deterministic seeds.
 - **Commit the fit script** next to the constants it produces (e.g. `scripts/gp_model/`, with its JSON report) — gp-ols-0.1's

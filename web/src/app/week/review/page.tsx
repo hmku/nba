@@ -5,7 +5,7 @@ import { latestByWeek, type ReviewCat, type ReviewPlayer, type WeekReview } from
 import { CAT_LABEL, fmtCat, heatStyle } from "@/lib/categories";
 import { shortTime } from "@/lib/format";
 import { Badge, Disclosure, ErrorNote } from "@/components/ui";
-import { EmptyState, Panel, SectionTitle } from "@/components/viz";
+import { EmptyState, Panel, SectionTitle, catsNum } from "@/components/viz";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Week review" };
@@ -81,6 +81,8 @@ export default async function WeekReviewPage({ searchParams }: { searchParams: P
 
 function Review({ r }: { r: WeekReview }) {
   const tone = r.final.result === "W" ? "good" : r.final.result === "L" ? "bad" : "neutral";
+  // reviews saved before 2026-11-15 have no exp_cats: re-save them (`fantasy review week --week N --save`)
+  const cats = r.pWin.filter((p) => p.exp_cats != null);
   return (
     <>
       <Panel className="px-4 py-3">
@@ -162,14 +164,15 @@ function Review({ r }: { r: WeekReview }) {
         <Performers title={r.opponent.name ?? "Them"} t={r.opp} />
       </div>
 
-      {r.pWin.length > 0 && (
-        <Disclosure summary="P(win) during the week" right={`${pctText(r.pWin[0].p_win)} → ${pctText(r.pWin[r.pWin.length - 1].p_win)}`}>
+      {cats.length > 0 && (
+        <Disclosure summary="Exp. cats won during the week" right={`${catsNum(cats[0].exp_cats)} → ${catsNum(cats[cats.length - 1].exp_cats)} / 9`}>
           <ul className="divide-y divide-line text-[12.5px]">
-            {r.pWin.map((p) => (
+            {cats.map((p) => (
               <li key={`${p.created_at}`} className="flex justify-between px-4 py-1.5">
                 <span className="text-muted">{shortTime(p.created_at)}</span>
                 <span className="num">
-                  {pctText(p.p_win)}
+                  {catsNum(p.exp_cats)}
+                  {p.exp_cats_se != null && <span className="text-muted"> ±{p.exp_cats_se.toFixed(2)}</span>}
                   {p.method !== "monte_carlo" && <span className="text-muted"> (analytic)</span>}
                 </span>
               </li>
@@ -240,10 +243,6 @@ function Review({ r }: { r: WeekReview }) {
 
 function fmtNum(v: number | null | undefined): string {
   return v == null ? "—" : v.toFixed(0);
-}
-
-function pctText(p: number): string {
-  return `${Math.round(p * 100)}%`;
 }
 
 function Performers({ title, t }: { title: string; t: WeekReview["me"] }) {

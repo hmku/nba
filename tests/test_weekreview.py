@@ -183,15 +183,19 @@ def test_ledger_missed_moves():
 def test_pwin_trajectory_prefers_monte_carlo():
     rows = [{"run_id": "lp-b", "created_at": "2026-11-03T11:00:00Z",
              "summary": {"week": 3, "my_team": 1, "date": "2026-11-03",
-                         "expected": {"optimized": {"p_win_matchup": 0.7}}}},
+                         "expected": {"optimized": {"p_win_matchup": 0.7, "expected_cats": 5.4}}}},
             {"run_id": "lp-a", "created_at": "2026-11-02T11:00:00Z",
              "summary": {"week": 3, "my_team": 1, "date": "2026-11-02", "expected": {
                  "optimized": {"p_win_matchup": 0.9},
-                 "monte_carlo": {"plans": {"optimized": {"p_win_matchup": 0.8, "p_win_matchup_se": 0.003}}}}}},
-            {"run_id": "lp-x", "created_at": "2026-11-02T11:00:00Z", "summary": {"week": 2, "expected": {}}}]
+                 "monte_carlo": {"plans": {"optimized": {"p_win_matchup": 0.8, "p_win_matchup_se": 0.003,
+                                                          "expected_cats": 5.91, "expected_cats_se": 0.02}}}}}},
+            {"run_id": "lp-x", "created_at": "2026-11-02T11:00:00Z", "summary": {"week": 2, "expected": {}}},
+            {"run_id": "lp-later", "created_at": "2026-11-02T11:00:00Z", "summary": {"week": 3, "my_team": 1, "expected": {
+                "covers_week": False, "optimized": {"p_win_matchup": 0.1, "expected_cats": 2.7}}}}]
     t = wr.pwin_trajectory(rows, 3, 1)
     assert [(x["run_id"], x["p_win"], x["method"]) for x in t] == [("lp-a", 0.8, "monte_carlo"),
                                                                     ("lp-b", 0.7, "analytic")]
+    assert [(x["exp_cats"], x["exp_cats_se"]) for x in t] == [(5.91, 0.02), (5.4, None)]
 
 
 def test_save_and_load_row_idempotent(tmp_path, monkeypatch):

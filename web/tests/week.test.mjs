@@ -19,6 +19,7 @@ import {
   parseMatchupScore,
   remainingDays,
   simWeekOdds,
+  sumCats,
   splitActuals,
   teamCode,
   teamGames,
@@ -267,12 +268,12 @@ const plan = (date, expected, created = `${date}T13:00:00Z`) =>
     },
   });
 
-const SIM = { pWin: 0.55, pTie: 0.05, catWin: { pts: 0.6, tov: 0.4 } };
+const SIM = { pWin: 0.55, pTie: 0.05, expCats: 5.2, catWin: { pts: 0.6, tov: 0.4 } };
 
 test("weekOdds: the plan's by-Sunday category odds when present, else the season sim (labelled)", () => {
   const withCats = plan("2026-10-22", {
     optimized: { expected_cats: 5, p_win_matchup: 0.6 },
-    monte_carlo: { n_sims: 2000, plans: { optimized: { expected_cats: 5, p_win_matchup: 0.64, p_win_matchup_se: 0.01 } } },
+    monte_carlo: { n_sims: 2000, plans: { optimized: { expected_cats: 5.3, expected_cats_se: 0.03, p_win_matchup: 0.64, p_win_matchup_se: 0.01 } } },
     cat_win_prob: { pts: 0.9, tov: 0.2, bogus: 3, reb: 1.5 },
   });
   assert.deepEqual(withCats.expected.catWinProb, { pts: 0.9, tov: 0.2 });
@@ -280,6 +281,8 @@ test("weekOdds: the plan's by-Sunday category odds when present, else the season
   assert.equal(o.source, "lineup_plan");
   assert.equal(o.pWin, 0.64);
   assert.equal(o.pWinSe, 0.01);
+  assert.equal(o.expCats, 5.3);
+  assert.equal(o.expCatsSe, 0.03);
   assert.equal(o.method, "Monte Carlo");
   assert.deepEqual(o.catWin, { pts: 0.9, tov: 0.2 });
   // older plan without cat_win_prob -> season sim
@@ -289,14 +292,19 @@ test("weekOdds: the plan's by-Sunday category odds when present, else the season
   assert.equal(f.source, "season_sim");
   assert.equal(f.runId, "sim-1");
   assert.equal(f.pWin, 0.55);
+  assert.equal(f.expCats, 5.2);
+  assert.equal(f.expCatsSe, null);
   assert.deepEqual(f.catWin, { pts: 0.6, tov: 0.4 });
   assert.equal(weekOdds(null, null, null).source, null);
 });
 
 test("simWeekOdds prefers the H2H matrix cell for the real opponent; latestPlanInWeek picks the newest plan in range", () => {
   const weeks = [{ week: 1, opponent: 3, pWin: 0.5, pTie: 0, catWin: { pts: 0.5 } }];
-  const h2h = [{ week: 1, vs: { 12: { team: 12, pWin: 0.7, pTie: 0.02, catWin: { pts: 0.8 } } } }];
+  const h2h = [{ week: 1, vs: { 12: { team: 12, pWin: 0.7, pTie: 0.02, expCatsWon: 5.6, catWin: { pts: 0.8 } } } }];
   assert.equal(simWeekOdds(weeks, h2h, 1, 12).pWin, 0.7);
+  assert.equal(simWeekOdds(weeks, h2h, 1, 12).expCats, 5.6);
+  // no exp_cats_won and an incomplete category map -> null (not a partial sum)
+  assert.equal(simWeekOdds(weeks, h2h, 1, 3).expCats, null);
   assert.equal(simWeekOdds(weeks, h2h, 1, 3).pWin, 0.5);
   assert.equal(simWeekOdds(weeks, [], 1, 9), null);
   const p1 = plan("2026-10-21", null, "2026-10-21T13:00:00Z");
@@ -481,4 +489,10 @@ test("league-state script: roster slots/status per team, names from projections,
   assert.equal(capturedAt("no time"), null);
   const sched = buildSchedule(parseCsv("date,visitor,home\n2026-10-20,BOS,DET\n2026-10-20,OKC,SAS\n"));
   assert.deepEqual(sched.games, { "2026-10-20": ["BOS@DET", "OKC@SAS"] });
+});
+
+test("sumCats: expected cats won = sum of the nine category odds, null when any is missing", () => {
+  const all = { fg_pct: 0.5, ft_pct: 0.5, fg3m: 0.5, pts: 0.5, reb: 0.5, ast: 0.5, stl: 0.5, blk: 0.5, tov: 1 };
+  assert.equal(sumCats(all), 5);
+  assert.equal(sumCats({ pts: 0.9 }), null);
 });

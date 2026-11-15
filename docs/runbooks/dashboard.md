@@ -116,15 +116,16 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
 `src/content/league_weeks.json` (Yahoo's schedule, generated from `data/manual/league_schedule.json` by
 `node scripts/league-weeks.mjs`; `tests/lineup.test.mjs` fails when they drift); default = the week containing today (ET),
 `?week=N` otherwise. Top to bottom:
-- **Week strip**: W1…W20 with the season sim's pre-week P(win) against Yahoo's opponent (H2H-matrix cell, else the weekly row).
+- **Week strip**: W1…W20 with the season sim's pre-week expected cats won (`exp_cats_won`, e.g. "5.6") against Yahoo's opponent (H2H-matrix cell, else the weekly row).
 - **Score header**: me vs opponent (Yahoo names from the league snapshot), categories won now **W–L(–T)** from the newest
   `model_runs` row of kind `matchup_score` for the week (schema `matchup_score/1`, data side; FG%/FT% recomputed from
   makes/attempts, leaders recomputed from the totals, TO lower wins), "as of <observed_at> ET", **Yahoo live ↗** (Yahoo's
   matchup page with `mid1`/`mid2` = the two Yahoo team ids), games played / total per team (Yahoo's games strip at
-  capture time: played + remaining), and **P(win week)** with its label: the `lineup_plan` for today
+  capture time: played + remaining), and **Exp. cats X.X / 9 ± SE** with its label: the `lineup_plan` for today
   (else the latest earlier day of the week; never a later day's plan, and never one with `expected.covers_week: false`,
-  whose banked totals predate its date) (Monte Carlo ± SE, else analytic; "simulated, lineup model") when that plan carries `expected.cat_win_prob`,
-  else the season sim ("simulated, season sim (pre-week)").
+  whose banked totals predate its date) (Monte Carlo `expected.monte_carlo.plans.optimized.expected_cats` ± `expected_cats_se`,
+  else analytic `expected.optimized.expected_cats`; "simulated, lineup model") when that plan carries `expected.cat_win_prob`,
+  else the season sim's `exp_cats_won` ("simulated, season sim (pre-week)"). Not P(win) (user decision 2026-11-15).
 - **Category strip**: per category me | opp totals (leader shaded; FG%/FT% with makes/attempts underneath) and the chance
   to win it by Sunday (plan's `expected.cat_win_prob`, given banked stats; else the season sim's weekly odds, column
   labelled "odds"), plus one "Swing: …" line (30–70% categories). **Before the first capture** (no `matchup_score` row):
@@ -132,7 +133,7 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
 - **Ratio-bench flag** (lineup-0.4.0; only when the plan the page uses — `latestPlanInWeek` — is dated today and has
   `ratio_bench.suggest` true with at least one bench; `ratioBenchFlag` in `src/lib/lineup.ts`): two short lines,
   "Sit <player> <day> (<bench player> starts instead)? Protects FT% · costs PTS, …" / "+ΔE[cats] ± paired SE exp. cats ·
-  P(win) ±pts · simulated", tagged **suggestion · not applied** (hover = the rule: ΔE > 2 SE and ≥ 0.05, priors). The same player-days get a subtle "sit?" badge in the lineup grid. It never
+  simulated", tagged **suggestion · not applied** (hover = the rule: ΔE > 2 SE and ≥ 0.05, priors). The same player-days get a subtle "sit?" badge in the lineup grid. It never
   changes the plan or Yahoo; acting on it needs the user's OK (then the plan is re-run with `--protect-ratios`).
 - **Lineups**: **Day** (default) with day chips, or **Week** (my plan-vs-Yahoo grid below). Day view = my lineup next to the
   opponent's (two columns on ≥md; **Me | Them** tabs on phones). Mine = the grid day (✓ Yahoo / ◌ plan / ⚠ mismatch, see
@@ -145,9 +146,11 @@ and `src/lib/lineup.ts` (plan/actual grid, timeline); tests `tests/week.test.mjs
   **Day notes** under the lineups: decide-at-tip-off items and IL moves of the picked day's plan.
 - **Decisions**: the 3 newest timeline items (lineup/IL txns with verification evidence, approvals, Inbox recommendations, logged
   `decisions`) + "Show all N".
-- **Other matchups** (collapsed): the old "vs every opponent" table from `my_team.weekly_h2h_matrix` (week P(win), season
-  average from `vs_opponents_all_play`, 9 category-odds cells); tapping a team opens `?week=N&opp=T`, a what-if view (score
+- **Other matchups** (collapsed): the old "vs every opponent" table from `my_team.weekly_h2h_matrix`: Wk = expected cats won this week, Szn = averaged over
+  the season (`exp_cats_won` from `weekly_h2h_matrix` / `vs_opponents_all_play`), 9 category-odds cells; sorted toughest (lowest) first; tapping a team opens `?week=N&opp=T`, a what-if view (score
   hidden, odds and their lineup for that team, banner with a link back).
+- **Week review** (`/week/review`, `fantasy review week --save`): includes an **Exp. cats during the week** trajectory
+  (`p_win_trajectory[].exp_cats` ± `exp_cats_se`; field name kept for back-compat).
 - **How these numbers are made** (collapsed): score source/time, odds source (plan run id, method, n sims, availability
   assumption — or season sim run id, n sims), games-left definition, where their lineup comes from, season P(playoffs) /
   P(title), plan + sim warnings. Keep explanatory text here, not on the page body.
@@ -284,7 +287,7 @@ anon client; writes need `SUPABASE_SERVICE_ROLE_KEY` (503 otherwise). Code: `src
 - `GET /api/agent/state` — active **non-mock** draft (newest not complete; `mock-*`/`is_mock` never exposed): my slot,
   on the clock (= highest recorded + 1, as on /draft), my upcoming/all picks (custom order honoured), last 12 picks,
   gaps; latest rec top 5 + `stale` (same freshness rule as /draft, or all top picks taken); my roster; season outlook
-  (newest of post-draft `season` / pre-draft projection: P(playoffs), P(title), current week P(win)); pending approvals
+  (newest of post-draft `season` / pre-draft projection: P(playoffs), P(title), current week `p_win` and `expected_categories_won`); pending approvals
   count; last 10 agent events. `ok:false` (HTTP 200) with `errors` when some reads failed.
 - `GET /api/agent/players?q=&limit=&available=1` — terms match team/position exactly or name/id substring.
 - `POST /api/agent/pick {overall?, player, note?, allow_unknown?}` — records an observed pick, `source='external_agent'`.

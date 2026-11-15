@@ -35,7 +35,7 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
 | Add/drop effect on odds | `fantasy sim compare --add A --drop B --league-file data/manual/league_rosters_2026-27.json --json` | paired `delta ± delta_se`; \|delta\| < 2·SE = noise | BUILT |
 | Season odds / week-N matchup | `fantasy sim season\|matchup --league-file data/manual/league_rosters_2026-27.json --json` | `season-sim-0.8.1`: fitted priors (`docs/research/sim_calibration.md`), Yahoo's real schedule (`data/manual/league_schedule.json`), **IL replacement on by default** (`--no-il-replacement` for the old behaviour; priors in `docs/research/il_replacement.md`), 13 non-IL roster cap (`--no-roster-cap`) | BUILT |
 | Conservative odds (market projections) | `fantasy data alt-projections --blend market --out var/projections_alt/market.csv` then `fantasy sim ... --projections var/projections_alt/market.csv --no-save` | `docs/research/conservative_sim.md` | BUILT |
-| Weekly retrospective (final score + trajectory, per-category over/under vs week-start projections with z, games volume, top over/under-performers, decisions + missed moves, P(win) trajectory) | `fantasy review week [--week N] [--team <yahoo id>] [--save] [--rest] --json`; `fantasy review backlog --json` = finished weeks missing a final score or review (daily-routine step 1.7, every run) | `week-review-0.1.0`; z from the fitted noise model, expected games prior-based; dashboard `/week/review`, schema `docs/research/dashboard_data.md` §8 | BUILT |
+| Weekly retrospective (final score + trajectory, per-category over/under vs week-start projections with z, games volume, top over/under-performers, decisions + missed moves, expected-cats trajectory) | `fantasy review week [--week N] [--team <yahoo id>] [--save] [--rest] --json`; `fantasy review backlog --json` = finished weeks missing a final score or review (daily-routine step 1.7, every run) | `week-review-0.1.0`; z from the fitted noise model, expected games prior-based; dashboard `/week/review`, schema `docs/research/dashboard_data.md` §8 | BUILT |
 | Injuries | `fantasy data fetch-injuries --json` (ESPN API + CBS) plus Yahoo tags from the roster capture | | BUILT |
 | Muse league intel (read-only) | `fantasy intel latest\|list\|show [--rest] --json` | `docs/integrations/muse.md` | BUILT |
 | Dashboard (This week / League / Inbox tabs, installable PWA) | Next.js on Vercel, `docs/runbooks/dashboard.md` | | BUILT |
@@ -47,9 +47,9 @@ conservative sim, IL replacement and trade review. Check `docs/STATUS.md` and `f
 - Odds are simulated and optimistic for my team: same projections as the optimizer, and opponents who never manage. Prefer
   deltas to absolute levels.
 - Report the blend run and the market run side by side.
-- The lineup tool's P(win this week) and the season sim's weekly odds use different availability assumptions. Today's
-  Yahoo tags plus the `rest_share` prior can give 0.59 where the season-rate availability gives 0.73. State which one
-  you are quoting.
+- Report the week as expected categories won (of 9, ± SE), not P(win) (user decision 2026-11-15); season P(playoffs)/P(title) unchanged.
+- The lineup tool's week outlook and the season sim's weekly odds use different availability assumptions (today's
+  Yahoo tags + the `rest_share` prior vs season-rate availability). State which one you are quoting.
 
 **Write concisely (user requirement):** lead with the answer in one line; then ≤ 3-4 short bullets; put supporting detail
 behind "Details" (advice fields `rationale`, `why_now`, metrics table). Dashboard cards: title ≤ 70 chars, verdict ≤ 2 short

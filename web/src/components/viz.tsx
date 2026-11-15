@@ -21,6 +21,19 @@ export function probText(p: number | null | undefined): string {
   return "text-fg";
 }
 
+/** Text tone for expected categories won (of 9): ≥ 5 good, ≤ 4 bad (4.5 = coin flip). */
+export function catsText(x: number | null | undefined): string {
+  if (x == null) return "text-muted";
+  if (x >= 5) return "text-good";
+  if (x <= 4) return "text-bad";
+  return "text-fg";
+}
+
+/** Expected categories won, one decimal ("5.6"), "—" when unknown. */
+export function catsNum(x: number | null | undefined): string {
+  return x == null ? "—" : x.toFixed(1);
+}
+
 /**
  * Probability track 0..1 with a 50% midline: optional p10–p90 band, a mean dot and an optional
  * comparison tick (e.g. the BPA baseline).

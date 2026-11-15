@@ -178,7 +178,19 @@ export interface WeekOdds {
   /** plan only: "Monte Carlo" (with SE) or "analytic" */
   method: string | null;
   pWinSe: number | null;
+  /** expected categories won (of 9, ties count ½): the week's headline number since 2026-11-15 */
+  expCats: number | null;
+  /** Monte Carlo SE of expCats (plan only) */
+  expCatsSe: number | null;
   asOf: string | null;
+}
+
+type SimOdds = { pWin: number | null; pTie: number | null; expCats: number | null; catWin: Record<string, number> };
+
+/** Σ P(win category) when all nine are present (ties ignored), else null. */
+export function sumCats(catWin: Partial<Record<string, number>>): number | null {
+  const v = WEEK_CATS.map((c) => catWin[c]);
+  return v.every((x) => x != null) ? v.reduce<number>((t, x) => t + (x as number), 0) : null;
 }
 
 /**
@@ -198,19 +210,21 @@ export function latestPlanInWeek(plans: LineupPlan[], start: string, end: string
 }
 
 /** Season-sim odds of `week` against `opponent`: the H2H matrix cell, else the weekly row when it is that pairing. */
-export function simWeekOdds(weeks: WeekMatchup[], h2h: H2HWeek[], week: number, opponent: number | null): { pWin: number | null; pTie: number | null; catWin: Record<string, number> } | null {
+export function simWeekOdds(weeks: WeekMatchup[], h2h: H2HWeek[], week: number, opponent: number | null): SimOdds | null {
   const cell = opponent != null ? h2h.find((x) => x.week === week)?.vs[String(opponent)] : undefined;
-  if (cell) return { pWin: cell.pWin, pTie: cell.pTie, catWin: cell.catWin };
+  if (cell) return { pWin: cell.pWin, pTie: cell.pTie, expCats: cell.expCatsWon ?? sumCats(cell.catWin), catWin: cell.catWin };
   const w = weeks.find((x) => x.week === week);
-  if (w && (opponent == null || w.opponent === opponent)) return { pWin: w.pWin, pTie: w.pTie, catWin: w.catWin as Record<string, number> };
+  if (w && (opponent == null || w.opponent === opponent))
+    return { pWin: w.pWin, pTie: w.pTie, expCats: w.expCatsWon ?? sumCats(w.catWin), catWin: w.catWin as Record<string, number> };
   return null;
 }
 
 /**
  * Odds for the week: the plan's per-category odds given banked stats when it has them (newer plans), else the season
- * sim's pre-week odds. P(win the week) likewise: the plan's Monte Carlo (else analytic) estimate, else the sim's.
+ * sim's pre-week odds. Expected cats won (and P(win the week)) likewise: the plan's Monte Carlo (else analytic)
+ * estimate, else Σ of its category odds, else the sim's.
  */
-export function weekOdds(plan: LineupPlan | null, sim: { pWin: number | null; pTie: number | null; catWin: Record<string, number> } | null, simRunId: string | null): WeekOdds {
+export function weekOdds(plan: LineupPlan | null, sim: SimOdds | null, simRunId: string | null): WeekOdds {
   const ex = plan?.expected ?? null;
   const pick = (m: Record<string, number> | null | undefined): Partial<Record<WeekCat, number>> => {
     const out: Partial<Record<WeekCat, number>> = {};
@@ -219,19 +233,34 @@ export function weekOdds(plan: LineupPlan | null, sim: { pWin: number | null; pT
   };
   const planWin = ex?.mc?.pWin ?? ex?.optimized?.pWin ?? null;
   if (plan && ex?.catWinProb && Object.keys(pick(ex.catWinProb)).length) {
+    const mcCats = ex.mc?.cats ?? null;
     return {
       pWin: planWin ?? sim?.pWin ?? null,
       pTie: null,
       catWin: pick(ex.catWinProb),
       source: "lineup_plan",
       runId: plan.runId,
-      method: ex.mc?.pWin != null ? "Monte Carlo" : ex.optimized?.pWin != null ? "analytic" : null,
+      method: mcCats != null || ex.mc?.pWin != null ? "Monte Carlo" : ex.optimized?.cats != null || ex.optimized?.pWin != null ? "analytic" : null,
       pWinSe: ex.mc?.pWin != null ? (ex.mc.pWinSe ?? null) : null,
+      expCats: mcCats ?? ex.optimized?.cats ?? sumCats(pick(ex.catWinProb)) ?? sim?.expCats ?? null,
+      expCatsSe: mcCats != null ? (ex.mc?.catsSe ?? null) : null,
       asOf: plan.createdAt,
     };
   }
-  if (sim) return { pWin: sim.pWin, pTie: sim.pTie, catWin: pick(sim.catWin), source: "season_sim", runId: simRunId, method: null, pWinSe: null, asOf: null };
-  return { pWin: null, pTie: null, catWin: {}, source: null, runId: null, method: null, pWinSe: null, asOf: null };
+  if (sim)
+    return {
+      pWin: sim.pWin,
+      pTie: sim.pTie,
+      catWin: pick(sim.catWin),
+      source: "season_sim",
+      runId: simRunId,
+      method: null,
+      pWinSe: null,
+      expCats: sim.expCats ?? sumCats(pick(sim.catWin)),
+      expCatsSe: null,
+      asOf: null,
+    };
+  return { pWin: null, pTie: null, catWin: {}, source: null, runId: null, method: null, pWinSe: null, expCats: null, expCatsSe: null, asOf: null };
 }
 
 // ------------------------------------------------------------------ schedule / games left

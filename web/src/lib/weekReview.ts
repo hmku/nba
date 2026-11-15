@@ -65,7 +65,8 @@ export type WeekReview = {
     decisions: { at: string | null; kind: string; agrees_with_model: boolean | null; choice: string | null; rationale: string | null }[];
     missed: Missed[];
   };
-  pWin: { date: string | null; created_at: string | null; p_win: number; se: number | null; method: string }[];
+  /** per lineup plan of the week; exp_cats (of 9) since 2026-11-15 — older saved reviews only have p_win */
+  pWin: { date: string | null; created_at: string | null; p_win: number | null; se: number | null; exp_cats?: number | null; exp_cats_se?: number | null; method: string }[];
   trajectory: { date_et: string; observed_at: string; score: { me: number; opp: number; ties: number } }[];
   projectionSource: { kind?: string; path?: string; commit?: string; data_as_of?: string | null; as_of_week_start?: boolean | null };
   analysisTo: string | null;

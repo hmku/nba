@@ -608,20 +608,28 @@ def _txn_what(r: dict[str, Any]) -> str:
 
 
 def pwin_trajectory(rows: list[dict[str, Any]], week: int, my_slot: int) -> list[dict[str, Any]]:
-    """P(win week) per saved `lineup_plan` of the week (Monte Carlo when it ran, else analytic), oldest first."""
+    """Expected cats won and P(win week) per saved `lineup_plan` of the week (Monte Carlo when it ran, else analytic),
+    oldest first. `exp_cats` (of 9, ties ½) is the dashboard's headline number since 2026-11-15; `p_win` is kept."""
     out = []
     for r in rows:
         s = r.get("summary") or {}
         if s.get("week") != week or (s.get("my_team") not in (None, my_slot)):
             continue
         e = s.get("expected") or {}
+        if e.get("covers_week") is False:  # a later day's plan: scores that day on, not the week (dashboard rule too)
+            continue
         mc = (((e.get("monte_carlo") or {}).get("plans") or {}).get("optimized") or {})
-        an = (e.get("optimized") or {}).get("p_win_matchup")
-        p, method = (mc.get("p_win_matchup"), "monte_carlo") if mc.get("p_win_matchup") is not None else (an, "analytic")
-        if p is None:
+        an = e.get("optimized") or {}
+        use_mc = mc.get("p_win_matchup") is not None or mc.get("expected_cats") is not None
+        src, method = (mc, "monte_carlo") if use_mc else (an, "analytic")
+        p, cats = src.get("p_win_matchup"), src.get("expected_cats")
+        if p is None and cats is None:
             continue
         out.append({"date": s.get("date"), "created_at": _iso(r.get("created_at")), "run_id": r.get("run_id"),
-                    "p_win": round(float(p), 3), "se": mc.get("p_win_matchup_se") if method == "monte_carlo" else None,
+                    "p_win": None if p is None else round(float(p), 3),
+                    "se": mc.get("p_win_matchup_se") if method == "monte_carlo" else None,
+                    "exp_cats": None if cats is None else round(float(cats), 2),
+                    "exp_cats_se": mc.get("expected_cats_se") if method == "monte_carlo" else None,
                     "method": method})
     out.sort(key=lambda x: str(x["created_at"]))
     return out
@@ -798,9 +806,9 @@ def summarize(r: dict[str, Any]) -> dict[str, Any]:
     head = f"{word} {s['me']}-{s['opp']}" + (f"-{s['ties']}" if s["ties"] else "") + f" vs {opp}"
     if not f["complete"]:
         head += f" (provisional, through {f['through']})"
-    pw = r.get("p_win_trajectory") or []
+    pw = [x for x in (r.get("p_win_trajectory") or []) if x.get("exp_cats") is not None]
     if len(pw) >= 2:
-        head += f"; P(win) {pw[0]['p_win']:.2f} Mon -> {pw[-1]['p_win']:.2f} last plan"
+        head += f"; exp. cats {pw[0]['exp_cats']:.1f} Mon -> {pw[-1]['exp_cats']:.1f} last plan"
     bullets: list[str] = []
     kinds = {c[0]: c[1] for c in CATS}
     # (team, cat) per-game deviations with a z: the biggest that hurt us and the biggest that helped us

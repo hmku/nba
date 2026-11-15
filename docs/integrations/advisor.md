@@ -118,7 +118,7 @@ curl -sS https://fantasy.harrisonku.com/api/agent/report \
     "title": "Add a backup C for Thursday: our only C has no game",
     "summary": "On Thu we start no C. Adding X for Y adds about 1.0 expected blocks this week.",
     "evidence": [
-      {"claim": "P(win week 1) with the add minus without (paired)", "value": 0.021, "se": 0.006,
+      {"claim": "Expected cats won in week 1 with the add minus without (paired)", "value": 0.18, "se": 0.05,
        "label": "simulated", "command": "<the exact fantasy ... --json command you ran>"},
       {"claim": "share of rest days that are one-game rests", "value": 0.25, "label": "prior"}
     ],

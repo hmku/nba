@@ -111,7 +111,7 @@ export interface OppSummary {
   catWinRate: Record<string, number>;
 }
 
-/** Season-average ("all-play") odds vs each opponent, toughest (lowest P(win)) first. */
+/** Season-average ("all-play") odds vs each opponent, toughest (fewest expected cats won, then lowest P(win)) first. */
 export function parseVsOpponents(myTeam: unknown): OppSummary[] {
   const out: OppSummary[] = [];
   for (const [k, v] of Object.entries(o(o(myTeam)?.vs_opponents_all_play) ?? {})) {
@@ -126,10 +126,10 @@ export function parseVsOpponents(myTeam: unknown): OppSummary[] {
       catWinRate: numMap(c.cat_win_rate),
     });
   }
-  return out.sort((x, y) => (x.pWinAnyWeek ?? 2) - (y.pWinAnyWeek ?? 2) || x.team - y.team);
+  return out.sort((x, y) => (x.expCatsWon ?? 99) - (y.expCatsWon ?? 99) || (x.pWinAnyWeek ?? 2) - (y.pWinAnyWeek ?? 2) || x.team - y.team);
 }
 
-/** Opponents of one matrix week, toughest first. */
+/** Opponents of one matrix week, toughest (fewest expected cats won) first. */
 export function weekOpponents(w: H2HWeek): H2HCell[] {
-  return Object.values(w.vs).sort((x, y) => (x.pWin ?? 2) - (y.pWin ?? 2) || x.team - y.team);
+  return Object.values(w.vs).sort((x, y) => (x.expCatsWon ?? 99) - (y.expCatsWon ?? 99) || (x.pWin ?? 2) - (y.pWin ?? 2) || x.team - y.team);
 }

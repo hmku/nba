@@ -33,7 +33,7 @@ for experiments.
 - `my_team.p_playoffs` / `p_title` with `_se` (binomial SE over sims; it excludes model/prior error).
   `final_standing_dist`: P(finishing 1st..12th). `exp_cat_wins` over the regular season (17 weeks × 9).
 - `my_team.weekly_matchups[]`: scheduled opponent, `p_win`/`p_tie`/`p_loss` (matchup = more categories),
-  `exp_cats_won`, per-category `cat_win_probs`, and `my_player_games` vs `opp_player_games`
+  `exp_cats_won` (the week number to report to the user, not `p_win`), per-category `cat_win_probs`, and `my_player_games` vs `opp_player_games`
   (schedule-aware games that week, incl. streamers) — the games gap explains many weekly swings.
 - `my_team.vs_opponents_all_play`: if I played team X in a random regular-season week: matchup win
   prob and per-category win rate (ties as 0.5). `team_profiles[t]`: weekly category means, rank (1 =

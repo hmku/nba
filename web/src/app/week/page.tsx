@@ -59,7 +59,7 @@ import leagueState from "@/content/league_state.json";
 import nbaSchedule from "@/content/nba_schedule.json";
 import { pct, shortTime } from "@/lib/format";
 import { Badge, Disclosure, ErrorNote, statusTone } from "@/components/ui";
-import { CatLabel, EmptyState, Panel, SectionTitle, probText } from "@/components/viz";
+import { CatLabel, EmptyState, Panel, SectionTitle, catsNum, catsText, probText } from "@/components/viz";
 import type { DayView } from "./LineupGrid";
 import { WeekLineups, type OppDay } from "./WeekLineups";
 
@@ -384,7 +384,7 @@ function playerNames(plans: LineupPlan[], actuals: LineupActual[]): Record<strin
 
 const TONE_TEXT = { good: "text-good", bad: "text-bad", fg: "text-fg", muted: "text-muted" } as const;
 
-/** Week tiles: finished weeks show the result (final read > week review > last read, "?" = provisional); others P(win). */
+/** Week tiles: finished weeks show the result (final read > week review > last read, "?" = provisional); others the season sim's pre-week expected cats won. */
 function WeekStrip({ sim, selected, current, results }: { sim: SeasonSim | null; selected: number; current: number | null; results: Map<number, WeekResult | null> }) {
   return (
     <div className="scroll-thin -mx-4 overflow-x-auto px-4">
@@ -393,20 +393,20 @@ function WeekStrip({ sim, selected, current, results }: { sim: SeasonSim | null;
           const head = `Week ${x.week}: ${fmtDate(x.start)} – ${fmtDate(x.end)}${x.opponent_name ? ` vs ${x.opponent_name}` : ""}`;
           const done = results.has(x.week);
           const tile = done ? resultTile(results.get(x.week) ?? null) : null;
-          const p = !done && sim ? (simWeekOdds(sim.weeks, sim.h2h, x.week, x.opponent)?.pWin ?? null) : null;
+          const p = !done && sim ? (simWeekOdds(sim.weeks, sim.h2h, x.week, x.opponent)?.expCats ?? null) : null;
           return (
             <Link
               key={x.week}
               href={`/week?week=${x.week}`}
               scroll={false}
-              title={tile ? `${head} · ${tile.text} (${tile.note})` : `${head}${p != null ? ` · P(win) ${pct(p)} (season sim, pre-week)` : ""}`}
+              title={tile ? `${head} · ${tile.text} (${tile.note})` : `${head}${p != null ? ` · exp. cats won ${catsNum(p)} / 9 (season sim, pre-week)` : ""}`}
               className={`flex min-w-12 shrink-0 flex-col items-center rounded-lg border px-1 py-1 ${x.week === selected ? "border-accent bg-accent/10" : "border-line bg-panel"}`}
             >
               <span className={`text-[10.5px] ${x.week === current ? "font-semibold text-accent" : "text-muted"}`}>W{x.week}</span>
               {tile ? (
                 <span className={`num text-[12px] whitespace-nowrap ${TONE_TEXT[tile.tone]} ${tile.tone !== "muted" ? "font-semibold" : ""}`}>{tile.text}</span>
               ) : (
-                <span className={`num text-[12px] ${p != null ? probText(p) : "text-muted"}`}>{p != null ? pct(p) : fmtDate(x.start).replace(/^\w+ /, "")}</span>
+                <span className={`num text-[12px] ${p != null ? catsText(p) : "text-muted"}`}>{p != null ? catsNum(p) : fmtDate(x.start).replace(/^\w+ /, "")}</span>
               )}
             </Link>
           );
@@ -446,7 +446,7 @@ function ScoreHeader({
 }) {
   const res = result && result !== "none" ? result : null;
   const s = res?.score ?? score?.score;
-  const tone = s ? (s.me > s.opp ? "text-good" : s.me < s.opp ? "text-bad" : "text-fg") : probText(odds.pWin);
+  const tone = s ? (s.me > s.opp ? "text-good" : s.me < s.opp ? "text-bad" : "text-fg") : catsText(odds.expCats);
   const finalNote = !result
     ? null
     : !res
@@ -507,9 +507,10 @@ function ScoreHeader({
               : "no score captured yet — projected odds only"}
           </span>
           <span>
-            P(win week){" "}
-            <span className={`num text-[15px] font-semibold ${probText(odds.pWin)}`}>{pct(odds.pWin)}</span>
-            {odds.pWinSe != null && <span className="num text-[11px] text-muted"> ±{(odds.pWinSe * 100).toFixed(1)}pp</span>}
+            Exp. cats won{" "}
+            <span className={`num text-[15px] font-semibold ${catsText(odds.expCats)}`}>{catsNum(odds.expCats)}</span>
+            <span className="num text-[11px] text-muted"> / 9</span>
+            {odds.expCatsSe != null && <span className="num text-[11px] text-muted"> ±{odds.expCatsSe.toFixed(2)}</span>}
             <span className="ml-1 text-[11px] text-muted">{oddsLabel(odds)}</span>
           </span>
         </div>
@@ -541,7 +542,7 @@ function RatioBenchFlag({ rb }: { rb: RatioBench }) {
         <span className="num text-fg">
           {sign(rb.deltaCats, 2)} ± {rb.deltaCatsSe?.toFixed(2) ?? "—"}
         </span>{" "}
-        exp. cats · P(win) <span className="num">{sign(rb.deltaPWin == null ? null : rb.deltaPWin * 100, 1)} pts</span> · simulated
+        exp. cats won · simulated
       </div>
     </div>
   );
@@ -753,8 +754,8 @@ function OtherMatchups({ sim, mx, selected, real, names }: { sim: SeasonSim; mx:
           <thead>
             <tr className="text-[10.5px] text-muted">
               <th className="sticky left-0 z-10 bg-panel pl-2 text-left font-medium">Opponent</th>
-              <th className="px-1 font-medium" title="P(win the matchup) in this week">Wk</th>
-              <th className="px-1 font-medium" title="P(win) averaged over all regular-season weeks">Szn</th>
+              <th className="px-1 font-medium" title="Expected categories won (of 9) vs this team this week">Wk</th>
+              <th className="px-1 font-medium" title="Expected categories won (of 9) averaged over all regular-season weeks">Szn</th>
               {CATS.map((c) => (
                 <th key={c} className="px-0.5 font-medium">
                   <CatLabel c={c} className="flex-col !gap-0.5" />
@@ -773,8 +774,8 @@ function OtherMatchups({ sim, mx, selected, real, names }: { sim: SeasonSim; mx:
                     </Link>
                     {r.team === real && <span className="ml-1 text-[10px] text-muted">(Yahoo)</span>}
                   </td>
-                  <td className={`num px-1 font-medium ${probText(r.pWin)}`}>{pct(r.pWin)}</td>
-                  <td className={`num px-1 ${probText(season.get(r.team)?.pWinAnyWeek ?? null)}`}>{pct(season.get(r.team)?.pWinAnyWeek ?? null)}</td>
+                  <td className={`num px-1 font-medium ${catsText(r.expCatsWon)}`}>{catsNum(r.expCatsWon)}</td>
+                  <td className={`num px-1 ${catsText(season.get(r.team)?.expCatsWon ?? null)}`}>{catsNum(season.get(r.team)?.expCatsWon ?? null)}</td>
                   {CATS.map((c) => {
                     const p = r.catWin[c] ?? null;
                     return (
@@ -790,7 +791,7 @@ function OtherMatchups({ sim, mx, selected, real, names }: { sim: SeasonSim; mx:
         </table>
       </div>
       <p className="px-4 py-2 text-xs text-muted">
-        Season-sim odds if I played each team this week (Wk) and averaged over the regular season (Szn); cells = P(win the category) in %. Tap a team for a
+        Season-sim expected categories won (of 9) if I played each team this week (Wk) and averaged over the regular season (Szn); cells = P(win the category) in %. Tap a team for a
         what-if view of that matchup.
       </p>
     </Disclosure>
@@ -844,7 +845,7 @@ function HowMade({
             {odds.source === "lineup_plan" ? (
               <>
                 From the lineup plan for today (or the latest day before it) <code className="num">{odds.runId}</code> ({shortTime(odds.asOf)}): category odds are the chance to win each
-                category by Sunday given the stats already banked; P(win week) is {odds.method ?? "the plan's estimate"}
+                category by Sunday given the stats already banked; expected cats won (ties ½) is {odds.method ?? "the plan's estimate"}
                 {ex?.mc?.nSims ? ` over ${ex.mc.nSims} simulated weeks` : ""}. Simulated, not fitted
                 {ex?.availability ? `; availability: ${ex.availability}` : ""}.
               </>

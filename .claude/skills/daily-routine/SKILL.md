@@ -140,19 +140,21 @@ is interested in X; details private"). A thread message
   modelled as staying there (warning only, lineup-0.4.1; `inseason stream`/`opportunity` too since inseason-0.3.2 — before that they failed `infeasible_roster` on such an opponent, 2026-11-09 Caruso). `--locked` starters with a game today are taken to play
   (P = 1, `params.locked_p_play`); if one was ruled out at tip-off, re-sync so his tag is O. Read `target_slots` (the full
   final state to reach), `changes_vs_current`, `il_moves`, `decide_at_tipoff` (with `swap_with`), `warnings`, and
-  `expected` (state P(win) together with its `availability_assumption`; rest_share 0.25 is a prior).
+  `expected` (report the week as expected cats won of 9 ± SE — `expected.monte_carlo.plans.optimized.expected_cats` ±
+  `expected_cats_se`, else `expected.optimized.expected_cats` — with its `availability_assumption`; not P(win), user
+  decision 2026-11-15; rest_share 0.25 is a prior).
   For each `decide_at_tipoff` item state its **deadline** (the saved plan's `deadline`: a starting Q player → before his
   own tip-off; a benched Q player → before the tip-off of the starter he would replace, the earliest if several) in
   the daily log AND the final message.
-  Quote P(win week) only from TODAY's plan built on this morning's matchup read (`expected.covers_week: true`). A plan
+  Quote the week's expected cats only from TODAY's plan built on this morning's matchup read (`expected.covers_week: true`). A plan
   saved for a later day on today's read has `covers_week: false`: it scores only that day onwards on top of today's
-  banked stats, so its P(win) is NOT the week's odds (2026-10-21: Sunday's plan showed 8% while today's said 60%).
+  banked stats, so its numbers are NOT the week's outlook (2026-10-21: Sunday's plan showed 8% while today's said 60%).
 - Ratio bench (lineup-0.4.0): the plan output has `ratio_bench` — the protect-ratios plan (bench a player with a game
   whose start would hurt a close FG%/FT% while the counting cats are decided) vs the default, compared by paired Monte
   Carlo (`delta_expected_cats` ± `delta_expected_cats_se`, `delta_p_win`; `suggest` = a bench AND ΔE[cats] > 2·SE AND ≥ 0.05 (priors);
   `benches` lists player-days with `cats_helped`/`cats_hurt`, `starts` the bench players who start instead). **`ratio_bench` is a suggestion only — never apply it on Yahoo**; the
   executor sets `target_slots` (the default plan) as always. Mention it in the daily log and, if `suggest` is true,
-  tell the user (one line, with the ± SE); it needs the user's explicit OK like any non-default lineup choice — then
+  tell the user (one line: ΔE[cats] ± SE); it needs the user's explicit OK like any non-default lineup choice — then
   re-plan with `--protect-ratios` and execute that plan's `target_slots` in the live run. Before executing, check that
   re-plan's `target_slots` benches the suggested player(s) (since lineup-0.4.1 a cycling fixed point returns the best
   visited plan, `fixed_point.picked`; 0.4.0 could return the cycle's other plan and start him).
@@ -167,7 +169,7 @@ is interested in X; details private"). A thread message
   minutes jump (model A vs preseason; no adjustment beyond model A) or with minutes vacated by an Out ≥ 28-mpg
   teammate (driver, source and date in `drivers[].sources`; the only signal with fitted information beyond model A,
   +1.4 ± 0.4 mpg). It gives the opportunity mpg × window and the calibrated window value vs my weakest player. For
-  the top 5 it adds the week ΔP(win) (opportunity minutes on the window's games only) and the season **stream chain**
+  the top 5 it adds the week gain (`week_d_exp_cats`; report it as ΔE[cats], not ΔP(win); opportunity minutes on the window's games only) and the season **stream chain**
   (candidate for his window, then the 6th-best FA; blend + market) with a `verdict`.
   - Present only `helps` as a recommendation, with the usual justification + why-now: the injury (who, source,
     date) and "model A has / has not seen it yet".
@@ -177,7 +179,7 @@ is interested in X; details private"). A thread message
   - Candidates outside the capture's top 50 are "presumed FA": check their status on Yahoo before proposing.
   - `unprojected_risers` (no projection row) = look at them manually.
   - Add only on a `helps` verdict (§4: execute, then report).
-  - **Mid-week its week ΔP(win) ignores banked stats** (no `--accumulated`; learned 2026-10-25: `p_win_before` 0.16
+  - **Mid-week its week numbers ignore banked stats** (no `--accumulated`; learned 2026-10-25: `p_win_before` 0.16
     while the lineup plan on the banked score said 0.98). It now warns "MID-WEEK"; quote its week numbers only on a
     Monday (or cross-check with `fantasy inseason stream --accumulated`); the season chain/verdict is unaffected.
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
@@ -186,7 +188,7 @@ is interested in X; details private"). A thread message
 - **Open spot from an IL move is temporary (learned 2026-10-24):** after moving an O player to IL, `inseason stream`
   pairs with `drop: (none: open spot)` show huge season deltas (+13-15 pp P(playoffs)) because the season sim keeps the
   extra player all season after the IL player returns. Never quote that number: use `fantasy sim compare --add X --drop
-  <who you'd drop on his return>` for the season effect and the stream tool's `week_d_p_win` for the extra games now.
+  <who you'd drop on his return>` for the season effect and the stream tool's week ΔE[cats] (`week_mc.d_exp_cats` ± `d_exp_cats_se`) for the extra games now.
 - **A Q/P player in IL blocks every add (learned 2026-11-01):** once an IL player's tag softens from O to Q, Yahoo refuses
   any add/drop with error #845 ("no longer qualifies for that position") even though the edit form still offers IL. The
   "open spot" is then gone: he counts as an active player, so an add needs a drop of an ACTIVE player (dropping
