@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "sim_version": "season-sim-0.8.1",
+  "team": 1,
+  "n_sims": 4000,
+  "seed": 0,
+  "add": [],
+  "drop": [
+    {
+      "player_id": "derik-queen",
+      "name": "Derik Queen"
+    }
+  ],
+  "p_playoffs": {
+    "before": 0.8455,
+    "after": 0.8387,
+    "delta": -0.0067,
+    "delta_se": 0.0038
+  },
+  "p_title": {
+    "before": 0.1978,
+    "after": 0.2265,
+    "delta": 0.0288,
+    "delta_se": 0.0058
+  },
+  "exp_cat_wins": {
+    "before": 89.0457,
+    "after": 89.1194,
+    "delta": 0.0736,
+    "delta_se": 0.0619
+  },
+  "compute_seconds": 14.39,
+  "notes": [
+    "before: assumes the roster cap releases Kawhi Leonard from ~2027-02-13 (in 54% of sims)",
+    "before: assumes the roster cap releases Derrick Jones Jr. from ~2026-12-30 (in 91% of sims)",
+    "after: assumes the roster cap releases Derrick Jones Jr. from ~2027-02-13 (in 52% of sims)",
+    "after: \u0394 vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~77 IL-replacement games/season in total"
+  ],
+  "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+}

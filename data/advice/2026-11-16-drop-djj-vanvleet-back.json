@@ -1,0 +1,95 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "VanVleet back from IL; dropped Derrick Jones Jr.",
+  "status": "done",
+  "headline": "Done and verified on Yahoo 18:38 ET: dropped Jones (LAC, idle tonight); VanVleet IL→Util for HOU@MIA 19:30, Ware to BN.",
+  "week": 5,
+  "verdict": "VanVleet was cleared, which made the roster illegal (14 healthy for 13 spots). Jones was the cheapest drop of 5 checked.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "ΔP(playoffs) drop Jones (seed 7, 8000)",
+    "value": -0.16,
+    "se": 0.19,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs) drop Queen (seed 7, 8000)",
+    "value": -0.32,
+    "se": 0.27,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs) drop Champagnie (seed 7)",
+    "value": -0.81,
+    "se": 0.25,
+    "unit": "pp",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "ΔP(playoffs) drop Bailey (seed 0, 4000)",
+    "value": -1.12,
+    "se": 0.34,
+    "unit": "pp",
+    "evidence": "simulated"
+   },
+   {
+    "label": "ΔP(playoffs) drop Ware (seed 0, 4000)",
+    "value": -1.6,
+    "se": 0.39,
+    "unit": "pp",
+    "evidence": "simulated"
+   }
+  ],
+  "risks": [
+   "Jones vs Queen is within 2 SE; Jones won both seeds and is the sim's own surplus player.",
+   "Most drops/adds show +2.4–4 pp P(title): likely a sim artefact, under review (needs ≥3 seeds).",
+   "Jones goes to waivers; no waiver-priority cost."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-16.md"
+   },
+   {
+    "label": "Drop compares",
+    "path": "data/processed/verdicts/compare-drop-derrick-jones-jr_2026-11-16T2335Z_seed7.json"
+   }
+  ],
+  "rationale": [
+   "- Yahoo cleared VanVleet (untagged at 18:32; not on ESPN's HOU injury list), so he has to leave IL and someone has to go.",
+   "- Paired season sims (fantasy sim compare --drop): Jones costs least on P(playoffs) in both seeds (noise) and 0 on P(title).",
+   "- Jones has no game tonight; VanVleet plays tonight, so the swap adds a game now."
+  ],
+  "why_now": {
+   "before": "This morning Jones was added for Marshall as a stream (+0.8 ± 0.37 pp P(playoffs)), with the plan to drop someone when VanVleet returned.",
+   "changed": [
+    {
+     "text": "VanVleet's O tag cleared this afternoon (Yahoo 18:32 re-read), earlier than the sim's return estimate.",
+     "kind": "news"
+    }
+   ],
+   "evidence": [
+    "ΔP(playoffs) drop Jones (seed 7, 8000)",
+    "ΔP(playoffs) drop Queen (seed 7, 8000)"
+   ]
+  }
+ },
+ "params": {
+  "drop": "derrick-jones-jr",
+  "drop_yahoo_player_id": 5747,
+  "txn_id": "txn-c18f32879312458daa525671c26dd011",
+  "then": "lineup txn-96d6d629aead479296c24231c2c0e8bf (VanVleet IL->BN->Util, Ware Util->BN), plan lp-2026-11-16-d495a78ae3ba",
+  "tool": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --drop <x> --sims 4000|8000 --seed 0|7 --no-save --json"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "roster_capture": "data/raw/yahoo/league_rosters_2026-11-16T2340Z.json"
+ }
+}
