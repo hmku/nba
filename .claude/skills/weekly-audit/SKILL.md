@@ -21,7 +21,7 @@ export FANTASY_RUN_ID=$(fantasy run start --agent weekly-audit --task "weekly au
 ```
 - If a `live` run is active or `yahoo:*` locks are held, still proceed (you don't touch Yahoo) but don't push projection
   CSV changes while the daily/tip-off run is mid-flight (check `fantasy status`; wait or skip step 5's republish).
-- Read last week's audit (`docs/research/weekly_audit_*.md`, newest) and its open candidate fixes; `fantasy task list`.
+- Read last week's audit (`docs/research/weekly_audit_*.md`, newest; before the first one: `bias_audit_2026-11-09.md`) and its open candidate fixes; `fantasy task list`.
 - Box scores through Sunday: `fantasy data fetch-boxscores` (incremental; the daily run usually did it).
 
 ## 1. Audit (deterministic scripts)
