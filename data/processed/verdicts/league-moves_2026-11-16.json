@@ -1,0 +1,134 @@
+{
+ "date": "2026-11-16",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-16_premove_league.json",
+ "runs": [
+  {
+   "command": "fantasy sim compare --league-file <premove> --add cam-spencer --drop naji-marshall --sims 4000 --no-save --json",
+   "result": {
+    "seed": 0,
+    "n_sims": 4000,
+    "add": [
+     {
+      "player_id": "cam-spencer",
+      "name": "Cam Spencer"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "naji-marshall",
+      "name": "Naji Marshall"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.833,
+     "after": 0.846,
+     "delta": 0.013,
+     "delta_se": 0.0041
+    },
+    "p_title": {
+     "before": 0.1993,
+     "after": 0.2182,
+     "delta": 0.019,
+     "delta_se": 0.0054
+    },
+    "exp_cat_wins": {
+     "before": 88.6561,
+     "after": 89.2331,
+     "delta": 0.577,
+     "delta_se": 0.0678
+    },
+    "notes": [
+     "before: assumes the roster cap releases Kawhi Leonard from ~2027-02-13 (in 54% of sims)",
+     "before: assumes the roster cap releases Naji Marshall from ~2026-12-29 (in 91% of sims)",
+     "after: assumes the roster cap releases Reed Sheppard from ~2027-01-02 (in 79% of sims)",
+     "after: assumes the roster cap releases Kawhi Leonard from ~2027-02-02 (in 67% of sims)"
+    ]
+   }
+  },
+  {
+   "command": "... --seed 7",
+   "result": {
+    "seed": 7,
+    "n_sims": 4000,
+    "add": [
+     {
+      "player_id": "cam-spencer",
+      "name": "Cam Spencer"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "naji-marshall",
+      "name": "Naji Marshall"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8385,
+     "after": 0.8488,
+     "delta": 0.0103,
+     "delta_se": 0.0041
+    },
+    "p_title": {
+     "before": 0.196,
+     "after": 0.2167,
+     "delta": 0.0208,
+     "delta_se": 0.0055
+    },
+    "exp_cat_wins": {
+     "before": 88.6068,
+     "after": 89.2576,
+     "delta": 0.6509,
+     "delta_se": 0.0693
+    },
+    "notes": [
+     "before: assumes the roster cap releases Kawhi Leonard from ~2027-02-14 (in 53% of sims)",
+     "before: assumes the roster cap releases Naji Marshall from ~2026-12-30 (in 91% of sims)",
+     "after: assumes the roster cap releases Reed Sheppard from ~2027-01-02 (in 79% of sims)",
+     "after: assumes the roster cap releases Kawhi Leonard from ~2027-02-04 (in 66% of sims)"
+    ]
+   }
+  },
+  {
+   "command": "fantasy sim compare --league-file <premove> --add tyrese-proctor --drop naji-marshall --sims 4000 --no-save --json",
+   "result": {
+    "seed": 0,
+    "n_sims": 4000,
+    "add": [
+     {
+      "player_id": "tyrese-proctor",
+      "name": "Tyrese Proctor"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "naji-marshall",
+      "name": "Naji Marshall"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.833,
+     "after": 0.8355,
+     "delta": 0.0025,
+     "delta_se": 0.0034
+    },
+    "p_title": {
+     "before": 0.1993,
+     "after": 0.2008,
+     "delta": 0.0015,
+     "delta_se": 0.0033
+    },
+    "exp_cat_wins": {
+     "before": 88.6561,
+     "after": 88.8155,
+     "delta": 0.1594,
+     "delta_se": 0.0414
+    },
+    "notes": [
+     "before & after: assumes the roster cap releases Kawhi Leonard from ~2027-02-13 (in 54% of sims)",
+     "before: assumes the roster cap releases Naji Marshall from ~2026-12-29 (in 91% of sims)",
+     "after: assumes the roster cap releases Tyrese Proctor from ~2027-01-01 (in 90% of sims)"
+    ]
+   }
+  }
+ ]
+}

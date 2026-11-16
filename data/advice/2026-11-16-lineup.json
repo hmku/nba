@@ -1,0 +1,44 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Mon 11-16: lineup = plan; week 5 vs Waiver Warrior starts",
+  "status": "done",
+  "headline": "Week 4 won 6-3. Week 5 vs Waiver Warrior: 5.7 of 9 expected cats (analytic).",
+  "week": 5,
+  "verdict": "Yahoo matches today's plan after one move (Ware into the Util spot Marshall left). 7 of 10 starters play today.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 5", "value": 5.71, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.845, "se": 0.0033, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.194, "se": 0.0036, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats is the analytic approximation (no SE) with availability priors (rest_share 0.25).",
+   "We have 37 games this week vs their 39.",
+   "Season odds down from 85.9/23.2 % (11-15): new projections, rivals adds; banked wins not in sim (T-018)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-16.md"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-16-bf8d51ff8b68: Ware BN->Util (no game today; fills the empty slot); verified 15/15.",
+   "- Muse's overnight swaps (Clingan, Queen, Fears in) already matched the plan.",
+   "- VanVleet and Leonard stay in IL (both O on Yahoo)."
+  ],
+  "why_now": {
+   "before": "Sun 11-15: lineup = plan, 6-3 lead going into the last day.",
+   "changed": [
+    {"text": "New week (5) and a new opponent; Marshall dropped for Derrick Jones Jr. this morning.", "kind": "schedule"}
+   ],
+   "evidence": ["Exp. cats won week 5"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-16-bf8d51ff8b68",
+  "lineup_record": "la-2026-11-16-3d5059fb705f",
+  "matchup_score": "ms-w5-2026-11-16-fff5717b1d3a",
+  "season_sim": "sim-20261116135531-4838ff",
+  "lineup_txn": "txn-c70ac536f7fd490e87dfcb9143a1de93"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-16.json"}
+}

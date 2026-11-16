@@ -1,0 +1,46 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Added Derrick Jones Jr., dropped Naji Marshall",
+  "status": "done",
+  "headline": "Done and verified on Yahoo 08:55 ET: +Derrick Jones Jr. (LAC), -Naji Marshall (DAL). Neither plays Monday.",
+  "week": 5,
+  "verdict": "Our stream tool rates Jones above Marshall for the rest of the season under both projection sets. Small gain; 1 of 6 adds used.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "ΔP(playoffs) season (blend)", "value": 0.8, "se": 0.37, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs) season (market)", "value": 1.2, "se": 0.37, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔE[cats] week 5", "value": 0.06, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) season (blend)", "value": -0.75, "se": 0.44, "unit": "pp", "evidence": "simulated"}
+  ],
+  "risks": [
+   "ΔP(title) leans negative under the blend projections (-0.75 ± 0.44 pp, within noise).",
+   "When VanVleet (O, in IL) returns, another drop is needed.",
+   "No waiver-priority cost (Jones was a free agent)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-16.md"},
+   {"label": "Stream verdict", "path": "data/processed/verdicts/stream_2026-11-16.json"}
+  ],
+  "rationale": [
+   "- inseason stream (4000 week sims, paired season sims): Jones-for-Marshall is the only pair beating 2 SE on season odds under blend and market.",
+   "- Marshall is my lowest-value player now that week 4's extra games are over.",
+   "- Rival check agrees: Cam Spencer-for-Marshall would have added +1.0..1.3 ± 0.4 pp P(playoffs)."
+  ],
+  "why_now": {
+   "before": "Sat 11-14: Marshall added into VanVleet's IL spot for week 4's last 2 games (+20 pp P(win wk4)); plan was to drop him when VanVleet returns.",
+   "changed": [
+    {"text": "Week 4 is over (won 6-3), so Marshall's short-term value is gone.", "kind": "schedule"},
+    {"text": "Today's stream run (ros-proj as_of 11-16) ranks Jones above Marshall beyond noise; it had no such pair on 11-15.", "kind": "model"}
+   ],
+   "evidence": ["ΔP(playoffs) season (blend)", "ΔP(playoffs) season (market)"]
+  }
+ },
+ "params": {
+  "add": "derrick-jones-jr", "add_yahoo_player_id": 5747, "drop": "naji-marshall", "drop_yahoo_player_id": 6499,
+  "txn_id": "txn-acd6d38450154c4d80536d7c4dddc493",
+  "then": "lineup txn-c70ac536f7fd490e87dfcb9143a1de93 (Ware BN->Util, empty slot)",
+  "tool": "fantasy inseason stream --date 2026-11-16 --free-agents data/raw/yahoo/free_agents_2026-11-16.json --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-16.json"}
+}
