@@ -18,4 +18,7 @@ See docs/research/season_simulator.md for the model and docs/research/sim_calibr
 #        Out) is released from the day an IL player returns; IL replacement only fills below 13 healthy non-IL;
 #        league-file Yahoo Out players start in a spell (`--no-roster-cap` reproduces 0.7.0; il_replacement.md)
 # 0.8.1: il_rep_availability fitted 0.85 -> 0.84 (il_replacement.md)
-SIM_VERSION = "season-sim-0.8.1"
+# 0.9.0: lineup priority and roster-cap release order use per-game value (`engine.priority_values`), not season value:
+#        0.8.x ranked an Out star last on his team (season value charges projected absences), benched him behind
+#        everyone on his return and released him (Leonard in 54% of sims, 2026-11-16; il_replacement.md)
+SIM_VERSION = "season-sim-0.9.0"

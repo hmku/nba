@@ -29,7 +29,7 @@ import pandas as pd
 
 from fantasy.inseason.lineup import LineupSolver, bool_from_masks, masks_from_bool
 from fantasy.model.lines import parse_positions
-from fantasy.sim.engine import SeasonSimulator, SimParams, SimResult
+from fantasy.sim.engine import SeasonSimulator, SimParams, SimResult, priority_values
 from fantasy.sim.league import LeagueState
 
 if TYPE_CHECKING:
@@ -118,7 +118,7 @@ class PositionAwareSimulator(SeasonSimulator):
             return
         health = arr["health"]  # (N, P+1, D)
         pidx = {p: i for i, p in enumerate(pids)}
-        val = self.values["value"] if "value" in self.values else None
+        val = priority_values(self.values) if "value" in self.values else None  # same order as the engine
         slots = self.settings.starting_slots
         for t in league.team_ids:
             ps = [p for p in dict.fromkeys(league.rosters[t]) if p in pidx]

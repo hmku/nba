@@ -9,7 +9,7 @@ from fantasy.draft.order import draft_order
 from fantasy.league.settings import LeagueSettings
 from fantasy.model.lines import load_projections
 from fantasy.sim.context import build_context
-from fantasy.sim.engine import SimParams, bracket_positions
+from fantasy.sim.engine import SimParams, bracket_positions, priority_values
 from fantasy.sim.league import LeagueState, complete_rosters, from_draft, from_json
 from fantasy.sim.schedule import (
     allstar_break,
@@ -607,7 +607,7 @@ def test_il_replacement_position_aware(ctx):
 def test_il_replacement_is_default_since_0_6_0():
     from fantasy.sim import SIM_VERSION
     assert SimParams().il_replacement is True
-    assert SIM_VERSION == "season-sim-0.8.1"
+    assert SIM_VERSION == "season-sim-0.9.0"
 
 
 # ---------------------------------------------------------------- roster cap (season-sim-0.8.0)
@@ -626,7 +626,7 @@ def _capped_league(ctx, extra=True, gp_out=55.0):
 
 
 def _value_rows(sim, lg, t):
-    val = sim.values["value"]
+    val = priority_values(sim.values)
     return sorted(dict.fromkeys(lg.rosters[t]), key=lambda p: -float(val.get(p, -99.0)))
 
 
@@ -663,6 +663,36 @@ def test_roster_cap_13_plus_il_only_13_non_il_after_return(ctx):
     for n in np.flatnonzero(rel.any(axis=1))[:40]:
         r_ = int(np.flatnonzero(rel[n])[0])
         assert not arr["health"][n, js[r_], int(dd[n, r_]):].any()
+
+
+def test_roster_cap_keeps_injured_star_releases_worst_per_game(ctx):
+    """season-sim-0.9.0 regression (2026-11-16, Leonard): a star listed out with few projected games has the lowest
+    SEASON value on his team, but is never the one released on his return; lineup rows follow per-game value."""
+    lg = _snake_league(ctx)
+    df = ctx.proj.df.copy()
+    star = sorted(lg.rosters[1], key=lambda p: -float(priority_values(ctx.values).get(p, -99.0)))[2]
+    df.loc[star, "status"] = "out"
+    df.loc[star, "gp"] = 3.0  # season value collapses, per-game value does not
+    taken = {p for ps in lg.rosters.values() for p in ps}
+    fa = next(p for p in ctx.values.sort_values("value", ascending=False).index if p not in taken)
+    lg.rosters[1] = lg.rosters[1] + [fa]
+    from fantasy.model.lines import ProjectionSet
+    from fantasy.model.valuation import compute_values
+    from fantasy.sim.engine import SeasonSimulator
+
+    values, _, repl = compute_values(ProjectionSet(df=df, path=ctx.proj.path, sha256=ctx.proj.sha256), ctx.settings)
+    sim = SeasonSimulator(df, values, repl, ctx.settings, ctx.nba, ctx.calendar, ctx.matchups,
+                          _params(n_sims=200, il_replacement=True))
+    season, per_game = sim.values["value"], priority_values(sim.values)
+    mates = [p for p in lg.rosters[1] if p != star]
+    assert season[star] < min(season[p] for p in mates)  # the trap: last by season value
+    assert per_game[star] > sorted(per_game[p] for p in mates)[-3]  # still top-3 per game
+    r = sim.run(lg)
+    rows, D = r.cap_rosters[0], len(sim.fdays)
+    assert rows == _value_rows(sim, lg, 1) and rows.index(star) <= 2
+    dd = r.cap_drop_day[:, 0, :14]
+    assert (dd < D).any(axis=1).mean() > 0.1  # releases happen
+    assert (dd[:, rows.index(star)] == D).all()  # never the star
 
 
 def test_roster_cap_never_binds_at_13(ctx):

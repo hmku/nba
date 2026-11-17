@@ -17,13 +17,25 @@ disagreement. No pickup clears the `helps` rule tonight.
   - Week-only gains come only from dropping Leonard (+0.3 ΔE[cats]), at about −2 pp P(title). Not done.
   - +Mamukelashvili (waiver, Nov 19) for Sheppard: P(title) +3.5 ± 0.8 pp, P(playoffs) −0.9 ± 0.5.
 
-## Open / suspicious
-- **Possible season-sim roster-cap artefact.**
-  - Dropping a player with no add raises P(title): drop Ware gives +4.1 ± 0.6 pp, while P(playoffs) moves −1.6 ± 0.4
-    (`verdicts/compare-drop-kelel-ware_2026-11-16T2335Z.json`).
-  - The base sim releases Leonard in about 54% of sims around 2027-02-13. The cap releases the "lowest-value not Out"
-    player, which seems to pick an injured star over Sheppard or Ware.
-  - Every title delta from `sim compare` and `stream` that involves our roster count is suspect until this is checked
-    (`engine._apply_roster_cap`, `docs/research/il_replacement.md`).
+## Sim bug fixed: season-sim-0.9.0 (per-game lineup and release order)
+- **Cause:** the engine ordered roster rows by season `value`, which charges projected absences. Leonard (gp 27.4,
+  season value 0.71 = our lowest; per-game 2nd best) was last in lineup priority and was the player the roster cap
+  released on his return (54% of sims).
+- **Fix:** `compute_values` adds `value_per_game`; `engine.priority_values` is used for row order in the engine and in
+  `inseason/possim.py`. `tradeeval.pre_trade_league` no longer picks an Out player as the fallback drop.
+- **Evidence** (4000 paired sims): drop Ware with no add went from P(title) +4.1 ± 0.6 pp to −0.7 ± 0.5 pp, and
+  P(playoffs) from −1.6 ± 0.4 to −3.6 ± 0.4. The cap now releases Queen.
+- **Season re-sim** (12k, same rosters as tonight's 0.8.1 run `sim-20261116234434-82fdc3`):
+  `sim-20261117040918-777268`, P(playoffs) 84.7 → 85.7%, P(title) 19.2 → 22.0%.
+- **Week plan:** not re-run. `lineup plan` has its own per-game ranking and does not use the changed code.
+- **Checks:** quant-reviewer OK; new test `test_roster_cap_keeps_injured_star_releases_worst_per_game` (fails under
+  the old order); pytest, ruff and mypy green.
+- **Context updated:** `season-sim` skill (sanity check: a drop with no add must not raise P(title) or P(playoffs)),
+  `il_replacement.md`, `season_simulator.md`, version strings in STATUS / ARCHITECTURE / in-season-ops / league-loop.
+- **Follow-ups:** T-031 (trade screen and lineup command priority; Out/IL players among default drop candidates).
+
+## Open
+- **Leonard's in-season gp rate (27.4 of 82) looks pessimistic** against news of a late-November return. Check
+  ros-avail and the manual override.
 - **In-season file has VanVleet `out`** (11-16). He was cleared today; the next morning's rebuild should fix it.
   Sheppard's projected mpg (23.1) still assumes VanVleet is out.

@@ -112,6 +112,15 @@ def compute_values(
     scores = _cat_scores(eff, pool, settings, params.kappa)
     total = (scores * weights).sum(axis=1)
     repl_value = total.loc[order[n_pool : n_pool + params.replacement_band]].mean()
+    # Per-game value (availability 1): what a player is worth on a day he is healthy. Season `value` charges a player
+    # for games he is projected to miss, so an injured star can rank below a bench player; rankings of *healthy*
+    # players (who starts today, who is released when a roster is over the cap) must use this one instead.
+    # Ranking use only (not on the scale of `value`); `lineup.plan.generic_per_game_values` is a near-identical
+    # second definition (Spearman 0.99995) kept for the lineup optimizer.
+    # (2026-11-16: the season sim released Kawhi Leonard on his return because his season value was our lowest).
+    eff_pg = effective_lines(df, replacement, params.stream_recovery, avail=np.ones(len(df)))
+    total_pg = (_cat_scores(eff_pg, pool, settings, params.kappa) * weights).sum(axis=1)
+    repl_pg = total_pg.loc[order[n_pool : n_pool + params.replacement_band]].mean()
     values = pd.DataFrame(
         {
             "name": df["name"],
@@ -121,6 +130,7 @@ def compute_values(
             "adp": df["adp"],
             "status": df["status"],
             "value": total - repl_value,
+            "value_per_game": total_pg - repl_pg,
         }
     )
     values = values.join(scores)

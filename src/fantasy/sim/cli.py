@@ -66,7 +66,7 @@ ILOpt = Annotated[bool, typer.Option(
 ILDaysOpt = Annotated[float, typer.Option("--il-min-spell-days", help="Shortest spell (days) that triggers an IL move (prior 7)")]
 CapOpt = Annotated[bool, typer.Option(
     "--roster-cap/--no-roster-cap",
-    help="Enforce 13 non-IL players: surplus (lowest value) released when an IL player returns (default since "
+    help="Enforce 13 non-IL players: surplus (lowest per-game value) released when an IL player returns (default since "
          "season-sim-0.8.0; --no-roster-cap reproduces 0.7.0)")]
 
 

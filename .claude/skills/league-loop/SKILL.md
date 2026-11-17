@@ -40,7 +40,7 @@ snapshots really are. A cloud scheduled task is created with the `create_trigger
 | History / one item | `fantasy intel list --since 2d --rest --json`, `fantasy intel show <snap_id> --rest --json` | BUILT |
 | Ops state (open txns, approvals, stale runs) | `fantasy txn list --rest`, `txn reconcile --rest`, `approval list --status all --rest`, `run list --rest` (`fantasy status` itself is local-DB only) | BUILT |
 | League settings (max adds/week, IL slots, lock type) | `fantasy settings show --json` | BUILT |
-| Season / week odds | `fantasy sim season`, `fantasy sim matchup --week N`, `fantasy sim compare --add .. --drop ..` | BUILT (`season-sim-0.8.1`, IL replacement + roster cap on by default; `--league-file data/manual/league_rosters_2026-27.json`) |
+| Season / week odds | `fantasy sim season`, `fantasy sim matchup --week N`, `fantasy sim compare --add .. --drop ..` | BUILT (`season-sim-0.9.0`, IL replacement + roster cap on by default; `--league-file data/manual/league_rosters_2026-27.json`) |
 | Rosters from Yahoo (local browser capture) | `scripts/yahoo/capture_rosters.js` -> `fantasy league import-capture --kind rosters` -> `fantasy league sync --capture .. [--write]` | BUILT (T-004; runbook `docs/runbooks/roster_sync.md`; run by the `daily-routine` skill) |
 | Rest-of-season player values | `fantasy values build --json`, `fantasy data top` | BUILT (season-long, not schedule-aware) |
 | Muse snapshot -> `rosters.json` converter (cloud path without a browser) | `fantasy intel export-league` | PLANNED (Yahoo's real schedule is already in `data/manual/league_schedule.json`) |

@@ -36,6 +36,13 @@ spells. Found 2026-10-24: our team with 14 (Podziemski on IL) had P(playoffs) 0.
 bench = 13; IL slots = settings `roster_slots["IL"]` = 3; `engine._apply_roster_cap`).** On each fantasy day, per team:
 - *Out* = rostered and inside an IL-qualifying spell (>= `il_min_spell_days`, or any spell of a player who starts
   the season listed out). Up to `il_slots` Out players sit in IL.
+- **season-sim-0.9.0 (2026-11-16): "lowest-value" means lowest PER-GAME value** (`engine.priority_values`,
+  `value_per_game` from `compute_values`), for the release order and the daily lineup priority. 0.8.x used season
+  value, which charges a player for projected absences: Leonard (in-season gp 27.4, season value 0.71 = our lowest,
+  per-game 2nd best) was benched behind everyone on return and released in 54% of sims. Symptom: `sim compare --drop
+  kelel-ware` with no add showed P(title) +4.1 ± 0.6 pp. After the fix: −0.7 ± 0.5 pp, base P(title) 19.8% → 23.0%
+  (4000 sims, simulated); the cap now releases Queen. **Check for this class of bug: a drop with no add must not
+  raise P(title) or P(playoffs).**
 - If rostered − min(#Out, il_slots) > 13, the lowest-value players (same value order as the daily lineup) that are
   not Out are **released for the rest of the season** from that day. Released players never return.
 - So for 13 + 1 IL: when the IL player's spell ends, the 14th-best goes; if another player is Out that day the team

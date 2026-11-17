@@ -39,7 +39,7 @@ numbers for everyone else):
    may hold `active_roster` (settings starters + bench = 13) non-IL players plus up to `il_slots` players who are
    Out. On every fantasy day, a rostered player inside an IL-qualifying spell (>= `il_min_spell_days`, or any spell
    of a player who starts the season listed out) occupies an IL slot; if the team's other rostered players exceed
-   `active_roster`, its lowest-value ones (same value order as the lineup) that are not Out are released for the
+   `active_roster`, its lowest per-game-value ones (lineup order, `priority_values`) that are not Out are released for the
    rest of the season from that day (e.g. 13 + 1 IL: when the IL player's spell ends, the 14th-best goes; if the
    spell runs to the end of the window nobody goes). Released players never come back; later injuries are covered
    by IL replacement. IL replacement only fills an Out player's slot when the team has fewer than `active_roster`
@@ -173,7 +173,7 @@ class SimResult:
     il_games: np.ndarray | None = None  # (N, W, T) IL-replacement games counted (None when il_replacement is off)
     il_slot_days: np.ndarray | None = None  # (N, W, T) IL slots occupied, summed over the week's days
     cap_drop_day: np.ndarray | None = None  # (N, T, R) fantasy-day index a roster row is released (D = never)
-    cap_rosters: list[list[str]] | None = None  # roster rows (value order) that cap_drop_day refers to
+    cap_rosters: list[list[str]] | None = None  # roster rows (per-game value order) that cap_drop_day refers to
 
     @property
     def n(self) -> int:
@@ -184,6 +184,17 @@ class SimResult:
 
     def tindex(self, team: int) -> int:
         return self.team_ids.index(team)
+
+
+def priority_values(values: pd.DataFrame) -> pd.Series:
+    """Ranking of players who are healthy on a given day: who starts and who is released under the roster cap.
+    Per-game value (`value_per_game`, availability 1) when the valuation provides it, else season `value`.
+    Season value must not be used here: it charges a player for projected absences, so an Out star ranked last on
+    his own team and was released on his return (season-sim <= 0.8.1; fixed in 0.9.0, 2026-11-16)."""
+    for col in ("value_per_game", "value"):
+        if col in values:
+            return values[col]
+    return pd.Series(dtype=float)
 
 
 class SeasonSimulator:
@@ -372,8 +383,8 @@ class SeasonSimulator:
         team_ids = league.team_ids
         T = len(team_ids)
         warnings: list[str] = []
-        # roster rows ordered by projected value (lineup priority)
-        val = self.values["value"] if "value" in self.values else pd.Series(dtype=float)
+        # roster rows ordered by per-game value (lineup priority and roster-cap release order)
+        val = priority_values(self.values)
         rosters = []
         for t in team_ids:
             ps = list(dict.fromkeys(league.rosters[t]))
@@ -502,7 +513,7 @@ class SeasonSimulator:
             if over:
                 warnings.append(
                     f"roster cap (season-sim-0.8.0): teams {over} carry more than {self.active_roster} players; the "
-                    "surplus (lowest value, not Out) is released when an IL player returns (docs/research/il_replacement.md)")
+                    "surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)")
         res.seconds = time.perf_counter() - t0
         return res
 
@@ -518,7 +529,7 @@ class SeasonSimulator:
     def _apply_roster_cap(self, arr: dict[str, np.ndarray], idx: np.ndarray, memTR: np.ndarray) -> np.ndarray:
         """Release surplus players (step 4c). Returns drop_day (N, T, R): fantasy-day index from which roster row
         (t, r) is released (D = never). Clears the released players' health and IL intervals from that day on.
-        Rows of idx are in value order (best first), so the lowest-value candidates are the last rows."""
+        Rows of idx are in per-game value order (best first), so the lowest-value candidates are the last rows."""
         N, (T, R, D) = self.p.n_sims, memTR.shape
         drop_day = np.full((N, T, R), D, dtype=np.int32)
         capped = [ti for ti in range(T) if memTR[ti].sum(axis=0).max() > self.active_roster]

@@ -89,7 +89,10 @@ def pre_trade_league(league: LeagueState, my_team: int, trade: Trade, move: Move
     if move.drop not in trade.give:
         return apply_move(league, my_team, move), f"free move {move.add} for {move.drop}"
     val = values["value"]
-    rest = [p for p in league.rosters[my_team] if p not in trade.give]
+    # Out players are never the fallback drop: season value charges their absence, so an Out star would rank last
+    # (same trap as the season sim's roster cap before season-sim-0.9.0; trade.py excludes out_now the same way)
+    rest = [p for p in league.rosters[my_team] if p not in trade.give and p not in league.out_now] or [
+        p for p in league.rosters[my_team] if p not in trade.give]
     alt = min(rest, key=lambda p: float(val.get(p, -99.0)))
     if float(val.get(move.add, -99.0)) > float(val.get(alt, -99.0)):
         return apply_move(league, my_team, Move(move.add, alt)), f"free move {move.add} for {alt} ({move.drop} traded)"
