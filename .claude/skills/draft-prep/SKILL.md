@@ -27,6 +27,11 @@ Deterministic from `data/raw/` + `data/manual/`; if `git diff data/processed` is
 Re-check news for top-150 players (injuries, trades since 2026-10-18) and encode changes per the
 `projections-update` skill (`data/manual/player_overrides_2026_27.csv`).
 
+**Adverse-selection check (2026-11-16):** players our model ranks far above their ADP lost minutes against projection
+(−0.19 ± 0.05 mpg per 10 spots; `docs/research/adverse_selection_2026-11-16.md`). The market prices depth-chart and role
+news that our projections lack. For any player we rank more than 30 spots ahead of ADP, check preseason role news before
+treating him as a bargain (2026 cases: Ware, Sheppard, Queen).
+
 ## 2. Close the ADP / position gap
 Since 2026-10-18 Yahoo ADP covers ~293 players and Yahoo positions the top 250 (`fantasy data fetch-yahoo --apply`
 writes `data/manual/adp_yahoo_2026_27.csv`); blanks fall back to `model rank * 1.15 + 3` in
