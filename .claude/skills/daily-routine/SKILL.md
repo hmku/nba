@@ -259,7 +259,9 @@ move, never log its `crumb` field. **Verified procedure (2026-10-20, first live 
   The first click right after the page loads can be ignored (no `swapactive`, server unchanged; 2026-11-10): if no row
   is `swapactive`, click the same player again — never click a target without `swapactive`.
   After a completed swap the moved-out row can keep a stale `swapactive` class (2026-11-12): reload the page before
-  the next swap so a click doesn't act on a phantom selection.
+  the next swap so a click doesn't act on a phantom selection. Right after that reload Yahoo's roster JS may not be
+  attached yet (2026-11-17: labels showed as `generic` not `button`, the two empty BN/IL rows were missing): wait
+  ~2.5 s, re-label, and check 16 rows with `role=button` before clicking.
 - Plan the moves as swaps (e.g. C-only player out: swap with a C-eligible starter, then swap that one to BN).
 - After each click, re-read the SERVER state: `fetch('/nba/44495/11/team?&date=$D',{cache:'no-store'})` and parse rows
   (player:slot). Also re-read today's date if you edited a future date (it must be unchanged).

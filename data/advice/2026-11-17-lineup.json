@@ -1,0 +1,44 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Tue 11-17: Brunson and Bailey in; week 5 lead 7-2",
+  "status": "done",
+  "headline": "Lineup set and verified. Week 5 vs Waiver Warrior: 5.6 of 9 expected cats (analytic).",
+  "week": 5,
+  "verdict": "Brunson and Bailey start tonight; VanVleet and Queen sit. No add or drop cleared the helps rule.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 5", "value": 5.64, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.872, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.219, "se": 0.0038, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats is the analytic approximation (no SE) with availability priors (rest_share 0.25).",
+   "They have 35 games left this week vs our 26; TO, 3PTM, FT% and STL are the weak categories.",
+   "Season odds use today's projections; banked wins are not in the sim yet (T-018)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-17.md"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-17-383c0cdb1024: Brunson BN->Util, Bailey BN->F (both play tonight).",
+   "- VanVleet and Queen to BN per the plan; verified 14/14 by a server re-read.",
+   "- Stream tool: no recommendation; opportunity detector: no helps verdict."
+  ],
+  "why_now": {
+   "before": "Mon 11-16: VanVleet back from IL into Util; Brunson and Bailey idle on the bench.",
+   "changed": [
+    {"text": "Tuesday's schedule: NYK and UTA play; banked score 7-2 after Monday.", "kind": "schedule"}
+   ],
+   "evidence": ["Exp. cats won week 5"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-17-383c0cdb1024",
+  "lineup_record": "la-2026-11-17-e59a74f16d09",
+  "matchup_score": "ms-w5-2026-11-17-070951223770",
+  "season_sim": "sim-20261117122624-31a984",
+  "lineup_txn": "txn-5b3ed8c075cc4f31b236dc294cc14f5d"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-17.json"}
+}
