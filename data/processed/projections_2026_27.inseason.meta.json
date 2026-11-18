@@ -1,7 +1,7 @@
 {
   "model_version": "ros-proj-0.6.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0+pop-prior-0.1",
-  "as_of": "2026-11-17",
-  "git_sha": "a2d1d6c",
+  "as_of": "2026-11-18",
+  "git_sha": "e43f1e5",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
   "prior_sha256": "a0205014b07faa9a2ccbbbb7741b7e4fc382368baaf9ee2699589d30412d2bac",
@@ -102,7 +102,7 @@
   },
   "population_prior": {
     "version": "pop-prior-0.1",
-    "summary": "population rows: 92 (top by mpg: meleek-thomas 23.2, aday-mara 22.2, ryan-conwell 21.2, mo-bamba 20.8, trey-lyles 19.1)",
+    "summary": "population rows: 92 (top by mpg: meleek-thomas 23.2, aday-mara 22.2, mo-bamba 21.9, ryan-conwell 21.2, trey-lyles 20.8)",
     "prior": {
       "mpg": 14.9,
       "fga": 0.3047,
@@ -223,14 +223,14 @@
     "players": 46,
     "games": 1.0
   },
-  "status": "injury feed fetched 2026-11-17",
+  "status": "injury feed fetched 2026-11-18",
   "playoff_share": {
-    "remaining_schedule": 0.1556,
+    "remaining_schedule": 0.1575,
     "season_schedule": 0.1283,
-    "remaining_used": 0.1818,
+    "remaining_used": 0.184,
     "season_used": 0.15
   },
-  "latest_box_score_date": "2026-11-16",
+  "latest_box_score_date": "2026-11-17",
   "warnings": [
     "48 projected players never in a box score although their team played >= 3 games (injured, waived or an id mismatch?): aaron-holiday, adama-alpha-bal, amir-coffey, andersson-garcia, bez-mbeng, bruce-brown, cam-thomas, cameron-payne, cody-martin, cole-anthony, cormac-ryan, dangelo-russell, daquan-jeffries, dariq-whitehead, dejon-jarreau"
   ],
@@ -241,33 +241,33 @@
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
-      "sha256": "296ea832200e87801fa2b215fff12d9ee0efa6394de5a0f2014bd5b6f170de6e"
+      "sha256": "47687ac1a836c07fc4a125afbbad63cb61f4d45ef93e80529ab95164c70a0abd"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/team_games_2027.csv.gz",
-      "sha256": "7cc5abf91c13a8dc6298fadcf55b42898639b9ac530b06ed3b5057be84de83fd"
+      "sha256": "90910f09ac4f46338b7664e33d67ca7dac6af432275f27522f9aad1e1ef1192f"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
       "sha256": "221d86ba5dd684378d857e8019a9a8b6fc4da48a75275fcd98cb0cbb9288d1e0"
     }
   ],
-  "sha256": "3bc2eb0345464f75134a67d7d506d3d0543263950862291121ab0e3cf7bdaa20",
+  "sha256": "3e8c9c8918ba193b3458d44ad6f8079c1b161407ad7a38a6a5d19c4aab94cf01",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": [
-      "adou-thiero",
       "jalen-wilson",
-      "jaron-pierre-jr"
+      "jaron-pierre-jr",
+      "malachi-smith"
     ]
   },
   "movers": [
     {
       "player_id": "bruce-brown",
       "gp_preseason": 59.1,
-      "gp": 22.4,
+      "gp": 21.6,
       "played": 0,
-      "team_games": 13
+      "team_games": 14
     },
     {
       "player_id": "kevin-porter-jr",
@@ -284,6 +284,13 @@
       "team_games": 14
     },
     {
+      "player_id": "tobias-harris",
+      "gp_preseason": 55.3,
+      "gp": 19.9,
+      "played": 0,
+      "team_games": 15
+    },
+    {
       "player_id": "dominick-barlow",
       "gp_preseason": 54.6,
       "gp": 19.5,
@@ -291,11 +298,11 @@
       "team_games": 15
     },
     {
-      "player_id": "tobias-harris",
-      "gp_preseason": 55.3,
-      "gp": 20.6,
+      "player_id": "nicolas-batum",
+      "gp_preseason": 52.9,
+      "gp": 19.4,
       "played": 0,
-      "team_games": 14
+      "team_games": 13
     },
     {
       "player_id": "rob-dillingham",
@@ -310,13 +317,6 @@
       "gp": 18.8,
       "played": 0,
       "team_games": 13
-    },
-    {
-      "player_id": "nicolas-batum",
-      "gp_preseason": 52.9,
-      "gp": 20.1,
-      "played": 0,
-      "team_games": 12
     },
     {
       "player_id": "guerschon-yabusele",
