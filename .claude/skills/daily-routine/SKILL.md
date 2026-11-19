@@ -233,7 +233,7 @@ is interested in X; details private"). A thread message
     sim outputs + commands in `data/processed/verdicts/league-moves_$D.json` (separate prefix so tomorrow's review
     doesn't read them as our own verdicts); ≤ 3 lines in the daily log. `decision_miss` and repeated `model_gap` go to
     the user (Inbox, justification + why-now) and the handoff/backlog. Skip pure drops of players nobody added.
-- Log `fantasy run decision lineup --model '<plan json>' --choice '<what you will set>' --rationale "..."`.
+- Log `fantasy run decision lineup --model '<plan json>' --choice '{"set": "<what you will set>"}' --rationale "..."` (`--choice` must be JSON like `--model`; plain text fails with "invalid JSON", 2026-11-19).
 
 ## 3. EXECUTE (lineup + IL only)
 Goal = Yahoo's server state equals `target_slots`. For each change in `changes_vs_current` (and each `il_moves` entry:
