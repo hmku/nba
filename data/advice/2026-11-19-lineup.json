@@ -1,0 +1,44 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Thu 11-19: Brunson, Clingan in; week 5 lead 6-3",
+  "status": "done",
+  "headline": "Lineup set and verified. Week 5 vs Waiver Warrior: 6.0 of 9 expected cats (analytic).",
+  "week": 5,
+  "verdict": "Brunson and Clingan start tonight; VanVleet and Queen (idle) sit. No add or drop cleared the helps rule.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 5", "value": 5.99, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.908, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.220, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats is the analytic approximation (no SE) with availability priors (rest_share 0.25).",
+   "They have 21 games left this week vs our 17; FT%, TO and STL are the weak categories.",
+   "Season odds use today's projections; banked wins are not in the sim yet (T-018)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-19.md"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-19-994d2a193ee5: Brunson BN->Util, Clingan BN->C (NYK and POR play tonight).",
+   "- VanVleet and Queen have no game today; verified 14/14 by a server re-read.",
+   "- Stream tool: no recommendation; opportunity detector: no helps verdict."
+  ],
+  "why_now": {
+   "before": "Wed 11-18: Queen, Ware and VanVleet started; Brunson, Clingan and Reid had no game.",
+   "changed": [
+    {"text": "Thursday's schedule: NYK and POR play; HOU and NOP are idle. Banked score 6-3.", "kind": "schedule"}
+   ],
+   "evidence": ["Exp. cats won week 5"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-19-994d2a193ee5",
+  "lineup_record": "la-2026-11-19-850b7b674769",
+  "matchup_score": "ms-w5-2026-11-19-f0ea81397efa",
+  "season_sim": "sim-20261119122743-e328c4",
+  "lineup_txn": "txn-873272029fcf4997a8049f3b2ca23d9d"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-19.json"}
+}
