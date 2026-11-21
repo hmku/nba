@@ -324,7 +324,7 @@ Injury news for Q/GTD players often lands 30-90 min before tip-off, after the mo
 1. Orient as §0 with the window's `--agent` (task "tip-off check $D <window>", `--mode live`, `yahoo:browser` lock). Of
    the catch-up block read only today's `docs/daily/$D.md` (decide-at-tip-off pairs, deadlines, open risks).
 2. Tip-off times: ESPN `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=YYYYMMDD` (UTC →
-   ET). Players whose game has started are locked on Yahoo: list their ids for `--locked`, just report them.
+   ET). Players whose game has started are locked on Yahoo: list their ids for `--locked` (OUR player ids, e.g. `kelel-ware`, not Yahoo ids — 10274 errored 2026-11-21), just report them.
 3. READ: `fantasy data fetch-injuries --json`, plus each not-yet-started game's ESPN injury list
    (`.../nba/summary?event=<id>`); re-capture rosters per §1.1 (`--record-lineup`; tags change in the afternoon; save as
    `league_rosters_${D}T<HHMM>Z.json`). **Do not re-capture the matchup** once any of today's games has started (a
