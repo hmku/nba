@@ -1,0 +1,63 @@
+{
+ "date": "2026-11-21",
+ "moves": [
+  {
+   "team": "Yeet",
+   "yahoo_team_id": 10,
+   "type": "add_fa",
+   "player_in": "jaylen-wells",
+   "time": "2026-11-20 23:59 ET (Muse read of the transactions page; matches sync diff)",
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-11-21_premove_league.json --add jaylen-wells --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "jaylen-wells",
+      "name": "Jaylen Wells"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8945,
+     "after": 0.8715,
+     "delta": -0.023,
+     "delta_se": 0.0035
+    },
+    "p_title": {
+     "before": 0.22,
+     "after": 0.2263,
+     "delta": 0.0063,
+     "delta_se": 0.0055
+    },
+    "exp_cat_wins": {
+     "before": 91.0455,
+     "after": 89.8791,
+     "delta": -1.1664,
+     "delta_se": 0.0578
+    },
+    "compute_seconds": 11.08,
+    "notes": [
+     "before: assumes the roster cap releases Derik Queen from ~2027-02-08 (in 49% of sims)",
+     "after: assumes the roster cap releases Jaylen Wells from ~2027-02-08 (in 49% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  }
+ ],
+ "skipped": [
+  "Christian -Grayson Allen (pure drop, 11-20)"
+ ]
+}

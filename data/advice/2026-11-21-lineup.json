@@ -1,0 +1,45 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sat 11-21: Brunson, Clingan, Ware in; week 5 trail 4-5",
+  "status": "done",
+  "headline": "Lineup set and verified. Week 5 vs Waiver Warrior: 4.7 of 9 expected cats (analytic).",
+  "week": 5,
+  "verdict": "Brunson, Clingan and Ware start today; Jokić, VanVleet and Reid (idle) sit. No add or drop cleared the helps rule.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 5", "value": 4.72, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.891, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.216, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats is the analytic approximation (no SE) with availability priors (rest_share 0.25).",
+   "They have 11 games left vs our 6; FG% is a coin flip, 3PTM and STL lean theirs, FT% and TO are lost.",
+   "Sunday's page carries today's slots (Jokić on the bench): tomorrow's run must reset it.",
+   "Season odds use today's projections; banked wins are not in the sim yet (T-018)."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-21.md"}
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-21-787945847edd: Ware BN->C, Brunson and Clingan BN->Util (MIL, NYK, POR play).",
+   "- Reid, Jokić and VanVleet have no game today; verified 14/14 by a server re-read.",
+   "- Stream tool: no recommendation (Shamet/Hauser for Sheppard help this week only, season unresolved)."
+  ],
+  "why_now": {
+   "before": "Fri 11-20: Queen, Reid and VanVleet started; Ware, Clingan and Brunson had no game.",
+   "changed": [
+    {"text": "Saturday's schedule: MIL, NYK and POR play; CHA, DEN and HOU are idle. Banked score 4-5 after Friday.", "kind": "schedule"}
+   ],
+   "evidence": ["Exp. cats won week 5"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-21-787945847edd",
+  "lineup_record": "la-2026-11-21-84277702b199",
+  "matchup_score": "ms-w5-2026-11-21-ed6829f9609a",
+  "season_sim": "sim-20261121122714-afec84",
+  "lineup_txn": "txn-9c1fe0c58bbd4a69956a26c48b9ee4fa"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-21.json"}
+}
