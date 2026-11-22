@@ -1,0 +1,77 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Sun 11-22: Jokić in; week 5 tied 4-4, PTS level",
+  "status": "done",
+  "headline": "Lineup set and verified. Week 5 vs Waiver Warrior: 4.71 ± 0.005 of 9 expected cats.",
+  "week": 5,
+  "verdict": "Jokić starts at Util tonight; Clingan (idle) sits. No add or drop: the one stream flag did not hold up in a larger sim.",
+  "requires_user_yes": false,
+  "metrics": [
+   {
+    "label": "Exp. cats won week 5",
+    "value": 4.71,
+    "se": 0.005,
+    "unit": "cats",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(playoffs)",
+    "value": 0.908,
+    "se": 0.003,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   },
+   {
+    "label": "P(title)",
+    "value": 0.233,
+    "se": 0.004,
+    "unit": "prob",
+    "evidence": "simulated",
+    "key": true
+   }
+  ],
+  "risks": [
+   "Last day: 4 games each. PTS (646-646) and FG% (.473-.467) decide the week; FT%, STL and TO are lost.",
+   "Exp. cats uses availability priors (rest_share 0.25); its SE is simulation error only.",
+   "Season odds use today's projections; banked wins are not in the sim yet (T-018)."
+  ],
+  "links": [
+   {
+    "label": "Daily log",
+    "path": "docs/daily/2026-11-22.md"
+   }
+  ],
+  "rationale": [
+   "- Plan lp-2026-11-22-7e1f0c9f5e32: Jokić BN->Util, Clingan Util->BN (DEN plays, POR idle).",
+   "- Verified 14/14 by a server re-read; 4 of my players have a game and all 4 start.",
+   "- Stream tool flagged Hauser for Sheppard (title +1.3 ± 0.6 pp, 2,000 sims); not executed.",
+   "- Re-check with 24,000 paired sims: title +0.3 ± 0.2 pp, playoffs -0.1 ± 0.1 pp = noise."
+  ],
+  "why_now": {
+   "before": "Sat 11-21: Brunson, Clingan and Ware started; Jokić, VanVleet and Reid had no game.",
+   "changed": [
+    {
+     "text": "Sunday: DEN, GSW, NYK and UTA play; POR is idle. Saturday's finals moved the score from 4-5 to 4-4.",
+     "kind": "schedule"
+    }
+   ],
+   "evidence": [
+    "Exp. cats won week 5"
+   ]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-22-7e1f0c9f5e32",
+  "lineup_record": "la-2026-11-22-61c061e2d14a",
+  "matchup_score": "ms-w5-2026-11-22-c655b15871a5",
+  "season_sim": "sim-20261122123128-918a6e",
+  "lineup_txn": "txn-195799eb572b4897beadc61aaae90783"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-22.json"
+ }
+}

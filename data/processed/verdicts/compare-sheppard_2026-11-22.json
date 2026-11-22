@@ -1,0 +1,124 @@
+{
+ "command": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add <X> --drop reed-sheppard --sims 8000 --seed {1,2,3} --no-save",
+ "note": "confirmatory check of inseason stream recommend (hauser->chain fa5 mamukelashvili for sheppard); pooled = mean of 3 seeds, SE = sqrt(sum se^2)/3",
+ "results": {
+  "sam-hauser": {
+   "p_playoffs": {
+    "seeds": [
+     [
+      -0.0066,
+      0.0025
+     ],
+     [
+      -0.0043,
+      0.0024
+     ],
+     [
+      -0.0029,
+      0.0022
+     ]
+    ],
+    "pooled_delta": -0.0046,
+    "pooled_se": 0.0014,
+    "z": -3.36
+   },
+   "p_title": {
+    "seeds": [
+     [
+      0.0032,
+      0.0032
+     ],
+     [
+      0.0013,
+      0.0033
+     ],
+     [
+      -0.0001,
+      0.0033
+     ]
+    ],
+    "pooled_delta": 0.0015,
+    "pooled_se": 0.0019,
+    "z": 0.78
+   },
+   "exp_cat_wins": {
+    "seeds": [
+     [
+      -0.4185,
+      0.0403
+     ],
+     [
+      -0.4154,
+      0.0397
+     ],
+     [
+      -0.4155,
+      0.0402
+     ]
+    ],
+    "pooled_delta": -0.4165,
+    "pooled_se": 0.0231,
+    "z": -18.0
+   }
+  },
+  "sandro-mamukelashvili": {
+   "p_playoffs": {
+    "seeds": [
+     [
+      -0.0026,
+      0.0023
+     ],
+     [
+      -0.0004,
+      0.0023
+     ],
+     [
+      0.0016,
+      0.0023
+     ]
+    ],
+    "pooled_delta": -0.0005,
+    "pooled_se": 0.0013,
+    "z": -0.35
+   },
+   "p_title": {
+    "seeds": [
+     [
+      0.0024,
+      0.0031
+     ],
+     [
+      0.0041,
+      0.0032
+     ],
+     [
+      0.0019,
+      0.0032
+     ]
+    ],
+    "pooled_delta": 0.0028,
+    "pooled_se": 0.0018,
+    "z": 1.53
+   },
+   "exp_cat_wins": {
+    "seeds": [
+     [
+      -0.251,
+      0.0406
+     ],
+     [
+      -0.3293,
+      0.04
+     ],
+     [
+      -0.2248,
+      0.04
+     ]
+    ],
+    "pooled_delta": -0.2684,
+    "pooled_se": 0.0232,
+    "z": -11.56
+   }
+  }
+ }
+}
