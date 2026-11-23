@@ -185,6 +185,8 @@ is interested in X; details private"). A thread message
 - Mid-week, `fantasy inseason stream` does NOT read the saved matchup score: pass `--accumulated <acc.json>` built from
   this morning's matchup capture (`{"me": {fgm,fga,ftm,fta,fg3m,pts,reb,ast,stl,blk,tov}, "opp": {...}}` from
   `teams[].totals`), else it warns "stats banked ... assumed 0" and its week numbers ignore the score (2026-10-22).
+  It does not know our adds either: pass `--adds-used <N>` (adds made this matchup week, from the week's daily logs /
+  `fantasy txn list`; default 0 — on 2026-11-22 it reported 0/6 when 1 was used).
 - **Open spot from an IL move is temporary (learned 2026-10-24):** after moving an O player to IL, `inseason stream`
   pairs with `drop: (none: open spot)` show huge season deltas (+13-15 pp P(playoffs)) because the season sim keeps the
   extra player all season after the IL player returns. Never quote that number: use `fantasy sim compare --add X --drop
@@ -233,7 +235,7 @@ is interested in X; details private"). A thread message
     sim outputs + commands in `data/processed/verdicts/league-moves_$D.json` (separate prefix so tomorrow's review
     doesn't read them as our own verdicts); ≤ 3 lines in the daily log. `decision_miss` and repeated `model_gap` go to
     the user (Inbox, justification + why-now) and the handoff/backlog. Skip pure drops of players nobody added.
-- Log `fantasy run decision lineup --model '<plan json>' --choice '{"set": "<what you will set>"}' --rationale "..."` (`--choice` must be JSON like `--model`; plain text fails with "invalid JSON", 2026-11-19).
+- Log `fantasy run decision lineup --model '{"id": "<lp-… plan id>"}' --choice '{"id": "<lp-… plan id>", "set": "<what you will set>"}' --rationale "..."` (`--choice` must be JSON like `--model`; plain text fails with "invalid JSON", 2026-11-19). `agrees_with_model` is computed (`ops/ledger.py`): both sides are compared by their first identity key (`player_id`, `id`, `action`, `choice`, `name`), else by whole JSON — so give both the same `id` when you follow the plan (a full plan JSON vs `{"set": ...}` logged `False` for the model's own plan on 11-16, 11-20..22; an `agrees_with_model` key inside `--choice` is not read). Same for `add_drop` decisions.
 
 ## 3. EXECUTE (lineup + IL only)
 Goal = Yahoo's server state equals `target_slots`. For each change in `changes_vs_current` (and each `il_moves` entry:
