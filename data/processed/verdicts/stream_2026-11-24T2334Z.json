@@ -1,0 +1,5483 @@
+{
+  "ok": true,
+  "version": "inseason-0.3.2",
+  "team": 1,
+  "week": 6,
+  "opponent": {
+    "team_id": 9,
+    "name": "Jeffrey's Great Team"
+  },
+  "window": [
+    "2026-11-24",
+    "2026-11-29"
+  ],
+  "baseline": {
+    "exp_cats": 6.335,
+    "p_win": 0.9904,
+    "method": "analytic normal model (lineup-0.2.0): my matchup-aware lineup vs the opponent's generic best-players lineup"
+  },
+  "category_weights": {
+    "fg_pct": 9.2826,
+    "ft_pct": 6.1702,
+    "fg3m": 0.0173,
+    "pts": 0.0003,
+    "reb": 0.0,
+    "ast": 0.0008,
+    "stl": 0.0168,
+    "blk": 0.0039,
+    "tov": -0.0062
+  },
+  "roster": {
+    "size": 14,
+    "free_spots": 0,
+    "drop_candidates": [
+      {
+        "player_id": "kawhi-leonard",
+        "name": "Kawhi Leonard",
+        "season_value": 0.359
+      },
+      {
+        "player_id": "reed-sheppard",
+        "name": "Reed Sheppard",
+        "season_value": 0.554
+      },
+      {
+        "player_id": "derik-queen",
+        "name": "Derik Queen",
+        "season_value": 0.978
+      }
+    ]
+  },
+  "adds": {
+    "max_weekly": 6,
+    "used": 0,
+    "remaining": 6,
+    "note": "a waiver claim counts against the week in which it is processed; each pair's adds_needed counts the stream add and the follow-up chain claim (this week / next week)"
+  },
+  "n_pairs_scanned": 363,
+  "n_season_simulated": 8,
+  "pairs": [
+    {
+      "add": "isaiah-joe",
+      "add_name": "Isaiah Joe",
+      "add_team": "DET",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1401,
+      "week_d_exp_cats": 0.1085,
+      "week_d_p_win": 0.0047,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -0.873,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.103,
+        "d_exp_cats_se": 0.006,
+        "d_p_win": 0.0035,
+        "d_p_win_se": 0.0012
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.92,
+          "delta": -0.001,
+          "delta_se": 0.0043
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.186,
+          "delta": -0.0745,
+          "delta_se": 0.0075
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.024,
+          "delta": -0.8452,
+          "delta_se": 0.0726
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "jakobe-walter",
+            "name": "Ja'Kobe Walter"
+          },
+          "fa5": {
+            "player_id": "jake-laravia",
+            "name": "Jake LaRavia"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.926,
+                  "delta": 0.005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.199,
+                  "delta": -0.0615,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.4163,
+                  "delta": -0.453,
+                  "delta_se": 0.0792
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.925,
+                  "delta": 0.004,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1975,
+                  "delta": -0.063,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.3825,
+                  "delta": -0.4868,
+                  "delta_se": 0.08
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.925,
+                  "after": 0.926,
+                  "delta": 0.001,
+                  "delta_se": 0.0012
+                },
+                "p_title": {
+                  "before": 0.1975,
+                  "after": 0.199,
+                  "delta": 0.0015,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 92.3825,
+                  "after": 92.4163,
+                  "delta": 0.0338,
+                  "delta_se": 0.0124
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.92,
+                  "delta": -0.001,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.186,
+                  "delta": -0.0745,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.024,
+                  "delta": -0.8452,
+                  "delta_se": 0.0726
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.185,
+                  "delta": -0.0755,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9625,
+                  "delta": -0.9067,
+                  "delta_se": 0.0723
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9205,
+                  "after": 0.92,
+                  "delta": -0.0005,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.186,
+                  "delta": 0.001,
+                  "delta_se": 0.0012
+                },
+                "exp_cat_wins": {
+                  "before": 91.9625,
+                  "after": 92.024,
+                  "delta": 0.0615,
+                  "delta_se": 0.0106
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.183,
+                  "delta": -0.0775,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.988,
+                  "delta": -0.8812,
+                  "delta_se": 0.0711
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.923,
+                  "delta": 0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.181,
+                  "delta": -0.0795,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9895,
+                  "delta": -0.8798,
+                  "delta_se": 0.0713
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.923,
+                  "after": 0.9205,
+                  "delta": -0.0025,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.181,
+                  "after": 0.183,
+                  "delta": 0.002,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 91.9895,
+                  "after": 91.988,
+                  "delta": -0.0015,
+                  "delta_se": 0.011
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9165,
+                  "delta": 0.0065,
+                  "delta_se": 0.0045
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1935,
+                  "delta": -0.0835,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.726,
+                  "delta": -0.726,
+                  "delta_se": 0.0824
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.915,
+                  "delta": 0.005,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.196,
+                  "delta": -0.081,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.6813,
+                  "delta": -0.7708,
+                  "delta_se": 0.0831
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.915,
+                  "after": 0.9165,
+                  "delta": 0.0015,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.196,
+                  "after": 0.1935,
+                  "delta": -0.0025,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.6813,
+                  "after": 91.726,
+                  "delta": 0.0447,
+                  "delta_se": 0.012
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.909,
+                  "delta": -0.001,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1805,
+                  "delta": -0.0965,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1252,
+                  "delta": -1.3268,
+                  "delta_se": 0.0756
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1765,
+                  "delta": -0.1005,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.0547,
+                  "delta": -1.3973,
+                  "delta_se": 0.0752
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9085,
+                  "after": 0.909,
+                  "delta": 0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.1765,
+                  "after": 0.1805,
+                  "delta": 0.004,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.0547,
+                  "after": 91.1252,
+                  "delta": 0.0705,
+                  "delta_se": 0.012
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1735,
+                  "delta": -0.1035,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.179,
+                  "delta": -1.273,
+                  "delta_se": 0.0736
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.175,
+                  "delta": -0.102,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1783,
+                  "delta": -1.2737,
+                  "delta_se": 0.0733
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.908,
+                  "delta": 0.0,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.175,
+                  "after": 0.1735,
+                  "delta": -0.0015,
+                  "delta_se": 0.0015
+                },
+                "exp_cat_wins": {
+                  "before": 91.1783,
+                  "after": 91.179,
+                  "delta": 0.0008,
+                  "delta_se": 0.012
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.82,
+                  "delta": -0.0765,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1855,
+                  "delta": -0.0975,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.751,
+                  "delta": -4.723,
+                  "delta_se": 0.0877
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.818,
+                  "delta": -0.0785,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.185,
+                  "delta": -0.098,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.5915,
+                  "delta": -4.8825,
+                  "delta_se": 0.0886
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.818,
+                  "after": 0.82,
+                  "delta": 0.002,
+                  "delta_se": 0.0016
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.1855,
+                  "delta": 0.0005,
+                  "delta_se": 0.0015
+                },
+                "exp_cat_wins": {
+                  "before": 87.5915,
+                  "after": 87.751,
+                  "delta": 0.1595,
+                  "delta_se": 0.011
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.835,
+                  "delta": -0.0615,
+                  "delta_se": 0.0057
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1755,
+                  "delta": -0.1075,
+                  "delta_se": 0.0088
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.2843,
+                  "delta": -4.1898,
+                  "delta_se": 0.086
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.832,
+                  "delta": -0.0645,
+                  "delta_se": 0.0058
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1775,
+                  "delta": -0.1055,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.127,
+                  "delta": -4.347,
+                  "delta_se": 0.0867
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.832,
+                  "after": 0.835,
+                  "delta": 0.003,
+                  "delta_se": 0.0012
+                },
+                "p_title": {
+                  "before": 0.1775,
+                  "after": 0.1755,
+                  "delta": -0.002,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 88.127,
+                  "after": 88.2843,
+                  "delta": 0.1573,
+                  "delta_se": 0.013
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8235,
+                  "delta": -0.073,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1905,
+                  "delta": -0.0925,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.9403,
+                  "delta": -4.5338,
+                  "delta_se": 0.0847
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.826,
+                  "delta": -0.0705,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1915,
+                  "delta": -0.0915,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.8893,
+                  "delta": -4.5847,
+                  "delta_se": 0.0851
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.826,
+                  "after": 0.8235,
+                  "delta": -0.0025,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.1915,
+                  "after": 0.1905,
+                  "delta": -0.001,
+                  "delta_se": 0.0014
+                },
+                "exp_cat_wins": {
+                  "before": 87.8893,
+                  "after": 87.9403,
+                  "delta": 0.051,
+                  "delta_se": 0.0118
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "luke-kennard",
+      "add_name": "Luke Kennard",
+      "add_team": "PHO",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1118,
+      "week_d_exp_cats": 0.0937,
+      "week_d_p_win": 0.0038,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.283,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.09,
+        "d_exp_cats_se": 0.005,
+        "d_p_win": 0.0047,
+        "d_p_win_se": 0.0012
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.9205,
+          "delta": -0.0005,
+          "delta_se": 0.0043
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.1845,
+          "delta": -0.076,
+          "delta_se": 0.0076
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.0337,
+          "delta": -0.8355,
+          "delta_se": 0.0724
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "jakobe-walter",
+            "name": "Ja'Kobe Walter"
+          },
+          "fa5": {
+            "player_id": "jake-laravia",
+            "name": "Jake LaRavia"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.925,
+                  "delta": 0.004,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2,
+                  "delta": -0.0605,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.426,
+                  "delta": -0.4432,
+                  "delta_se": 0.0793
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.925,
+                  "delta": 0.004,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1975,
+                  "delta": -0.063,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.3825,
+                  "delta": -0.4868,
+                  "delta_se": 0.08
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.925,
+                  "after": 0.925,
+                  "delta": 0.0,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.1975,
+                  "after": 0.2,
+                  "delta": 0.0025,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 92.3825,
+                  "after": 92.426,
+                  "delta": 0.0435,
+                  "delta_se": 0.0127
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1845,
+                  "delta": -0.076,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.0337,
+                  "delta": -0.8355,
+                  "delta_se": 0.0724
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.185,
+                  "delta": -0.0755,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9625,
+                  "delta": -0.9067,
+                  "delta_se": 0.0723
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9205,
+                  "after": 0.9205,
+                  "delta": 0.0,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.1845,
+                  "delta": -0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 91.9625,
+                  "after": 92.0337,
+                  "delta": 0.0712,
+                  "delta_se": 0.0108
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9215,
+                  "delta": 0.0005,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1835,
+                  "delta": -0.077,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9977,
+                  "delta": -0.8715,
+                  "delta_se": 0.0711
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.923,
+                  "delta": 0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.181,
+                  "delta": -0.0795,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9895,
+                  "delta": -0.8798,
+                  "delta_se": 0.0713
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.923,
+                  "after": 0.9215,
+                  "delta": -0.0015,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.181,
+                  "after": 0.1835,
+                  "delta": 0.0025,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.9895,
+                  "after": 91.9977,
+                  "delta": 0.0083,
+                  "delta_se": 0.0109
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9155,
+                  "delta": 0.0055,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.194,
+                  "delta": -0.083,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.725,
+                  "delta": -0.727,
+                  "delta_se": 0.0824
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.915,
+                  "delta": 0.005,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.196,
+                  "delta": -0.081,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.6813,
+                  "delta": -0.7708,
+                  "delta_se": 0.0831
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.915,
+                  "after": 0.9155,
+                  "delta": 0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.196,
+                  "after": 0.194,
+                  "delta": -0.002,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.6813,
+                  "after": 91.725,
+                  "delta": 0.0437,
+                  "delta_se": 0.012
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9105,
+                  "delta": 0.0005,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1785,
+                  "delta": -0.0985,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1243,
+                  "delta": -1.3277,
+                  "delta_se": 0.0754
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1765,
+                  "delta": -0.1005,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.0547,
+                  "delta": -1.3973,
+                  "delta_se": 0.0752
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9085,
+                  "after": 0.9105,
+                  "delta": 0.002,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.1765,
+                  "after": 0.1785,
+                  "delta": 0.002,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.0547,
+                  "after": 91.1243,
+                  "delta": 0.0695,
+                  "delta_se": 0.0116
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.909,
+                  "delta": -0.001,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1705,
+                  "delta": -0.1065,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.178,
+                  "delta": -1.274,
+                  "delta_se": 0.0736
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.175,
+                  "delta": -0.102,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1783,
+                  "delta": -1.2737,
+                  "delta_se": 0.0733
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.909,
+                  "delta": 0.001,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.175,
+                  "after": 0.1705,
+                  "delta": -0.0045,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.1783,
+                  "after": 91.178,
+                  "delta": -0.0003,
+                  "delta_se": 0.0118
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8195,
+                  "delta": -0.077,
+                  "delta_se": 0.0061
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.187,
+                  "delta": -0.096,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.7175,
+                  "delta": -4.7565,
+                  "delta_se": 0.0875
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.818,
+                  "delta": -0.0785,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.185,
+                  "delta": -0.098,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.5915,
+                  "delta": -4.8825,
+                  "delta_se": 0.0886
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.818,
+                  "after": 0.8195,
+                  "delta": 0.0015,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.187,
+                  "delta": 0.002,
+                  "delta_se": 0.001
+                },
+                "exp_cat_wins": {
+                  "before": 87.5915,
+                  "after": 87.7175,
+                  "delta": 0.126,
+                  "delta_se": 0.0112
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8355,
+                  "delta": -0.061,
+                  "delta_se": 0.0057
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1755,
+                  "delta": -0.1075,
+                  "delta_se": 0.0088
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.2507,
+                  "delta": -4.2233,
+                  "delta_se": 0.0858
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.832,
+                  "delta": -0.0645,
+                  "delta_se": 0.0058
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1775,
+                  "delta": -0.1055,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.127,
+                  "delta": -4.347,
+                  "delta_se": 0.0867
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.832,
+                  "after": 0.8355,
+                  "delta": 0.0035,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.1775,
+                  "after": 0.1755,
+                  "delta": -0.002,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 88.127,
+                  "after": 88.2507,
+                  "delta": 0.1237,
+                  "delta_se": 0.0125
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8245,
+                  "delta": -0.072,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1905,
+                  "delta": -0.0925,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.9068,
+                  "delta": -4.5672,
+                  "delta_se": 0.0846
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.826,
+                  "delta": -0.0705,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1915,
+                  "delta": -0.0915,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.8893,
+                  "delta": -4.5847,
+                  "delta_se": 0.0851
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.826,
+                  "after": 0.8245,
+                  "delta": -0.0015,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.1915,
+                  "after": 0.1905,
+                  "delta": -0.001,
+                  "delta_se": 0.0014
+                },
+                "exp_cat_wins": {
+                  "before": 87.8893,
+                  "after": 87.9068,
+                  "delta": 0.0175,
+                  "delta_se": 0.0112
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "isaiah-joe",
+      "add_name": "Isaiah Joe",
+      "add_team": "DET",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "derik-queen",
+      "drop_name": "Derik Queen",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1103,
+      "week_d_exp_cats": 0.0891,
+      "week_d_p_win": 0.003,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.492,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.076,
+        "d_exp_cats_se": 0.007,
+        "d_p_win": -0.001,
+        "d_p_win_se": 0.0016
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.922,
+          "delta": 0.001,
+          "delta_se": 0.0034
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.232,
+          "delta": -0.0285,
+          "delta_se": 0.0077
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.757,
+          "delta": -0.1123,
+          "delta_se": 0.06
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "jakobe-walter",
+            "name": "Ja'Kobe Walter"
+          },
+          "fa5": {
+            "player_id": "jake-laravia",
+            "name": "Jake LaRavia"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.931,
+                  "delta": 0.01,
+                  "delta_se": 0.0036
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.251,
+                  "delta": -0.0095,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 93.2138,
+                  "delta": 0.3445,
+                  "delta_se": 0.0619
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.929,
+                  "delta": 0.008,
+                  "delta_se": 0.0035
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.251,
+                  "delta": -0.0095,
+                  "delta_se": 0.008
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 93.187,
+                  "delta": 0.3177,
+                  "delta_se": 0.0623
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.929,
+                  "after": 0.931,
+                  "delta": 0.002,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.251,
+                  "after": 0.251,
+                  "delta": 0.0,
+                  "delta_se": 0.0014
+                },
+                "exp_cat_wins": {
+                  "before": 93.187,
+                  "after": 93.2138,
+                  "delta": 0.0267,
+                  "delta_se": 0.0097
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.922,
+                  "delta": 0.001,
+                  "delta_se": 0.0034
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.232,
+                  "delta": -0.0285,
+                  "delta_se": 0.0077
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.757,
+                  "delta": -0.1123,
+                  "delta_se": 0.06
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.921,
+                  "delta": 0.0,
+                  "delta_se": 0.0035
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.232,
+                  "delta": -0.0285,
+                  "delta_se": 0.0078
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.6953,
+                  "delta": -0.174,
+                  "delta_se": 0.0602
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.922,
+                  "delta": 0.001,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.232,
+                  "after": 0.232,
+                  "delta": 0.0,
+                  "delta_se": 0.0012
+                },
+                "exp_cat_wins": {
+                  "before": 92.6953,
+                  "after": 92.757,
+                  "delta": 0.0617,
+                  "delta_se": 0.0103
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9185,
+                  "delta": -0.0025,
+                  "delta_se": 0.0036
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2415,
+                  "delta": -0.019,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.6762,
+                  "delta": -0.193,
+                  "delta_se": 0.0587
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.92,
+                  "delta": -0.001,
+                  "delta_se": 0.0035
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2415,
+                  "delta": -0.019,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.6917,
+                  "delta": -0.1775,
+                  "delta_se": 0.0592
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.92,
+                  "after": 0.9185,
+                  "delta": -0.0015,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.2415,
+                  "after": 0.2415,
+                  "delta": 0.0,
+                  "delta_se": 0.0016
+                },
+                "exp_cat_wins": {
+                  "before": 92.6917,
+                  "after": 92.6762,
+                  "delta": -0.0155,
+                  "delta_se": 0.011
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9145,
+                  "delta": 0.0045,
+                  "delta_se": 0.0039
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2445,
+                  "delta": -0.0325,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.825,
+                  "delta": 0.373,
+                  "delta_se": 0.0663
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9135,
+                  "delta": 0.0035,
+                  "delta_se": 0.0039
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.244,
+                  "delta": -0.033,
+                  "delta_se": 0.0087
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.805,
+                  "delta": 0.353,
+                  "delta_se": 0.0669
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9135,
+                  "after": 0.9145,
+                  "delta": 0.001,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.244,
+                  "after": 0.2445,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 92.805,
+                  "after": 92.825,
+                  "delta": 0.02,
+                  "delta_se": 0.0098
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.228,
+                  "delta": -0.049,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.294,
+                  "delta": -0.158,
+                  "delta_se": 0.066
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.906,
+                  "delta": -0.004,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2275,
+                  "delta": -0.0495,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.248,
+                  "delta": -0.204,
+                  "delta_se": 0.0661
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.906,
+                  "after": 0.9085,
+                  "delta": 0.0025,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.2275,
+                  "after": 0.228,
+                  "delta": 0.0005,
+                  "delta_se": 0.0015
+                },
+                "exp_cat_wins": {
+                  "before": 92.248,
+                  "after": 92.294,
+                  "delta": 0.046,
+                  "delta_se": 0.0108
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9065,
+                  "delta": -0.0035,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2305,
+                  "delta": -0.0465,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.2428,
+                  "delta": -0.2092,
+                  "delta_se": 0.0636
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.232,
+                  "delta": -0.045,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.2675,
+                  "delta": -0.1845,
+                  "delta_se": 0.0639
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.9065,
+                  "delta": -0.0015,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.232,
+                  "after": 0.2305,
+                  "delta": -0.0015,
+                  "delta_se": 0.0021
+                },
+                "exp_cat_wins": {
+                  "before": 92.2675,
+                  "after": 92.2428,
+                  "delta": -0.0248,
+                  "delta_se": 0.0114
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.88,
+                  "delta": -0.0165,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2245,
+                  "delta": -0.0585,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.0413,
+                  "delta": -1.4327,
+                  "delta_se": 0.0707
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8775,
+                  "delta": -0.019,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.226,
+                  "delta": -0.057,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.8745,
+                  "delta": -1.5995,
+                  "delta_se": 0.0712
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8775,
+                  "after": 0.88,
+                  "delta": 0.0025,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.226,
+                  "after": 0.2245,
+                  "delta": -0.0015,
+                  "delta_se": 0.0015
+                },
+                "exp_cat_wins": {
+                  "before": 90.8745,
+                  "after": 91.0413,
+                  "delta": 0.1668,
+                  "delta_se": 0.0113
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8905,
+                  "delta": -0.006,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2435,
+                  "delta": -0.0395,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.7855,
+                  "delta": -0.6885,
+                  "delta_se": 0.0694
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.89,
+                  "delta": -0.0065,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.242,
+                  "delta": -0.041,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.6697,
+                  "delta": -0.8043,
+                  "delta_se": 0.0697
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.89,
+                  "after": 0.8905,
+                  "delta": 0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.242,
+                  "after": 0.2435,
+                  "delta": 0.0015,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.6697,
+                  "after": 91.7855,
+                  "delta": 0.1158,
+                  "delta_se": 0.0113
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8805,
+                  "delta": -0.016,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2355,
+                  "delta": -0.0475,
+                  "delta_se": 0.0084
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.4398,
+                  "delta": -1.0342,
+                  "delta_se": 0.0652
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.881,
+                  "delta": -0.0155,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.236,
+                  "delta": -0.047,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.3942,
+                  "delta": -1.0797,
+                  "delta_se": 0.0655
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.881,
+                  "after": 0.8805,
+                  "delta": -0.0005,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.236,
+                  "after": 0.2355,
+                  "delta": -0.0005,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.3942,
+                  "after": 91.4398,
+                  "delta": 0.0455,
+                  "delta_se": 0.0119
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "sam-hauser",
+      "add_name": "Sam Hauser",
+      "add_team": "BOS",
+      "add_positions": "SF|PF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1203,
+      "week_d_exp_cats": 0.088,
+      "week_d_p_win": 0.0044,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -0.255,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.08,
+        "d_exp_cats_se": 0.006,
+        "d_p_win": 0.006,
+        "d_p_win_se": 0.0013
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.921,
+          "delta": 0.0,
+          "delta_se": 0.0043
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.1855,
+          "delta": -0.075,
+          "delta_se": 0.0075
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.0547,
+          "delta": -0.8145,
+          "delta_se": 0.0727
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "jakobe-walter",
+            "name": "Ja'Kobe Walter"
+          },
+          "fa5": {
+            "player_id": "jake-laravia",
+            "name": "Jake LaRavia"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9265,
+                  "delta": 0.0055,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.198,
+                  "delta": -0.0625,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.447,
+                  "delta": -0.4223,
+                  "delta_se": 0.0795
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.925,
+                  "delta": 0.004,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1975,
+                  "delta": -0.063,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.3825,
+                  "delta": -0.4868,
+                  "delta_se": 0.08
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.925,
+                  "after": 0.9265,
+                  "delta": 0.0015,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.1975,
+                  "after": 0.198,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 92.3825,
+                  "after": 92.447,
+                  "delta": 0.0645,
+                  "delta_se": 0.0125
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.921,
+                  "delta": 0.0,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1855,
+                  "delta": -0.075,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.0547,
+                  "delta": -0.8145,
+                  "delta_se": 0.0727
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.185,
+                  "delta": -0.0755,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9625,
+                  "delta": -0.9067,
+                  "delta_se": 0.0723
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9205,
+                  "after": 0.921,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.1855,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 91.9625,
+                  "after": 92.0547,
+                  "delta": 0.0922,
+                  "delta_se": 0.011
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.922,
+                  "delta": 0.001,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1825,
+                  "delta": -0.078,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.0187,
+                  "delta": -0.8505,
+                  "delta_se": 0.0712
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.923,
+                  "delta": 0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.181,
+                  "delta": -0.0795,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9895,
+                  "delta": -0.8798,
+                  "delta_se": 0.0713
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.923,
+                  "after": 0.922,
+                  "delta": -0.001,
+                  "delta_se": 0.0012
+                },
+                "p_title": {
+                  "before": 0.181,
+                  "after": 0.1825,
+                  "delta": 0.0015,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 91.9895,
+                  "after": 92.0187,
+                  "delta": 0.0293,
+                  "delta_se": 0.0114
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.916,
+                  "delta": 0.006,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.193,
+                  "delta": -0.084,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.7318,
+                  "delta": -0.7202,
+                  "delta_se": 0.0824
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.915,
+                  "delta": 0.005,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.196,
+                  "delta": -0.081,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.6813,
+                  "delta": -0.7708,
+                  "delta_se": 0.0831
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.915,
+                  "after": 0.916,
+                  "delta": 0.001,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.196,
+                  "after": 0.193,
+                  "delta": -0.003,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 91.6813,
+                  "after": 91.7318,
+                  "delta": 0.0505,
+                  "delta_se": 0.0121
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.909,
+                  "delta": -0.001,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1795,
+                  "delta": -0.0975,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.131,
+                  "delta": -1.321,
+                  "delta_se": 0.0758
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1765,
+                  "delta": -0.1005,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.0547,
+                  "delta": -1.3973,
+                  "delta_se": 0.0752
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9085,
+                  "after": 0.909,
+                  "delta": 0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.1765,
+                  "after": 0.1795,
+                  "delta": 0.003,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.0547,
+                  "after": 91.131,
+                  "delta": 0.0762,
+                  "delta_se": 0.012
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9105,
+                  "delta": 0.0005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.171,
+                  "delta": -0.106,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1847,
+                  "delta": -1.2672,
+                  "delta_se": 0.0738
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.175,
+                  "delta": -0.102,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1783,
+                  "delta": -1.2737,
+                  "delta_se": 0.0733
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.9105,
+                  "delta": 0.0025,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.175,
+                  "after": 0.171,
+                  "delta": -0.004,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 91.1783,
+                  "after": 91.1847,
+                  "delta": 0.0065,
+                  "delta_se": 0.0124
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8185,
+                  "delta": -0.078,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1855,
+                  "delta": -0.0975,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.6833,
+                  "delta": -4.7908,
+                  "delta_se": 0.088
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.818,
+                  "delta": -0.0785,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.185,
+                  "delta": -0.098,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.5915,
+                  "delta": -4.8825,
+                  "delta_se": 0.0886
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.818,
+                  "after": 0.8185,
+                  "delta": 0.0005,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.185,
+                  "after": 0.1855,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 87.5915,
+                  "after": 87.6833,
+                  "delta": 0.0917,
+                  "delta_se": 0.0104
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.835,
+                  "delta": -0.0615,
+                  "delta_se": 0.0057
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.176,
+                  "delta": -0.107,
+                  "delta_se": 0.0088
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.2165,
+                  "delta": -4.2575,
+                  "delta_se": 0.0861
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.832,
+                  "delta": -0.0645,
+                  "delta_se": 0.0058
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1775,
+                  "delta": -0.1055,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.127,
+                  "delta": -4.347,
+                  "delta_se": 0.0867
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.832,
+                  "after": 0.835,
+                  "delta": 0.003,
+                  "delta_se": 0.0012
+                },
+                "p_title": {
+                  "before": 0.1775,
+                  "after": 0.176,
+                  "delta": -0.0015,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 88.127,
+                  "after": 88.2165,
+                  "delta": 0.0895,
+                  "delta_se": 0.0121
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.821,
+                  "delta": -0.0755,
+                  "delta_se": 0.006
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1905,
+                  "delta": -0.0925,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.8725,
+                  "delta": -4.6015,
+                  "delta_se": 0.0847
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.826,
+                  "delta": -0.0705,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1915,
+                  "delta": -0.0915,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.8893,
+                  "delta": -4.5847,
+                  "delta_se": 0.0851
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.826,
+                  "after": 0.821,
+                  "delta": -0.005,
+                  "delta_se": 0.0016
+                },
+                "p_title": {
+                  "before": 0.1915,
+                  "after": 0.1905,
+                  "delta": -0.001,
+                  "delta_se": 0.0012
+                },
+                "exp_cat_wins": {
+                  "before": 87.8893,
+                  "after": 87.8725,
+                  "delta": -0.0168,
+                  "delta_se": 0.0118
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "jakobe-walter",
+      "add_name": "Ja'Kobe Walter",
+      "add_team": "TOR",
+      "add_positions": "PG|SG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.083,
+      "week_d_exp_cats": 0.0642,
+      "week_d_p_win": 0.0043,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.879,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.053,
+        "d_exp_cats_se": 0.006,
+        "d_p_win": 0.004,
+        "d_p_win_se": 0.0013
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.9175,
+          "delta": -0.0035,
+          "delta_se": 0.004
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.186,
+          "delta": -0.0745,
+          "delta_se": 0.0077
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 91.754,
+          "delta": -1.1153,
+          "delta_se": 0.0759
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "quentin-grimes",
+            "name": "Quentin Grimes"
+          },
+          "fa5": {
+            "player_id": "jordan-goodwin",
+            "name": "Jordan Goodwin"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9195,
+                  "delta": -0.0015,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.187,
+                  "delta": -0.0735,
+                  "delta_se": 0.0078
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9857,
+                  "delta": -0.8835,
+                  "delta_se": 0.0745
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9225,
+                  "delta": 0.0015,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.184,
+                  "delta": -0.0765,
+                  "delta_se": 0.0077
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.0148,
+                  "delta": -0.8545,
+                  "delta_se": 0.0723
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9225,
+                  "after": 0.9195,
+                  "delta": -0.003,
+                  "delta_se": 0.0019
+                },
+                "p_title": {
+                  "before": 0.184,
+                  "after": 0.187,
+                  "delta": 0.003,
+                  "delta_se": 0.0032
+                },
+                "exp_cat_wins": {
+                  "before": 92.0148,
+                  "after": 91.9857,
+                  "delta": -0.029,
+                  "delta_se": 0.0262
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9175,
+                  "delta": -0.0035,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.186,
+                  "delta": -0.0745,
+                  "delta_se": 0.0077
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.754,
+                  "delta": -1.1153,
+                  "delta_se": 0.0759
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.92,
+                  "delta": -0.001,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.182,
+                  "delta": -0.0785,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.902,
+                  "delta": -0.9673,
+                  "delta_se": 0.0732
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.92,
+                  "after": 0.9175,
+                  "delta": -0.0025,
+                  "delta_se": 0.0019
+                },
+                "p_title": {
+                  "before": 0.182,
+                  "after": 0.186,
+                  "delta": 0.004,
+                  "delta_se": 0.0034
+                },
+                "exp_cat_wins": {
+                  "before": 91.902,
+                  "after": 91.754,
+                  "delta": -0.148,
+                  "delta_se": 0.0292
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1865,
+                  "delta": -0.074,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.8612,
+                  "delta": -1.008,
+                  "delta_se": 0.0737
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.923,
+                  "delta": 0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.181,
+                  "delta": -0.0795,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.9895,
+                  "delta": -0.8798,
+                  "delta_se": 0.0713
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.923,
+                  "after": 0.9205,
+                  "delta": -0.0025,
+                  "delta_se": 0.0021
+                },
+                "p_title": {
+                  "before": 0.181,
+                  "after": 0.1865,
+                  "delta": 0.0055,
+                  "delta_se": 0.0034
+                },
+                "exp_cat_wins": {
+                  "before": 91.9895,
+                  "after": 91.8612,
+                  "delta": -0.1283,
+                  "delta_se": 0.0276
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.912,
+                  "delta": 0.002,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.184,
+                  "delta": -0.093,
+                  "delta_se": 0.0088
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.254,
+                  "delta": -1.198,
+                  "delta_se": 0.0805
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9115,
+                  "delta": 0.0015,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1865,
+                  "delta": -0.0905,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.2408,
+                  "delta": -1.2112,
+                  "delta_se": 0.0808
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9115,
+                  "after": 0.912,
+                  "delta": 0.0005,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.1865,
+                  "after": 0.184,
+                  "delta": -0.0025,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.2408,
+                  "after": 91.254,
+                  "delta": 0.0132,
+                  "delta_se": 0.0097
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.905,
+                  "delta": -0.005,
+                  "delta_se": 0.0047
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.193,
+                  "delta": -0.084,
+                  "delta_se": 0.0092
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 90.8385,
+                  "delta": -1.6135,
+                  "delta_se": 0.0841
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9035,
+                  "delta": -0.0065,
+                  "delta_se": 0.0047
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1905,
+                  "delta": -0.0865,
+                  "delta_se": 0.0092
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 90.8918,
+                  "delta": -1.5602,
+                  "delta_se": 0.0847
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9035,
+                  "after": 0.905,
+                  "delta": 0.0015,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.1905,
+                  "after": 0.193,
+                  "delta": 0.0025,
+                  "delta_se": 0.0018
+                },
+                "exp_cat_wins": {
+                  "before": 90.8918,
+                  "after": 90.8385,
+                  "delta": -0.0532,
+                  "delta_se": 0.0108
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1755,
+                  "delta": -0.1015,
+                  "delta_se": 0.0084
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.104,
+                  "delta": -1.348,
+                  "delta_se": 0.0765
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.175,
+                  "delta": -0.102,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1783,
+                  "delta": -1.2737,
+                  "delta_se": 0.0733
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.9085,
+                  "delta": 0.0005,
+                  "delta_se": 0.0022
+                },
+                "p_title": {
+                  "before": 0.175,
+                  "after": 0.1755,
+                  "delta": 0.0005,
+                  "delta_se": 0.0033
+                },
+                "exp_cat_wins": {
+                  "before": 91.1783,
+                  "after": 91.104,
+                  "delta": -0.0742,
+                  "delta_se": 0.0283
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.835,
+                  "delta": -0.0615,
+                  "delta_se": 0.0058
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1825,
+                  "delta": -0.1005,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.5148,
+                  "delta": -3.9592,
+                  "delta_se": 0.0834
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.834,
+                  "delta": -0.0625,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1805,
+                  "delta": -0.1025,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 88.5863,
+                  "delta": -3.8878,
+                  "delta_se": 0.0831
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.834,
+                  "after": 0.835,
+                  "delta": 0.001,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.1805,
+                  "after": 0.1825,
+                  "delta": 0.002,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 88.5863,
+                  "after": 88.5148,
+                  "delta": -0.0715,
+                  "delta_se": 0.0114
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.817,
+                  "delta": -0.0795,
+                  "delta_se": 0.0061
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1955,
+                  "delta": -0.0875,
+                  "delta_se": 0.009
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.5457,
+                  "delta": -4.9283,
+                  "delta_se": 0.0861
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8185,
+                  "delta": -0.078,
+                  "delta_se": 0.0061
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1955,
+                  "delta": -0.0875,
+                  "delta_se": 0.0091
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.6305,
+                  "delta": -4.8435,
+                  "delta_se": 0.0863
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8185,
+                  "after": 0.817,
+                  "delta": -0.0015,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.1955,
+                  "after": 0.1955,
+                  "delta": 0.0,
+                  "delta_se": 0.0014
+                },
+                "exp_cat_wins": {
+                  "before": 87.6305,
+                  "after": 87.5457,
+                  "delta": -0.0848,
+                  "delta_se": 0.0103
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8205,
+                  "delta": -0.076,
+                  "delta_se": 0.006
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.191,
+                  "delta": -0.092,
+                  "delta_se": 0.009
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.7775,
+                  "delta": -4.6965,
+                  "delta_se": 0.0852
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.826,
+                  "delta": -0.0705,
+                  "delta_se": 0.0059
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1915,
+                  "delta": -0.0915,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.8893,
+                  "delta": -4.5847,
+                  "delta_se": 0.0851
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.826,
+                  "after": 0.8205,
+                  "delta": -0.0055,
+                  "delta_se": 0.0018
+                },
+                "p_title": {
+                  "before": 0.1915,
+                  "after": 0.191,
+                  "delta": -0.0005,
+                  "delta_se": 0.0013
+                },
+                "exp_cat_wins": {
+                  "before": 87.8893,
+                  "after": 87.7775,
+                  "delta": -0.1118,
+                  "delta_se": 0.0112
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "quentin-grimes",
+      "add_name": "Quentin Grimes",
+      "add_team": "LAL",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "W (Nov 27)",
+      "waiver_source": "player",
+      "effective": "2026-11-28",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 1,
+      "add_starts": 1,
+      "drop_games_lost": 1,
+      "week_linear_gain": 0.0518,
+      "week_d_exp_cats": 0.0452,
+      "week_d_p_win": 0.003,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.287,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.041,
+        "d_exp_cats_se": 0.004,
+        "d_p_win": 0.002,
+        "d_p_win_se": 0.001
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.9195,
+          "delta": -0.0015,
+          "delta_se": 0.0038
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.182,
+          "delta": -0.0785,
+          "delta_se": 0.0076
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 91.8697,
+          "delta": -0.9995,
+          "delta_se": 0.073
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-28",
+          "2026-11-30"
+        ],
+        "stint_days": 2,
+        "chains": {
+          "fa0": {
+            "player_id": "jakobe-walter",
+            "name": "Ja'Kobe Walter"
+          },
+          "fa5": {
+            "player_id": "jordan-goodwin",
+            "name": "Jordan Goodwin"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.925,
+                  "delta": 0.004,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1975,
+                  "delta": -0.063,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.385,
+                  "delta": -0.4843,
+                  "delta_se": 0.0788
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.926,
+                  "delta": 0.005,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.197,
+                  "delta": -0.0635,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.379,
+                  "delta": -0.4903,
+                  "delta_se": 0.0789
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.926,
+                  "after": 0.925,
+                  "delta": -0.001,
+                  "delta_se": 0.0007
+                },
+                "p_title": {
+                  "before": 0.197,
+                  "after": 0.1975,
+                  "delta": 0.0005,
+                  "delta_se": 0.0009
+                },
+                "exp_cat_wins": {
+                  "before": 92.379,
+                  "after": 92.385,
+                  "delta": 0.006,
+                  "delta_se": 0.0085
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9195,
+                  "delta": -0.0015,
+                  "delta_se": 0.0038
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.182,
+                  "delta": -0.0785,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.8697,
+                  "delta": -0.9995,
+                  "delta_se": 0.073
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.918,
+                  "delta": -0.003,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1805,
+                  "delta": -0.08,
+                  "delta_se": 0.0076
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.8577,
+                  "delta": -1.0115,
+                  "delta_se": 0.0727
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.918,
+                  "after": 0.9195,
+                  "delta": 0.0015,
+                  "delta_se": 0.0009
+                },
+                "p_title": {
+                  "before": 0.1805,
+                  "after": 0.182,
+                  "delta": 0.0015,
+                  "delta_se": 0.0011
+                },
+                "exp_cat_wins": {
+                  "before": 91.8577,
+                  "after": 91.8697,
+                  "delta": 0.012,
+                  "delta_se": 0.0072
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9215,
+                  "delta": 0.0005,
+                  "delta_se": 0.0039
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1825,
+                  "delta": -0.078,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.947,
+                  "delta": -0.9223,
+                  "delta_se": 0.0709
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.922,
+                  "delta": 0.001,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.1825,
+                  "delta": -0.078,
+                  "delta_se": 0.0075
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 91.941,
+                  "delta": -0.9283,
+                  "delta_se": 0.0707
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.922,
+                  "after": 0.9215,
+                  "delta": -0.0005,
+                  "delta_se": 0.0009
+                },
+                "p_title": {
+                  "before": 0.1825,
+                  "after": 0.1825,
+                  "delta": 0.0,
+                  "delta_se": 0.0012
+                },
+                "exp_cat_wins": {
+                  "before": 91.941,
+                  "after": 91.947,
+                  "delta": 0.006,
+                  "delta_se": 0.0062
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9165,
+                  "delta": 0.0065,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1955,
+                  "delta": -0.0815,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.687,
+                  "delta": -0.765,
+                  "delta_se": 0.082
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9155,
+                  "delta": 0.0055,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.194,
+                  "delta": -0.083,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.6947,
+                  "delta": -0.7572,
+                  "delta_se": 0.082
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9155,
+                  "after": 0.9165,
+                  "delta": 0.001,
+                  "delta_se": 0.0007
+                },
+                "p_title": {
+                  "before": 0.194,
+                  "after": 0.1955,
+                  "delta": 0.0015,
+                  "delta_se": 0.0011
+                },
+                "exp_cat_wins": {
+                  "before": 91.6947,
+                  "after": 91.687,
+                  "delta": -0.0077,
+                  "delta_se": 0.0071
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.905,
+                  "delta": -0.005,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.194,
+                  "delta": -0.083,
+                  "delta_se": 0.0091
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 90.8462,
+                  "delta": -1.6058,
+                  "delta_se": 0.083
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.905,
+                  "delta": -0.005,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1945,
+                  "delta": -0.0825,
+                  "delta_se": 0.0092
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 90.8475,
+                  "delta": -1.6045,
+                  "delta_se": 0.083
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.905,
+                  "after": 0.905,
+                  "delta": 0.0,
+                  "delta_se": 0.0007
+                },
+                "p_title": {
+                  "before": 0.1945,
+                  "after": 0.194,
+                  "delta": -0.0005,
+                  "delta_se": 0.0015
+                },
+                "exp_cat_wins": {
+                  "before": 90.8475,
+                  "after": 90.8462,
+                  "delta": -0.0013,
+                  "delta_se": 0.0081
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.909,
+                  "delta": -0.001,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.175,
+                  "delta": -0.102,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1262,
+                  "delta": -1.3257,
+                  "delta_se": 0.0752
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9085,
+                  "delta": -0.0015,
+                  "delta_se": 0.004
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.1725,
+                  "delta": -0.1045,
+                  "delta_se": 0.0081
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 91.1505,
+                  "delta": -1.3015,
+                  "delta_se": 0.0722
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9085,
+                  "after": 0.909,
+                  "delta": 0.0005,
+                  "delta_se": 0.0018
+                },
+                "p_title": {
+                  "before": 0.1725,
+                  "after": 0.175,
+                  "delta": 0.0025,
+                  "delta_se": 0.0026
+                },
+                "exp_cat_wins": {
+                  "before": 91.1505,
+                  "after": 91.1262,
+                  "delta": -0.0243,
+                  "delta_se": 0.0241
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8175,
+                  "delta": -0.079,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1775,
+                  "delta": -0.1055,
+                  "delta_se": 0.009
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.6633,
+                  "delta": -4.8107,
+                  "delta_se": 0.0859
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8175,
+                  "delta": -0.079,
+                  "delta_se": 0.0062
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.184,
+                  "delta": -0.099,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.675,
+                  "delta": -4.799,
+                  "delta_se": 0.0867
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8175,
+                  "after": 0.8175,
+                  "delta": 0.0,
+                  "delta_se": 0.0016
+                },
+                "p_title": {
+                  "before": 0.184,
+                  "after": 0.1775,
+                  "delta": -0.0065,
+                  "delta_se": 0.0029
+                },
+                "exp_cat_wins": {
+                  "before": 87.675,
+                  "after": 87.6633,
+                  "delta": -0.0118,
+                  "delta_se": 0.0181
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.821,
+                  "delta": -0.0755,
+                  "delta_se": 0.0061
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.188,
+                  "delta": -0.095,
+                  "delta_se": 0.0091
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.6063,
+                  "delta": -4.8678,
+                  "delta_se": 0.0837
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.82,
+                  "delta": -0.0765,
+                  "delta_se": 0.0061
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1955,
+                  "delta": -0.0875,
+                  "delta_se": 0.009
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.656,
+                  "delta": -4.818,
+                  "delta_se": 0.0849
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.82,
+                  "after": 0.821,
+                  "delta": 0.001,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.1955,
+                  "after": 0.188,
+                  "delta": -0.0075,
+                  "delta_se": 0.0025
+                },
+                "exp_cat_wins": {
+                  "before": 87.656,
+                  "after": 87.6063,
+                  "delta": -0.0498,
+                  "delta_se": 0.0182
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8245,
+                  "delta": -0.072,
+                  "delta_se": 0.006
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1855,
+                  "delta": -0.0975,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.88,
+                  "delta": -4.594,
+                  "delta_se": 0.0828
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8225,
+                  "delta": -0.074,
+                  "delta_se": 0.006
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.1905,
+                  "delta": -0.0925,
+                  "delta_se": 0.0089
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 87.9032,
+                  "delta": -4.5708,
+                  "delta_se": 0.0839
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8225,
+                  "after": 0.8245,
+                  "delta": 0.002,
+                  "delta_se": 0.0016
+                },
+                "p_title": {
+                  "before": 0.1905,
+                  "after": 0.1855,
+                  "delta": -0.005,
+                  "delta_se": 0.0025
+                },
+                "exp_cat_wins": {
+                  "before": 87.9032,
+                  "after": 87.88,
+                  "delta": -0.0232,
+                  "delta_se": 0.017
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "jakobe-walter",
+      "add_name": "Ja'Kobe Walter",
+      "add_team": "TOR",
+      "add_positions": "PG|SG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "derik-queen",
+      "drop_name": "Derik Queen",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.0532,
+      "week_d_exp_cats": 0.0446,
+      "week_d_p_win": 0.0024,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.261,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": 0.036,
+        "d_exp_cats_se": 0.007,
+        "d_p_win": -0.0003,
+        "d_p_win_se": 0.0015
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.9195,
+          "delta": -0.0015,
+          "delta_se": 0.0038
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.234,
+          "delta": -0.0265,
+          "delta_se": 0.0079
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.483,
+          "delta": -0.3862,
+          "delta_se": 0.0655
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "quentin-grimes",
+            "name": "Quentin Grimes"
+          },
+          "fa5": {
+            "player_id": "jordan-goodwin",
+            "name": "Jordan Goodwin"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.92,
+                  "delta": -0.001,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.235,
+                  "delta": -0.0255,
+                  "delta_se": 0.0077
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.872,
+                  "delta": 0.0027,
+                  "delta_se": 0.0599
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.919,
+                  "delta": -0.002,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.237,
+                  "delta": -0.0235,
+                  "delta_se": 0.0078
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.877,
+                  "delta": 0.0077,
+                  "delta_se": 0.0606
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.919,
+                  "after": 0.92,
+                  "delta": 0.001,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.237,
+                  "after": 0.235,
+                  "delta": -0.002,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 92.877,
+                  "after": 92.872,
+                  "delta": -0.005,
+                  "delta_se": 0.0116
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9195,
+                  "delta": -0.0015,
+                  "delta_se": 0.0038
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.234,
+                  "delta": -0.0265,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.483,
+                  "delta": -0.3862,
+                  "delta_se": 0.0655
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9195,
+                  "delta": -0.0015,
+                  "delta_se": 0.0038
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2335,
+                  "delta": -0.027,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.5373,
+                  "delta": -0.332,
+                  "delta_se": 0.0664
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9195,
+                  "after": 0.9195,
+                  "delta": 0.0,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.2335,
+                  "after": 0.234,
+                  "delta": 0.0005,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 92.5373,
+                  "after": 92.483,
+                  "delta": -0.0542,
+                  "delta_se": 0.0141
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9205,
+                  "delta": -0.0005,
+                  "delta_se": 0.0036
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.238,
+                  "delta": -0.0225,
+                  "delta_se": 0.0078
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.6365,
+                  "delta": -0.2328,
+                  "delta_se": 0.0585
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.92,
+                  "delta": -0.001,
+                  "delta_se": 0.0035
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2415,
+                  "delta": -0.019,
+                  "delta_se": 0.0079
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.6917,
+                  "delta": -0.1775,
+                  "delta_se": 0.0592
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.92,
+                  "after": 0.9205,
+                  "delta": 0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.2415,
+                  "after": 0.238,
+                  "delta": -0.0035,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 92.6917,
+                  "after": 92.6365,
+                  "delta": -0.0553,
+                  "delta_se": 0.0127
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.905,
+                  "delta": -0.005,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.242,
+                  "delta": -0.035,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.3962,
+                  "delta": -0.0558,
+                  "delta_se": 0.0665
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.906,
+                  "delta": -0.004,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2405,
+                  "delta": -0.0365,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.367,
+                  "delta": -0.085,
+                  "delta_se": 0.0661
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.906,
+                  "after": 0.905,
+                  "delta": -0.001,
+                  "delta_se": 0.0007
+                },
+                "p_title": {
+                  "before": 0.2405,
+                  "after": 0.242,
+                  "delta": 0.0015,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 92.367,
+                  "after": 92.3962,
+                  "delta": 0.0293,
+                  "delta_se": 0.0092
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9035,
+                  "delta": -0.0065,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.255,
+                  "delta": -0.022,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.069,
+                  "delta": -0.383,
+                  "delta_se": 0.0706
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.906,
+                  "delta": -0.004,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.255,
+                  "delta": -0.022,
+                  "delta_se": 0.0086
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.0888,
+                  "delta": -0.3633,
+                  "delta_se": 0.0714
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.906,
+                  "after": 0.9035,
+                  "delta": -0.0025,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.255,
+                  "after": 0.255,
+                  "delta": 0.0,
+                  "delta_se": 0.0016
+                },
+                "exp_cat_wins": {
+                  "before": 92.0888,
+                  "after": 92.069,
+                  "delta": -0.0198,
+                  "delta_se": 0.0101
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.905,
+                  "delta": -0.005,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2325,
+                  "delta": -0.0445,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.2267,
+                  "delta": -0.2253,
+                  "delta_se": 0.0639
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.908,
+                  "delta": -0.002,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.232,
+                  "delta": -0.045,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.2675,
+                  "delta": -0.1845,
+                  "delta_se": 0.0639
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.908,
+                  "after": 0.905,
+                  "delta": -0.003,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.232,
+                  "after": 0.2325,
+                  "delta": 0.0005,
+                  "delta_se": 0.0024
+                },
+                "exp_cat_wins": {
+                  "before": 92.2675,
+                  "after": 92.2267,
+                  "delta": -0.0408,
+                  "delta_se": 0.0112
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.894,
+                  "delta": -0.0025,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2435,
+                  "delta": -0.0395,
+                  "delta_se": 0.0084
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.9788,
+                  "delta": -0.4953,
+                  "delta_se": 0.0669
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.896,
+                  "delta": -0.0005,
+                  "delta_se": 0.0041
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.244,
+                  "delta": -0.039,
+                  "delta_se": 0.0084
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 92.079,
+                  "delta": -0.395,
+                  "delta_se": 0.0671
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.896,
+                  "after": 0.894,
+                  "delta": -0.002,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.244,
+                  "after": 0.2435,
+                  "delta": -0.0005,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 92.079,
+                  "after": 91.9788,
+                  "delta": -0.1003,
+                  "delta_se": 0.0104
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.876,
+                  "delta": -0.0205,
+                  "delta_se": 0.0045
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2405,
+                  "delta": -0.0425,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.9087,
+                  "delta": -1.5653,
+                  "delta_se": 0.0693
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8775,
+                  "delta": -0.019,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.238,
+                  "delta": -0.045,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.99,
+                  "delta": -1.484,
+                  "delta_se": 0.0698
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8775,
+                  "after": 0.876,
+                  "delta": -0.0015,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.238,
+                  "after": 0.2405,
+                  "delta": 0.0025,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 90.99,
+                  "after": 90.9087,
+                  "delta": -0.0813,
+                  "delta_se": 0.0108
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.877,
+                  "delta": -0.0195,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2345,
+                  "delta": -0.0485,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.2695,
+                  "delta": -1.2045,
+                  "delta_se": 0.0652
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.881,
+                  "delta": -0.0155,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.236,
+                  "delta": -0.047,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.3942,
+                  "delta": -1.0797,
+                  "delta_se": 0.0655
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.881,
+                  "after": 0.877,
+                  "delta": -0.004,
+                  "delta_se": 0.0014
+                },
+                "p_title": {
+                  "before": 0.236,
+                  "after": 0.2345,
+                  "delta": -0.0015,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 91.3942,
+                  "after": 91.2695,
+                  "delta": -0.1247,
+                  "delta_se": 0.0112
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "hurts"
+    },
+    {
+      "add": "jakobe-walter",
+      "add_name": "Ja'Kobe Walter",
+      "add_team": "TOR",
+      "add_positions": "PG|SG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "reed-sheppard",
+      "drop_name": "Reed Sheppard",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": -0.018,
+      "week_d_exp_cats": -0.0139,
+      "week_d_p_win": -0.0025,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.684,
+      "week_mc": {
+        "n_sims": 4000,
+        "p_win_before": 0.989,
+        "exp_cats_before": 6.367,
+        "d_exp_cats": -0.013,
+        "d_exp_cats_se": 0.006,
+        "d_p_win": -0.004,
+        "d_p_win_se": 0.0015
+      },
+      "season": {
+        "p_playoffs": {
+          "before": 0.921,
+          "after": 0.9185,
+          "delta": -0.0025,
+          "delta_se": 0.0037
+        },
+        "p_title": {
+          "before": 0.2605,
+          "after": 0.2585,
+          "delta": -0.002,
+          "delta_se": 0.0062
+        },
+        "exp_cat_wins": {
+          "before": 92.8692,
+          "after": 92.402,
+          "delta": -0.4672,
+          "delta_se": 0.0599
+        },
+        "primary_chain": "fa5",
+        "display_set": "blend",
+        "stint": [
+          "2026-11-24",
+          "2026-11-30"
+        ],
+        "stint_days": 6,
+        "chains": {
+          "fa0": {
+            "player_id": "quentin-grimes",
+            "name": "Quentin Grimes"
+          },
+          "fa5": {
+            "player_id": "jordan-goodwin",
+            "name": "Jordan Goodwin"
+          },
+          "replacement": {
+            "player_id": "__replacement_level__chain",
+            "name": "__replacement_level__chain"
+          }
+        },
+        "by_set": {
+          "blend": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.928,
+                  "delta": 0.007,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2605,
+                  "delta": 0.0,
+                  "delta_se": 0.0066
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.7952,
+                  "delta": -0.074,
+                  "delta_se": 0.0566
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.929,
+                  "delta": 0.008,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.262,
+                  "delta": 0.0015,
+                  "delta_se": 0.0064
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.792,
+                  "delta": -0.0772,
+                  "delta_se": 0.0563
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.929,
+                  "after": 0.928,
+                  "delta": -0.001,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.262,
+                  "after": 0.2605,
+                  "delta": -0.0015,
+                  "delta_se": 0.0022
+                },
+                "exp_cat_wins": {
+                  "before": 92.792,
+                  "after": 92.7952,
+                  "delta": 0.0032,
+                  "delta_se": 0.0136
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9185,
+                  "delta": -0.0025,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2585,
+                  "delta": -0.002,
+                  "delta_se": 0.0062
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.402,
+                  "delta": -0.4672,
+                  "delta_se": 0.0599
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9185,
+                  "delta": -0.0025,
+                  "delta_se": 0.0038
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.261,
+                  "delta": 0.0005,
+                  "delta_se": 0.0061
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.4345,
+                  "delta": -0.4348,
+                  "delta_se": 0.0596
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9185,
+                  "after": 0.9185,
+                  "delta": 0.0,
+                  "delta_se": 0.001
+                },
+                "p_title": {
+                  "before": 0.261,
+                  "after": 0.2585,
+                  "delta": -0.0025,
+                  "delta_se": 0.0022
+                },
+                "exp_cat_wins": {
+                  "before": 92.4345,
+                  "after": 92.402,
+                  "delta": -0.0325,
+                  "delta_se": 0.0151
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.9215,
+                  "delta": 0.0005,
+                  "delta_se": 0.0036
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2525,
+                  "delta": -0.008,
+                  "delta_se": 0.0062
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.5353,
+                  "delta": -0.334,
+                  "delta_se": 0.0554
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.921,
+                  "after": 0.922,
+                  "delta": 0.001,
+                  "delta_se": 0.0037
+                },
+                "p_title": {
+                  "before": 0.2605,
+                  "after": 0.2565,
+                  "delta": -0.004,
+                  "delta_se": 0.006
+                },
+                "exp_cat_wins": {
+                  "before": 92.8692,
+                  "after": 92.5823,
+                  "delta": -0.287,
+                  "delta_se": 0.0552
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.922,
+                  "after": 0.9215,
+                  "delta": -0.0005,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.2565,
+                  "after": 0.2525,
+                  "delta": -0.004,
+                  "delta_se": 0.0024
+                },
+                "exp_cat_wins": {
+                  "before": 92.5823,
+                  "after": 92.5353,
+                  "delta": -0.047,
+                  "delta_se": 0.0138
+                }
+              }
+            }
+          },
+          "market": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9125,
+                  "delta": 0.0025,
+                  "delta_se": 0.0038
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.263,
+                  "delta": -0.014,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.434,
+                  "delta": -0.018,
+                  "delta_se": 0.0605
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.913,
+                  "delta": 0.003,
+                  "delta_se": 0.0039
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.262,
+                  "delta": -0.015,
+                  "delta_se": 0.0082
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.4225,
+                  "delta": -0.0295,
+                  "delta_se": 0.0608
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.913,
+                  "after": 0.9125,
+                  "delta": -0.0005,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.262,
+                  "after": 0.263,
+                  "delta": 0.001,
+                  "delta_se": 0.0014
+                },
+                "exp_cat_wins": {
+                  "before": 92.4225,
+                  "after": 92.434,
+                  "delta": 0.0115,
+                  "delta_se": 0.0094
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9055,
+                  "delta": -0.0045,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.268,
+                  "delta": -0.009,
+                  "delta_se": 0.0081
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.0288,
+                  "delta": -0.4233,
+                  "delta_se": 0.0653
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.904,
+                  "delta": -0.006,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2655,
+                  "delta": -0.0115,
+                  "delta_se": 0.0081
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.0627,
+                  "delta": -0.3892,
+                  "delta_se": 0.0666
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.904,
+                  "after": 0.9055,
+                  "delta": 0.0015,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.2655,
+                  "after": 0.268,
+                  "delta": 0.0025,
+                  "delta_se": 0.0017
+                },
+                "exp_cat_wins": {
+                  "before": 92.0627,
+                  "after": 92.0288,
+                  "delta": -0.034,
+                  "delta_se": 0.0103
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.903,
+                  "delta": -0.007,
+                  "delta_se": 0.0042
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.269,
+                  "delta": -0.008,
+                  "delta_se": 0.0064
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.0902,
+                  "delta": -0.3618,
+                  "delta_se": 0.0564
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.91,
+                  "after": 0.9045,
+                  "delta": -0.0055,
+                  "delta_se": 0.0043
+                },
+                "p_title": {
+                  "before": 0.277,
+                  "after": 0.2745,
+                  "delta": -0.0025,
+                  "delta_se": 0.0062
+                },
+                "exp_cat_wins": {
+                  "before": 92.452,
+                  "after": 92.1248,
+                  "delta": -0.3272,
+                  "delta_se": 0.0557
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.9045,
+                  "after": 0.903,
+                  "delta": -0.0015,
+                  "delta_se": 0.0017
+                },
+                "p_title": {
+                  "before": 0.2745,
+                  "after": 0.269,
+                  "delta": -0.0055,
+                  "delta_se": 0.0025
+                },
+                "exp_cat_wins": {
+                  "before": 92.1248,
+                  "after": 92.0902,
+                  "delta": -0.0345,
+                  "delta_se": 0.0156
+                }
+              }
+            }
+          },
+          "stress_preseason": {
+            "fa0": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8825,
+                  "delta": -0.014,
+                  "delta_se": 0.0045
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.262,
+                  "delta": -0.021,
+                  "delta_se": 0.0073
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.2708,
+                  "delta": -1.2032,
+                  "delta_se": 0.068
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.885,
+                  "delta": -0.0115,
+                  "delta_se": 0.0046
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2625,
+                  "delta": -0.0205,
+                  "delta_se": 0.0073
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 91.3448,
+                  "delta": -1.1293,
+                  "delta_se": 0.068
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.885,
+                  "after": 0.8825,
+                  "delta": -0.0025,
+                  "delta_se": 0.0011
+                },
+                "p_title": {
+                  "before": 0.2625,
+                  "after": 0.262,
+                  "delta": -0.0005,
+                  "delta_se": 0.0018
+                },
+                "exp_cat_wins": {
+                  "before": 91.3448,
+                  "after": 91.2708,
+                  "delta": -0.074,
+                  "delta_se": 0.0103
+                }
+              }
+            },
+            "fa5": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.867,
+                  "delta": -0.0295,
+                  "delta_se": 0.0049
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2555,
+                  "delta": -0.0275,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.102,
+                  "delta": -2.372,
+                  "delta_se": 0.0715
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8695,
+                  "delta": -0.027,
+                  "delta_se": 0.0048
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2545,
+                  "delta": -0.0285,
+                  "delta_se": 0.0083
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.201,
+                  "delta": -2.273,
+                  "delta_se": 0.0719
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.8695,
+                  "after": 0.867,
+                  "delta": -0.0025,
+                  "delta_se": 0.0015
+                },
+                "p_title": {
+                  "before": 0.2545,
+                  "after": 0.2555,
+                  "delta": 0.001,
+                  "delta_se": 0.0016
+                },
+                "exp_cat_wins": {
+                  "before": 90.201,
+                  "after": 90.102,
+                  "delta": -0.099,
+                  "delta_se": 0.0101
+                }
+              }
+            },
+            "replacement": {
+              "stream": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.8725,
+                  "delta": -0.024,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.26,
+                  "delta": -0.023,
+                  "delta_se": 0.0085
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.4075,
+                  "delta": -2.0665,
+                  "delta_se": 0.0699
+                }
+              },
+              "direct": {
+                "p_playoffs": {
+                  "before": 0.8965,
+                  "after": 0.876,
+                  "delta": -0.0205,
+                  "delta_se": 0.0044
+                },
+                "p_title": {
+                  "before": 0.283,
+                  "after": 0.2585,
+                  "delta": -0.0245,
+                  "delta_se": 0.0084
+                },
+                "exp_cat_wins": {
+                  "before": 92.474,
+                  "after": 90.5293,
+                  "delta": -1.9447,
+                  "delta_se": 0.0696
+                }
+              },
+              "stream_vs_direct": {
+                "p_playoffs": {
+                  "before": 0.876,
+                  "after": 0.8725,
+                  "delta": -0.0035,
+                  "delta_se": 0.0013
+                },
+                "p_title": {
+                  "before": 0.2585,
+                  "after": 0.26,
+                  "delta": 0.0015,
+                  "delta_se": 0.0019
+                },
+                "exp_cat_wins": {
+                  "before": 90.5293,
+                  "after": 90.4075,
+                  "delta": -0.1217,
+                  "delta_se": 0.0104
+                }
+              }
+            }
+          }
+        }
+      },
+      "season_verdict": "noise"
+    },
+    {
+      "add": "tristan-da-silva",
+      "add_name": "Tristan da Silva",
+      "add_team": "ORL",
+      "add_positions": "SF|PF",
+      "add_status": null,
+      "ownership": "W (Nov 26)",
+      "waiver_source": "player",
+      "effective": "2026-11-27",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1065,
+      "week_d_exp_cats": 0.0855,
+      "week_d_p_win": 0.0048,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.012
+    },
+    {
+      "add": "landry-shamet",
+      "add_name": "Landry Shamet",
+      "add_team": "NYK",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1148,
+      "week_d_exp_cats": 0.0842,
+      "week_d_p_win": 0.0047,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -0.975
+    },
+    {
+      "add": "sam-merrill",
+      "add_name": "Sam Merrill",
+      "add_team": "CLE",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1034,
+      "week_d_exp_cats": 0.0839,
+      "week_d_p_win": 0.0046,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -0.788
+    },
+    {
+      "add": "javonte-green",
+      "add_name": "Javonte Green",
+      "add_team": "DET",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1034,
+      "week_d_exp_cats": 0.0827,
+      "week_d_p_win": 0.0044,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.006
+    },
+    {
+      "add": "deanthony-melton",
+      "add_name": "De'Anthony Melton",
+      "add_team": "GSW",
+      "add_positions": "PG|SG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.1151,
+      "week_d_exp_cats": 0.0823,
+      "week_d_p_win": 0.0059,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -0.05
+    },
+    {
+      "add": "kentavious-caldwell-pope",
+      "add_name": "K. Caldwell-Pope",
+      "add_team": "PHI",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.0969,
+      "week_d_exp_cats": 0.0798,
+      "week_d_p_win": 0.0043,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.179
+    },
+    {
+      "add": "andrew-wiggins",
+      "add_name": "Andrew Wiggins",
+      "add_team": "MIA",
+      "add_positions": "SG|SF|PF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.099,
+      "week_d_exp_cats": 0.0793,
+      "week_d_p_win": 0.0048,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": 0.092
+    },
+    {
+      "add": "bones-hyland",
+      "add_name": "Bones Hyland",
+      "add_team": "MIN",
+      "add_positions": "PG|SG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.0999,
+      "week_d_exp_cats": 0.0776,
+      "week_d_p_win": 0.0044,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.011
+    },
+    {
+      "add": "will-richard",
+      "add_name": "Will Richard",
+      "add_team": "GSW",
+      "add_positions": "SG|SF",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 3,
+      "add_starts": 3,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.0964,
+      "week_d_exp_cats": 0.0764,
+      "week_d_p_win": 0.0044,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.387
+    },
+    {
+      "add": "bennett-stirtz",
+      "add_name": "Bennett Stirtz",
+      "add_team": "OKC",
+      "add_positions": "PG",
+      "add_status": null,
+      "ownership": "FA",
+      "waiver_source": "player",
+      "effective": "2026-11-24",
+      "drop": "kawhi-leonard",
+      "drop_name": "Kawhi Leonard",
+      "add_games": 2,
+      "add_starts": 2,
+      "drop_games_lost": 2,
+      "week_linear_gain": 0.0876,
+      "week_d_exp_cats": 0.0717,
+      "week_d_p_win": 0.0043,
+      "adds_needed": {
+        "this_week": 1,
+        "next_week": 1,
+        "chain_claim_day": "2026-11-30"
+      },
+      "season_proxy_d_value": -1.182
+    }
+  ],
+  "recommend": [],
+  "recommendation": null,
+  "week_only": [],
+  "blocked": null,
+  "decision_rule": "recommend a pair only if its season stream chain (streamer for the stint, then the 6-th best realistic free agent) has \u0394P(playoffs) or \u0394P(title) > 2 paired SE and neither < -2 SE under every projection set, and the stream is not < -2 SE vs the direct move (the season sim includes this week); otherwise recommend nothing. Pairs whose only significant gain is this week's \u0394P(win) are listed in week_only with the season \u0394P(title) lower bound, for the user to weigh. A live run executes, then reports.",
+  "params": {
+    "n_drops": 3,
+    "week_sims": 4000,
+    "season_sims": 2000,
+    "season_top": 8,
+    "top": 10,
+    "seed": 0,
+    "rest_share": 0.25,
+    "sig": 2.0,
+    "chain_k": 5,
+    "stint_days": null,
+    "waiver_lag": 1
+  },
+  "labels": {
+    "week_*": "model: lineup-0.2.0 analytic normal matchup model (fitted game noise and projection error; availability priors: rest_share, injury-tag priors); week_mc = its paired Monte Carlo (simulated)",
+    "season": "simulated: position-aware season sim (season-sim, PositionAwareSimulator), paired, 2000 sims, seed 0; the stream CHAIN: streamer for his stint only, then the (chain_k+1)-th best realistic free agent (fa0 / fa{k} / replacement level reported); direct = drop -> chain FA with no stream; \u00b1 = Monte Carlo SE only (excludes projection/model error); other teams never add/drop",
+    "chain_k": "PRIOR: other teams claim the best free agents first",
+    "projection_sets": "blend and market share OUR fitted availability model (games played); the stress set (espn-only-gp) uses ESPN's per-game stats AND ESPN's games (known ~+11 games/player optimistic), so it is the only set independent of our availability model. When the blend is in-season but the stress file was built from the PRESEASON base, it is renamed 'stress_preseason' and reported as a sensitivity only: it never votes in 'helps under every set' (it would mix preseason injuries/roles with current ones)",
+    "season_proxy_d_value": "valuation value(add) - value(drop): season G-score totals (screen only)",
+    "effective": "ASSUMPTION: free agent plays from today; waiver claim from its date + --waiver-lag; the claim may lose to a team higher in the rolling waiver order"
+  },
+  "inputs": {
+    "league_file": "/Users/harrisonku/dev/nba/data/manual/league_rosters_2026-27.json",
+    "roster_capture": "/Users/harrisonku/dev/nba/data/raw/yahoo/league_rosters_2026-11-24T2333Z.json",
+    "free_agents": "data/raw/yahoo/free_agents_2026-11-24T2334Z.json",
+    "projection_sets": {
+      "blend": {
+        "path": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
+        "sha256": "5c353ac811b3e5151df40c2fa064447a92c28204007638280eac90783639bf8b"
+      },
+      "market": {
+        "path": "/Users/harrisonku/dev/nba/var/projections_alt/market.inseason.csv",
+        "sha256": "558554db3c8baa75727635491431191a5ea599626a97700aae0f4815d90998dc"
+      },
+      "stress_preseason": {
+        "path": "/Users/harrisonku/dev/nba/var/projections_alt/espn-only-gp.csv",
+        "sha256": "8436dc57540b1a32cd70d823a8bdc7c809ec0064a35e2bcbca1a0dcb0dddda40"
+      }
+    },
+    "free_agents_sha256": "91795f1a823339ab0a6f73af3e5dca4ec5d75989ab52d1a402343b7e51bb0a03",
+    "schedule": "/Users/harrisonku/dev/nba/data/manual/league_schedule.json",
+    "projections": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
+    "projections_sha256": "5c353ac811b3e5151df40c2fa064447a92c28204007638280eac90783639bf8b"
+  },
+  "warnings": [
+    "1 free agent(s) not in projections, skipped: Russell Westbrook",
+    "stress projections /Users/harrisonku/dev/nba/var/projections_alt/espn-only-gp.csv were built from the preseason base while the blend is in-season: reported as 'stress_preseason' (sensitivity only), excluded from the 'helps under every set' rule"
+  ],
+  "note": "Analysis only: never touches Yahoo. A live run executes recommended moves (txn ledger), then reports them."
+}
