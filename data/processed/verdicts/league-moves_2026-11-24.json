@@ -1,0 +1,174 @@
+{
+ "date": "2026-11-24",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-24_premove_league.json",
+ "moves": [
+  {
+   "team": "Waiver Warrior",
+   "yahoo_team_id": 1,
+   "type": "add_drop",
+   "player_in": "mikel-brown-jr",
+   "player_out": "meleek-thomas",
+   "class": "neutral",
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-11-24_premove_league.json --add mikel-brown-jr --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "mikel-brown-jr",
+      "name": "Mikel Brown Jr."
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.9233,
+     "after": 0.8992,
+     "delta": -0.024,
+     "delta_se": 0.0034
+    },
+    "p_title": {
+     "before": 0.2577,
+     "after": 0.2515,
+     "delta": -0.0063,
+     "delta_se": 0.0048
+    },
+    "exp_cat_wins": {
+     "before": 92.6748,
+     "after": 91.2073,
+     "delta": -1.4675,
+     "delta_se": 0.0528
+    },
+    "compute_seconds": 11.34,
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-08 (in 49% of sims)",
+     "after: assumes the roster cap releases Mikel Brown Jr. from ~2027-02-08 (in 48% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  },
+  {
+   "team": "Yes it’s a mess",
+   "yahoo_team_id": 2,
+   "type": "add_drop",
+   "player_in": "charles-bassey",
+   "player_out": "nolan-traore",
+   "class": "neutral",
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-11-24_premove_league.json --add charles-bassey --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "charles-bassey",
+      "name": "Charles Bassey"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.9233,
+     "after": 0.9025,
+     "delta": -0.0208,
+     "delta_se": 0.0033
+    },
+    "p_title": {
+     "before": 0.2577,
+     "after": 0.239,
+     "delta": -0.0187,
+     "delta_se": 0.0048
+    },
+    "exp_cat_wins": {
+     "before": 92.6748,
+     "after": 91.2627,
+     "delta": -1.412,
+     "delta_se": 0.053
+    },
+    "compute_seconds": 11.1,
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-08 (in 49% of sims)",
+     "after: assumes the roster cap releases Charles Bassey from ~2027-02-08 (in 47% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  },
+  {
+   "team": "Pledge Allegiance to the FLAGG",
+   "yahoo_team_id": 8,
+   "type": "add_drop",
+   "player_in": "buddy-hield",
+   "player_out": "jaxson-hayes",
+   "class": "neutral",
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-11-24_premove_league.json --add buddy-hield --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "buddy-hield",
+      "name": "Buddy Hield"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.9233,
+     "after": 0.9095,
+     "delta": -0.0138,
+     "delta_se": 0.0031
+    },
+    "p_title": {
+     "before": 0.2577,
+     "after": 0.2545,
+     "delta": -0.0032,
+     "delta_se": 0.0045
+    },
+    "exp_cat_wins": {
+     "before": 92.6748,
+     "after": 91.997,
+     "delta": -0.6777,
+     "delta_se": 0.0546
+    },
+    "compute_seconds": 11.19,
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-08 (in 49% of sims)",
+     "after: assumes the roster cap releases Buddy Hield from ~2027-02-08 (in 48% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   }
+  }
+ ]
+}

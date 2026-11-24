@@ -1,0 +1,47 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Tue 11-24: lineup stands (Jokić only game); Wednesday set",
+  "status": "done",
+  "headline": "Lineup verified, no change needed. Week 6 vs Jeffrey's Great Team: 6.38 ± 0.01 of 9 expected cats (6-3 after Monday).",
+  "week": 6,
+  "verdict": "Jokić is my only player with a game today and he starts. No add or drop: nothing helps.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 6", "value": 6.38, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.922, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.267, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats uses availability priors (rest_share 0.25); its SE is simulation error only.",
+   "FG% (.22), FT% (.35) and TO (.03) are the likely losses this week.",
+   "Season odds use today's projections; banked wins are not in the sim yet (T-018)."
+  ],
+  "links": [{"label": "Daily log", "path": "docs/daily/2026-11-24.md"}],
+  "rationale": [
+   "- Plan lp-2026-11-24-d7f32c52dbdc: no changes; Yahoo already matched it 14/14.",
+   "- Wednesday set in advance and verified 14/14: Podziemski, Ware, Brunson start.",
+   "- Stream and opportunity tools: no helps verdict (da Silva speculative, on waivers).",
+   "- Three rival pickups reviewed: none would have helped us."
+  ],
+  "why_now": {
+   "before": "Mon 11-23: 10 starters played; Tuesday was set in advance with Jokić at C.",
+   "changed": [
+    {"text": "Nothing for today. Wednesday: NOP, UTA and DEN are idle; GSW, NYK and MIL play.", "kind": "schedule"}
+   ],
+   "evidence": ["Exp. cats won week 6"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-24-d7f32c52dbdc",
+  "lineup_record": "la-2026-11-24-43cf30ba42c1",
+  "matchup_score": "ms-w6-2026-11-24-a81efd253e50",
+  "season_sim": "sim-20261124122142-441263",
+  "next_day_plan": "lp-2026-11-25-1eabae93c8bf",
+  "next_day_txn": "txn-065cd73bb88d49519d28e5c3af09fe24"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-24.json"
+ }
+}

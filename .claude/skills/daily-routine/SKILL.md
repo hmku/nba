@@ -122,7 +122,7 @@ is interested in X; details private"). A thread message
    Finish with `fantasy review backlog --json` = `[]`; if not (e.g. Yahoo read failed), say so in the log.
 
 ## 2. THINK
-- Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted
+- Lineup: `fantasy lineup plan --date $D --week --save --json` (`--save` stores the plan for the dashboard's Lineup tab; `saved.run_id` = lp-…; a re-run after `--locked`/news saves a new version only if content changed; when you set a future day in advance, also `fantasy lineup plan --date <that day> --save --current-slots <file.json>` — a PATH to `{player_id: slot}` read from that day's Yahoo page, not inline JSON (inline crashed with "File name too long", 2026-11-24); without it the plan exits `stale_capture`) (lineup-0.3.0: exact position-aware assignment, matchup-weighted
   vs this week's opponent; `docs/research/lineup_optimizer.md`). Run it BEFORE the day's first tip-off; after a tip-off
   pass `--locked <ids of players whose games started>`. The plan uses the newest saved matchup score of the week as banked totals
   automatically (lineup-0.3.0): check `accumulated_source.kind == "matchup_score"` and that its `observed_at` is this
