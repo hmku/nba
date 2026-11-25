@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "sim_version": "season-sim-0.9.0",
+  "team": 1,
+  "n_sims": 4000,
+  "seed": 0,
+  "add": [
+    {
+      "player_id": "quentin-grimes",
+      "name": "Quentin Grimes"
+    }
+  ],
+  "drop": [
+    {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+    }
+  ],
+  "p_playoffs": {
+    "before": 0.9163,
+    "after": 0.9115,
+    "delta": -0.0047,
+    "delta_se": 0.0029
+  },
+  "p_title": {
+    "before": 0.262,
+    "after": 0.2702,
+    "delta": 0.0083,
+    "delta_se": 0.0046
+  },
+  "exp_cat_wins": {
+    "before": 92.3501,
+    "after": 92.2576,
+    "delta": -0.0925,
+    "delta_se": 0.051
+  },
+  "compute_seconds": 10.98,
+  "notes": [
+    "before: assumes the roster cap releases Reed Sheppard from ~2027-02-08 (in 49% of sims)",
+    "after: assumes the roster cap releases Quentin Grimes from ~2027-02-08 (in 50% of sims)"
+  ],
+  "warnings": [
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+    "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+}

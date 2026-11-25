@@ -1,10 +1,10 @@
 {
   "model_version": "ros-proj-0.6.0+ros-avail-0.4+stat-shrink-0.1+minutes-0.2.0+pop-prior-0.1",
-  "as_of": "2026-11-24",
-  "git_sha": "33039e4",
+  "as_of": "2026-11-25",
+  "git_sha": "01c9c64",
   "output": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.inseason.csv",
   "prior": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-  "prior_sha256": "a0205014b07faa9a2ccbbbb7741b7e4fc382368baaf9ee2699589d30412d2bac",
+  "prior_sha256": "f86c2c148d7641888c5feb32fb9eabd8fa2efe60262f421fe78c3d077ff7eb27",
   "rows": 551,
   "players_with_box_scores": 481,
   "max_team_games": 19,
@@ -228,40 +228,39 @@
     "players": 46,
     "games": 1.0
   },
-  "status": "injury feed fetched 2026-11-24",
+  "status": "injury feed fetched 2026-11-25",
   "playoff_share": {
-    "remaining_schedule": 0.164,
+    "remaining_schedule": 0.1656,
     "season_schedule": 0.1283,
-    "remaining_used": 0.1917,
+    "remaining_used": 0.1935,
     "season_used": 0.15
   },
-  "latest_box_score_date": "2026-11-23",
+  "latest_box_score_date": "2026-11-24",
   "warnings": [
     "45 projected players never in a box score although their team played >= 3 games (injured, waived or an id mismatch?): aaron-holiday, adama-alpha-bal, amir-coffey, andersson-garcia, bez-mbeng, bruce-brown, cam-thomas, cameron-payne, cody-martin, cole-anthony, dangelo-russell, daquan-jeffries, dariq-whitehead, dejon-jarreau, drew-eubanks"
   ],
   "inputs": [
     {
       "path": "/Users/harrisonku/dev/nba/data/processed/projections_2026_27.csv",
-      "sha256": "a0205014b07faa9a2ccbbbb7741b7e4fc382368baaf9ee2699589d30412d2bac"
+      "sha256": "f86c2c148d7641888c5feb32fb9eabd8fa2efe60262f421fe78c3d077ff7eb27"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/player_games_2027.csv.gz",
-      "sha256": "a4ea1a947b5908d6d1809162e820235b3e563f1866156c20334f696781604a1d"
+      "sha256": "711b146f453efd90680303f31ad2be135e051831e17bd3a03c59c1fc0c6e743a"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/raw/espn_boxscores/team_games_2027.csv.gz",
-      "sha256": "244cf2572ea478cd37928b8d551bf31e1fa9464debc498a6677aa610e6c39750"
+      "sha256": "55a8749f3396df94130ad87d18ae74dccb35f17d8d21a9604ff03fc3f5709eed"
     },
     {
       "path": "/Users/harrisonku/dev/nba/data/manual/player_overrides_2026_27.csv",
-      "sha256": "221d86ba5dd684378d857e8019a9a8b6fc4da48a75275fcd98cb0cbb9288d1e0"
+      "sha256": "ffe8f2f5a00911940b0dc64f35ff77675474c3434df4b3f00ba0111cecaece45"
     }
   ],
-  "sha256": "5c353ac811b3e5151df40c2fa064447a92c28204007638280eac90783639bf8b",
+  "sha256": "453ddd618f94171b9a3bf390d2c0138ffccef3be36186d0f18d4312ce7b2cc4c",
   "low_confidence": {
     "rule": "|gp - gp_preseason| > 4 (either direction) after 1-5 team games: check the reason (injury news, waived/not with team, coach's decision, a star returning) before acting; early moves are damped by k/5 (a prior) but history mixes undeclared injuries into early absences",
     "players": [
-      "devin-carter",
       "jonas-aidoo",
       "kam-jones"
     ]
@@ -317,6 +316,13 @@
       "team_games": 16
     },
     {
+      "player_id": "jonas-valanciunas",
+      "gp_preseason": 51.1,
+      "gp": 16.6,
+      "played": 0,
+      "team_games": 16
+    },
+    {
       "player_id": "mouhamed-gueye",
       "gp_preseason": 50.8,
       "gp": 16.5,
@@ -329,13 +335,6 @@
       "gp": 14.3,
       "played": 0,
       "team_games": 18
-    },
-    {
-      "player_id": "jonas-valanciunas",
-      "gp_preseason": 51.1,
-      "gp": 17.2,
-      "played": 0,
-      "team_games": 15
     }
   ]
 }

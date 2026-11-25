@@ -283,7 +283,7 @@ recommendation/score for that player — and what changed since; unmodelled cost
 for these kinds (`policy.AUTONOMY_ON`). Post each move (and today's
 lineup plan, type `lineup`) to the dashboard's **Inbox** tab: write an advice JSON (schema: `docs/research/dashboard_data.md`
 §4, including `rationale` and `why_now`, within the advice-0.3.0 concise limits — title ≤ 70 chars, verdict ≤ 2
-sentences, ≤ 4 short rationale bullets, ≤ 3 changes, ≤ 4 risks, ≤ 6 metrics with ≤ 3 `key: true`; examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
+sentences, ≤ 4 short rationale bullets, ≤ 3 changes, ≤ 4 risks, ≤ 6 metrics with ≤ 3 `key: true`; `why_now.changed[].kind` ∈ news|model|roster|schedule|league|other ("information" is rejected, 2026-11-25); examples in `data/advice/`) and `fantasy advise post --file <file> --json`; update status later with
 `fantasy advise status <advice_id> done|rejected|expired --note "..."`. **Execute** a `helps` move right away (agent-run §6,
 re-reading Yahoo first), then post its card with `"requires_user_yes": false`, status `done` and the verification in the
 note, plus `fantasy intel post` with `--details '{"advice_id": "<advice_id>"}'` so it shows in the Inbox feed. A move

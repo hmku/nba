@@ -1,0 +1,46 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Wed 11-25: lineup stands (9 of 9 with a game start)",
+  "status": "done",
+  "headline": "Lineup verified, no change needed. Week 6 vs Jeffrey's Great Team: 6.32 ± 0.01 of 9 expected cats (6-3 after Tuesday).",
+  "week": 6,
+  "verdict": "All 9 of my players with a game start today. No add or drop: nothing helps.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 6", "value": 6.32, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.917, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.253, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats uses availability priors (rest_share 0.25); its SE is simulation error only.",
+   "FG% (.15), FT% (.39) and TO (.02) are the likely losses this week.",
+   "Leonard's return date (Dec 13) is a prior: workouts only, re-evaluated ~Dec 1."
+  ],
+  "links": [{"label": "Daily log", "path": "docs/daily/2026-11-25.md"}],
+  "rationale": [
+   "- Plan lp-2026-11-25-e8dd6ae4d8b9: no changes; Yahoo already matched it 14/14.",
+   "- Stream and opportunity tools: no helps verdict (Javonte Green speculative).",
+   "- Grimes (waivers until Nov 27) for Sheppard: noise, -0.5 ± 0.3 pp P(playoffs).",
+   "- No rival pickups since yesterday morning."
+  ],
+  "why_now": {
+   "before": "Tue 11-24: Wednesday was set in advance (Podziemski, Ware, Brunson in).",
+   "changed": [
+    {"text": "Nothing: no new tags on my active players; re-plan on today's 6-3 score agrees.", "kind": "news"},
+    {"text": "Leonard: workouts only, re-evaluated in a week; expected out 2 more games (prior).", "kind": "news"}
+   ],
+   "evidence": ["Exp. cats won week 6"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-25-e8dd6ae4d8b9",
+  "lineup_record": "la-2026-11-25-d8d7be2c90a0",
+  "matchup_score": "ms-w6-2026-11-25-1354c2f1309a",
+  "season_sim": "sim-20261125122532-74f9e6"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-25.json"
+ }
+}
