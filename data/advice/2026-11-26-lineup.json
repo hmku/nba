@@ -1,0 +1,49 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Thu 11-26: no NBA games; Friday's lineup set in advance",
+  "status": "done",
+  "headline": "Friday set and verified (10 of 10 start). Week 6: 6.39 ± 0.01 of 9 expected cats (6-3 so far).",
+  "week": 6,
+  "verdict": "No games today, so nothing to set. No add or drop: nothing helps.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 6", "value": 6.39, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.904, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.241, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats uses availability priors (rest_share 0.25); its SE is simulation error only.",
+   "FG% (.08), FT% (.47) and TO (.00) are the likely losses this week.",
+   "Friday is re-planned tomorrow morning; late injury news can still change it."
+  ],
+  "links": [{"label": "Daily log", "path": "docs/daily/2026-11-26.md"}],
+  "rationale": [
+   "- Friday plan lp-2026-11-27-a925011c2e41: Fears PG, Brunson G, Bailey F, Jokić Util in.",
+   "- Sheppard, VanVleet (HOU) and Reid (CHA) have no game Friday, so they sit.",
+   "- Stream and opportunity tools: no helps verdict (Walter speculative).",
+   "- Rival adds (Shamet, Melton) would not have helped us: -1.5 ± 0.3 and +0.6 ± 0.3 pp."
+  ],
+  "why_now": {
+   "before": "Wed 11-25: Friday was left for the next run (no games Thursday).",
+   "changed": [
+    {"text": "Friday's slate: 10 of my players have a game; Jokić, Bailey and Fears were on the bench.", "kind": "schedule"},
+    {"text": "No new injury tags on my active players; Leonard still Out in IL.", "kind": "news"}
+   ],
+   "evidence": ["Exp. cats won week 6"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-26-2a2a80d0792b",
+  "lineup_plan_friday": "lp-2026-11-27-a925011c2e41",
+  "lineup_record": "la-2026-11-26-ab8e20976f5c",
+  "lineup_record_friday": "la-2026-11-27-b6d61b7907bb",
+  "lineup_txn_friday": "txn-6b8dc0b8271b4369893f4188e3335c7b",
+  "matchup_score": "ms-w6-2026-11-26-338574286c7b",
+  "season_sim": "sim-20261126122545-d6ca07"
+ },
+ "inputs": {
+  "league_file": "data/manual/league_rosters_2026-27.json",
+  "free_agents": "data/raw/yahoo/free_agents_2026-11-26.json"
+ }
+}
