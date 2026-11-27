@@ -1,0 +1,58 @@
+{
+ "date": "2026-11-27",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-27_premove_league.json",
+ "moves": [
+  {
+   "move": "Waiver Warrior +Kevin Porter Jr. (FA) -Aaron Wiggins (W Nov 29), 2026-11-26 21:54 ET",
+   "command": "fantasy sim compare --league-file data/processed/verdicts/league-moves_2026-11-27_premove_league.json --add kevin-porter-jr --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "kevin-porter-jr",
+      "name": "Kevin Porter Jr."
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.9045,
+     "after": 0.8508,
+     "delta": -0.0537,
+     "delta_se": 0.0041
+    },
+    "p_title": {
+     "before": 0.2447,
+     "after": 0.2077,
+     "delta": -0.037,
+     "delta_se": 0.0052
+    },
+    "exp_cat_wins": {
+     "before": 91.7717,
+     "after": 89.554,
+     "delta": -2.2178,
+     "delta_se": 0.0578
+    },
+    "compute_seconds": 10.73,
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-08 (in 51% of sims)",
+     "after: assumes the roster cap releases Derik Queen from ~2027-02-10 (in 32% of sims)"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   },
+   "class": "neutral"
+  }
+ ]
+}

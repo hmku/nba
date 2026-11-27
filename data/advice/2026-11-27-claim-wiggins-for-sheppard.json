@@ -1,0 +1,47 @@
+{
+ "summary": {
+  "type": "add_drop",
+  "title": "Waiver claim filed: Aaron Wiggins for Reed Sheppard",
+  "status": "done",
+  "headline": "Claim filed and verified on Yahoo 07:32 ET. It processes Sun Nov 29; Sheppard is dropped only if we win it.",
+  "week": 6,
+  "verdict": "Wiggins beats Sheppard for the rest of the season under both projection sets. Small gain, mostly in title odds.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "ΔP(title) season (blend)", "value": 1.42, "se": 0.19, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(title) season (market)", "value": 1.16, "se": 0.18, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs) season (blend)", "value": 0.45, "se": 0.13, "unit": "pp", "evidence": "simulated", "key": true},
+   {"label": "ΔP(playoffs) season (market)", "value": 0.30, "se": 0.13, "unit": "pp", "evidence": "simulated"}
+  ],
+  "risks": [
+   "Costs waiver priority (6th now, last if the claim wins) and 1 of 6 adds; neither is in the model.",
+   "SEs are simulation error only (3 seeds x 8,000 paired sims); projection error is larger.",
+   "Wiggins's minutes may dip when McCollum returns (~Dec 19).",
+   "5 teams have higher priority; a rival claim beats ours."
+  ],
+  "links": [
+   {"label": "Daily log", "path": "docs/daily/2026-11-27.md"},
+   {"label": "Sim verdict", "path": "data/processed/verdicts/compare-aaron-wiggins_2026-11-27.json"}
+  ],
+  "rationale": [
+   "- Wiggins (ATL wing): 24.8 mpg, 13.1 pts projected; Sheppard: 21.1 mpg, 10.2 pts and falling (14-19 mpg last 3).",
+   "- Sheppard is my lowest-value healthy player and the planned next drop.",
+   "- Yahoo agrees on direction: Wiggins rank 107, 33% rostered; Sheppard rank 174, 17%.",
+   "- Independent quant review: supported with caveats (not a roster-cap or data artifact)."
+  ],
+  "why_now": {
+   "before": "Wiggins was on Waiver Warrior's roster since Oct 24, so he was never available. Sheppard was kept on Nov 3 as the best of my fringe players.",
+   "changed": [
+    {"text": "Waiver Warrior dropped Wiggins on Nov 26 (21:54 ET) to add Kevin Porter Jr.; he is on waivers until Nov 29.", "kind": "league"},
+    {"text": "VanVleet's return on Nov 16 cut Sheppard's minutes.", "kind": "roster"}
+   ],
+   "evidence": ["ΔP(title) season (blend)", "ΔP(title) season (market)"]
+  }
+ },
+ "params": {
+  "add": "aaron-wiggins", "add_yahoo_player_id": 6597, "drop": "reed-sheppard", "drop_yahoo_player_id": 10288,
+  "txn_id": "txn-e4d175785a894f16874bcbae35c2bccf", "type": "waiver_claim", "processes": "2026-11-29",
+  "tool": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add aaron-wiggins --drop reed-sheppard --sims 8000 --seed {0,1,2} [--projections var/projections_alt/market.inseason.csv] --no-save --json"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-27.json"}
+}

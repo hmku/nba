@@ -1,0 +1,42 @@
+{
+ "summary": {
+  "type": "lineup",
+  "title": "Fri 11-27: lineup already optimal; Saturday set in advance",
+  "status": "done",
+  "headline": "Today verified (10 of 10 start); Saturday set and verified. Week 6: 6.39 ± 0.01 of 9 expected cats (6-3 so far).",
+  "week": 6,
+  "verdict": "No change needed today. One move made separately: a waiver claim for Aaron Wiggins.",
+  "requires_user_yes": false,
+  "metrics": [
+   {"label": "Exp. cats won week 6", "value": 6.39, "se": 0.01, "unit": "cats", "evidence": "simulated", "key": true},
+   {"label": "P(playoffs)", "value": 0.911, "se": 0.003, "unit": "prob", "evidence": "simulated", "key": true},
+   {"label": "P(title)", "value": 0.249, "se": 0.004, "unit": "prob", "evidence": "simulated", "key": true}
+  ],
+  "risks": [
+   "Exp. cats uses availability priors (rest_share 0.25); its SE is simulation error only.",
+   "FG% (.08), FT% (.48) and TO (.00) are the likely losses this week.",
+   "Saturday is re-planned tomorrow morning; late injury news can still change it."
+  ],
+  "links": [{"label": "Daily log", "path": "docs/daily/2026-11-27.md"}],
+  "rationale": [
+   "- Today's plan lp-2026-11-27-572f93330431 equals what was set Thursday: 14 of 14 slots.",
+   "- Saturday lp-2026-11-28-0ada359e649b: Sheppard SG, Reid C, VanVleet Util in; only 4 of mine play.",
+   "- Podziemski, Queen and Jokić have no game Saturday, so they sit.",
+   "- Stream and opportunity tools: no helps verdict (Walter week-only, da Silva and Joe speculative)."
+  ],
+  "why_now": {
+   "before": "Thu 11-26: Friday was set in advance; Saturday was left for today.",
+   "changed": [
+    {"text": "Saturday's slate: HOU and CHA play, GSW, NOP and DEN do not.", "kind": "schedule"},
+    {"text": "No new injury tags on my active players; Leonard still Out in IL.", "kind": "news"}
+   ],
+   "evidence": ["Exp. cats won week 6"]
+  }
+ },
+ "params": {
+  "lineup_plan": "lp-2026-11-27-572f93330431", "lineup_plan_saturday": "lp-2026-11-28-0ada359e649b",
+  "lineup_record": "la-2026-11-27-2fef2366fc55", "lineup_txn_saturday": "txn-4a7b87a9c8c34bc4b532a24cb6a5e284",
+  "matchup_score": "ms-w6-2026-11-27-ac46e492e789", "season_sim": "sim-20261127122735-44163b"
+ },
+ "inputs": {"league_file": "data/manual/league_rosters_2026-27.json", "free_agents": "data/raw/yahoo/free_agents_2026-11-27.json"}
+}

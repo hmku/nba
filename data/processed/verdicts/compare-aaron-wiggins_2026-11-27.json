@@ -1,0 +1,357 @@
+{
+ "date": "2026-11-27",
+ "add": "aaron-wiggins",
+ "drop": "reed-sheppard",
+ "sets": {
+  "blend": {
+   "command": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add aaron-wiggins --drop reed-sheppard --sims 8000 --seed {0,1,2} --no-save --json",
+   "summary": {
+    "p_playoffs": {
+     "delta_mean": 0.00453,
+     "delta_se": 0.00125,
+     "by_seed": [
+      0.0047,
+      0.0053,
+      0.0036
+     ]
+    },
+    "p_title": {
+     "delta_mean": 0.01423,
+     "delta_se": 0.00191,
+     "by_seed": [
+      0.0111,
+      0.0176,
+      0.014
+     ]
+    },
+    "exp_cat_wins": {
+     "delta_mean": 0.11987,
+     "delta_se": 0.02169,
+     "by_seed": [
+      0.1578,
+      0.072,
+      0.1298
+     ]
+    }
+   },
+   "results": [
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 0,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.9061,
+      "after": 0.9109,
+      "delta": 0.0047,
+      "delta_se": 0.0021
+     },
+     "p_title": {
+      "before": 0.2504,
+      "after": 0.2615,
+      "delta": 0.0111,
+      "delta_se": 0.0034
+     },
+     "exp_cat_wins": {
+      "before": 92.0284,
+      "after": 92.1863,
+      "delta": 0.1578,
+      "delta_se": 0.0374
+     },
+     "compute_seconds": 21.94,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-10 (in 49% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-11 (in 49% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    },
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 1,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.9049,
+      "after": 0.9101,
+      "delta": 0.0053,
+      "delta_se": 0.0022
+     },
+     "p_title": {
+      "before": 0.2452,
+      "after": 0.2629,
+      "delta": 0.0176,
+      "delta_se": 0.0032
+     },
+     "exp_cat_wins": {
+      "before": 91.9946,
+      "after": 92.0666,
+      "delta": 0.072,
+      "delta_se": 0.0372
+     },
+     "compute_seconds": 22.31,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-09 (in 49% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-09 (in 49% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    },
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 2,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.9062,
+      "after": 0.9099,
+      "delta": 0.0036,
+      "delta_se": 0.0022
+     },
+     "p_title": {
+      "before": 0.2454,
+      "after": 0.2594,
+      "delta": 0.014,
+      "delta_se": 0.0033
+     },
+     "exp_cat_wins": {
+      "before": 91.9396,
+      "after": 92.0693,
+      "delta": 0.1298,
+      "delta_se": 0.0381
+     },
+     "compute_seconds": 22.01,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-09 (in 48% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-10 (in 49% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    }
+   ]
+  },
+  "market": {
+   "command": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add aaron-wiggins --drop reed-sheppard --sims 8000 --seed {0,1,2} --projections var/projections_alt/market.inseason.csv --no-save --json",
+   "summary": {
+    "p_playoffs": {
+     "delta_mean": 0.00297,
+     "delta_se": 0.00127,
+     "by_seed": [
+      0.0003,
+      0.004,
+      0.0046
+     ]
+    },
+    "p_title": {
+     "delta_mean": 0.01157,
+     "delta_se": 0.00185,
+     "by_seed": [
+      0.01,
+      0.0111,
+      0.0136
+     ]
+    },
+    "exp_cat_wins": {
+     "delta_mean": 0.13667,
+     "delta_se": 0.02038,
+     "by_seed": [
+      0.1423,
+      0.1481,
+      0.1196
+     ]
+    }
+   },
+   "results": [
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 0,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.9091,
+      "after": 0.9094,
+      "delta": 0.0003,
+      "delta_se": 0.0023
+     },
+     "p_title": {
+      "before": 0.2521,
+      "after": 0.2621,
+      "delta": 0.01,
+      "delta_se": 0.0032
+     },
+     "exp_cat_wins": {
+      "before": 91.8751,
+      "after": 92.0174,
+      "delta": 0.1423,
+      "delta_se": 0.0351
+     },
+     "compute_seconds": 21.9,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-04 (in 57% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-04 (in 57% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    },
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 1,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.902,
+      "after": 0.906,
+      "delta": 0.004,
+      "delta_se": 0.0022
+     },
+     "p_title": {
+      "before": 0.2435,
+      "after": 0.2546,
+      "delta": 0.0111,
+      "delta_se": 0.0032
+     },
+     "exp_cat_wins": {
+      "before": 91.6036,
+      "after": 91.7517,
+      "delta": 0.1481,
+      "delta_se": 0.0354
+     },
+     "compute_seconds": 21.93,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-04 (in 56% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-04 (in 57% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    },
+    {
+     "ok": true,
+     "sim_version": "season-sim-0.9.0",
+     "team": 1,
+     "n_sims": 8000,
+     "seed": 2,
+     "add": [
+      {
+       "player_id": "aaron-wiggins",
+       "name": "Aaron Wiggins"
+      }
+     ],
+     "drop": [
+      {
+       "player_id": "reed-sheppard",
+       "name": "Reed Sheppard"
+      }
+     ],
+     "p_playoffs": {
+      "before": 0.9049,
+      "after": 0.9095,
+      "delta": 0.0046,
+      "delta_se": 0.0021
+     },
+     "p_title": {
+      "before": 0.2454,
+      "after": 0.259,
+      "delta": 0.0136,
+      "delta_se": 0.0032
+     },
+     "exp_cat_wins": {
+      "before": 91.6979,
+      "after": 91.8176,
+      "delta": 0.1196,
+      "delta_se": 0.0354
+     },
+     "compute_seconds": 22.42,
+     "notes": [
+      "before: assumes the roster cap releases Reed Sheppard from ~2027-02-03 (in 56% of sims)",
+      "after: assumes the roster cap releases Aaron Wiggins from ~2027-02-03 (in 57% of sims)"
+     ],
+     "warnings": [
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+      "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+     ],
+     "run_id": null
+    }
+   ]
+  }
+ }
+}

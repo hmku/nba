@@ -298,6 +298,15 @@ no-store re-read (the first fetch right after the click can still show the old s
 A lineup change made after an add can **overwrite future days already set** (2026-11-14 18:45: moving Marshall into
 today's Util copied Saturday's whole lineup onto Sunday): re-read every future date you set earlier, re-plan it
 (`--current-slots` from that read) and re-execute.
+**Add / waiver-claim page (learned 2026-11-27, first claim):** `/nba/44495/addplayer?apid=<yahoo id>` ("Claim Player From
+Waivers" for a `W` player). Click the "—" drop button on the row of the player to drop — `scroll_to` its ref first: a click
+by `ref` alone scrolled the page and landed on the row below. The submit button then reads "Create claim to Add X, Drop Y":
+check that text and the form's `apid`/`dpid` before `txn mark submitted` and the click. After the submit the page can look
+unchanged: verify on the team page ("Pending Transactions … Waiver 1 (date): Add X, Drop Y"), never click twice. The txn
+is `verified` = claim filed; the run on the waiver date checks the outcome, re-syncs and re-sims. `inseason stream`
+never season-sims a waiver player against my weakest player (0 games this week → not shortlisted; T-028): for a newly
+waived player run `fantasy sim compare --add X --drop <planned drop> --sims 8000` on 3 seeds, blend and
+`--projections var/projections_alt/market.inseason.csv`, and act only if both beat 2 SE (plus a quant-reviewer pass).
 **Ids:** logs, advice and chat must cite FULL approval/txn ids. `fantasy approval show` and `fantasy txn show` do not resolve the
 8-hex short form (`apr-254c02ee` -> not_found).
 
