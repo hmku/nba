@@ -1,0 +1,150 @@
+{
+ "date": "2026-11-28",
+ "note": "paired season sims (simulated; SE = simulation error only), today's in-season projections (box scores through 11-27)",
+ "commands": {
+  "claim_recheck_blend_seed0": "fantasy sim compare --league-file data/manual/league_rosters_2026-27.json --add aaron-wiggins --drop reed-sheppard --sims 8000 --no-save --json",
+  "claim_recheck_blend_seed1": "... --seed 1",
+  "claim_recheck_market": "... --projections var/projections_alt/market.inseason.csv"
+ },
+ "claim_recheck_blend_seed0": {
+  "ok": true,
+  "sim_version": "season-sim-0.9.0",
+  "team": 1,
+  "n_sims": 8000,
+  "seed": 0,
+  "add": [
+   {
+    "player_id": "aaron-wiggins",
+    "name": "Aaron Wiggins"
+   }
+  ],
+  "drop": [
+   {
+    "player_id": "reed-sheppard",
+    "name": "Reed Sheppard"
+   }
+  ],
+  "p_playoffs": {
+   "before": 0.891,
+   "after": 0.895,
+   "delta": 0.004,
+   "delta_se": 0.0024
+  },
+  "p_title": {
+   "before": 0.2251,
+   "after": 0.232,
+   "delta": 0.0069,
+   "delta_se": 0.0039
+  },
+  "exp_cat_wins": {
+   "before": 91.0754,
+   "after": 91.2576,
+   "delta": 0.1821,
+   "delta_se": 0.0393
+  },
+  "compute_seconds": 27.52,
+  "notes": [
+   "before: assumes the roster cap releases Reed Sheppard from ~2027-02-09 (in 48% of sims)",
+   "after: assumes the roster cap releases Derik Queen from ~2027-02-10 (in 48% of sims)"
+  ],
+  "warnings": [
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+ },
+ "claim_recheck_blend_seed1": {
+  "ok": true,
+  "sim_version": "season-sim-0.9.0",
+  "team": 1,
+  "n_sims": 8000,
+  "seed": 1,
+  "add": [
+   {
+    "player_id": "aaron-wiggins",
+    "name": "Aaron Wiggins"
+   }
+  ],
+  "drop": [
+   {
+    "player_id": "reed-sheppard",
+    "name": "Reed Sheppard"
+   }
+  ],
+  "p_playoffs": {
+   "before": 0.8925,
+   "after": 0.8908,
+   "delta": -0.0018,
+   "delta_se": 0.0024
+  },
+  "p_title": {
+   "before": 0.2094,
+   "after": 0.2284,
+   "delta": 0.019,
+   "delta_se": 0.0037
+  },
+  "exp_cat_wins": {
+   "before": 90.9801,
+   "after": 91.1313,
+   "delta": 0.1512,
+   "delta_se": 0.0397
+  },
+  "compute_seconds": 27.69,
+  "notes": [
+   "before: assumes the roster cap releases Reed Sheppard from ~2027-02-10 (in 47% of sims)",
+   "after: assumes the roster cap releases Derik Queen from ~2027-02-10 (in 47% of sims)"
+  ],
+  "warnings": [
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+ },
+ "claim_recheck_market": {
+  "ok": true,
+  "sim_version": "season-sim-0.9.0",
+  "team": 1,
+  "n_sims": 8000,
+  "seed": 0,
+  "add": [
+   {
+    "player_id": "aaron-wiggins",
+    "name": "Aaron Wiggins"
+   }
+  ],
+  "drop": [
+   {
+    "player_id": "reed-sheppard",
+    "name": "Reed Sheppard"
+   }
+  ],
+  "p_playoffs": {
+   "before": 0.8859,
+   "after": 0.8901,
+   "delta": 0.0043,
+   "delta_se": 0.0025
+  },
+  "p_title": {
+   "before": 0.2233,
+   "after": 0.2315,
+   "delta": 0.0083,
+   "delta_se": 0.0039
+  },
+  "exp_cat_wins": {
+   "before": 90.6821,
+   "after": 90.9878,
+   "delta": 0.3058,
+   "delta_se": 0.0422
+  },
+  "compute_seconds": 27.35,
+  "notes": [
+   "before: assumes the roster cap releases Reed Sheppard from ~2027-02-06 (in 56% of sims)",
+   "after: assumes the roster cap releases Derik Queen from ~2027-02-06 (in 56% of sims)"
+  ],
+  "warnings": [
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+   "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 8, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+  ],
+  "run_id": null
+ }
+}

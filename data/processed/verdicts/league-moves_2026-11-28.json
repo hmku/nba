@@ -1,0 +1,64 @@
+{
+ "date": "2026-11-28",
+ "premove_league": "data/processed/verdicts/league-moves_2026-11-28_premove_league.json (today's league file with jimmy-butler removed from Ed's Extraordinary Team)",
+ "moves": [
+  {
+   "team_id": 12,
+   "team": "Ed's Extraordinary Team",
+   "type": "add",
+   "player_in": "jimmy-butler",
+   "when": "2026-11-27 21:38 ET, free agent, straight to IL (O, right knee)",
+   "command": "fantasy sim compare --league-file <premove> --add jimmy-butler --drop reed-sheppard --sims 4000 --no-save --json",
+   "result": {
+    "ok": true,
+    "sim_version": "season-sim-0.9.0",
+    "team": 1,
+    "n_sims": 4000,
+    "seed": 0,
+    "add": [
+     {
+      "player_id": "jimmy-butler",
+      "name": "Jimmy Butler"
+     }
+    ],
+    "drop": [
+     {
+      "player_id": "reed-sheppard",
+      "name": "Reed Sheppard"
+     }
+    ],
+    "p_playoffs": {
+     "before": 0.8998,
+     "after": 0.8638,
+     "delta": -0.036,
+     "delta_se": 0.0038
+    },
+    "p_title": {
+     "before": 0.2308,
+     "after": 0.2333,
+     "delta": 0.0025,
+     "delta_se": 0.0052
+    },
+    "exp_cat_wins": {
+     "before": 91.1025,
+     "after": 89.8434,
+     "delta": -1.2591,
+     "delta_se": 0.0647
+    },
+    "compute_seconds": 13.65,
+    "notes": [
+     "before: assumes the roster cap releases Reed Sheppard from ~2027-02-09 (in 49% of sims)",
+     "after: assumes the roster cap releases Derik Queen from ~2027-03-01 (in 22% of sims)",
+     "after: Δ vs a replacement-level pickup: 1 replacement(s) carried from day 0 for Out players; ~86 IL-replacement games/season in total"
+    ],
+    "warnings": [
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)",
+     "roster cap (season-sim-0.8.0): teams [1, 2, 3, 5, 6, 7, 9, 10, 11] carry more than 13 players; the surplus (lowest per-game value, not Out) is released when an IL player returns (docs/research/il_replacement.md)"
+    ],
+    "run_id": null
+   },
+   "class": "neutral"
+  }
+ ],
+ "skipped": "Jeffrey's Great Team dropped Karlo Matkovic and Mario Hezonja (pure drops, 21:25 ET 11-27; a trade with Yes it's a mess is pending)"
+}
